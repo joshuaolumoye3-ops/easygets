@@ -1,0 +1,43 @@
+@extends('layouts.app')
+
+@section('title', 'More Services')
+
+@section('content')
+<div class="max-w-xl mx-auto py-8 font-[Inter]">
+    <div class="flex items-center space-x-2 mb-6">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        <h1 class="text-lg font-semibold text-center flex-1">More Services</h1>
+    </div>
+
+    <div class="mb-6">
+        <input type="text" placeholder="Search for a service..." class="w-full border rounded-full py-2 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-green-800">
+    </div>
+
+    <h2 class="text-sm font-medium text-gray-500 mb-4">All Services</h2>
+
+    <div class="space-y-4">
+        @foreach ([
+            ['icon'=>'🌐','name'=>'Internet','btn'=>'Buy Data'],
+            ['icon'=>'📞','name'=>'Airtime','btn'=>'Recharge'],
+            ['icon'=>'⚡','name'=>'Electricity','btn'=>'Pay Bill'],
+            ['icon'=>'📺','name'=>'TV/Cable','btn'=>'Subscribe'],
+            ['icon'=>'🏦','name'=>'Banking','btn'=>'Deposit'],
+            ['icon'=>'📱','name'=>'eSIM','btn'=>'Activate'],
+            ['icon'=>'🔄','name'=>'eSIM Renewal','btn'=>'Renew'],
+            ['icon'=>'🔌','name'=>'Sockets','btn'=>'Buy'],
+            ['icon'=>'📝','name'=>'JAMB e-PIN','btn'=>'Buy'],
+            ['icon'=>'📖','name'=>'WAEC e-PIN','btn'=>'Buy'],
+        ] as $service)
+        <div class="flex items-center justify-between border-b pb-3">
+            <div class="flex items-center space-x-4">
+                <div class="text-green-800 text-xl">{!! $service['icon'] !!}</div>
+                <p class="text-base font-medium">{{ $service['name'] }}</p>
+            </div>
+            <button class="bg-green-800 text-white text-xs px-4 py-2 rounded-full">{{ $service['btn'] }}</button>
+        </div>
+        @endforeach
+    </div>
+</div>
+@endsection
