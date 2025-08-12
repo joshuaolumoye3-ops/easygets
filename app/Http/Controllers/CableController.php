@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Helpers\ClubKonnectHelper;
 use App\Models\Transaction;
+use App\Models\Wallet;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 class CableController extends Controller
@@ -57,54 +59,70 @@ class CableController extends Controller
         }
     }
     public function purchase(Request $request)
-{
-    $request->validate([
-        'network'         => 'required|string',
-        'package'         => 'required|string',
-        'smartcardNumber' => 'required|string',
-        'phoneNumber'     => 'required|string',
-        'amount'          => 'required|numeric|min:1',
-    ]);
+    {
+        $request->validate([
+            'network'         => 'required|string',
+            'package'         => 'required|string',
+            'smartcardNumber' => 'required|string',
+            'phoneNumber'     => 'required|string',
+            'amount'          => 'required|numeric|min:1',
+        ]);
 
-    $cableTV     = $request->input('network');
-    $package     = $request->input('package');
-    $smartCardNo = $request->input('smartcardNumber');
-    $phoneNo     = $request->input('phoneNumber');
-    $amount      = $request->input('amount');
-    $requestId   = uniqid('cable_');
-    $callbackUrl = null;
+        $cableTV     = $request->input('network');
+        $package     = $request->input('package');
+        $smartCardNo = $request->input('smartcardNumber');
+        $phoneNo     = $request->input('phoneNumber');
+        $amount      = $request->input('amount');
+        $requestId   = uniqid('cable_');
+        $callbackUrl = null;
 
-    // Call ClubKonnect API
-    $response = ClubKonnectHelper::buyCableTV(
-        $cableTV,
-        $package,
-        $smartCardNo,
-        $phoneNo,
-        $requestId,
-        $callbackUrl
-    );
+        // ✅ Step 1: Get wallet & check balance
+        $wallet = Wallet::where('user_id', auth()->id())->lockForUpdate()->first();
 
-    // Save transaction to DB
-    Transaction::create([
-        'reference' => $requestId,
-        'user_id'   => auth()->id(),
-        'type'      => 'cable',
-        'channel'   => 'ClubKonnect',
-        'provider'  => $cableTV,
-        'phone'     => $phoneNo,
-        'amount'    => $amount,
-        'status'    => (isset($response['status']) && $response['status'] === 'SUCCESS') ? 'success' : 'failed',
-        'response'  => json_encode($response),
-    ]);
+        if (!$wallet || $wallet->balance < $amount) {
+            return back()->with('error', 'Insufficient wallet balance.');
+        }
 
-    // Redirect based on response
-    if (isset($response['status']) && $response['status'] === 'SUCCESS') {
-        return redirect()->back()->with('success', 'Cable TV purchase successful!');
-    } else {
-        $errorMessage = $response['message'] ?? 'Purchase failed. Please try again.';
-        return redirect()->back()->withInput()->with('error', $errorMessage);
+        DB::beginTransaction();
+
+        try {
+            // ✅ Step 2: Call ClubKonnect API
+            $response = ClubKonnectHelper::buyCableTV(
+                $cableTV,
+                $package,
+                $smartCardNo,
+                $phoneNo,
+                $requestId,
+                $callbackUrl
+            );
+
+            // ✅ Step 3: Store transaction
+            Transaction::create([
+                'reference' => $requestId,
+                'user_id'   => auth()->id(),
+                'type'      => 'cable',
+                'channel'   => 'ClubKonnect',
+                'provider'  => $cableTV,
+                'phone'     => $phoneNo,
+                'amount'    => $amount,
+                'status'    => (isset($response['status']) && $response['status'] === 'SUCCESS') ? 'success' : 'failed',
+                'response'  => json_encode($response),
+            ]);
+
+            // ✅ Step 4: Deduct balance only if success
+            if (isset($response['status']) && $response['status'] === 'SUCCESS') {
+                $wallet->decrement('balance', $amount);
+                DB::commit();
+                return redirect()->back()->with('success', 'Cable TV purchase successful!');
+            } else {
+                DB::rollBack();
+                $errorMessage = $response['message'] ?? 'Purchase failed. Please try again.';
+                return redirect()->back()->withInput()->with('error', $errorMessage);
+            }
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Something went wrong. Please try again.');
+        }
     }
-}
-
-
 }

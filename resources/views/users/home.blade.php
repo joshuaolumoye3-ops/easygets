@@ -33,7 +33,7 @@
                         <p class="text-3xl font-bold mt-1">₦{{ number_format($wallet->balance, 2) }}</p>
                     </div>
                     <div class="flex flex-col items-end space-y-2">
-                        <a href="" class="text-sm">Transactions</a>
+                        <a href="transactions" class="text-sm">Transactions</a>
                         <button id="addFundsBtn"
                                 data-has-account="true"
                                 class="bg-white text-[#03624C] font-bold py-2 px-4 rounded-full text-sm hover:bg-white/30 transition-colors">
@@ -169,14 +169,14 @@
                  <!-- Service Item -->
                 <a href="cabletv" class="flex flex-col items-center space-y-2">
                     <div class="bg-brand-green-light rounded-full w-14 h-14 flex items-center justify-center">
-                        <img src="assets/e-sim.svg" class="w-8 h-8 text-brand-green" alt="">
+                        <img src="assets/tv.svg" class="w-8 h-8 text-brand-green" alt="">
                     </div>
                     <span class="text-xs font-medium text-gray-700">TV/Cable</span>
                 </a>
-                 <!-- Service Item -->
-                <a href="betting" class="space-y-2">
-                    <div class="bg-brand-green-light rounded-lg w-full aspect-square flex items-center justify-center">
-                        <svg class="w-7 h-7 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
+                 <!-- betting Item -->
+                <a href="betting" class="flex flex-col items-center space-y-2">
+                    <div class="bg-brand-green-light rounded-full w-14 h-14 flex items-center justify-center">
+                        <img src="assets/ball.svg" class="w-8 h-8 text-brand-green" alt="">
                     </div>
                     <span class="text-xs font-medium text-gray-700">Betting</span>
                 </a>
@@ -188,16 +188,16 @@
                     <span class="text-xs font-medium text-gray-700">eSim</span>
                 </a>
                  <!-- Service Item -->
-                <a href="#" class="space-y-2">
-                    <div class="bg-brand-green-light rounded-lg w-full aspect-square flex items-center justify-center">
-                        <svg class="w-7 h-7 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 14l9-5-9-5-9 5 9 5z"></path><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222 4 2.222V20M1 12v7a2 2 0 002 2h14a2 2 0 002-2v-7"></path></svg>
+                <a href="#" class="flex flex-col items-center space-y-2">
+                    <div class="bg-brand-green-light rounded-full w-14 h-14 flex items-center justify-center">
+                        <img src="assets/sim-icon.svg" class="w-8 h-8 text-brand-green" alt="">
                     </div>
-                    <span class="text-xs font-medium text-gray-700">WAEC/NECO</span>
+                    <span class="text-xs font-medium text-gray-700">eSim Renewal</span>
                 </a>
                  <!-- Service Item -->
-                <a href="more-services" class="space-y-2">
-                    <div class="bg-brand-green-light rounded-lg w-full aspect-square flex items-center justify-center">
-                        <svg class="w-7 h-7 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg>
+                <a href="more-services" class="flex flex-col items-center space-y-2">
+                    <div class="bg-brand-green-light rounded-full w-14 h-14 flex items-center justify-center">
+                        <img src="assets/more.svg" class="w-8 h-8 text-brand-green" alt="">
                     </div>
                     <span class="text-xs font-medium text-gray-700">Others</span>
                 </a>

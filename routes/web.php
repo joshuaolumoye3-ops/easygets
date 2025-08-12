@@ -3,6 +3,7 @@
 use App\Http\Controllers\AirtimeController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\BettingController;
 use App\Http\Controllers\CableController;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\DataController;
@@ -49,15 +50,13 @@ Route::get('/cabletv', [CableController::class, 'showCableTV'])->name('cabletv')
 Route::post('/verify-smartcard', [CableController::class, 'verifySmartcard'])->name('verify.smartcard');
 Route::post('/cabletv/purchase', [CableController::class, 'purchase'])->name('cabletv.purchase');
 Route::post('/wallet/create-account', [WalletController::class, 'createAccount'])->name('wallets.createAccount');
+Route::get('/profile', [Controller::class, 'profile'])->name('profile');
 
 Route::get('/social-package', function () {
     return view('users.socialPackage');
 });
 Route::get('/history', function () {
     return view('users.history');
-});
-Route::get('/profile', function () {
-    return view('users.profile');
 });
 Route::get('/more-services', function () {
     return view('users.moreService');
@@ -77,6 +76,7 @@ Route::get('/jambepin', function () {
 Route::get('/betting', function () {
     return view('users.betting');
 });
+Route::post('/fund-bet', [BettingController::class, 'fund_account'])->name('fund_bet');
 
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 });

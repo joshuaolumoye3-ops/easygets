@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Helpers\ClubKonnectHelper;
 use App\Models\Transaction;
+use App\Models\Wallet;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 class DataController extends Controller
@@ -26,36 +28,45 @@ class DataController extends Controller
         return view('users.data', compact('plans'));
     }
     public function purchase(Request $request)
-    {
-        $request->validate([
-            'network'   => 'required|in:mtn,glo,airtel,9mobile',
-            'data_plan' => 'required|string',
-            'recipient' => 'required|digits:11',
-            'amount'    => 'required|numeric|min:1',
-        ]);
+{
+    $request->validate([
+        'network'   => 'required|in:mtn,glo,airtel,9mobile',
+        'data_plan' => 'required|string',
+        'recipient' => 'required|digits:11',
+        'amount'    => 'required|numeric|min:1',
+    ]);
 
-        $network       = $request->network;
-        $dataPlanCode  = $request->data_plan;
-        $number        = $request->recipient;
-        $amount        = $request->amount;
-        $requestId     = uniqid('data_');
+    $network       = $request->network;
+    $dataPlanCode  = $request->data_plan;
+    $number        = $request->recipient;
+    $amount        = $request->amount;
+    $requestId     = uniqid('data_');
 
-        // ClubKonnect network code map
-        $networkMap = [
-            'mtn'     => '01',
-            'glo'     => '02',
-            '9mobile' => '03',
-            'airtel'  => '04',
-        ];
+    // ClubKonnect network code map
+    $networkMap = [
+        'mtn'     => '01',
+        'glo'     => '02',
+        'airtel'  => '03',
+        '9mobile' => '04',
+    ];
 
-        $networkCode = $networkMap[$network] ?? null;
+    $networkCode = $networkMap[$network] ?? null;
 
-        // Sanity check: reject zero or null amounts
-        if (!$amount || $amount <= 0) {
-            return back()->with('error', 'Invalid amount for selected data plan.');
-        }
+    if (!$amount || $amount <= 0) {
+        return back()->with('error', 'Invalid amount for selected data plan.');
+    }
 
-        // Call ClubKonnect
+    //  Get wallet & check balance
+    $wallet = Wallet::where('user_id', auth()->id())->lockForUpdate()->first();
+
+    if (!$wallet || $wallet->balance < $amount) {
+        return back()->with('error', 'Insufficient wallet balance.');
+    }
+
+    DB::beginTransaction();
+
+    try {
+        // ✅ Step 2: Call ClubKonnect API
         $response = ClubKonnectHelper::buyDataBundle(
             $networkCode,
             $dataPlanCode,
@@ -63,7 +74,7 @@ class DataController extends Controller
             $requestId
         );
 
-        // Save transaction
+        // ✅ Step 3: Store transaction
         Transaction::create([
             'reference' => $requestId,
             'user_id'   => auth()->id(),
@@ -76,12 +87,22 @@ class DataController extends Controller
             'response'  => json_encode($response),
         ]);
 
+        // ✅ Step 4: Deduct balance only if success
         if (($response['statuscode'] ?? null) == '100') {
-            return back()->with('success', 'Data purchase initiated successfully. Order ID: ' . $response['orderid']);
+            $wallet->decrement('balance', $amount);
+            DB::commit();
+            return back()->with('success', 'Data purchase successful. Order ID: ' . $response['orderid']);
         } else {
+            DB::rollBack();
             return back()->with('error', 'Transaction failed: ' . ($response['status'] ?? 'Unknown error'));
         }
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return back()->with('error', 'Something went wrong. Please try again.');
     }
+}
+
 
 private function getProviderName($code)
     {

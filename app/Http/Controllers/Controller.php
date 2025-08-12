@@ -24,15 +24,24 @@ class Controller
     }
 
     public function transaction()
-{
-    $user = Auth::user();
+    {
+        $user = Auth::user();
 
-    // Get transactions and group by date (Y-m-d)
-    $transactions = Transaction::where('user_id', $user->id)
-        ->latest()
-        ->get()
-        ->groupBy(fn ($txn) => Carbon::parse($txn->created_at)->format('d M, Y'));
+        // Get transactions and group by date (Y-m-d)
+        $transactions = Transaction::where('user_id', $user->id)
+            ->latest()
+            ->get()
+            ->groupBy(fn ($txn) => Carbon::parse($txn->created_at)->format('d M, Y'));
 
-    return view('users.transaction', compact('transactions'));
-}
+        return view('users.transaction', compact('transactions'));
+    }
+
+    public function profile()
+    {
+        $user = auth()->user();
+
+        $wallet = $user->wallet()->with('virtualAccounts')->first();
+
+        return view('users.profile', compact('wallet'));
+    }
 }
