@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CableController;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\DataController;
+use App\Http\Controllers\BettingController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -72,6 +73,7 @@ Route::get('/jambepin', function () {
 Route::get('/betting', function () {
     return view('users.betting');
 });
+Route::post('/fund-bet', [BettingController::class, 'fund_account'])->name('fund_bet');
 
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 });

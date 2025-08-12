@@ -159,4 +159,25 @@ class ClubKonnectHelper
 
         return $response->json();
     }
+
+
+    /**
+ * Place a bet
+ */
+public static function placeBet($bettingCompany, $customerId, $amount, $requestId, $callbackUrl = null)
+{
+    $params = [
+        'UserID' => self::getUserId(),
+        'APIKey' => self::getApiKey(),
+        'BettingCompany' => $bettingCompany,
+        'CustomerID' => $customerId,
+        'Amount' => $amount,
+        'RequestID' => $requestId,
+        'CallBackURL' => $callbackUrl ?? self::getCallbackUrl()
+    ];
+
+    $response = Http::get(self::getBaseUrl() . '/APIBettingV1.asp', $params);
+
+    return $response->json();
+}
 }
