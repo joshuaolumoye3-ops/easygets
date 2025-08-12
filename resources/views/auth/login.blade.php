@@ -46,7 +46,7 @@
                 Login
             </button>
             <div class="text-center">
-               Don't have an account? <a href="#" id="backLink" class="text-sm font-medium text-blue-600 transition-colors hover:text-gray-800">Sign up</a>
+               Don't have an account? <a href="signup" id="backLink" class="text-sm font-medium text-blue-600 transition-colors hover:text-gray-800">Sign up</a>
             </div>
         </form>
     </div>

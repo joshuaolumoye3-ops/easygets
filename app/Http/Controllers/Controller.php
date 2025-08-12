@@ -9,14 +9,18 @@ use Illuminate\Support\Facades\Auth;
 
 class Controller
 {
-     public function dashboard()
+    public function dashboard()
     {
-        $latestTransactions = Transaction::where('user_id', auth()->id())
-        ->latest()
-        ->take(4)
-        ->get();
+        $user = auth()->user();
 
-    return view('users.home', compact('latestTransactions'));
+        $latestTransactions = Transaction::where('user_id', $user->id)
+            ->latest()
+            ->take(4)
+            ->get();
+
+        $wallet = $user->wallet()->with('virtualAccounts')->first();
+
+        return view('users.home', compact('latestTransactions', 'wallet'));
     }
 
     public function transaction()

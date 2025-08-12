@@ -6,6 +6,8 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CableController;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\DataController;
+use App\Http\Controllers\MonnifyWebhookController;
+use App\Http\Controllers\WalletController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -32,7 +34,8 @@ Route::post('/login', [LoginController::class, 'login'])->name('login.submit');
 
 });
 // end of auth routes
-
+Route::post('/webhook/monnify', [MonnifyWebhookController::class, 'handle'])
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 Route::middleware('auth')->group(function () {
 
 Route::get('/dashboard', [Controller::class, 'dashboard'])->name('dashboard');
@@ -45,6 +48,8 @@ Route::get('/data', [DataController::class, 'showData'])->name('data');
 Route::get('/cabletv', [CableController::class, 'showCableTV'])->name('cabletv');
 Route::post('/verify-smartcard', [CableController::class, 'verifySmartcard'])->name('verify.smartcard');
 Route::post('/cabletv/purchase', [CableController::class, 'purchase'])->name('cabletv.purchase');
+Route::post('/wallet/create-account', [WalletController::class, 'createAccount'])->name('wallets.createAccount');
+
 Route::get('/social-package', function () {
     return view('users.socialPackage');
 });

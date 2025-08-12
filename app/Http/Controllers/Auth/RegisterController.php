@@ -58,7 +58,7 @@ class RegisterController extends Controller
 
                 Mail::to($existingUser->email)->send(new OtpMail($otp));
 
-                return redirect()->route('onboarding.EmailOtp', ['user' => $existingUser->id])
+                return redirect()->route('onboarding.emailOtp', ['user' => $existingUser->id])
                     ->with('warning', 'You already have an existing account with us. Please verify your email. A new OTP has been sent.');
             }
         }
