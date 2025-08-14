@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Helpers\ClubKonnectHelper;
+use App\Helpers\VtuAfrica; // Changed from ClubKonnectHelper
 use App\Models\Transaction;
 use Illuminate\Support\Str;
 
@@ -11,13 +11,8 @@ class BettingController extends Controller
 {
     public function fund_account(Request $request)
     {
-        $validBettingCodes = [
-            'msport', 'naijabet', 'nairabet', 'bet9ja-agent',
-            'betland', 'betlion', 'supabet', 'bet9ja',
-            'bangbet', 'betking', '1xbet', 'betway',
-            'merrybet', 'mlotto', 'western-lotto',
-            'hallabet', 'green-lotto'
-        ];
+
+        $validBettingCodes = array_keys(VtuAfrica::getSupportedServices());
 
         $request->validate([
             'betting_company' => 'required|in:' . implode(',', $validBettingCodes),
@@ -26,55 +21,46 @@ class BettingController extends Controller
             'request_id' => 'required|string'
         ]);
 
-        $response = ClubKonnectHelper::placeBet(
+
+        $response = VtuAfrica::fundBetAccount(
             $request->betting_company,
             $request->customer_id,
             $request->amount,
-            $request->request_id
+            $request->request_id,
+            auth()->user()->phone
         );
 
-        // Store transaction
+
         Transaction::create([
             'reference' => $request->request_id,
             'user_id' => auth()->id(),
             'type' => 'betting',
-            'channel' => 'ClubKonnect',
+            'channel' => 'VTU Africa',
             'provider' => $this->getBettingProviderName($request->betting_company),
             'account' => $request->customer_id,
             'amount' => $request->amount,
-            'status' => ($response['statuscode'] ?? null) == '100' ? 'success' : 'failed',
-            'response' => json_encode($response),
+            'status' => $response['success'] ? 'success' : 'failed',
+            'response' => json_encode($response['data'] ?? $response),
         ]);
 
-        if ($response && ($response['statuscode'] ?? null) == '100') {
-            return back()->with('success', 'Betting account funding request sent.');
+        dd($response);
+
+        if ($response['success']) {
+            return back()->with('success',
+                'Betting account funded successfully. ' .
+                ($response['data']['description']['message'] ?? '')
+            );
         } else {
-            return back()->with('error', 'Funding failed: ' . ($response['status'] ?? 'Unknown error'));
+            $errorMessage = $response['data']['description']['message'] ??
+                          $response['error'] ??
+                          'Unknown error occurred';
+            return back()->with('error', 'Funding failed: ' . $errorMessage);
         }
     }
 
     private function getBettingProviderName($code)
     {
-        $providers = [
-            'msport' => 'Msport',
-            'naijabet' => 'Naijabet',
-            'nairabet' => 'Nairabet',
-            'bet9ja-agent' => 'Bet9ja Agent',
-            'betland' => 'Betland',
-            'betlion' => 'Betlion',
-            'supabet' => 'Supabet',
-            'bet9ja' => 'Bet9ja',
-            'bangbet' => 'Bangbet',
-            'betking' => 'BetKing',
-            '1xbet' => '1xBet',
-            'betway' => 'Betway',
-            'merrybet' => 'Merrybet',
-            'mlotto' => 'Mlotto',
-            'western-lotto' => 'Western Lotto',
-            'hallabet' => 'Hallabet',
-            'green-lotto' => 'Green Lotto'
-        ];
 
-        return $providers[$code] ?? $code;
+        return VtuAfrica::getSupportedServices()[$code] ?? $code;
     }
 }

@@ -167,7 +167,7 @@ class Monnify
 public static function initializeTransaction($amount, $customerName, $customerEmail)
 {
     $tokenResponse = self::generateAccessToken();
-    
+
     if (!$tokenResponse['success']) {
         return [
             'success' => false,
@@ -186,7 +186,9 @@ public static function initializeTransaction($amount, $customerName, $customerEm
         'paymentDescription' => 'Bank Transfer Through OTA',
         'currencyCode' => 'NGN',
         'contractCode' => self::getContractCode(),
-        'redirectUrl' => 'http://127.0.0.1:8000/monnifytransferAccount',
+        // 'redirectUrl' => 'http://127.0.0.1:8000/monnifytransferAccount',
+        //fix this to your domain
+       'redirectUrl' => url('/monnifytransferAccount'),
         'paymentMethods' => ['CARD', 'ACCOUNT_TRANSFER']
     ];
 
@@ -231,7 +233,7 @@ public static function initializeTransaction($amount, $customerName, $customerEm
 public static function initBankTransfer($transactionReference, $bankCode = null)
 {
     $tokenResponse = self::generateAccessToken();
-    
+
     if (!$tokenResponse['success']) {
         return [
             'success' => false,
@@ -297,7 +299,7 @@ public static function initBankTransfer($transactionReference, $bankCode = null)
 public static function getTransactionStatus($transactionReference)
 {
     $tokenResponse = self::generateAccessToken();
-    
+
     if (!$tokenResponse['success']) {
         return [
             'success' => false,
@@ -349,7 +351,7 @@ public static function getTransactionStatus($transactionReference)
     public static function getReservedAccountDetails($accountReference)
     {
         $tokenResponse = self::generateAccessToken();
-        
+
         if (!$tokenResponse['success']) {
             return [
                 'success' => false,
@@ -415,10 +417,10 @@ public static function getTransactionStatus($transactionReference)
         switch ($eventData['eventType']) {
             case 'SUCCESSFUL_TRANSACTION':
                 return self::processSuccessfulTransaction($eventData['eventData']);
-                
+
             case 'FAILED_TRANSACTION':
                 return self::processFailedTransaction($eventData['eventData']);
-                
+
             default:
                 return [
                     'success' => false,
