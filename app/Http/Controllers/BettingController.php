@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Helpers\VtuAfrica; // Changed from ClubKonnectHelper
+use App\Helpers\VtuAfrica;
 use App\Models\Transaction;
+use App\Models\Wallet;
 use Illuminate\Support\Str;
 
 class BettingController extends Controller
@@ -20,6 +21,12 @@ class BettingController extends Controller
             'amount' => 'required|numeric|min:100|max:50000',
             'request_id' => 'required|string'
         ]);
+
+
+      $wallet = Wallet::where('user_id', auth()->id())->first();
+      if(! $wallet || ! $wallet->deduct_amount($request->amount)) {
+          return back()->with('error', 'Insufficient Balance');
+      }
 
 
         $response = VtuAfrica::fundBetAccount(
