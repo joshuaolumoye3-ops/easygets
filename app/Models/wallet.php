@@ -34,4 +34,16 @@ class Wallet extends Model
     {
         return $this->hasMany(Transaction::class);
     }
+
+    public function deduct_amount($amount)
+    {
+        if ($this->balance >= $amount) {
+            $this->balance -= $amount;
+            return $this->save();
+        }
+
+        return false;
+    }
+
+
 }

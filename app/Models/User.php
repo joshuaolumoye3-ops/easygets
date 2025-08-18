@@ -48,6 +48,16 @@ class User extends Authenticatable
         ];
     }
 
+    // public function Wallet()
+    // //  protected static function booted()
+    // // {
+    // //     static::created(function ($user) {
+    // //         $user->wallet()->create([
+    // //             'balance' => 0.00
+    // //         ]);
+    // //     });
+    // // }
+
     public function Wallet()
     {
         return $this->hasOne(Wallet::class);

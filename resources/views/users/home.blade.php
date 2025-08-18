@@ -160,7 +160,7 @@
                     <span class="text-xs font-medium text-gray-700">Airtime</span>
                 </a>
                  <!-- Service Item -->
-                 <a href="#" class="flex flex-col items-center space-y-2">
+                 <a href="electricity" class="flex flex-col items-center space-y-2">
                     <div class="bg-brand-green-light rounded-full w-14 h-14 flex items-center justify-center">
                         <img src="assets/electricity.svg" class="w-8 h-8 text-brand-green" alt="">
                     </div>

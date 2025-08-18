@@ -38,5 +38,9 @@ return [
         'is_live' => env('MONNIFY_IS_LIVE', false),
     ],
 
+    'vtuafrica' => [
+        'api_key' => env('VTU_AFRICA_API_KEY'),
+    ],
+
 
 ];

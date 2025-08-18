@@ -180,4 +180,44 @@ public static function placeBet($bettingCompany, $customerId, $amount, $requestI
 
     return $response->json();
 }
+
+/**
+ * Buy Electricity Bill
+ */
+public static function buyElectricity($electricCompany, $package, $meterNo, $amount, $phoneNo, $requestId, $callbackUrl = null)
+{
+    $params = [
+        'UserID'          => self::getUserId(),
+        'APIKey'          => self::getApiKey(),
+        'ElectricCompany' => $electricCompany, // e.g. '01' for Eko Electric
+        'MeterType'       => $package,       // '01' Prepaid, '02' Postpaid
+        'MeterNo'         => $meterNo,
+        'Amount'          => $amount,
+        'PhoneNo'         => $phoneNo,
+        'RequestID'       => $requestId,
+        'CallBackURL'     => $callbackUrl ?? self::getCallbackUrl()
+    ];
+
+    $response = Http::get(self::getBaseUrl() . '/APIElectricityV1.asp', $params);
+
+    return $response->json();
+}
+
+/**
+ * Verify Electricity Meter Number
+ */
+public static function verifyElectricityMeter($electricCompany, $meterNo)
+{
+    $params = [
+        'UserID'          => self::getUserId(),
+        'APIKey'          => self::getApiKey(),
+        'ElectricCompany' => $electricCompany,
+        'MeterNo'         => $meterNo
+    ];
+
+    $response = Http::get(self::getBaseUrl() . '/APIVerifyElectricityV1.asp', $params);
+
+    return $response->json();
+}
+
 }

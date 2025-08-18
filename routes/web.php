@@ -7,6 +7,7 @@ use App\Http\Controllers\BettingController;
 use App\Http\Controllers\CableController;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\DataController;
+use App\Http\Controllers\ElectricityController;
 use App\Http\Controllers\MonnifyWebhookController;
 use App\Http\Controllers\WalletController;
 use Illuminate\Support\Facades\Route;
@@ -51,6 +52,10 @@ Route::post('/verify-smartcard', [CableController::class, 'verifySmartcard'])->n
 Route::post('/cabletv/purchase', [CableController::class, 'purchase'])->name('cabletv.purchase');
 Route::post('/wallet/create-account', [WalletController::class, 'createAccount'])->name('wallets.createAccount');
 Route::get('/profile', [Controller::class, 'profile'])->name('profile');
+Route::get('/electricity', [ElectricityController::class, 'showElectricityPlans'])->name('electricity');
+Route::post('/verify-electricity-meter', [ElectricityController::class, 'verifyElectricityMeter'])->name('verify.meter');
+Route::post('/electricity/purchase', [ElectricityController::class, 'purchase'])->name('electricity.purchase');
+
 
 Route::get('/social-package', function () {
     return view('users.socialPackage');
