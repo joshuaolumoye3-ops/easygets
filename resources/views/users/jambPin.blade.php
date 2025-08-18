@@ -17,66 +17,73 @@
                 <h1 class="text-xl sm:text-2xl pt-7 font-bold text-gray-800">Purchase JAMB e-PIN</h1>
             <p class="block text-sm text-center font-semibold text-gray-700 mb-2">Instant Activation</p>
             </div>
-            
+
         </div>
 
         <!-- Airtime Purchase Form -->
         {{-- You can point this form to your purchase route --}}
         {{-- <form action="{{ route('airtime.purchase') }}" method="POST"> --}}
-        <form action="#" method="POST" class="space-y-8">
-            @csrf
+        <form action="{{ route('jamb') }}" method="POST" class="space-y-8">
+    @csrf
 
-            <!-- Exam type Input -->
-            <div>
-                <label for="amount" class="block text-sm font-semibold text-gray-700 mb-2">Exam Type</label>
-                <input 
-                    type="text" 
-                    id="exam" 
-                    name="exam" 
-                    placeholder="Direct Entry (DE)"
-                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition duration-200"
-                >
-            </div>
+    <!-- Exam Type Selection -->
+    <div>
+        <label for="exam_type" class="block text-sm font-semibold text-gray-700 mb-2">Exam Type</label>
+        <select
+            name="exam_type"
+            id="exam_type"
+            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition duration-200"
+        >
+            <option value="utme" selected>UTME</option>
+            <option value="de">Direct Entry</option>
+        </select>
+    </div>
 
-            <!-- Recipient Input -->
-            <div>
-                <label for="recipient" class="block text-sm font-semibold text-gray-700 mb-2">JAMB Profile ID</label>
-                <input 
-                    type="text" 
-                    id="recipient" 
-                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition duration-200"
-                >
-            </div>
+    <!-- Phone Number Input -->
+    <div>
+        <label for="phone_number" class="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+        <input
+            type="tel"
+            name="phone_number"
+            id="phone_number"
+            value="{{ old('phone_number') }}"
+            placeholder="08123456789"
+            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition duration-200"
+            required
+        >
+        @error('phone_number')
+            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+        @enderror
+    </div>
 
-            <div>
-                <label for="recipient" class="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
-                <input 
-                    type="number" 
-                    id="recipient" 
-                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition duration-200"
-                >
-            </div>
+    <!-- Amount Input -->
+    <div>
+        <label for="amount" class="block text-sm font-semibold text-gray-700 mb-2">Amount</label>
+        <input
+            type="number"
+            name="amount"
+            id="amount"
+            value="{{ old('amount', '3500') }}"
+            min="1000"
+            max="10000"
+            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition duration-200"
+            required
+        >
+        @error('amount')
+            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+        @enderror
+    </div>
 
-            <div>
-                <label for="recipient" class="block text-sm font-semibold text-gray-700 mb-2">Amount</label>
-                <input 
-                    type="number" 
-                    id="recipient"
-                    placeholder="N2,500" 
-                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition duration-200"
-                >
-            </div>
-
-            <!-- Submit Button -->
-            <div class="pt-32 lg:pt-20 justify-center flex items-center">
-                <button 
-                    type="submit"
-                    class="w-full lg:w-52 bg-brand-green text-white font-bold py-3 px-4 rounded-lg hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700 transition duration-200 shadow-lg shadow-teal-700/20"
-                >
-                    Pay Now
-                </button>
-            </div>
-        </form>
+    <!-- Submit Button -->
+    <div class="pt-32 lg:pt-20 justify-center flex items-center">
+        <button
+            type="submit"
+            class="w-full lg:w-52 bg-brand-green text-white font-bold py-3 px-4 rounded-lg hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700 transition duration-200 shadow-lg shadow-teal-700/20"
+        >
+            Pay Now
+        </button>
+    </div>
+</form>
     </div>
 </div>
 
@@ -181,4 +188,4 @@
     });
 </script>
 @endsection
-@endsection
+{{-- @endsection --}}

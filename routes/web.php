@@ -45,12 +45,14 @@ Route::post('/data/purchase', [DataController::class, 'purchase'])->name('data.p
 Route::post('/airtime/recharge', [AirtimeController::class, 'recharge'])->name('airtime.recharge');
 Route::patch('/update-profile', [RegisterController::class, 'updateProfile'])->name('updateProfile.submit');
 
+
 Route::get('/data', [DataController::class, 'showData'])->name('data');
 Route::get('/cabletv', [CableController::class, 'showCableTV'])->name('cabletv');
 Route::post('/verify-smartcard', [CableController::class, 'verifySmartcard'])->name('verify.smartcard');
 Route::post('/cabletv/purchase', [CableController::class, 'purchase'])->name('cabletv.purchase');
 Route::post('/wallet/create-account', [WalletController::class, 'createAccount'])->name('wallets.createAccount');
 Route::get('/profile', [Controller::class, 'profile'])->name('profile');
+Route::post('/jamb', [CableController::class, 'jamb'])->name('jamb');
 
 Route::get('/social-package', function () {
     return view('users.socialPackage');

@@ -19,23 +19,23 @@
 
     <div class="space-y-4">
         @foreach ([
-            ['icon'=>'🌐','name'=>'Internet','btn'=>'Buy Data'],
-            ['icon'=>'📞','name'=>'Airtime','btn'=>'Recharge'],
-            ['icon'=>'⚡','name'=>'Electricity','btn'=>'Pay Bill'],
-            ['icon'=>'📺','name'=>'TV/Cable','btn'=>'Subscribe'],
-            ['icon'=>'🏦','name'=>'Banking','btn'=>'Deposit'],
-            ['icon'=>'📱','name'=>'eSIM','btn'=>'Activate'],
-            ['icon'=>'🔄','name'=>'eSIM Renewal','btn'=>'Renew'],
-            ['icon'=>'🔌','name'=>'Sockets','btn'=>'Buy'],
-            ['icon'=>'📝','name'=>'JAMB e-PIN','btn'=>'Buy'],
-            ['icon'=>'📖','name'=>'WAEC e-PIN','btn'=>'Buy'],
+            ['icon'=>'🌐','name'=>'Internet','btn'=>'Buy Data', 'href'=>'data'],
+            ['icon'=>'📞','name'=>'Airtime','btn'=>'Recharge', 'href'=>'airtime'],
+            ['icon'=>'⚡','name'=>'Electricity','btn'=>'Pay Bill', 'href'=>'electricity'],
+            ['icon'=>'📺','name'=>'TV/Cable','btn'=>'Subscribe', 'href'=>'cabletv'],
+            ['icon'=>'🏦','name'=>'Banking','btn'=>'Deposit', 'href'=>'deposit'],
+            ['icon'=>'📱','name'=>'eSIM','btn'=>'Activate', 'href'=>'esim'],
+            ['icon'=>'🔄','name'=>'eSIM Renewal','btn'=>'Renew', 'href'=>'esim'],
+            ['icon'=>'🔌','name'=>'Sockets','btn'=>'Buy', 'href'=>'sockets'],
+            ['icon'=>'📝','name'=>'JAMB e-PIN','btn'=>'Buy', 'href'=>'jambepin'],
+            ['icon'=>'📖','name'=>'WAEC e-PIN','btn'=>'Buy', 'href'=>'waecepin'],
         ] as $service)
         <div class="flex items-center justify-between border-b pb-3">
             <div class="flex items-center space-x-4">
                 <div class="text-green-800 text-xl">{!! $service['icon'] !!}</div>
                 <p class="text-base font-medium">{{ $service['name'] }}</p>
             </div>
-            <button class="bg-green-800 text-white text-xs px-4 py-2 rounded-full">{{ $service['btn'] }}</button>
+            <a href="{{url($service['href'])}}" class="bg-green-800 text-white text-xs px-4 py-2 rounded-full">{{ $service['btn'] }}</a>
         </div>
         @endforeach
     </div>

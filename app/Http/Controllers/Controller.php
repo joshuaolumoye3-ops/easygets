@@ -44,4 +44,6 @@ class Controller
 
         return view('users.profile', compact('wallet'));
     }
+
+
 }
