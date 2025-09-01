@@ -17,10 +17,26 @@ class Controller
             ->latest()
             ->take(4)
             ->get();
+        $services = smm_api()->services();
+
+    // Group services by category
+    $categories = collect($services)->groupBy('category')->map(function ($services) {
+        return $services->map(function ($service) {
+            return (object) [
+                'id'   => $service->service,   // access as object
+                'name' => $service->name,
+                // Apply +5% markup
+                'rate' => round($service->rate * 1.05, 2),
+                'min'  => (int) $service->min,
+                'max'  => (int) $service->max,
+                'desc' => $service->desc ?? '',
+            ];
+        });
+    });
 
         $wallet = $user->wallet()->with('virtualAccounts')->first();
 
-        return view('users.home', compact('latestTransactions', 'wallet'));
+        return view('users.home', compact('latestTransactions', 'wallet', 'categories'));
     }
 
     public function transaction()

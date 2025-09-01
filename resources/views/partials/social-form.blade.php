@@ -10,18 +10,33 @@
 
         <h2 class="text-2xl font-bold text-center mt-12 mb-6">Social Packages</h2>
 
-        <form>
+        <form method="POST" action="{{ route('social.order') }}">
+            @csrf
+
             <div class="mb-4">
                 <label for="category" class="block text-gray-700 font-semibold mb-1">Select Category</label>
                 <select id="category" name="category" class="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
-                    <option>Anyoption Promo (Cheapest and fastest)</option>
+                    @foreach($categories as $category => $services)
+                        <option value="{{ $category }}">{{ $category }}</option>
+                    @endforeach
                 </select>
             </div>
 
             <div class="mb-4">
                 <label for="package" class="block text-gray-700 font-semibold mb-1">Choose Package</label>
-                <select id="package" name="package" class="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
-                    <option>Instagram Followers</option>
+                <select id="package" name="service_id" class="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                   @foreach($categories as $category => $services)
+                        @foreach($services as $service)
+                            <option value="{{ $service->id }}"
+                                data-category="{{ $category }}"
+                                data-rate="{{ $service->rate }}"
+                                data-min="{{ $service->min }}"
+                                data-max="{{ $service->max }}"
+                                data-desc="{{ $service->desc }}">
+                                {{ $service->name }} (₦{{ number_format($service->rate, 2) }}/1k)
+                            </option>
+                        @endforeach
+                    @endforeach
                 </select>
             </div>
 
@@ -35,15 +50,16 @@
                 <input type="url" id="link" name="link" placeholder="https://example.com/link" class="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
 
+            <!-- Dynamic Amount Box -->
             <div class="mb-4 text-center">
                 <div class="bg-brand-green text-white font-bold rounded-xl py-4 mb-2">
                     <p class="text-lg">Amount</p>
-                    <p class="text-2xl">₦2,083</p>
-                    <p class="text-sm">Per 10</p>
+                    <p id="amountDisplay" class="text-2xl">₦0</p>
+                    <p id="perUnitDisplay" class="text-sm"></p>
                 </div>
                 <div class="bg-green-100 text-brand-green rounded-xl py-3 px-4 text-sm">
                     <p class="font-semibold">Description</p>
-                    <p>You will be charged ₦2,083 for Instagram followers boost. You can continue to place your order.</p>
+                    <p id="descDisplay">Select a package to see details.</p>
                 </div>
             </div>
 
@@ -70,3 +86,43 @@
         }
     }
 </style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const packageSelect = document.getElementById("package");
+    const qtyInput = document.getElementById("quantity");
+    const amountDisplay = document.getElementById("amountDisplay");
+    const perUnitDisplay = document.getElementById("perUnitDisplay");
+    const descDisplay = document.getElementById("descDisplay");
+
+    function calculateAmount() {
+        const selected = packageSelect.options[packageSelect.selectedIndex];
+        const rate = parseFloat(selected.dataset.rate || 0);
+        const min = parseInt(selected.dataset.min || 0);
+        const max = parseInt(selected.dataset.max || 0);
+        const desc = selected.dataset.desc || "No description available.";
+        const qty = parseInt(qtyInput.value || 0);
+
+        if (qty >= min && qty <= max) {
+            // Formula: (rate per 1000) * qty / 1000 + 5% markup
+            const baseAmount = (rate * qty) / 1000;
+            const amount = baseAmount * 1.05; // adds 5%
+
+            amountDisplay.textContent = "₦" + amount.toFixed(2);
+            perUnitDisplay.textContent = `Min: ${min}, Max: ${max}`;
+            descDisplay.textContent = desc + ` (Includes 5% fee)`;
+        } else {
+            amountDisplay.textContent = "₦0";
+            perUnitDisplay.textContent = `Enter between ${min} and ${max}`;
+            descDisplay.textContent = desc;
+        }
+    }
+
+    packageSelect.addEventListener("change", calculateAmount);
+    qtyInput.addEventListener("input", calculateAmount);
+
+    // Initialize
+    calculateAmount();
+});
+</script>
+

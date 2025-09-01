@@ -181,7 +181,7 @@ public static function placeBet($bettingCompany, $customerId, $amount, $requestI
     return $response->json();
 }
 
-public static function buyJamb($phoneNo, $examType = 'utme', $requestId, $callbackUrl = null) {
+public static function buyJamb($phoneNo,  $requestId, $examType = 'utme', $callbackUrl = null) {
     $params = [
         'UserID' => self::getUserId(),
         'APIKey' => self::getApiKey(),

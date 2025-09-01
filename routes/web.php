@@ -10,6 +10,7 @@ use App\Http\Controllers\DataController;
 use App\Http\Controllers\MonnifyWebhookController;
 use App\Http\Controllers\WalletController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\SocialController;
 
 Route::middleware('guest')->group(function () {
 
@@ -54,9 +55,11 @@ Route::post('/wallet/create-account', [WalletController::class, 'createAccount']
 Route::get('/profile', [Controller::class, 'profile'])->name('profile');
 Route::post('/jamb', [CableController::class, 'jamb'])->name('jamb');
 
-Route::get('/social-package', function () {
-    return view('users.socialPackage');
-});
+
+
+Route::get('/social/services', [SocialController::class, 'services'])->name('social.services');
+Route::post('/social/order', [SocialController::class, 'order'])->name('social.order');
+
 Route::get('/history', function () {
     return view('users.history');
 });
