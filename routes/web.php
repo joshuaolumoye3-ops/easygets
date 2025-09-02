@@ -12,6 +12,7 @@ use App\Http\Controllers\ElectricityController;
 use App\Http\Controllers\MonnifyWebhookController;
 use App\Http\Controllers\WalletController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\SocialController;
 
 Route::middleware('guest')->group(function () {
 
@@ -77,9 +78,11 @@ Route::get('/services/{serviceId}/countries/{countryId}/prices', [CountryControl
 Route::get('/products/{id}/countries', [CountryController::class, 'showCountries'])->name('products.countries');
 Route::post('/jamb', [CableController::class, 'jamb'])->name('jamb');
 
-Route::get('/social-package', function () {
-    return view('users.socialPackage');
-});
+
+
+Route::get('/social/services', [SocialController::class, 'services'])->name('social.services');
+Route::post('/social/order', [SocialController::class, 'order'])->name('social.order');
+
 Route::get('/history', function () {
     return view('users.history');
 });
