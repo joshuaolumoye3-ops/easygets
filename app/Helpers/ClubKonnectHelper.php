@@ -220,4 +220,20 @@ public static function verifyElectricityMeter($electricCompany, $meterNo)
     return $response->json();
 }
 
+
+public static function buyJamb($phoneNo, $examType = 'utme', $requestId, $callbackUrl = null) {
+    $params = [
+        'UserID' => self::getUserId(),
+        'APIKey' => self::getApiKey(),
+        'ExamType' => $examType,
+        'PhoneNo' => $phoneNo,
+        'RequestID' => $requestId,
+        'CallBackURL' => $callbackUrl ?? self::getCallbackUrl()
+    ];
+
+    $response = Http::get(self::getBaseUrl() . '/APIJAMBV1.asp', $params);
+
+    return $response->json();
+}
+
 }

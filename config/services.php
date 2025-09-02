@@ -42,5 +42,10 @@ return [
         'api_key' => env('VTU_AFRICA_API_KEY'),
     ],
 
+    'demmy' => [
+        'base_url'    => env('DEMMY_BASE_URL', 'https://staging.demmypay.com/'),
+        'api_key'     => env('DEMMY_API_KEY'),
+        'pass_phrase' => env('DEMMY_PASS_PHRASE'),
+    ],
 
 ];

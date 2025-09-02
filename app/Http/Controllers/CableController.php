@@ -125,4 +125,81 @@ class CableController extends Controller
             return redirect()->back()->with('error', 'Something went wrong. Please try again.');
         }
     }
+
+    public function jamb(Request $request)
+{
+    $validExamTypes = ['utme', 'de'];
+    $request->validate([
+        'phone_number' => 'required|string|min:11|max:11',
+        'exam_type' => 'sometimes|string|in:' . implode(',', $validExamTypes),
+        'amount' => 'required|numeric|min:1000|max:10000'
+    ]);
+    $phoneNo = $request->input('phone_number');
+    $examType = $request->input('exam_type', 'utme');
+    $amount = $request->input('amount');
+    $requestId = uniqid('jamb_');
+    $callbackUrl = null;
+
+    $wallet = Wallet::where('user_id', auth()->id())->lockForUpdate()->first();
+
+    if (!$wallet || $wallet->balance < $amount) {
+        return back()->with('error', 'Insufficient wallet balance.');
+    }
+
+    DB::beginTransaction();
+
+    try {
+
+        $response = ClubKonnectHelper::buyJamb(
+            $phoneNo,
+            $examType,
+            $requestId,
+            $callbackUrl
+        );
+
+
+
+
+        $transaction = Transaction::create([
+            'reference' => $requestId,
+            'user_id' => auth()->id(),
+            'type' => 'jamb',
+            'channel' => 'ClubKonnect',
+            'provider' => 'JAMB',
+            'phone' => $phoneNo,
+            'amount' => $amount,
+            'status' => ($response['statuscode'] === '200') ? 'success' : 'failed',
+            'response' => json_encode($response),
+        ]);
+
+
+        if ($response['statuscode'] === '200') {
+            $wallet->decrement('balance', $amount);
+            DB::commit();
+
+
+            $cardDetails = $response['carddetails'] ?? '';
+            preg_match('/Serial No:(.*?), pin: (.*)/', $cardDetails, $matches);
+            $serial = $matches[1] ?? '';
+            $pin = $matches[2] ?? '';
+
+            return redirect()->back()->with([
+                'success' => 'JAMB PIN sent to '.$request->phone_number,
+                'pin_details' => [
+                    'serial' => trim($serial),
+                    'pin' => trim($pin),
+                    'order_id' => $response['orderid']
+                ]
+            ]);
+        } else {
+            DB::rollBack();
+            $errorMessage = $response['remark'] ?? 'JAMB purchase failed. Please try again.';
+            return redirect()->back()->withInput()->with('error', $errorMessage);
+        }
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return redirect()->back()->with('error', 'Something went wrong. Please try again.');
+    }
+}
 }

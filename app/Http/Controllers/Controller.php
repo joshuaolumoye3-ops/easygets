@@ -6,6 +6,7 @@ use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class Controller
 {
@@ -44,4 +45,20 @@ class Controller
 
         return view('users.profile', compact('wallet'));
     }
+
+    public function updatePin(Request $request)
+    {
+        $request->validate([
+            'pin' => ['required', 'digits:4', 'confirmed'], // confirmed checks pin_confirmation
+        ]);
+
+        $user = auth()->user();
+        $user->pin = Hash::make($request->pin); // hash pin
+        $user->save();
+
+        return redirect()->route('profile')
+                         ->with('success', 'Your PIN has been updated successfully.');
+    }
+
+
 }

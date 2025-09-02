@@ -43,9 +43,7 @@
             <!-- Meter Number -->
             <div>
                 <label for="meterNumber" class="block text-sm font-semibold text-gray-700 mb-2 mt-6">Meter Number</label>
-                <input type="text" id="meterNumber" name="meterNumber"
-                    class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-full placeholder-gray-400 focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none transition duration-200"
-                    required pattern="\d{10,}" title="Enter a valid meter number (at least 10 digits)">
+                <input type="number" id="meterNumber" name="meterNumber" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-full placeholder-gray-400 focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none transition duration-200">
             </div>
 
             <!-- Amount -->
@@ -60,15 +58,15 @@
             <input type="hidden" id="maxAmount" name="maxAmount">
 
             <!-- Verify & Pay Buttons -->
-            <div class="justify-center flex items-center">
+            {{-- <div class="justify-center flex items-center">
                 <button type="button" id="verifyMeterBtn"
                     class="w-full lg:w-72 bg-black text-white font-bold py-2 px-4 rounded-lg hover:bg-black/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700 transition duration-200 shadow-lg shadow-teal-700/20">
                     Verify Meter
                 </button>
-            </div>
+            </div> --}}
             <div class="justify-center flex items-center">
                 <button type="submit"
-                    class="w-full lg:w-72 bg-black text-white font-bold py-2 px-4 rounded-lg hover:bg-black/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700 transition duration-200 shadow-lg shadow-teal-700/20">
+                    class="w-full lg:w-72 bg-brand-green text-white font-bold py-2 px-4 rounded-lg hover:bg-black/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700 transition duration-200 shadow-lg shadow-teal-700/20">
                     Pay Now
                 </button>
             </div>
@@ -149,55 +147,48 @@
         document.getElementById('customModal').classList.add('hidden');
     });
 
-    // ✅ Verify Meter
-    document.getElementById('verifyMeterBtn').addEventListener('click', async (e) => {
-        e.preventDefault();
+    //  Verify Meter
+   document.getElementById('verifyMeterBtn').addEventListener('click', async () => {
+  const electricCompany = document.getElementById('networkInput').value.trim();
+  const meterNumber = document.getElementById('meterNumber').value.trim();
 
-        const electricCompany = document.getElementById('networkInput').value.trim();
-        const meterNumber = document.getElementById('meterNumber').value.trim();
-        const packageId = document.getElementById('packageInput').value.trim();
+  if (!electricCompany) return showModal('Error', 'Please select your Electric Company.', 'text-red-600');
+  if (!meterNumber) return showModal('Error', 'Please enter your Meter Number.', 'text-red-600');
 
-        if (!electricCompany) return showModal('Error', 'Please select an electricity provider.', 'text-red-600');
-        if (!packageId) return showModal('Error', 'Please choose a meter type.', 'text-red-600');
-        if (!meterNumber) return showModal('Error', 'Please enter your meter number.', 'text-red-600');
+  toggleLoading(true);
 
-        toggleLoading(true);
-
-        try {
-            const response = await fetch("{{ route('verify.meter') }}", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                    "X-CSRF-TOKEN": "{{ csrf_token() }}"
-                },
-                body: JSON.stringify({
-                    electricCompany: electricCompany,
-                    meterNo: meterNumber,
-                    product_id: packageId
-                })
-            });
-
-            const data = await response.json();
-            console.log("Verification response:", data);
-
-            if (response.ok && data.status === true) {
-                showModal(
-                    'Verification Successful',
-                    `Customer: ${data.customer_name}\nMeter: ${data.meter_number}`,
-                    'text-green-600'
-                );
-            } else {
-                showModal('Verification Failed', data.message || 'Invalid meter number', 'text-red-600');
-            }
-
-        } catch (error) {
-            console.error("Verification error:", error);
-            showModal('Error', 'Verification failed. Please try again.', 'text-red-600');
-        } finally {
-            toggleLoading(false);
-        }
+  try {
+    const response = await fetch("{{ route('verify.meter') }}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': "{{ csrf_token() }}"
+      },
+      body: JSON.stringify({
+        electricCompany: electricCompany,
+        meterNo: meterNumber
+      })
     });
+
+    const data = await response.json();
+
+    if (response.ok && data.status) {
+      showModal(
+        'Verification Successful',
+        `Customer Name: ${data.customer_name}\nMeter Number: ${data.meter_number}`,
+        'text-green-600'
+      );
+    } else {
+      showModal('Verification Failed', data.message || 'Invalid meter number', 'text-red-600');
+    }
+  } catch (error) {
+    showModal('Error', 'Verification failed. Please try again.', 'text-red-600');
+    console.error(error);
+  } finally {
+    toggleLoading(false);
+  }
+});
+
 
     // ✅ Provider and Package Selection
     const plans = @json($plans);

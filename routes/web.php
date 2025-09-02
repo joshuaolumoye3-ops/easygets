@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\BettingController;
 use App\Http\Controllers\CableController;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\CountryController;
 use App\Http\Controllers\DataController;
 use App\Http\Controllers\ElectricityController;
 use App\Http\Controllers\MonnifyWebhookController;
@@ -17,6 +18,7 @@ Route::middleware('guest')->group(function () {
 Route::get('/', function () {
     return view('auth.login');
 });
+
 Route::get('/signup', [RegisterController::class, 'showRegisterForm'])->name('signup.form');
 
 Route::post('/register', [RegisterController::class, 'register'])->name('register.submit');
@@ -35,7 +37,9 @@ Route::get('/signin', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login'])->name('login.submit');
 
 });
-// end of auth routes
+// end of auth routes#
+
+
 Route::post('/webhook/monnify', [MonnifyWebhookController::class, 'handle'])
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 Route::middleware('auth')->group(function () {
@@ -45,6 +49,11 @@ Route::get('/transactions', [Controller::class, 'transaction'])->name('transacti
 Route::post('/data/purchase', [DataController::class, 'purchase'])->name('data.purchase');
 Route::post('/airtime/recharge', [AirtimeController::class, 'recharge'])->name('airtime.recharge');
 Route::patch('/update-profile', [RegisterController::class, 'updateProfile'])->name('updateProfile.submit');
+
+Route::post('/purchase/prepare', [CountryController::class, 'preparePurchase'])->name('prepare.purchase');
+Route::get('/purchase/confirm', [CountryController::class, 'showConfirm'])->name('confirm.payment');
+Route::post('/payments/process', [CountryController::class, 'process'])->name('payments.process');
+
 
 Route::get('/data', [DataController::class, 'showData'])->name('data');
 Route::get('/cabletv', [CableController::class, 'showCableTV'])->name('cabletv');
@@ -56,6 +65,17 @@ Route::get('/electricity', [ElectricityController::class, 'showElectricityPlans'
 Route::post('/verify-electricity-meter', [ElectricityController::class, 'verifyElectricityMeter'])->name('verify.meter');
 Route::post('/electricity/purchase', [ElectricityController::class, 'purchase'])->name('electricity.purchase');
 
+Route::get('/services', [CountryController::class, 'showServices'])->name('services.list');
+Route::get('/services/{id}/countries', [CountryController::class, 'showCountries'])->name('services.countries');
+Route::get('/services/{serviceId}/countries/load', [CountryController::class, 'showCountries']);
+// The next step route (for when user selects a country)
+Route::get('/services/{serviceId}/countries/{countryId}', [CountryController::class, 'showProducts'])->name('products.countries');
+// Optional: API route for checking real-time availability
+Route::get('/services/{serviceId}/countries/{countryId}/prices', [CountryController::class, 'getPrices'])
+    ->name('countries.prices');
+// When user clicks on a product, show country selection for that product
+Route::get('/products/{id}/countries', [CountryController::class, 'showCountries'])->name('products.countries');
+Route::post('/jamb', [CableController::class, 'jamb'])->name('jamb');
 
 Route::get('/social-package', function () {
     return view('users.socialPackage');
@@ -69,9 +89,10 @@ Route::get('/more-services', function () {
 Route::get('/personal-information', function () {
     return view('users.personal_info');
 });
-Route::get('/country-otp', function () {
-    return view('users.country_otp');
+Route::get('/pin', function () {
+    return view('users.pin');
 });
+Route::post('/update-pin', [Controller::class, 'updatePin'])->name('updateProfile.pin');
 Route::get('/airtime', function () {
     return view('users.airtime');
 });
