@@ -13,6 +13,7 @@ use App\Http\Controllers\MonnifyWebhookController;
 use App\Http\Controllers\WalletController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SocialController;
+use App\Http\Controllers\AdminController;
 
 Route::middleware('guest')->group(function () {
 
@@ -63,6 +64,7 @@ Route::post('/cabletv/purchase', [CableController::class, 'purchase'])->name('ca
 Route::post('/wallet/create-account', [WalletController::class, 'createAccount'])->name('wallets.createAccount');
 Route::get('/profile', [Controller::class, 'profile'])->name('profile');
 Route::get('/electricity', [ElectricityController::class, 'showElectricityPlans'])->name('electricity');
+Route::post('/electricity/render-success', [ElectricityController::class, 'renderSuccessPartial'])->name('electricity.render-success');
 Route::post('/verify-electricity-meter', [ElectricityController::class, 'verifyElectricityMeter'])->name('verify.meter');
 Route::post('/electricity/purchase', [ElectricityController::class, 'purchase'])->name('electricity.purchase');
 
@@ -96,16 +98,45 @@ Route::get('/pin', function () {
     return view('users.pin');
 });
 Route::post('/update-pin', [Controller::class, 'updatePin'])->name('updateProfile.pin');
-Route::get('/airtime', function () {
-    return view('users.airtime');
-});
-Route::get('/jambepin', function () {
-    return view('users.jambPin');
-});
-Route::get('/betting', function () {
-    return view('users.betting');
-});
+Route::get('/airtime', [AirtimeController::class, 'show'])->name('airtime.show');
+// Add this to your routes/web.php file
+Route::post('/render-success-partial', [AirtimeController::class, 'renderSuccessPartial'])
+    ->name('render.success.partial')
+    ->middleware('auth'); // Add auth middleware if needed
+
+
+Route::get('/jambepin', [CableController::class, 'jambshow'])->name('jamb.show');
+
+Route::get('/betting', [BettingController::class, 'show'])->name('bettinng.show');
+
 Route::post('/fund-bet', [BettingController::class, 'fund_account'])->name('fund_bet');
 
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 });
+
+
+Route::get('/admin', function () {
+    return view('admin.home');
+});
+Route::get('/admin/airtime', function () {
+    return view('admin.airtime');
+});
+Route::get('/admin/jamb', function () {
+    return view('admin.jamb');
+});
+Route::get('/admin/electricity', function () {
+    return view('admin.electric');
+});
+Route::get('/admin/cabletv', function () {
+    return view('admin.cabletv');
+});
+Route::get('/admin/social', function () {
+    return view('admin.social');
+});
+Route::get('/admin/settings', function () {
+    return view('admin.settings');
+});
+Route::get('/admin', [AdminController::class, 'dashboard']);
+Route::get('/admin/users/{id}', [AdminController::class, 'getUserDetails']);
+Route::post('/admin/users/{id}/update-password', [AdminController::class, 'updateUserPassword'])->name('admin.users.updatePassword');
+Route::post('/admin/users/{id}/update-pin', [AdminController::class, 'updateUserPin'])->name('admin.users.updatePin');

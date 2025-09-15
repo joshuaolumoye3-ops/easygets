@@ -53,11 +53,11 @@ $socials = [
 <div class="max-w-md mx-auto py-6">
     <!-- Header -->
     <div class="relative flex items-center px-4 mb-4 h-12">
-        <button class="focus:outline-none z-10">
+        <a href="dashboard" class="focus:outline-none z-10">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-800 hover:text-green-700" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M12.707 4.293a1 1 0 00-1.414 0L5.586 10l5.707 5.707a1 1 0 001.414-1.414L8.414 10l4.293-4.293a1 1 0 000-1.414z" clip-rule="evenodd" />
             </svg>
-        </button>
+        </a>
         <h1 class="absolute inset-0 flex justify-center items-center text-lg font-semibold">History</h1>
     </div>
 

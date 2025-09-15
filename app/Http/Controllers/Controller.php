@@ -10,33 +10,34 @@ use Illuminate\Support\Facades\Hash;
 
 class Controller
 {
+    
     public function dashboard()
     {
         $user = auth()->user();
-
+    
         $latestTransactions = Transaction::where('user_id', $user->id)
             ->latest()
             ->take(4)
             ->get();
-        $services = smm_api()->services();
-
-    // Group services by category
-    $categories = collect($services)->groupBy('category')->map(function ($services) {
-        return $services->map(function ($service) {
-            return (object) [
-                'id'   => $service->service,   // access as object
-                'name' => $service->name,
-                // Apply +5% markup
-                'rate' => round($service->rate * 1.05, 2),
-                'min'  => (int) $service->min,
-                'max'  => (int) $service->max,
-                'desc' => $service->desc ?? '',
-            ];
+    
+        $services = smm_api()->services(); // FIXED
+    
+        // Group services by category
+        $categories = collect($services)->groupBy('category')->map(function ($services) {
+            return $services->map(function ($service) {
+                return (object) [
+                    'id'   => $service->service,
+                    'name' => $service->name,
+                    'rate' => round($service->rate * 1.05, 2),
+                    'min'  => (int) $service->min,
+                    'max'  => (int) $service->max,
+                    'desc' => $service->desc ?? '',
+                ];
+            });
         });
-    });
-
+    
         $wallet = $user->wallet()->with('virtualAccounts')->first();
-
+    
         return view('users.home', compact('latestTransactions', 'wallet', 'categories'));
     }
 

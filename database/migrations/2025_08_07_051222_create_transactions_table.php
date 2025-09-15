@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
 
-            $table->uuid('reference')->unique(); // e.g. airtime_64h2x2s90v
+            $table->uuid('reference', 100)->unique(); // e.g. airtime_64h2x2s90v
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null'); // In case it's tied to a user
 
             $table->string('type'); // 'airtime', 'data', 'payment', 'otp', etc.

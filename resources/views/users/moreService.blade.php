@@ -19,20 +19,20 @@
 
     <div class="space-y-4">
         @foreach ([
-            ['icon'=>'🌐','name'=>'Internet','btn'=>'Buy Data', 'href'=>'data'],
-            ['icon'=>'📞','name'=>'Airtime','btn'=>'Recharge', 'href'=>'airtime'],
-            ['icon'=>'⚡','name'=>'Electricity','btn'=>'Pay Bill', 'href'=>'electricity'],
-            ['icon'=>'📺','name'=>'TV/Cable','btn'=>'Subscribe', 'href'=>'cabletv'],
+            ['icon'=>'assets/wifi.svg','name'=>'Internet','btn'=>'Buy Data', 'href'=>'data'],
+            ['icon'=>'assets/phone.svg','name'=>'Airtime','btn'=>'Recharge', 'href'=>'airtime'],
+            ['icon'=>'assets/electricity.svg','name'=>'Electricity','btn'=>'Pay Bill', 'href'=>'electricity'],
+            ['icon'=>'assets/tv.svg','name'=>'TV/Cable','btn'=>'Subscribe', 'href'=>'cabletv'],
             ['icon'=>'🏦','name'=>'Banking','btn'=>'Deposit', 'href'=>'deposit'],
-            ['icon'=>'📱','name'=>'eSIM','btn'=>'Activate', 'href'=>'esim'],
-            ['icon'=>'🔄','name'=>'eSIM Renewal','btn'=>'Renew', 'href'=>'esim'],
-            ['icon'=>'🔌','name'=>'Sockets','btn'=>'Buy', 'href'=>'sockets'],
+            ['icon'=>'assets/e-sim.svg','name'=>'eSIM','btn'=>'Activate', 'href'=>'esim'],
+            ['icon'=>'assets/sim-icon.svg','name'=>'eSIM Renewal','btn'=>'Renew', 'href'=>'esim'],
+            ['icon'=>'assets/ball.svg','name'=>'Bettinng','btn'=>'Betting', 'href'=>'betting'],
             ['icon'=>'📝','name'=>'JAMB e-PIN','btn'=>'Buy', 'href'=>'jambepin'],
-            ['icon'=>'📖','name'=>'WAEC e-PIN','btn'=>'Buy', 'href'=>'waecepin'],
+            // ['icon'=>'📖','name'=>'WAEC e-PIN','btn'=>'Buy', 'href'=>'waecepin'],
         ] as $service)
         <div class="flex items-center justify-between border-b pb-3">
             <div class="flex items-center space-x-4">
-                <div class="text-green-800 text-xl">{!! $service['icon'] !!}</div>
+                <div class="text-green-800 text-xl"><img src="{!! $service['icon'] !!}" alt="{{ $service['name'] }}" class="w-8"></div>
                 <p class="text-base font-medium">{{ $service['name'] }}</p>
             </div>
             <a href="{{url($service['href'])}}" class="bg-green-800 text-white text-xs px-4 py-2 rounded-full">{{ $service['btn'] }}</a>

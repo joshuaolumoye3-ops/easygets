@@ -43,7 +43,7 @@ return [
     ],
 
     'demmy' => [
-        'base_url'    => env('DEMMY_BASE_URL', 'https://staging.demmypay.com/'),
+        'base_url'    => env('DEMMY_BASE_URL', 'https://apis.demmypayservices.com.ng'),
         'api_key'     => env('DEMMY_API_KEY'),
         'pass_phrase' => env('DEMMY_PASS_PHRASE'),
     ],

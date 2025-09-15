@@ -30,10 +30,11 @@ class Wallet extends Model
     /**
      * Relationship: A wallet can have many transactions.
      */
-    public function transactions()
-    {
-        return $this->hasMany(Transaction::class);
-    }
+   // In your Wallet model, if transactions are linked via user:
+public function transactions()
+{
+    return $this->hasMany(Transaction::class, 'user_id', 'user_id');
+}
 
     public function deduct_amount($amount)
     {

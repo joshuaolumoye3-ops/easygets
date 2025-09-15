@@ -8,6 +8,9 @@
     <title>@yield('title', config('app.name', 'Laravel'))</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -40,6 +43,7 @@
         body {
             font-family: 'Inter', 'sans-serif';
         }
+        [x-cloak] { display: none !important; }
     </style>
 
     @stack('styles')
