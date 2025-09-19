@@ -37,7 +37,6 @@
                         </div>
                     </div>
                     <div class="text-modern-primary p-2 flex items-center justify-center w-[40px] h-[37px] bg-modern-primary/15 rounded-md">
-                        {{-- <i class="mdi mdi-account-multiple text-xl"></i> --}}
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A9 9 0 1119.071 5.804 9 9 0 015.12 17.804zM15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
@@ -55,7 +54,6 @@
                         </div>
                     </div>
                     <div class="text-modern-success p-2 flex items-center justify-center w-[40px] h-[37px] bg-modern-success/15 rounded-md">
-                        {{-- <i class="mdi mdi-currency-ngn text-xl"></i> --}}
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-3 0-5 1-5 4s2 4 5 4 5-1 5-4-2-4-5-4z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 12v4m0 0l2-2m-2 2l-2-2" />
@@ -74,7 +72,6 @@
                         </div>
                     </div>
                     <div class="text-modern-info p-2 flex items-center justify-center w-[40px] h-[37px] bg-modern-info/15 rounded-md">
-                        {{-- <i class="mdi mdi-swap-horizontal text-xl"></i> --}}
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
@@ -92,7 +89,6 @@
                         </div>
                     </div>
                     <div class="text-modern-warning p-2 flex items-center justify-center w-[40px] h-[37px] bg-modern-warning/15 rounded-md">
-                        {{-- <i class="mdi mdi-clock-outline text-xl"></i> --}}
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -245,7 +241,6 @@
                 </div>
             </div>
         </div>
-
 <!-- User Details Modal -->
 <div id="userModal" 
     class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center overflow-y-auto">
@@ -265,9 +260,10 @@
 
         <!-- Admin Actions -->
         <h3 style="color:#fff; font-weight:bold; font-size:1.125rem; margin-top:1.5rem; margin-bottom:1rem; border-bottom:1px solid #43464f; padding-bottom:0.5rem;">Admin Actions</h3>
-        <div style="display:flex; gap:1rem; margin-bottom:1rem;">
+        <div style="display:flex; gap:1rem; margin-bottom:1rem; flex-wrap:wrap;">
             <button type="button" onclick="showPasswordForm()" style="background:#1890ff; color:#fff; padding:0.5rem 1rem; border-radius:0.5rem; border:none; cursor:pointer;">Change Password</button>
             <button type="button" onclick="showPinForm()" style="background:#faad14; color:#fff; padding:0.5rem 1rem; border-radius:0.5rem; border:none; cursor:pointer;">Change PIN</button>
+            <button type="button" onclick="showFundsForm()" style="background:#52c41a; color:#fff; padding:0.5rem 1rem; border-radius:0.5rem; border:none; cursor:pointer;">Manage Funds</button>
         </div>
 
         <!-- Password Form -->
@@ -283,6 +279,27 @@
             <button type="button" onclick="updatePin()" style="background:#faad14; color:#fff; padding:0.5rem 1rem; border-radius:0.5rem; border:none; cursor:pointer;">Save PIN</button>
         </div>
 
+        <!-- Funds Management Form -->
+        <div id="fundsForm" class="hidden" style="margin-bottom:1rem; padding:1rem; border:1px solid #43464f; border-radius:0.5rem; background:#1f2128;">
+            <h4 style="color:#fff; margin-bottom:1rem; font-size:1rem;">Wallet Management</h4>
+            
+            <!-- Add Funds Section -->
+            <div style="margin-bottom:1rem; padding:0.75rem; border:1px solid #52c41a; border-radius:0.5rem; background:rgba(82, 196, 26, 0.1);">
+                <h5 style="color:#52c41a; margin-bottom:0.5rem; font-size:0.9rem;">Add Funds</h5>
+                <input type="number" id="addAmount" placeholder="Amount to add" min="0" step="0.01" style="width:100%; background:#191c24; border:1px solid #43464f; color:#fff; border-radius:0.5rem; padding:0.5rem; margin-bottom:0.5rem;">
+                <textarea id="addDescription" placeholder="Reason for adding funds" style="width:100%; background:#191c24; border:1px solid #43464f; color:#fff; border-radius:0.5rem; padding:0.5rem; margin-bottom:0.5rem; resize:vertical;" rows="2"></textarea>
+                <button type="button" onclick="addFunds()" style="background:#52c41a; color:#fff; padding:0.5rem 1rem; border-radius:0.5rem; border:none; cursor:pointer;">Add Funds</button>
+            </div>
+            
+            <!-- Deduct Funds Section -->
+            <div style="margin-bottom:1rem; padding:0.75rem; border:1px solid #ff4d4f; border-radius:0.5rem; background:rgba(255, 77, 79, 0.1);">
+                <h5 style="color:#ff4d4f; margin-bottom:0.5rem; font-size:0.9rem;">Deduct Funds</h5>
+                <input type="number" id="deductAmount" placeholder="Amount to deduct" min="0" step="0.01" style="width:100%; background:#191c24; border:1px solid #43464f; color:#fff; border-radius:0.5rem; padding:0.5rem; margin-bottom:0.5rem;">
+                <textarea id="deductDescription" placeholder="Reason for deducting funds" style="width:100%; background:#191c24; border:1px solid #43464f; color:#fff; border-radius:0.5rem; padding:0.5rem; margin-bottom:0.5rem; resize:vertical;" rows="2"></textarea>
+                <button type="button" onclick="deductFunds()" style="background:#ff4d4f; color:#fff; padding:0.5rem 1rem; border-radius:0.5rem; border:none; cursor:pointer;">Deduct Funds</button>
+            </div>
+        </div>
+
         <!-- Feedback -->
         <div id="actionMessage" style="margin-top:0.5rem; font-weight:500;"></div>
 
@@ -295,166 +312,342 @@
 <script>
 let currentUserId = null;
 
+// Get CSRF token function
+function getCSRFToken() {
+    const tokenElement = document.querySelector('meta[name="csrf-token"]');
+    if (!tokenElement) {
+        console.error('CSRF token not found. Make sure you have <meta name="csrf-token" content="{{ csrf_token() }}"> in your layout head.');
+        return null;
+    }
+    return tokenElement.getAttribute('content');
+}
+
+// Generic request function with better error handling
+async function makeRequest(url, data) {
+    const token = getCSRFToken();
+    if (!token) {
+        throw new Error('CSRF token not found');
+    }
+
+    console.log(`Making request to: ${url}`, data); // Debug log
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': token,
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify(data)
+    });
+
+    console.log('Response status:', response.status); // Debug log
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Response error:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    return response.json();
+}
+
 function showPasswordForm() {
+    hideAllForms();
     document.getElementById('passwordForm').classList.remove('hidden');
-    document.getElementById('pinForm').classList.add('hidden');
     document.getElementById('actionMessage').innerHTML = '';
 }
 
 function showPinForm() {
+    hideAllForms();
     document.getElementById('pinForm').classList.remove('hidden');
-    document.getElementById('passwordForm').classList.add('hidden');
     document.getElementById('actionMessage').innerHTML = '';
 }
 
-function updatePassword() {
-    const password = document.getElementById('newPassword').value;
-    const confirm = document.getElementById('confirmPassword').value;
+function showFundsForm() {
+    hideAllForms();
+    document.getElementById('fundsForm').classList.remove('hidden');
+    document.getElementById('actionMessage').innerHTML = '';
+}
 
-    if (password !== confirm) {
-        document.getElementById('actionMessage').innerHTML = `<span style="color:#ff4d4f;">Passwords do not match</span>`;
+function hideAllForms() {
+    document.getElementById('passwordForm').classList.add('hidden');
+    document.getElementById('pinForm').classList.add('hidden');
+    document.getElementById('fundsForm').classList.add('hidden');
+}
+
+function showMessage(message, isSuccess = false) {
+    const color = isSuccess ? '#52c41a' : '#ff4d4f';
+    document.getElementById('actionMessage').innerHTML = `<span style="color:${color};">${message}</span>`;
+}
+
+async function addFunds() {
+    const amount = parseFloat(document.getElementById('addAmount').value);
+    const description = document.getElementById('addDescription').value.trim();
+
+    if (!amount || amount <= 0) {
+        showMessage('Please enter a valid amount');
         return;
     }
 
-    fetch(`/users/${currentUserId}/update-password`, {
-        method:'POST',
-        headers:{
-            'Content-Type':'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify({ password, password_confirmation: confirm })
-    })
-    .then(res=>res.json())
-    .then(data=>{
-        if(data.success){
-            document.getElementById('actionMessage').innerHTML = `<span style="color:#52c41a;">${data.message}</span>`;
+    if (!description) {
+        showMessage('Please provide a description');
+        return;
+    }
+
+    if (!currentUserId) {
+        showMessage('No user selected');
+        return;
+    }
+
+    try {
+        showMessage('Processing...', true);
+        
+        const data = await makeRequest(`/admin/users/${currentUserId}/add-funds`, {
+            amount: amount,
+            description: description
+        });
+
+        if (data.success) {
+            showMessage(data.message, true);
+            document.getElementById('addAmount').value = '';
+            document.getElementById('addDescription').value = '';
+            // Refresh user details after 1 second
+            setTimeout(() => {
+                openUserModal(currentUserId);
+            }, 1000);
+        } else {
+            showMessage(data.message || 'Failed to add funds');
+        }
+    } catch (error) {
+        console.error('Add funds error:', error);
+        showMessage('Failed to add funds: ' + error.message);
+    }
+}
+
+async function deductFunds() {
+    const amount = parseFloat(document.getElementById('deductAmount').value);
+    const description = document.getElementById('deductDescription').value.trim();
+
+    if (!amount || amount <= 0) {
+        showMessage('Please enter a valid amount');
+        return;
+    }
+
+    if (!description) {
+        showMessage('Please provide a description');
+        return;
+    }
+
+    if (!currentUserId) {
+        showMessage('No user selected');
+        return;
+    }
+
+    try {
+        showMessage('Processing...', true);
+        
+        const data = await makeRequest(`/admin/users/${currentUserId}/deduct-funds`, {
+            amount: amount,
+            description: description
+        });
+
+        if (data.success) {
+            showMessage(data.message, true);
+            document.getElementById('deductAmount').value = '';
+            document.getElementById('deductDescription').value = '';
+            // Refresh user details after 1 second
+            setTimeout(() => {
+                openUserModal(currentUserId);
+            }, 1000);
+        } else {
+            showMessage(data.message || 'Failed to deduct funds');
+        }
+    } catch (error) {
+        console.error('Deduct funds error:', error);
+        showMessage('Failed to deduct funds: ' + error.message);
+    }
+}
+
+async function updatePassword() {
+    const password = document.getElementById('newPassword').value;
+    const confirm = document.getElementById('confirmPassword').value;
+
+    if (!password || !confirm) {
+        showMessage('Please fill in both password fields');
+        return;
+    }
+
+    if (password !== confirm) {
+        showMessage('Passwords do not match');
+        return;
+    }
+
+    if (!currentUserId) {
+        showMessage('No user selected');
+        return;
+    }
+
+    try {
+        showMessage('Processing...', true);
+        
+        const data = await makeRequest(`/admin/users/${currentUserId}/update-password`, {
+            password: password,
+            password_confirmation: confirm
+        });
+
+        if (data.success) {
+            showMessage(data.message, true);
             document.getElementById('passwordForm').classList.add('hidden');
             document.getElementById('newPassword').value = '';
             document.getElementById('confirmPassword').value = '';
         } else {
-            document.getElementById('actionMessage').innerHTML = `<span style="color:#ff4d4f;">${data.message ?? 'Failed to update password'}</span>`;
+            showMessage(data.message || 'Failed to update password');
         }
-    })
-    .catch(err=>{
-        console.error(err);
-        document.getElementById('actionMessage').innerHTML = `<span style="color:#ff4d4f;">Failed to update password</span>`;
-    });
+    } catch (error) {
+        console.error('Update password error:', error);
+        showMessage('Failed to update password: ' + error.message);
+    }
 }
 
-function updatePin() {
+async function updatePin() {
     const pin = document.getElementById('newPin').value;
-    if(pin.length !== 4){
-        document.getElementById('actionMessage').innerHTML = `<span style="color:#ff4d4f;">PIN must be 4 digits</span>`;
+    
+    if (!pin || pin.length !== 4) {
+        showMessage('PIN must be exactly 4 digits');
         return;
     }
 
-    fetch(`/users/${currentUserId}/update-pin`, {
-        method:'POST',
-        headers:{
-            'Content-Type':'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify({ pin })
-    })
-    .then(res=>res.json())
-    .then(data=>{
-        if(data.success){
-            document.getElementById('actionMessage').innerHTML = `<span style="color:#52c41a;">${data.message}</span>`;
+    if (!currentUserId) {
+        showMessage('No user selected');
+        return;
+    }
+
+    try {
+        showMessage('Processing...', true);
+        
+        const data = await makeRequest(`/admin/users/${currentUserId}/update-pin`, {
+            pin: pin
+        });
+
+        if (data.success) {
+            showMessage(data.message, true);
             document.getElementById('pinForm').classList.add('hidden');
             document.getElementById('newPin').value = '';
         } else {
-            document.getElementById('actionMessage').innerHTML = `<span style="color:#ff4d4f;">${data.message ?? 'Failed to update PIN'}</span>`;
+            showMessage(data.message || 'Failed to update PIN');
         }
-    })
-    .catch(()=>{
-        document.getElementById('actionMessage').innerHTML = `<span style="color:#ff4d4f;">Failed to update PIN</span>`;
-    });
+    } catch (error) {
+        console.error('Update PIN error:', error);
+        showMessage('Failed to update PIN: ' + error.message);
+    }
 }
 
-function openUserModal(userId){
+async function openUserModal(userId) {
     currentUserId = userId;
-    fetch(`/admin/users/${userId}`)
-        .then(res=>res.json())
-        .then(data=>{
-            const user = data.user;
-            const transactions = data.transactions;
+    
+    try {
+        const response = await fetch(`/admin/users/${userId}`);
+        console.log('User details response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        const user = data.user;
+        const transactions = data.transactions;
 
-            document.getElementById('userDetails').innerHTML = `
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-                    <div>
-                        <p><strong style="color:#40a9ff;">Username:</strong> <span style="color:#fff;">${user.username}</span></p>
-                        <p><strong style="color:#40a9ff;">Name:</strong> <span style="color:#fff;">${user.first_name ?? ''} ${user.last_name ?? ''}</span></p>
-                        <p><strong style="color:#40a9ff;">Email:</strong> <span style="color:#fff;">${user.email}</span></p>
-                    </div>
-                    <div>
-                        <p><strong style="color:#40a9ff;">Phone:</strong> <span style="color:#fff;">${user.phone_number}</span></p>
-                        <p><strong style="color:#40a9ff;">Wallet Balance:</strong> <span style="color:#52c41a; font-weight:bold;">₦${user.wallet ? Number(user.wallet.balance).toFixed(2) : '0.00'}</span></p>
-                        <p><strong style="color:#40a9ff;">Joined:</strong> <span style="color:#fff;">${new Date(user.created_at).toLocaleDateString()}</span></p>
-                    </div>
+        document.getElementById('userDetails').innerHTML = `
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                <div>
+                    <p><strong style="color:#40a9ff;">Username:</strong> <span style="color:#fff;">${user.username || 'N/A'}</span></p>
+                    <p><strong style="color:#40a9ff;">Name:</strong> <span style="color:#fff;">${(user.first_name || '') + ' ' + (user.last_name || '')}</span></p>
+                    <p><strong style="color:#40a9ff;">Email:</strong> <span style="color:#fff;">${user.email || 'N/A'}</span></p>
                 </div>
-            `;
+                <div>
+                    <p><strong style="color:#40a9ff;">Phone:</strong> <span style="color:#fff;">${user.phone_number || 'N/A'}</span></p>
+                    <p><strong style="color:#40a9ff;">Wallet Balance:</strong> <span style="color:#52c41a; font-weight:bold;">₦${user.wallet ? Number(user.wallet.balance).toFixed(2) : '0.00'}</span></p>
+                    <p><strong style="color:#40a9ff;">Joined:</strong> <span style="color:#fff;">${new Date(user.created_at).toLocaleDateString()}</span></p>
+                </div>
+            </div>
+        `;
 
-            let txRows = transactions.length ? transactions.map(tx=>{
-                let bg='#d9d9d9', color='#000';
-                if(tx.status.toLowerCase() === 'success'){ bg='#52c41a'; color='#fff'; }
-                else if(tx.status.toLowerCase() === 'pending'){ bg='#faad14'; color='#000'; }
-                else if(tx.status.toLowerCase() === 'failed'){ bg='#ff4d4f'; color='#fff'; }
+        let txRows = '';
+        if (transactions && transactions.length > 0) {
+            txRows = transactions.map(tx => {
+                let bg = '#d9d9d9', color = '#000';
+                const status = tx.status ? tx.status.toLowerCase() : '';
+                if (status === 'success') { bg = '#52c41a'; color = '#fff'; }
+                else if (status === 'pending') { bg = '#faad14'; color = '#000'; }
+                else if (status === 'failed') { bg = '#ff4d4f'; color = '#fff'; }
 
                 return `<tr style="border-bottom:1px solid #43464f;">
-                    <td style="padding:8px; color:#fff;">${tx.type}</td>
-                    <td style="padding:8px; color:#fff; font-weight:bold;">₦${Number(tx.amount).toFixed(2)}</td>
-                    <td style="padding:8px;"><span style="background:${bg}; color:${color}; padding:2px 6px; border-radius:6px; font-size:12px; font-weight:500;">${tx.status}</span></td>
-                    <td style="padding:8px; color:#bfbfbf;">${new Date(tx.created_at).toLocaleString()}</td>
+                    <td style="padding:8px; color:#fff;">${tx.type || 'N/A'}</td>
+                    <td style="padding:8px; color:#fff; font-weight:bold;">₦${Number(tx.amount || 0).toFixed(2)}</td>
+                    <td style="padding:8px;"><span style="background:${bg}; color:${color}; padding:2px 6px; border-radius:6px; font-size:12px; font-weight:500;">${tx.status || 'Unknown'}</span></td>
+                    <td style="padding:8px; color:#bfbfbf;">${tx.created_at ? new Date(tx.created_at).toLocaleString() : 'N/A'}</td>
+                    <td style="padding:8px; color:#bfbfbf; font-size:12px;">${tx.response || 'N/A'}</td>
                 </tr>`;
-            }).join('') : `<tr><td colspan="4" style="padding:8px; text-align:center; color:#bfbfbf;">No transactions yet.</td></tr>`;
+            }).join('');
+        } else {
+            txRows = `<tr><td colspan="5" style="padding:8px; text-align:center; color:#bfbfbf;">No transactions yet.</td></tr>`;
+        }
 
-            document.getElementById('userTransactions').innerHTML = `
-                <table style="width:100%; border-collapse:collapse;">
-                    <thead>
-                        <tr style="border-bottom:1px solid #43464f; background-color:#1f2128;">
-                            <th style="padding:8px; color:#bfbfbf;">Type</th>
-                            <th style="padding:8px; color:#bfbfbf;">Amount</th>
-                            <th style="padding:8px; color:#bfbfbf;">Status</th>
-                            <th style="padding:8px; color:#bfbfbf;">Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>${txRows}</tbody>
-                </table>
-            `;
+        document.getElementById('userTransactions').innerHTML = `
+            <table style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="border-bottom:1px solid #43464f; background-color:#1f2128;">
+                        <th style="padding:8px; color:#bfbfbf;">Type</th>
+                        <th style="padding:8px; color:#bfbfbf;">Amount</th>
+                        <th style="padding:8px; color:#bfbfbf;">Status</th>
+                        <th style="padding:8px; color:#bfbfbf;">Date</th>
+                        <th style="padding:8px; color:#bfbfbf;">Description</th>
+                    </tr>
+                </thead>
+                <tbody>${txRows}</tbody>
+            </table>
+        `;
 
-            const modal=document.getElementById('userModal');
-            const modalContent=document.getElementById('modalContent');
-            modal.classList.remove('hidden');
-            setTimeout(()=>{ modalContent.classList.remove('scale-95','opacity-0'); modalContent.classList.add('scale-100','opacity-100'); },50);
-        })
-        .catch(err=>{
-            console.error(err);
-            alert("Failed to load user details.");
-        });
+        const modal = document.getElementById('userModal');
+        const modalContent = document.getElementById('modalContent');
+        modal.classList.remove('hidden');
+        setTimeout(() => { 
+            modalContent.classList.remove('scale-95', 'opacity-0'); 
+            modalContent.classList.add('scale-100', 'opacity-100'); 
+        }, 50);
+        
+    } catch (error) {
+        console.error('Open modal error:', error);
+        alert("Failed to load user details: " + error.message);
+    }
 }
 
-function closeUserModal(){
-    const modal=document.getElementById('userModal');
-    const modalContent=document.getElementById('modalContent');
-    modalContent.classList.remove('scale-100','opacity-100');
-    modalContent.classList.add('scale-95','opacity-0');
-    setTimeout(()=>{
+function closeUserModal() {
+    const modal = document.getElementById('userModal');
+    const modalContent = document.getElementById('modalContent');
+    modalContent.classList.remove('scale-100', 'opacity-100');
+    modalContent.classList.add('scale-95', 'opacity-0');
+    setTimeout(() => {
         modal.classList.add('hidden');
-        document.getElementById('passwordForm').classList.add('hidden');
-        document.getElementById('pinForm').classList.add('hidden');
-        document.getElementById('actionMessage').innerHTML='';
-        document.getElementById('newPassword').value='';
-        document.getElementById('confirmPassword').value='';
-        document.getElementById('newPin').value='';
-    },200);
+        hideAllForms();
+        document.getElementById('actionMessage').innerHTML = '';
+        // Clear all form inputs
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmPassword').value = '';
+        document.getElementById('newPin').value = '';
+        document.getElementById('addAmount').value = '';
+        document.getElementById('addDescription').value = '';
+        document.getElementById('deductAmount').value = '';
+        document.getElementById('deductDescription').value = '';
+        currentUserId = null;
+    }, 200);
 }
 
-document.getElementById('userModal').addEventListener('click', e=>{
-    if(e.target === document.getElementById('userModal')){
+document.getElementById('userModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('userModal')) {
         closeUserModal();
     }
 });
 </script>
-
-
 @endsection

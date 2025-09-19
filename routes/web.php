@@ -14,6 +14,7 @@ use App\Http\Controllers\WalletController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SocialController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminAuthController;
 
 Route::middleware('guest')->group(function () {
 
@@ -115,9 +116,9 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 });
 
 
-Route::get('/admin', function () {
-    return view('admin.home');
-});
+// Route::get('/admin', function () {
+//     return view('admin.home');
+// });
 Route::get('/admin/airtime', function () {
     return view('admin.airtime');
 });
@@ -136,7 +137,23 @@ Route::get('/admin/social', function () {
 Route::get('/admin/settings', function () {
     return view('admin.settings');
 });
-Route::get('/admin', [AdminController::class, 'dashboard']);
-Route::get('/admin/users/{id}', [AdminController::class, 'getUserDetails']);
-Route::post('/admin/users/{id}/update-password', [AdminController::class, 'updateUserPassword'])->name('admin.users.updatePassword');
-Route::post('/admin/users/{id}/update-pin', [AdminController::class, 'updateUserPin'])->name('admin.users.updatePin');
+
+Route::middleware(['admin'])->prefix('admin')->group(function () {
+Route::get('/', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+Route::get('/users/{id}', [AdminController::class, 'getUserDetails']);
+Route::post('/users/{id}/update-password', [AdminController::class, 'updateUserPassword'])->name('admin.users.updatePassword');
+Route::post('/users/{id}/update-pin', [AdminController::class, 'updateUserPin'])->name('admin.users.updatePin');
+Route::post('/users/{user}/add-funds', [AdminController::class, 'addFunds'])->name('admin.users.add-funds');
+Route::post('/users/{user}/deduct-funds', [AdminController::class, 'deductFunds'])->name('admin.users.deduct-funds');
+
+Route::get('/list', [AdminAuthController::class, 'index'])->name('admin.list');
+Route::get('/{admin}', [AdminAuthController::class, 'showadmin'])->name('admins.show');
+Route::post('/{admin}/update', [AdminAuthController::class, 'updateadmin'])->name('admins.update');
+
+});
+Route::middleware(['admin:super_admin'])->prefix('admin')->group(function () {
+    Route::post('/create', [AdminController::class, 'createAdmin'])->name('admin.create');
+});
+Route::get('/admin/login', [AdminAuthController::class, 'showLogin'])->name('admin.login.form');
+Route::post('/admin/login', [AdminAuthController::class, 'login'])->name('admin.login');
+Route::post('/admin/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');

@@ -19,14 +19,30 @@
         <li class="pr-5 p-0 lg-max:hidden">
             <div class="flex flex-row items-center py-[0.6rem] px-[1.17rem] leading-5">
                 <div class="flex items-center">
-                    <img class="rounded-full size-9" src="../assets/images/faces/face15.jpg" alt="">
+                <svg class="rounded-full size-9" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="currentColor">
+                <!-- Circle background -->
+                <circle cx="32" cy="32" r="32" fill="#e5e7eb"/>
+                
+                <!-- Head -->
+                <circle cx="32" cy="24" r="12" fill="#9ca3af"/>
+                
+                <!-- Shoulders -->
+                <path d="M16 54c0-9 7-16 16-16s16 7 16 16" fill="#9ca3af"/>
+            </svg>
+                    {{-- <img class="rounded-full size-9" src="../assets/images/faces/face15.jpg" alt=""> --}}
                     <span
                         class="bg-modern-success z-10 absolute left-[43px] w-3 h-3 text-white rounded-full text-center leading-6 top-[109px] border-2 border-border_color">
                     </span>
                 </div>
                 <div class="ml-4 menu-title transition-all duration-300">
-                    <h5 class="text-white mb-1 font-normal">Henry Klein</h5>
-                    <span class="text-muted text-xs">Gold Member</span>
+                   @auth('admins')
+                        <h5 class="text-white mb-1 font-normal">
+                            {{ Auth::guard('admins')->user()->name }}
+                        </h5>
+                        <span class="text-muted text-xs">
+                            {{ ucfirst(Auth::guard('admins')->user()->role) }}
+                        </span>
+                    @endauth
                 </div>
             </div>
             <a href="#"
@@ -66,7 +82,28 @@
                     href="/admin">
                     <span
                         class=" text-modern-info mr-2 text-sm bg-muted/25 min-w-8 w-8 h-8 rounded-full flex items-center justify-center">
-                        <i class="mdi mdi-speedometer"></i>
+                        <!-- Circular Dashboard Icon -->
+<svg xmlns="http://www.w3.org/2000/svg" 
+     viewBox="0 0 24 24" 
+     width="24" height="24" 
+     fill="none" stroke="currentColor" 
+     stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+     role="img" aria-labelledby="dashCircleTitle dashCircleDesc">
+
+  <title id="dashCircleTitle">Dashboard</title>
+  <desc id="dashCircleDesc">A circular dashboard icon divided into four sections</desc>
+
+  <!-- Outer circle -->
+  <circle cx="12" cy="12" r="10" stroke="currentColor"/>
+
+  <!-- Divide into 4 quadrants -->
+  <line x1="12" y1="2" x2="12" y2="22" stroke="currentColor"/>
+  <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor"/>
+
+  <!-- Fill one quadrant slightly -->
+  <path d="M12 12 L12 2 A10 10 0 0 1 22 12 Z" fill="currentColor" opacity="0.15"/>
+</svg>
+
                     </span>
                     <span
                         class="menu-title c-menu-title text-inherit inline-block text-sm align-middle group-hover:text-white transition-all duration-300">Dashboard
@@ -90,14 +127,14 @@
                         <i class="mdi mdi-texture"></i>
                     </span>
                     <span class="menu-title group-hover:text-white transition-all duration-300 ease-in-out">
-                        Widgets
+                        Admin List
                     </span>
                 </a>
             </div>
             <ul class="submenu">
                 <li class="submenu-title">
                     <div class="py-3 font-medium text-white flex items-center">
-                        Widgets
+                        Admin List
                     </div>
                 </li>
             </ul>
@@ -770,36 +807,18 @@
             </li>
         </ul>
         <ul class="flex flex-row items-center gap-2 lg:w-auto  lg-max:mr-0 text-white">
-            <li class="hidden lg:block relative">
-                <a class="p-2 rounded-md text-inherit text-[0.9375rem] ml-4 mr-4 whitespace-nowrap md-max:mr-[0.8rem] md-max:[0.8rem] hover:bg-modern-success/80 hover:text-white hover:transition-colors hover:duration-500 hover:ease-in-out hover:border-modern-success hover:p-2  dropdown-toggle2 show focus:bg-modern-success"
-                    href="#"">+ Add New Admin
-                </a>
-                <div class=" dropdown-menu absolute top-full right-0 mt-2 w-72 bg-navbar_bg
-                    shadow-[0px_0px_35px_-3px_rgba(0,0,0)] border-solid rounded-md border-muted z-50 text-white"
-                    id="projectDropdown">
-                    <h6 class="p-3 mb-0 text-sm font-bold">Projects</h6>
-                    <a href="#"
-                        class="flex items-center px-4 py-3 border-b-[1px] border-t-[1px] border-muted/15 hover:bg-black/20">
-                        <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-dark">
-                            <i class="mdi mdi-file-outline text-modern-primary"></i>
-                        </div>
-                        <span class="ml-3 text-sm text-white">Software Development</span>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 border-b-[1px] border-muted/15 hover:bg-black/20">
-                        <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-dark">
-                            <i class="mdi mdi-web text-modern-info"></i>
-                        </div>
-                        <span class="ml-3 text-sm text-white">UI Development</span>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 border-b-[1px] border-muted/15 hover:bg-black/20">
-                        <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-dark">
-                            <i class="mdi mdi-layers text-modern-danger"></i>
-                        </div>
-                        <span class="ml-3 text-sm text-white">Software Testing</span>
-                    </a>
-                    <p class="p-3 mb-0 text-center text-sm">See all Projects</p>
-    </div>
-    </li>
+            @auth('admins')
+                @if(Auth::guard('admins')->user()->role === 'super_admin')
+                    <li class="hidden lg:block relative">
+                        <a class="p-2 rounded-md text-inherit text-[0.9375rem] ml-4 mr-4 whitespace-nowrap 
+                        hover:bg-modern-success/80 hover:text-white hover:transition-colors 
+                        hover:duration-500 hover:ease-in-out hover:border-modern-success hover:p-2"
+                        href="#" onclick="document.getElementById('addAdminModal').classList.remove('hidden')">
+                            + Add New Admin
+                        </a>
+                    </li>
+                @endif
+            @endauth
     <li class="hidden lg:block">
         <a class="text-inherit text-[0.9375rem] ml-4 mr-4 whitespace-nowrap md-max:mr-[0.8rem] md-max:[0.8rem]" href="#"">
                      <i class=" mdi mdi-view-grid"></i>
@@ -912,8 +931,20 @@
         <a class="text-inherit text-[0.9375rem] ml-4 mr-4 whitespace-nowrap md-max:mr-[0.8rem] md-max:[0.8rem] dropdown-toggle5"
             href="#">
             <div class="flex font-normal items-center">
-                <img class="rounded-full size-9" src="../assets/images/faces/face15.jpg" alt="">
-                <p class="mb-0 hidden sm:block whitespace-nowrap ml-4">Joshua Olumoye</p>
+            <svg class="rounded-full size-9" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="currentColor">
+                <!-- Circle background -->
+                <circle cx="32" cy="32" r="32" fill="#e5e7eb"/>
+                
+                <!-- Head -->
+                <circle cx="32" cy="24" r="12" fill="#9ca3af"/>
+                
+                <!-- Shoulders -->
+                <path d="M16 54c0-9 7-16 16-16s16 7 16 16" fill="#9ca3af"/>
+            </svg>
+                {{-- <img class="rounded-full size-9" src="../assets/images/faces/face15.jpg" alt=""> --}}
+                 @auth('admins')
+                <p class="mb-0 hidden sm:block whitespace-nowrap ml-4"> {{ Auth::guard('admins')->user()->name }}</p>
+                @endauth
                 <i class="text-[#a7afb7]"></i>
             </div>
         </a>
@@ -946,3 +977,55 @@
     </div>
 </nav>
 <!-- navbar end  -->
+
+<div id="addAdminModal" class="hidden fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+        <h3 class="text-lg font-semibold mb-4">Register New Admin</h3>
+
+        <form method="POST" action="{{ route('admin.create') }}">
+            @csrf
+            <div class="mb-3">
+                <label class="block text-sm font-medium mb-1">Name</label>
+                <input type="text" name="name" required
+                       class="w-full border rounded-md p-2 focus:ring focus:ring-modern-success/50">
+            </div>
+
+            <div class="mb-3">
+                <label class="block text-sm font-medium mb-1">Email</label>
+                <input type="email" name="email" required
+                       class="w-full border rounded-md p-2 focus:ring focus:ring-modern-success/50">
+            </div>
+
+            <div class="mb-3">
+                <label class="block text-sm font-medium mb-1">Phone</label>
+                <input type="text" name="phone"
+                       class="w-full border rounded-md p-2 focus:ring focus:ring-modern-success/50">
+            </div>
+
+            <div class="mb-3">
+                <label class="block text-sm font-medium mb-1">Password</label>
+                <input type="password" name="password" required
+                       class="w-full border rounded-md p-2 focus:ring focus:ring-modern-success/50">
+            </div>
+
+            <div class="mb-3">
+                <label class="block text-sm font-medium mb-1">Role</label>
+                <select name="role" required class="w-full border rounded-md p-2 focus:ring focus:ring-modern-success/50">
+                    <option value="admin">Admin</option>
+                    <option value="super_admin">Super Admin</option>
+                </select>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="document.getElementById('addAdminModal').classList.add('hidden')"
+                        class="px-4 py-2 bg-gray-300 rounded-md hover:bg-gray-400">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 bg-modern-success text-white rounded-md hover:bg-modern-success/80">
+                    Create
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
