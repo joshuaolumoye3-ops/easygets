@@ -90,10 +90,10 @@
                         <tr>
                             <td class="p-2 sm:p-3">Michael Lee</td>
                             <td class="p-2 sm:p-3">EEDC</td>
-                            <td class="p-2 sm:p-3">1122334455</td>
+                            <td class="p-2 sm:p-3">11223344552</td>
                             <td class="p-2 sm:p-3">₦7000</td>
                             <td class="p-2 sm:p-3 text-yellow-600">Pending</td>
-                            <td class="p-2 sm:p-3">2025-09-11</td>
+                            <td class="p-2 sm:p-3">2025-09-11 </td>
                         </tr>
                     </tbody>
                 </table>
