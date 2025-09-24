@@ -18,7 +18,7 @@
         .bg-green { background: #03624C; }
         .bg-red { background: red; }
         .text-white { color: white; }
-
+        .text-black { color: black; }
         /* alert positioning */
         .alert-message {
             position: fixed;

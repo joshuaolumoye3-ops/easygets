@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Helpers\ClubKonnectHelper;
 use App\Helpers\PinHelper;
+use App\Models\Product;
+use App\Models\Provider;
 use App\Models\Transaction;
 use App\Models\Wallet;
 use Illuminate\Http\Request;
@@ -15,65 +17,123 @@ use Illuminate\Validation\ValidationException;
 
 class CableController extends Controller
 {
-    public function showCableTV()
+public function showCableTV()
 {
-    $userId = env('CLUBKONNECT_USERID');
-    $response = Http::get("https://www.nellobytesystems.com/APICableTVPackagesV2.asp", [
-        'UserID' => $userId
-    ]);
+    $providerId = 3; // Cable TV provider
 
-    $plans = [];
-
-    if ($response->ok()) {
-        $data = $response->json();
-        $plans = $data['TV_ID'] ?? []; // Extract DStv, GOtv, Startimes list
+    // Get provider and its products
+    $provider = Provider::with('products')->find($providerId);
+    
+    if (!$provider) {
+        return response()->json(['error' => 'Provider not found'], 404);
     }
 
-    // ✅ Get the logged-in user's wallet
-    $wallet = auth()->user()->wallet;
+    $structured = [];
+    
+    foreach ($provider->products as $product) {
+        $network = null;
+        $id = null;
+
+        if (stripos($product->name, 'DStv') !== false) {
+            $network = 'DStv';
+            $id = 'dstv';
+        } elseif (stripos($product->name, 'GOtv') !== false) {
+            $network = 'GOtv';
+            $id = 'gotv';
+        } elseif (stripos($product->name, 'Startimes') !== false) {
+            $network = 'Startimes';
+            $id = 'startimes';
+        } elseif (
+            stripos($product->name, 'Showmax') !== false || 
+            stripos($product->name, 'Show Max') !== false || 
+            stripos($product->name, 'Show-Max') !== false
+        ) {
+            $network = 'Showmax';
+            $id = 'showmax';
+        }
+
+        if ($network) {
+            if (!isset($structured[$network])) {
+                $structured[$network] = [
+                    [
+                        'ID' => $id,
+                        'PRODUCT' => []
+                    ]
+                ];
+            }
+
+            $structured[$network][0]['PRODUCT'][] = [
+                'PACKAGE_ID'                => $product->product_code,  // or unique identifier
+                'PACKAGE_NAME'              => $product->name,
+                'PACKAGE_AMOUNT'            => $product->client_price, // ✅ client price
+                'PRODUCT_DISCOUNT_AMOUNT'   => $product->discount_amount ?? null,
+                'PRODUCT_DISCOUNT'          => $product->discount ?? null,
+                'MINAMOUNT'                 => $product->min_amount ?? 100,
+                'MAXAMOUNT'                 => $product->max_amount ?? 200000,
+            ];
+        }
+    }
+    $plans = $structured;
+
+    // ✅ Get logged-in user's wallet
+    $wallet = Wallet::where('user_id', auth()->id())->first();
 
     return view('users.cabletv', compact('plans', 'wallet'));
 }
 
-    public function verifySmartcard(Request $request)
-    {
-        $request->validate([
-            'cableTV'     => 'required|string',
-            'smartCardNo' => 'required|string'
-        ]);
 
-        try {
-            $verification = ClubKonnectHelper::verifyCableTVCard(
-                $request->cableTV,
-                $request->smartCardNo
-            );
+   public function verifySmartcard(Request $request)
+{
+    $request->validate([
+        'cableTV'     => 'required|string',
+        'smartCardNo' => 'required|string'
+    ]);
 
-            if (isset($verification['error']) && $verification['error'] == true) {
-                return response()->json([
-                    'status'  => 'ERROR',
-                    'message' => $verification['message'] ?? 'Verification failed'
-                ], 400);
-            }
+    try {
+        $verification = ClubKonnectHelper::verifyCableTVCard(
+            $request->cableTV,
+            $request->smartCardNo
+        );
 
-            // Return just the status string instead of full array
-            return response()->json([
-                'status' => $verification['status'] ?? 'UNKNOWN'
-            ]);
-        } catch (\Exception $e) {
+        // Handle provider response errors
+        if (isset($verification['error']) && $verification['error'] == true) {
             return response()->json([
                 'status'  => 'ERROR',
-                'message' => 'Something went wrong: ' . $e->getMessage()
-            ], 500);
+                'message' => $verification['message'] ?? 'Verification failed. Please try again.'
+            ], 400);
         }
+
+        // Success response
+        return response()->json([
+            'status'  => $verification['status'] ?? 'UNKNOWN',
+            'message' => $verification['message'] ?? 'Verification completed successfully'
+        ]);
+
+    } catch (\Exception $e) {
+        // Log actual error for developers
+        \Log::error('Cable Smartcard Verification Error', [
+            'error'   => $e->getMessage(),
+            'trace'   => $e->getTraceAsString(),
+            'cableTV' => $request->cableTV,
+            'card'    => $request->smartCardNo,
+        ]);
+
+        // Return friendly message to user
+        return response()->json([
+            'status'  => 'ERROR',
+            'message' => 'We could not verify the smartcard at the moment. Please check your details or try again later.'
+        ], 500);
     }
+}
+
 public function purchase(Request $request)
 {
     // Handle both JSON and FormData requests
     $data = $request->isJson() ? $request->json()->all() : $request->all();
-    
+
     $validator = Validator::make($data, [
         'network'         => 'required|string',
-        'package'         => 'required|string',
+        'package'         => 'required|string', // this is product_code or id
         'smartcardNumber' => 'required|string',
         'phoneNumber'     => 'required|string',
         'amount'          => 'required|numeric|min:1',
@@ -99,14 +159,27 @@ public function purchase(Request $request)
     }
 
     $cableTV     = $data['network'];
-    $package     = $data['package'];
+    $package     = $data['package']; // Product code
     $smartCardNo = $data['smartcardNumber'];
     $phoneNo     = $data['phoneNumber'];
-    $amount      = $data['amount'];
     $requestId   = uniqid('cable_');
     $callbackUrl = null;
 
-    // ✅ Step 1: Get wallet & check balance
+    // ✅ Step 1: Get product from DB (always trusted)
+    $product = Product::where('product_code', $package)
+        ->where('provider_id', 3) // CableTV provider_id
+        ->first();
+
+    if (!$product) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Invalid package selected.'
+        ], 400);
+    }
+
+    $amount = (float) $product->client_price; // ✅ Use client_price from DB
+
+    // ✅ Step 2: Get wallet & check balance
     $wallet = Wallet::where('user_id', auth()->id())->lockForUpdate()->first();
 
     if (!$wallet || $wallet->balance < $amount) {
@@ -119,7 +192,7 @@ public function purchase(Request $request)
     DB::beginTransaction();
 
     try {
-        // ✅ Step 2: Call ClubKonnect API
+        // ✅ Step 3: Call ClubKonnect API
         $response = ClubKonnectHelper::buyCableTV(
             $cableTV,
             $package,
@@ -128,37 +201,41 @@ public function purchase(Request $request)
             $requestId,
             $callbackUrl
         );
-        dd($response);
-        // ✅ Step 3: Store transaction
-        Transaction::create([
+        // dd($response); // debug if needed
+
+        // ✅ Step 4: Store transaction
+        $transaction = Transaction::create([
             'reference' => $requestId,
             'user_id'   => auth()->id(),
             'type'      => 'cable',
             'channel'   => 'ClubKonnect',
             'provider'  => $cableTV,
             'phone'     => $phoneNo,
-            'amount'    => $amount,
+            'amount'    => $amount, // ✅ Save DB price, not request price
             'status'    => (isset($response['status']) && $response['status'] === 'SUCCESS') ? 'success' : 'failed',
             'response'  => json_encode($response),
         ]);
 
-        // ✅ Step 4: Deduct balance only if success
+        // ✅ Step 5: Deduct balance only if success
         if (isset($response['status']) && $response['status'] === 'SUCCESS') {
             $wallet->decrement('balance', $amount);
             DB::commit();
-            
+
             return response()->json([
                 'status' => true,
                 'message' => 'Cable TV purchase successful!',
                 'data' => [
-                    'reference' => $requestId,
-                    'new_balance' => $wallet->fresh()->balance
+                    'reference'     => $requestId,
+                    'package_name'  => $product->name,
+                    'amount'        => $amount,
+                    'new_balance'   => $wallet->fresh()->balance,
+                    'transaction_id'=> $transaction->id
                 ]
             ]);
         } else {
             DB::rollBack();
             $errorMessage = $response['message'] ?? 'Purchase failed. Please try again.';
-            
+
             return response()->json([
                 'status' => false,
                 'message' => $errorMessage
@@ -167,13 +244,15 @@ public function purchase(Request $request)
 
     } catch (\Exception $e) {
         DB::rollBack();
-        
+
         return response()->json([
             'status' => false,
-            'message' => 'Something went wrong. Please try again.'
+            'message' => 'Something went wrong. Please try again.',
+            'error'   => app()->environment('local') ? $e->getMessage() : null
         ], 500);
     }
 }
+
 
     public function jambshow() // or whatever method renders your betting view
     {

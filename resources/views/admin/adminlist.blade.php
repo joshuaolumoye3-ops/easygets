@@ -10,7 +10,7 @@
         <!-- Top Bar -->
         <div class="flex flex-col md:flex-row justify-between items-center bg-[#191c24] p-4 rounded-2xl shadow-md mb-6">
             <h1 class="text-lg sm:text-xl font-bold text-white mb-4 md:mb-0 text-center md:text-left">
-                Admin Dashboard
+                Admin List
             </h1>
             <div class="flex items-center space-x-3 sm:space-x-4 w-full md:w-auto">
                 <input 

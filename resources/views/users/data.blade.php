@@ -380,6 +380,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
+            
             // Show PIN modal with summary
             document.getElementById('dataPinModalSummary').innerHTML = `
               <div><strong>Network:</strong> ${networkDisplay}</div>

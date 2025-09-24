@@ -50,6 +50,10 @@ class AdminAuthController extends Controller
 
     //     return view('admin.adminlist', compact('admins'));
     // }
+    public function showLogin()
+    {
+        return view('admin.login');
+    }
 
     public function index()
     {

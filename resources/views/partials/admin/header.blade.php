@@ -121,7 +121,7 @@
         <li class="relative pr-5 group menu-item">
             <div class="mr-2 submenu-container hover:bg-black hover:rounded-r-full">
                 <a class="nav-link pt-[0.8rem] pr-[10px] pb-[0.8rem] pl-[1.188rem] flex items-center h-11 ms-3"
-                    href="pages/widgets/widgets.html">
+                    href="/admin/list">
                     <span
                         class="text-modern-warning mr-2 text-sm bg-muted/25 min-w-8  w-8 h-8 rounded-full flex items-center justify-center">
                         <i class="mdi mdi-texture"></i>
@@ -131,27 +131,20 @@
                     </span>
                 </a>
             </div>
-            <ul class="submenu">
-                <li class="submenu-title">
-                    <div class="py-3 font-medium text-white flex items-center">
-                        Admin List
-                    </div>
-                </li>
-            </ul>
         </li>
 
         <li class="relative pr-5 group menu-item">
             <div class="mr-2 submenu-container hover:bg-black hover:rounded-r-full text-nowrap">
                 <a data-collapse-toggle="collapse-3"
                     class="nav-link pt-[0.8rem] pr-[10px] pb-[0.8rem] pl-[1.188rem] flex items-center h-11 ms-3"
-                    href="#">
+                    href="/admin/services">
                     <span class="text-modern-success mr-2 text-sm bg-muted/25
                              min-w-8 w-8 h-8 rounded-full flex items-center justify-center">
                         <i class="mdi mdi-laptop"></i>
                     </span>
                     <span
                         class="menu-title group-hover:text-white transition-all duration-300 ease-in-out whitespace-nowrap">
-                        Basic UI Elements
+                       Service Settings
                     </span>
                     <i class="menu-arrow"></i>
                 </a>

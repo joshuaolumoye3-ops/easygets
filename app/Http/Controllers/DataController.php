@@ -10,84 +10,70 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use App\Helpers\DemmyPayHelper;
 use App\Helpers\PinHelper;
+use App\Models\Product;
+use App\Models\Provider;
 use Illuminate\Validation\ValidationException;
 
 class DataController extends Controller
 {
-    public function showData()
-    {
-        try {
-            // Use DemmyPayHelper to get data products with proper authentication
-            $response = DemmyPayHelper::getDataProducts();
-            
-            // Log the full response for debugging
-            \Log::info('DemmyPay Full Response:', ['response' => $response]);
-            
-            $products = $response['data'] ?? [];
-            
-            \Log::info('DemmyPay Products Count:', ['count' => count($products)]);
+public function showData()
+{
+    $providerId = 1;
 
-            $plans = [];
+    // Get provider and its products
+    $provider = Provider::with('products')->find($providerId);
+    
+    if (!$provider) {
+        return response()->json(['error' => 'Provider not found'], 404);
+    }
 
-            // Transform Demmy Global API response to Clubkonnect structure
-            $networkMap = [
-                'MTN' => 'MTN',
-                'GLO' => 'Glo',
-                'AIRTEL' => 'Airtel',
-                '9MOBILE' => 'm_9mobile'
-            ];
+    $structured = [];
 
-            // Group products by network
-            $groupedProducts = [];
-            foreach ($products as $product) {
-                \Log::info('Processing Product:', ['product' => $product]);
-                
-                $networkName = strtoupper($product['network']['name'] ?? '');
-                $mappedNetwork = $networkMap[$networkName] ?? $networkName;
-                
-                if (!isset($groupedProducts[$mappedNetwork])) {
-                    $groupedProducts[$mappedNetwork] = [];
-                }
-                
-                $productName = ($product['name'] ?? 'Unknown') . 
-                            ' - ' . ($product['size'] ?? 'N/A') . 
-                            ' (' . ($product['validity'] ?? 'N/A') . ')';
-                
-                $groupedProducts[$mappedNetwork][] = [
-                    'PRODUCT_SNO' => (string)($product['id'] ?? ''),
-                    'PRODUCT_CODE' => (string)($product['id'] ?? ''),
-                    'PRODUCT_ID' => (string)($product['amount'] ?? '0'),
-                    'PRODUCT_NAME' => $productName,
-                    'PRODUCT_AMOUNT' => (string)($product['amount'] ?? '0')
-                ];
-            }
-
-            \Log::info('Grouped Products:', ['grouped' => $groupedProducts]);
-
-            // Transform to final Clubkonnect structure
-            foreach ($groupedProducts as $network => $networkProducts) {
-                $plans[$network] = [
+    foreach ($provider->products as $product) {
+        // Detect network name from product name
+        $network = null;
+        if (stripos($product->name, 'MTN') !== false) {
+            $network = 'MTN';
+            $id = '01';
+        } elseif (stripos($product->name, 'GLO') !== false) {
+            $network = 'Glo';
+            $id = '02';
+        } elseif (stripos($product->name, 'Airtel') !== false) {
+            $network = 'Airtel';
+            $id = '03';
+        } elseif (stripos($product->name, '9mobile') !== false || stripos($product->name, 'Etisalat') !== false) {
+            $network = 'm_9mobile';
+            $id = '04';
+        }
+        
+        if ($network) {
+            if (!isset($structured[$network])) {
+                $structured[$network] = [
                     [
-                        'ID' => $this->getNetworkId($network),
-                        'PRODUCT' => $networkProducts
+                        'ID' => $id,
+                        'PRODUCT' => []
                     ]
                 ];
             }
 
-            \Log::info('Final Plans Structure:', ['plans' => $plans]);
-            
-        } catch (\Exception $e) {
-            // Log detailed error information
-            \Log::error('DemmyPay API Error Details:', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            $plans = [];
+            $structured[$network][0]['PRODUCT'][] = [
+                'PRODUCT_SNO'   => $product->product_sno,
+                'PRODUCT_CODE'  => $product->product_code,
+                'PRODUCT_ID'    => $product->product_id,
+                'PRODUCT_NAME'  => $product->name,
+                'PRODUCT_AMOUNT'=> $product->client_price,
+            ];
         }
-
-        $wallet = Wallet::where('user_id', auth()->id())->first();
-        return view('users.data', compact('plans', 'wallet'));
     }
+    $plans = $structured;
+    $wallet = Wallet::where('user_id', auth()->id())->first();
+
+    return view('users.data', compact('plans', 'wallet'));
+}
+
+
+
+
     /**
      * Get network ID mapping for compatibility
      */
@@ -102,7 +88,7 @@ class DataController extends Controller
         
         return $networkIds[$network] ?? '00';
     }
-    public function purchase(Request $request)
+public function purchase(Request $request)
 {
     $validated = $request->validate([
         'network'   => 'required|string|in:mtn,glo,airtel,9mobile,MTN,GLO,AIRTEL,9MOBILE',
@@ -120,10 +106,10 @@ class DataController extends Controller
         $recipient  = $validated['recipient'];
         $requestId  = 'DATA_' . uniqid();
 
-        // Always fetch amount from Demmy API
-        $productsResponse = DemmyPayHelper::getDataProducts();
-        $products = $productsResponse['data'] ?? [];
-        $product = collect($products)->firstWhere('id', (int)$productId);
+        // ✅ Fetch product from DB (not from API)
+        $product = Product::where('product_code', $productId)
+            ->where('is_active', 1)
+            ->first();
 
         if (!$product) {
             return response()->json([
@@ -133,7 +119,8 @@ class DataController extends Controller
             ], 400);
         }
 
-        $amount = (float) ($product['amount'] ?? 0);
+        // ✅ Use client price from DB
+        $amount = (float) ($product->client_price ?? 0);
         
         if ($amount <= 0) {
             return response()->json([
@@ -155,10 +142,9 @@ class DataController extends Controller
 
         DB::beginTransaction();
 
-        // Call DemmyPay API
-        $response = DemmyPayHelper::buyData($productId, $recipient, $requestId);
-        dd($response);
-        // Get network name for response
+        // ✅ Call DemmyPay API with product_code
+        $response = DemmyPayHelper::buyData($product->product_code, $recipient, $requestId);
+
         $networkNames = [
             'mtn' => 'MTN',
             'glo' => 'Glo',
@@ -175,7 +161,7 @@ class DataController extends Controller
             'channel'   => 'DemmyPay',
             'provider'  => $networkName,
             'phone'     => $recipient,
-            'amount'    => $amount,
+            'amount'    => $amount, // ✅ client price
             'status'    => (isset($response['status']) && $response['status'] == 200) ? 'success' : 'failed',
             'response'  => json_encode($response),
         ]);
@@ -185,9 +171,8 @@ class DataController extends Controller
             $wallet->decrement('balance', $amount);
             DB::commit();
 
-            // Format success message with transaction details
             $successMessage = "Your {$networkName} data purchase of ₦" . number_format($amount, 2) . 
-                            " ({$product['name']}) to {$recipient} was successful!";
+                            " ({$product->name}) to {$recipient} was successful!";
 
             return response()->json([
                 'success' => true,
@@ -197,7 +182,7 @@ class DataController extends Controller
                     'network' => $networkName,
                     'network_code' => $network,
                     'recipient' => $recipient,
-                    'package_name' => $product['name'] ?? 'Data Bundle',
+                    'package_name' => $product->name ?? 'Data Bundle',
                     'amount' => $amount,
                     'formatted_amount' => '₦' . number_format($amount, 2),
                     'new_balance' => $wallet->fresh()->balance,
@@ -209,16 +194,8 @@ class DataController extends Controller
             ]);
         } else {
             DB::rollBack();
-            
-            // Get more specific error message from provider response
-            $errorMessage = 'Data purchase failed';
-            if (isset($response['detail'])) {
-                $errorMessage = $response['detail'];
-            } elseif (isset($response['message'])) {
-                $errorMessage = $response['message'];
-            } elseif (isset($response['error'])) {
-                $errorMessage = $response['error'];
-            }
+
+            $errorMessage = $response['detail'] ?? $response['message'] ?? $response['error'] ?? 'Data purchase failed';
 
             return response()->json([
                 'success' => false,
@@ -230,7 +207,6 @@ class DataController extends Controller
 
     } catch (ValidationException $e) {
         DB::rollBack();
-        // Handle PIN validation errors specifically
         $pinError = $e->validator->errors()->first('pin');
         
         if ($pinError) {
@@ -250,7 +226,6 @@ class DataController extends Controller
     } catch (\Exception $e) {
         DB::rollBack();
         
-        // Log the error for debugging
         \Log::error('Data purchase error', [
             'user_id' => auth()->id(),
             'amount' => $amount ?? null,
@@ -268,6 +243,7 @@ class DataController extends Controller
         ], 500);
     }
 }
+
 
 /**
  * Render success partial for AJAX requests (if not already in controller)
