@@ -28,6 +28,7 @@ class AdminServiceController extends Controller
     {
         $provider = Provider::findOrFail($providerId);
 
+
         // Fetch existing DB products for this provider
         $dbProducts = $provider->products->keyBy('product_code');
         $products = [];
@@ -47,7 +48,7 @@ class AdminServiceController extends Controller
                             ($apiProduct['validity'] ?? 'N/A') . ')';
 
                     $dbProduct = $dbProducts->get($productCode);
-                    
+
                     $products[] = (object)[
                         'id'           => $dbProduct->id ?? null,
                         'product_code' => $productCode,
@@ -115,7 +116,7 @@ class AdminServiceController extends Controller
                 // Handle Electricity Products (ClubKonnect) - Using cURL directly
                 $userId = env('CLUBKONNECT_USERID');
                 $url = "https://www.nellobytesystems.com/APIElectricityDiscosV1.asp?UserID=" . $userId;
-                
+
                 // Use cURL directly as Laravel HTTP client might be blocked
                 $ch = curl_init();
                 curl_setopt($ch, CURLOPT_URL, $url);
@@ -132,12 +133,12 @@ class AdminServiceController extends Controller
                     'Connection: keep-alive',
                     'Cache-Control: no-cache',
                 ]);
-                
+
                 $responseBody = curl_exec($ch);
                 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
                 $error = curl_error($ch);
                 curl_close($ch);
-                
+
                 if ($error) {
                     \Log::error('ClubKonnect cURL Error:', ['error' => $error]);
                 } elseif ($httpCode == 200) {
@@ -146,16 +147,16 @@ class AdminServiceController extends Controller
                         'response_preview' => substr($responseBody, 0, 500),
                         'length' => strlen($responseBody)
                     ]);
-                    
+
                     // Try to parse as JSON
                     $apiResponse = json_decode($responseBody, true);
-                    
+
                     if (json_last_error() === JSON_ERROR_NONE && !empty($apiResponse['ELECTRIC_COMPANY'])) {
                         // Process the JSON response structure
                         foreach ($apiResponse['ELECTRIC_COMPANY'] as $companyKey => $companyDataArray) {
                             if (!empty($companyDataArray) && is_array($companyDataArray)) {
                                 $companyData = $companyDataArray[0];
-                                
+
                                 $companyId   = (string)($companyData['ID'] ?? '');
                                 $companyName = $companyData['NAME'] ?? str_replace('_', ' ', $companyKey);
 
@@ -188,7 +189,7 @@ class AdminServiceController extends Controller
                             'json_error' => json_last_error_msg(),
                             'response_preview' => substr($responseBody, 0, 1000)
                         ]);
-                        
+
                         // Try to extract error message from HTML if present
                         if (strpos($responseBody, 'error') !== false || strpos($responseBody, 'Error') !== false) {
                             preg_match('/<title>(.*?)<\/title>/i', $responseBody, $matches);
@@ -222,7 +223,7 @@ class AdminServiceController extends Controller
                 'message'  => $e->getMessage(),
                 'trace'    => $e->getTraceAsString(),
             ]);
-            
+
             // On error, fallback to showing DB products
             foreach ($provider->products as $dbProduct) {
                 $products[] = (object)[
@@ -273,6 +274,22 @@ class AdminServiceController extends Controller
                     ]
                 );
             }
+        }elseif($provider->api_identifier === 'morethanpanel'){
+             $clientPrice = $request->input('client_price');
+            Product::updateOrCreate(
+                    [
+                        'provider_id'  => $provider->id,
+                        'product_code' => 'morethanpanel',
+                    ],
+                    [
+                        'name'         => 'MoreThanPanel',
+                        'category'     => 'social',
+                        'api_price'    => 0,
+                        'client_price' => $clientPrice,
+                    ]
+                );
+
+
         } elseif ($provider->api_identifier === 'clubkonnect-electricity') {
             // Handle Electricity Products
             $userId = env('CLUBKONNECT_USERID');

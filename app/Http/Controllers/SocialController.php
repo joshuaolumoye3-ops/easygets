@@ -15,24 +15,22 @@ class SocialController extends Controller
 {
 public function services()
 {
-    // Raw services from API (flat array of stdClass)
-    $services = smm_api()->services();
 
-    // Group services by category
+    $services = smm_api()->services();
     $categories = collect($services)->groupBy('category')->map(function ($services) {
         return $services->map(function ($service) {
             return (object) [
                 'id'   => $service->service,   // access as object
                 'name' => $service->name,
-                // Apply +5% markup
-                'rate' => round($service->rate * 1.05, 2),
+                'rate' => round($service->rate),
                 'min'  => (int) $service->min,
                 'max'  => (int) $service->max,
                 'desc' => $service->desc ?? '',
             ];
         });
-    });
 
+    });
+ dd($categories);
 
 
     return view('users.socialPackage', compact('categories'));

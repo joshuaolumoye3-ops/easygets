@@ -7,22 +7,28 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use App\Models\Product;
 
 class Controller
 {
-    
+
     public function dashboard()
     {
         $user = auth()->user();
-    
+        $admin_rate_product = Product::select('client_price')
+            ->where('product_code', 'morethanpanel')
+            ->where('is_active', true)
+            ->first();
+        $admin_rate = $admin_rate_product->client_price;
+
         $latestTransactions = Transaction::where('user_id', $user->id)
             ->latest()
             ->take(4)
             ->get();
-    
-        $services = smm_api()->services(); // FIXED
-    
-        // Group services by category
+
+        $services = smm_api()->services();
+
+
         $categories = collect($services)->groupBy('category')->map(function ($services) {
             return $services->map(function ($service) {
                 return (object) [
@@ -35,10 +41,11 @@ class Controller
                 ];
             });
         });
-    
+
+
         $wallet = $user->wallet()->with('virtualAccounts')->first();
-    
-        return view('users.home', compact('latestTransactions', 'wallet', 'categories'));
+
+        return view('users.home', compact('latestTransactions', 'wallet', 'categories', 'admin_rate'));
     }
 
     public function transaction()

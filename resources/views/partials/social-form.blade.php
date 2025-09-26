@@ -10,6 +10,7 @@
 
         <h2 class="text-2xl font-bold text-center mt-12 mb-6">Social Packages</h2>
 
+
         <form method="POST" action="{{ route('social.order') }}">
             @csrf
 
@@ -104,13 +105,13 @@ document.addEventListener("DOMContentLoaded", function() {
         const qty = parseInt(qtyInput.value || 0);
 
         if (qty >= min && qty <= max) {
-            // Formula: (rate per 1000) * qty / 1000 + 5% markup
-            const baseAmount = (rate * qty) / 1000;
-            const amount = baseAmount * 1.05; // adds 5%
+            const baseAmount = (rate * qty);
+            const amount = baseAmount * {{ $admin_rate ? $admin_rate : 0}};
+            const perce= {{$admin_rate-1}} *100;
 
             amountDisplay.textContent = "₦" + amount.toFixed(2);
             perUnitDisplay.textContent = `Min: ${min}, Max: ${max}`;
-            descDisplay.textContent = desc + ` (Includes 5% fee)`;
+            descDisplay.textContent = desc + ` (Includes ${perce}% fee)`;
         } else {
             amountDisplay.textContent = "₦0";
             perUnitDisplay.textContent = `Enter between ${min} and ${max}`;
