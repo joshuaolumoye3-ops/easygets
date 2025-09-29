@@ -2,7 +2,7 @@
 @section('title', 'Electricity Purchase')
 
 @section('content')
-{{dd($plans)}}
+{{-- {{dd($plans)}} --}}
 <div class="max-w-xl mx-auto py-8 font-[Inter] bg-white mt-16 md:mt-0 pt-0">
     <div class="container mx-auto px-4 py-8 max-w-md w-full">
 

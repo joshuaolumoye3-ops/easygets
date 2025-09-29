@@ -14,6 +14,7 @@ class ProvidersTableSeeder extends Seeder
         $dataService        = Service::where('slug', 'data')->first();
         $electricityService = Service::where('slug', 'electricity')->first();
         $cableService       = Service::where('slug', 'cable')->first();
+        $esimService  = Service::where('slug', 'esim')->first();
 
         if ($dataService) {
             Provider::updateOrCreate(
@@ -44,6 +45,19 @@ class ProvidersTableSeeder extends Seeder
                     'service_id'     => $cableService->id,
                     'name'           => 'Clubkonnect Cable TV',
                     'api_identifier' => 'clubkonnect-cable'
+                ]
+            );
+        }
+
+        if ($esimService) {
+            Provider::updateOrCreate(
+                ['api_identifier' => 'admin-esim'],
+                [
+                    'service_id'     => $esimService->id,
+                    'name'           => 'Admin eSIM',
+                    'api_identifier' => 'Admin-esim',
+                    'percentage'     => 1,
+                    'status'         => 'active',
                 ]
             );
         }

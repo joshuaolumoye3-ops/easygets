@@ -8,6 +8,8 @@ use App\Models\Provider;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use App\Models\Transaction;
+use App\Models\EsimUpload;
 
 class AdminServiceController extends Controller
 {
@@ -414,4 +416,79 @@ class AdminServiceController extends Controller
 
         return back()->with('success', 'Markup applied to all plans.');
     }
+
+     /**
+     * Display all eSIM transactions
+     */
+    public function esimindex(Request $request)
+    {
+        // Get only eSIM transactions using the 'type' column
+        $transactions = Transaction::where('type', 'eSIM Purchase')
+            ->latest()
+            ->paginate(15);
+
+        return view('admin.esim', compact('transactions'));
+    }
+
+    /**
+     * Show transaction details as JSON (for modal).
+     */
+    public function show($id)
+    {
+        $txn = Transaction::with('user')->findOrFail($id);
+
+        return response()->json([
+            'id'         => $txn->id,
+            'user'       => [
+                'name'  => $txn->user->name ?? 'N/A',
+                'email' => $txn->user->email ?? 'N/A',
+            ],
+            'plan_name'  => $txn->plan_name ?? 'N/A',
+            'amount'     => $txn->amount,
+            'status'     => $txn->status,
+            'created_at' => $txn->created_at->format('d M Y h:i A'),
+        ]);
+    }
+
+    /**
+     * Handle admin upload (numbers, details, images).
+     */
+    public function upload(Request $request)
+    {
+        $request->validate([
+            'transaction_id' => 'required|exists:transactions,id',
+            'numbers'        => 'nullable|string|max:255',
+            'details'        => 'nullable|string',
+            'images.*'       => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ]);
+
+        $txn = Transaction::findOrFail($request->transaction_id);
+
+        // Prepare image paths
+        $images = [];
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $img) {
+                $filename = time() . '_' . uniqid() . '.' . $img->getClientOriginalExtension();
+                $img->move(public_path('uploads/esim'), $filename);
+                $images[] = 'uploads/esim/' . $filename; // relative path for frontend
+            }
+        }
+
+        // Save into esim_uploads table
+        EsimUpload::create([
+            'user_id'       => auth()->id(),
+            'transaction_id'=> $txn->id,
+            'number'        => $request->numbers,
+            'details'       => $request->details,
+            'images'        => $images,
+        ]);
+
+        // Update transaction status to Approved
+        $txn->update([
+            'status' => 'Approved'
+        ]);
+
+        return back()->with('success', 'Details uploaded and transaction approved successfully.');
+    }
+
 }

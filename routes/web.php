@@ -16,6 +16,7 @@ use App\Http\Controllers\SocialController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminServiceController;
+use App\Http\Controllers\EsimController;
 
 Route::middleware('guest')->group(function () {
 
@@ -59,6 +60,10 @@ Route::get('/purchase/confirm', [CountryController::class, 'showConfirm'])->name
 Route::post('/payments/process', [CountryController::class, 'process'])->name('payments.process');
 
 
+Route::get('/esim', [EsimController::class, 'index'])->name('esim');
+Route::get('/countries/{code}/plan', [EsimController::class, 'plan'])->name('countries.plan');
+Route::get('/checkout/{code}/{packageId}', [EsimController::class, 'checkout'])->name('checkout');
+Route::post('/checkout/{country}/{package}', [EsimController::class, 'store'])->name('checkout.process');
 Route::get('/data', [DataController::class, 'showData'])->name('data');
 Route::get('/cabletv', [CableController::class, 'showCableTV'])->name('cabletv');
 Route::post('/verify-smartcard', [CableController::class, 'verifySmartcard'])->name('verify.smartcard');
@@ -138,6 +143,7 @@ Route::get('/admin/social', function () {
 Route::get('/admin/settings', function () {
     return view('admin.settings');
 });
+
 Route::get('/admin/login', [AdminAuthController::class, 'showLogin'])->name('admin.login.form');
 Route::post('/admin/login', [AdminAuthController::class, 'login'])->name('admin.login');
 Route::post('/admin/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
@@ -156,6 +162,10 @@ Route::post('/products/{id}/update', [AdminServiceController::class, 'updateProd
 Route::post('/providers/{provider}/products/save', [AdminServiceController::class, 'saveProducts'])->name('admin.products.save');
 Route::post('/providers/{provider}/markup', [AdminServiceController::class, 'applyMarkup'])->name('admin.providers.markup');
 Route::delete('/products/{id}', [AdminServiceController::class, 'destroy'])->name('admin.products.delete');
+Route::get('/esim-transaction', [AdminServiceController::class, 'esimindex'])->name('admin.esim.index');
+Route::get('/esim/{id}', [AdminServiceController::class, 'show'])->name('admin.esim.show');
+Route::post('/esim/upload', [AdminServiceController::class, 'upload'])->name('admin.esim.upload');
+
 
 Route::get('/list', [AdminAuthController::class, 'index'])->name('admin.list');
 Route::get('/{admin}', [AdminAuthController::class, 'showadmin'])->name('admins.show');

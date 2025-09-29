@@ -79,4 +79,14 @@ class Transaction extends Model
             default => 'bg-gray-500'
         };
     }
+
+    public function esimUpload()
+    {
+        return $this->hasOne(EsimUpload::class, 'transaction_id');
+    }
+
+    public function isEsim()
+    {
+        return strtolower($this->type) === 'esim purchase';
+    }
 }
