@@ -1,17 +1,15 @@
 @extends('layouts.app')
 
-{{-- You can set a unique title for each page --}}
 @section('title', 'Dashboard')
 
 @section('content')
 <!-- Main container that simulates a mobile screen on larger displays -->
-<!-- The `pb-28` adds padding at the bottom to prevent content being hidden by the fixed footer -->
 <div class="max-w-xl mx-auto py-8 font-[Inter] bg-brand-gray-light mt-0 pt-0">
 
     <!-- Header Section -->
     <header class="p-4 flex items-center space-x-3 bg-white">
-        <img src="https://placehold.co/48x48/E6F5F1/0D5443?text={{ strtoupper(substr(Auth::user()->first_name, 0, 1)) }}" 
-            alt="User Avatar" 
+        <img src="https://placehold.co/48x48/E6F5F1/0D5443?text={{ strtoupper(substr(Auth::user()->first_name, 0, 1)) }}"
+            alt="User Avatar"
             class="w-12 h-12 rounded-full">
         <div>
             <p class="text-sm text-gray-500">Welcome Back,</p>
@@ -31,6 +29,11 @@
                     <div>
                         <p class="text-sm opacity-80">Wallet Balance</p>
                         <p class="text-3xl font-bold mt-1">₦{{ number_format($wallet->balance, 2) }}</p>
+                        @if($wallet->virtualAccounts->first())
+                            <p class="text-xs opacity-80 mt-2">
+                                Account: {{ $wallet->virtualAccounts->first()->account_number }}
+                            </p>
+                        @endif
                     </div>
                     <div class="flex flex-col items-end space-y-2">
                         <a href="transactions" class="text-sm">Transactions</a>
@@ -44,57 +47,100 @@
             @else
                 <!-- No account yet -->
                 <div class="text-center">
-                    <p>No wallet found.</p>
+                    <p class="mb-3">No virtual account found</p>
                     <button id="addFundsBtn"
                             data-has-account="false"
                             class="bg-white text-[#03624C] font-bold py-2 px-4 rounded-full text-sm hover:bg-white/30 transition-colors">
-                        Create Wallet
+                        {{ session('data') ? 'View Virtual Account' : 'Create Virtual Account' }}
                     </button>
                 </div>
             @endif
         </div>
 
-        <!-- BVN/NIN Input Modal -->
-        <div id="bvnNinModal" class="fixed inset-0 bg-black/50 hidden flex justify-center items-center">
-            <div class="bg-white p-6 rounded-lg w-full max-w-md relative">
-                <button class="absolute top-3 right-3 text-gray-500 hover:text-gray-800" onclick="closeModal('bvnNinModal')">✕</button>
-                <h2 class="text-lg font-bold mb-4">Create a Virtual Account</h2>
-                <form id="bvnNinForm" action="{{ route('wallets.createAccount') }}" method="POST">
-                    @csrf
-                    <div class="flex gap-4 mb-4">
-                        <label class="flex-1">
-                            <input type="radio" name="id_type" value="bvn" checked> Use BVN
-                        </label>
-                        <label class="flex-1">
-                            <input type="radio" name="id_type" value="nin"> Use NIN
-                        </label>
+        <!-- Virtual Account Generation Modal -->
+        <div id="bvnNinModal" class="fixed inset-0 bg-black/50 hidden flex justify-center items-center z-50">
+            <div class="bg-white p-6 rounded-lg w-full max-w-md relative mx-4">
+                <button class="absolute top-3 right-3 text-gray-500 hover:text-gray-800" onclick="closeModalAndClearSession('bvnNinModal')">✕</button>
+                <h2 class="text-lg font-bold mb-4">Create Virtual Account</h2>
+
+                <!-- Display virtual account details if generated -->
+                @if(session('data'))
+                    <div class="virtual-account-info mb-4 p-4 border border-green-200 rounded-lg bg-green-50">
+                        <h5 class="text-green-700 font-bold mb-3">Virtual Account Created Successfully!</h5>
+                        <div class="space-y-2">
+                            <p><strong>Account Number:</strong>
+                                <span id="account-number">{{ session('data')['account_number'] ?? 'N/A' }}</span>
+                                <button onclick="copyToClipboard('account-number')" class="text-brand-green font-bold text-sm ml-2">Copy</button>
+                            </p>
+                            <p><strong>Bank Name:</strong> {{ session('data')['bank_name'] ?? 'N/A' }}</p>
+                            <p><strong>Account Name:</strong> {{ session('data')['customer']['name'] ?? auth()->user()->name }}</p>
+                            <p><strong>Account Reference:</strong> {{ session('data')['order_ref'] ?? session('data')['id'] ?? 'N/A' }}</p>
+                        </div>
+                        <div class="mt-4">
+                            <button onclick="closeModalAndClearSession('bvnNinModal')"
+                                    class="w-full bg-brand-green text-white py-2 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors">
+                                Close
+                            </button>
+                        </div>
                     </div>
-                    <input type="text" name="id_value" required
-                        class="border rounded px-3 py-2 w-full"
-                        placeholder="Enter your BVN or NIN">
-                    <button type="submit"
-                            class="mt-4 bg-brand-green text-white py-2 px-4 rounded-lg w-full">
-                        Continue
-                    </button>
-                </form>
+                @else
+                    <!-- Generate Virtual Account Form with Amount Input -->
+                    <form id="generateAccountForm" action="{{ route('virtual-account.create') }}" method="POST">
+                        @csrf
+                        <div class="mb-4">
+                            <p class="text-sm text-gray-600 mb-3">
+                                To create your virtual account, Enter the amount below.
+                            </p>
+
+                            <!-- Amount Input -->
+                            <div class="mb-4">
+                                <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Setup Fee Amount (₦)
+                                </label>
+                                <input type="number"
+                                       id="amount"
+                                       name="amount"
+                                       required
+                                       min="100"
+                                       step="100"
+                                       placeholder="Enter amount e.g. 1000"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent">
+                                <p class="text-xs text-gray-500 mt-1">Minimum amount: ₦100</p>
+                            </div>
+
+                            <!-- Payment Instructions -->
+                            {{-- <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                                <p class="text-sm text-yellow-800">
+                                    <strong>Note:</strong> This amount will be used to activate your virtual account. You'll receive payment instructions after clicking Generate.
+                                </p>
+                            </div> --}}
+                        </div>
+
+                        <button type="submit"
+                                class="w-full bg-brand-green text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center">
+                            Generate Virtual Account
+                        </button>
+                    </form>
+                @endif
             </div>
         </div>
 
         <!-- Account Details Modal -->
         @if($wallet && $wallet->virtualAccounts->count() > 0)
-        <div id="accountDetailsModal" class="fixed inset-0 bg-black/50 hidden flex justify-center items-center">
-            <div class="bg-white p-6 rounded-lg w-full max-w-md relative">
+        <div id="accountDetailsModal" class="fixed inset-0 bg-black/50 hidden flex justify-center items-center z-50">
+            <div class="bg-white p-6 rounded-lg w-full max-w-md relative mx-4">
                 <button class="absolute top-3 right-3 text-gray-500 hover:text-gray-800" onclick="closeModal('accountDetailsModal')">✕</button>
                 <h2 class="text-lg font-bold mb-4">Your Virtual Account Details</h2>
                 @foreach($wallet->virtualAccounts as $account)
                     <div class="mb-4 p-3 border rounded-lg">
                         <p class="font-semibold">{{ $account->bank_name }}</p>
-                        <p class="text-sm">Account Number: 
+                        <p class="text-sm">Account Number:
                             <span id="acct-num-{{ $account->id }}">{{ $account->account_number }}</span>
                             <button onclick="copyToClipboard('acct-num-{{ $account->id }}')" class="text-brand-green font-bold text-sm ml-2">Copy</button>
                         </p>
-                        <p class="text-sm">Account Name: 
-                            <span id="acct-num-{{ $account->id }}">{{ $account->customer_name }}</span>
+                        <p class="text-sm">Account Name:
+                            <span id="acct-name-{{ $account->id }}">{{ $account->customer_name }}</span>
+                            <button onclick="copyToClipboard('acct-name-{{ $account->id }}')" class="text-brand-green font-bold text-sm ml-2">Copy</button>
                         </p>
                     </div>
                 @endforeach
@@ -263,6 +309,7 @@
 
 @include('partials.social-form')
 @include('partials.footer')
+
 <script>
     function openSocialModal() {
         document.getElementById('socialModal').classList.remove('hidden');
@@ -271,30 +318,76 @@
     function closeSocialModal() {
         document.getElementById('socialModal').classList.add('hidden');
     }
-</script>
 
-<script>
-function closeModal(modalId) {
-    document.getElementById(modalId).classList.add('hidden');
-}
-
-function copyToClipboard(elementId) {
-    const text = document.getElementById(elementId).textContent;
-    navigator.clipboard.writeText(text).then(() => {
-        alert('Copied!');
-    });
-}
-
-document.getElementById('addFundsBtn').addEventListener('click', function () {
-    const hasAccount = this.getAttribute('data-has-account') === 'true';
-    if (hasAccount) {
-        document.getElementById('accountDetailsModal').classList.remove('hidden');
-    } else {
-        document.getElementById('bvnNinModal').classList.remove('hidden');
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.add('hidden');
     }
-});
+
+    // New function to close modal and clear session data
+    function closeModalAndClearSession(modalId) {
+        document.getElementById(modalId).classList.add('hidden');
+
+        // Clear session data via AJAX call
+        fetch('{{ route("virtual-account.clear-session") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        }).then(response => {
+            console.log('Session cleared');
+        }).catch(error => {
+            console.error('Error clearing session:', error);
+        });
+    }
+
+    function copyToClipboard(elementId) {
+        const text = document.getElementById(elementId).textContent;
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Copied to clipboard!');
+        });
+    }
+
+    document.getElementById('addFundsBtn').addEventListener('click', function () {
+        const hasAccount = this.getAttribute('data-has-account') === 'true';
+        if (hasAccount) {
+            document.getElementById('accountDetailsModal').classList.remove('hidden');
+        } else {
+            document.getElementById('bvnNinModal').classList.remove('hidden');
+        }
+    });
+
+    // Update amount display in real-time
+    document.getElementById('amount')?.addEventListener('input', function() {
+        const amount = this.value || '0';
+        document.getElementById('amount-display').textContent = amount;
+    });
+
+    // Add loading state to the form
+    document.getElementById('generateAccountForm')?.addEventListener('submit', function() {
+        const button = this.querySelector('button[type="submit"]');
+        const amount = document.getElementById('amount').value;
+        button.disabled = true;
+        button.innerHTML = `<svg class="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing ₦${amount}...`;
+    });
+
+    // Close modal when clicking outside
+    document.addEventListener('click', function(event) {
+        if (event.target.id === 'bvnNinModal' || event.target.id === 'accountDetailsModal') {
+            if (event.target.id === 'bvnNinModal') {
+                closeModalAndClearSession('bvnNinModal');
+            } else {
+                closeModal('accountDetailsModal');
+            }
+        }
+    });
+
+    // Initialize amount display
+    document.addEventListener('DOMContentLoaded', function() {
+        const amountInput = document.getElementById('amount');
+        if (amountInput) {
+            document.getElementById('amount-display').textContent = amountInput.value || '0';
+        }
+    });
 </script>
-
-
-
 @endsection
