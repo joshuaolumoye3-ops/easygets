@@ -56,7 +56,7 @@ class ProvidersTableSeeder extends Seeder
                     'service_id'     => $esimService->id,
                     'name'           => 'Admin eSIM',
                     'api_identifier' => 'Admin-esim',
-                    'percentage'     => 1,
+                    'percentage'     => 0,
                     'status'         => 'active',
                 ]
             );

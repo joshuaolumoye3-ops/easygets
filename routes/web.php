@@ -76,6 +76,8 @@ Route::post('/verify-electricity-meter', [ElectricityController::class, 'verifyE
 Route::post('/electricity/purchase', [ElectricityController::class, 'purchase'])->name('electricity.purchase');
 
 Route::get('/services', [CountryController::class, 'showServices'])->name('services.list');
+Route::get('/services/{serviceId}/5sim/countries', [CountryController::class, 'showCountries5sim'])->name('services.5sim.countries');
+Route::get('/services/{serviceId}/5sim/{country}/operators', [CountryController::class, 'showOperators5sim'])->name('operators');
 Route::get('/services/{id}/countries', [CountryController::class, 'showCountries'])->name('services.countries');
 Route::get('/services/{serviceId}/countries/load', [CountryController::class, 'showCountries']);
 // The next step route (for when user selects a country)

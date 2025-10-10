@@ -77,7 +77,7 @@
                 inputs[idx - 1].focus();
             }
         });
-    });
+    }); 
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();

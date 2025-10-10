@@ -37,7 +37,7 @@
             <h2 class="text-lg font-semibold text-gray-800 mb-4">Popular Services</h2>
             <div class="flex space-x-4 overflow-x-auto pb-4 -mx-4 px-4">
                 @foreach($popular as $product)
-                    <a href="{{ route('services.countries', $product['id']) }}" 
+                    <button onclick="showProviderModal('{{ $product['id'] }}', '{{ $product['title'] }}', '{{ $product['code'] }}')" 
                        class="flex-shrink-0 group">
                         <div class="w-16 h-16 rounded-full bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center hover:from-green-200 hover:to-green-100 transition-all duration-200 shadow-sm group-hover:shadow-md">
                             <div class="w-10 h-10 flex items-center justify-center">
@@ -56,7 +56,7 @@
                             </div>
                         </div>
                         <p class="text-xs text-center mt-2 text-gray-600 font-medium">{{ $product['title'] }}</p>
-                    </a>
+                    </button>
                 @endforeach
             </div>
         </div>
@@ -68,7 +68,7 @@
         </h2>
         <div id="productList" class="space-y-3">
             @forelse($products as $product)
-                <a href="{{ route('services.countries', $product['id']) }}" class="block group">
+                <button onclick="showProviderModal('{{ $product['id'] }}', '{{ $product['title'] }}', '{{ $product['code'] }}')" class="w-full block group">
                     <div class="flex items-center space-x-4 p-4 border border-gray-100 rounded-xl hover:border-green-200 hover:bg-green-50/50 transition-all duration-200 group-hover:shadow-sm">
                         <div class="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0 group-hover:bg-white transition-colors duration-200">
                             @if(str_contains($product['icon_url'], '.svg'))
@@ -98,7 +98,7 @@
                             </svg>
                         </div>
                     </div>
-                </a>
+                </button>
             @empty
                 <div class="text-center py-12">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -121,8 +121,79 @@
     </div>
 </div>
 
+{{-- Provider Selection Modal --}}
+<div id="providerModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+        <div class="bg-gradient-to-r from-green-600 to-green-700 p-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 id="modalServiceTitle" class="text-xl font-bold text-white">Select Provider</h2>
+                    <p class="text-green-100 text-sm mt-1">Choose your preferred SMS provider</p>
+                </div>
+                <button onclick="closeProviderModal()" class="text-white hover:text-gray-200 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <div class="p-6 space-y-4">
+            {{-- Provider 1: 5sim.net --}}
+            <button onclick="selectProvider('5sim')" 
+                    class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all duration-200">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:shadow-lg transition">
+                        5S
+                    </div>
+                    <div class="flex-1 text-left">
+                        <h3 class="font-bold text-gray-800 group-hover:text-green-700 transition">Provider 1</h3>
+                        <p class="text-sm text-gray-500">5sim.net - Premium service</p>
+                        <div class="flex items-center space-x-2 mt-1">
+                            <span class="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
+                            <span class="text-xs text-gray-600">Multiple operators available</span>
+                        </div>
+                    </div>
+                    <svg class="w-5 h-5 text-gray-400 group-hover:text-green-600 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </div>
+            </button>
+
+            {{-- Provider 2: SMS-Bus --}}
+            <button onclick="selectProvider('smsbus')" 
+                    class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all duration-200">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:shadow-lg transition">
+                        SB
+                    </div>
+                    <div class="flex-1 text-left">
+                        <h3 class="font-bold text-gray-800 group-hover:text-green-700 transition">Provider 2</h3>
+                        <p class="text-sm text-gray-500">SMS-Bus - Standard service</p>
+                        <div class="flex items-center space-x-2 mt-1">
+                            <span class="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
+                            <span class="text-xs text-gray-600">Fast & reliable</span>
+                        </div>
+                    </div>
+                    <svg class="w-5 h-5 text-gray-400 group-hover:text-green-600 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </div>
+            </button>
+        </div>
+
+        <div class="bg-gray-50 px-6 py-4 border-t border-gray-100">
+            <p class="text-xs text-gray-600 text-center">
+                <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>
+                Both providers offer secure SMS verification services
+            </p>
+        </div>
+    </div>
+</div>
+
 <style>
-/* Service icon styling for SVGs */
 .service-icon {
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
     transition: filter 0.2s ease;
@@ -132,7 +203,6 @@
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
 }
 
-/* Smooth scrollbar for popular services */
 .overflow-x-auto::-webkit-scrollbar {
     height: 4px;
 }
@@ -155,6 +225,46 @@
 <script>
     let nextPage = {{ $nextPage ?? 'null' }};
     let isLoading = false;
+    let selectedServiceId = null;
+    let selectedServiceName = null;
+    let selectedServiceCode = null;
+
+    function showProviderModal(serviceId, serviceName, serviceCode) {
+        selectedServiceId = serviceId;
+        selectedServiceName = serviceName;
+        selectedServiceCode = serviceCode;
+        
+        document.getElementById('modalServiceTitle').textContent = serviceName;
+        document.getElementById('providerModal').classList.remove('hidden');
+    }
+
+    function closeProviderModal() {
+        document.getElementById('providerModal').classList.add('hidden');
+    }
+
+    function selectProvider(provider) {
+        if (provider === '5sim') {
+            // For 5sim, use the service code (like 'facebook', 'google', etc.)
+            window.location.href = `/services/${selectedServiceCode}/5sim/countries`;
+        } else {
+            // For SMS-Bus, use the numeric service ID
+            window.location.href = `/services/${selectedServiceId}/countries`;
+        }
+    }
+
+    // Close modal on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeProviderModal();
+        }
+    });
+
+    // Close modal on outside click
+    document.getElementById('providerModal')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeProviderModal();
+        }
+    });
 
     // Infinite scroll
     window.addEventListener('scroll', function() {
@@ -192,7 +302,7 @@
         });
     }
 
-    // Global search with debouncing
+    // Search with debouncing
     let searchTimeout;
     document.getElementById('searchInput').addEventListener('input', function () {
         clearTimeout(searchTimeout);
@@ -206,7 +316,6 @@
                 url.searchParams.delete('search');
             }
             
-            // Update URL without page reload
             window.history.replaceState({}, '', url);
             
             fetch(`?search=${encodeURIComponent(filter)}`)
@@ -218,16 +327,15 @@
                     if (newContent) {
                         document.getElementById('productList').innerHTML = newContent.innerHTML;
                     }
-                    // Reset pagination
                     nextPage = filter ? null : 2;
                 })
                 .catch(error => {
                     console.error('Error searching services:', error);
                 });
-        }, 300); // 300ms delay
+        }, 300);
     });
 
-    // Initialize search input from URL
+    // Initialize search from URL
     document.addEventListener('DOMContentLoaded', function() {
         const urlParams = new URLSearchParams(window.location.search);
         const searchTerm = urlParams.get('search');
