@@ -98,11 +98,11 @@
                                                 const inputValue = parseFloat(priceInput.value) || 0;
 
                                                 @if ($provider->percentage == 1)
-                                                    // Percentage mode: convert to multiplier (e.g., 70 → 1.70)
+
                                                     const multiplier = 1 + (inputValue / 100);
                                                     clientPriceInput.value = multiplier.toFixed(2);
                                                 @else
-                                                    // Normal mode: use client price directly
+
                                                     clientPriceInput.value = inputValue.toFixed(2);
                                                 @endif
                                             });

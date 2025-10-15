@@ -37,7 +37,7 @@
             <h2 class="text-lg font-semibold text-gray-800 mb-4">Popular Services</h2>
             <div class="flex space-x-4 overflow-x-auto pb-4 -mx-4 px-4">
                 @foreach($popular as $product)
-                    <button onclick="showProviderModal('{{ $product['id'] }}', '{{ $product['title'] }}', '{{ $product['code'] }}')" 
+                    <button onclick="showProviderModal('{{ $product['id'] }}', '{{ $product['title'] }}', '{{ strtolower($product['code']) }}')" 
                        class="flex-shrink-0 group">
                         <div class="w-16 h-16 rounded-full bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center hover:from-green-200 hover:to-green-100 transition-all duration-200 shadow-sm group-hover:shadow-md">
                             <div class="w-10 h-10 flex items-center justify-center">
@@ -68,7 +68,7 @@
         </h2>
         <div id="productList" class="space-y-3">
             @forelse($products as $product)
-                <button onclick="showProviderModal('{{ $product['id'] }}', '{{ $product['title'] }}', '{{ $product['code'] }}')" class="w-full block group">
+                <button onclick="showProviderModal('{{ $product['id'] }}', '{{ $product['title'] }}', '{{ strtolower($product['code']) }}')" class="w-full block group">
                     <div class="flex items-center space-x-4 p-4 border border-gray-100 rounded-xl hover:border-green-200 hover:bg-green-50/50 transition-all duration-200 group-hover:shadow-sm">
                         <div class="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0 group-hover:bg-white transition-colors duration-200">
                             @if(str_contains($product['icon_url'], '.svg'))
@@ -141,20 +141,20 @@
         <div class="p-6 space-y-4">
             {{-- Provider 1: 5sim.net --}}
             <button onclick="selectProvider('5sim')" 
-                    class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all duration-200">
+                    class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-200">
                 <div class="flex items-center space-x-4">
                     <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:shadow-lg transition">
                         5S
                     </div>
                     <div class="flex-1 text-left">
-                        <h3 class="font-bold text-gray-800 group-hover:text-green-700 transition">Provider 1</h3>
+                        <h3 class="font-bold text-gray-800 group-hover:text-blue-700 transition">Provider 1</h3>
                         <p class="text-sm text-gray-500">5sim.net - Premium service</p>
                         <div class="flex items-center space-x-2 mt-1">
                             <span class="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
-                            <span class="text-xs text-gray-600">Multiple operators available</span>
+                            <span class="text-xs text-gray-600">Global coverage, multiple operators</span>
                         </div>
                     </div>
-                    <svg class="w-5 h-5 text-gray-400 group-hover:text-green-600 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                     </svg>
                 </div>
@@ -244,7 +244,7 @@
 
     function selectProvider(provider) {
         if (provider === '5sim') {
-            // For 5sim, use the service code (like 'facebook', 'google', etc.)
+            // For 5sim, use the service code (lowercase)
             window.location.href = `/services/${selectedServiceCode}/5sim/countries`;
         } else {
             // For SMS-Bus, use the numeric service ID

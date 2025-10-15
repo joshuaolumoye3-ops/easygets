@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 use App\Models\Admin;
+use App\Models\AdminTransaction;
 use Illuminate\Support\Facades\Auth;
 
 class AdminController extends Controller
@@ -278,13 +279,20 @@ public function addFunds(Request $request, $userId)
         try {
             DB::beginTransaction();
 
-            $user = User::with('wallet')->findOrFail($userId);
-            $admin = Auth::guard('admin')->user();
-            
+            $user  = User::with('wallet')->findOrFail($userId);
+            $admin = Auth::guard('admins')->user(); // ✅ corrected guard
+
+            if (!$admin) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Admin not logged in.'
+                ], 403);
+            }
+
             if (!$user->wallet) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'User does not have a wallet'
+                    'message' => 'User does not have a wallet.'
                 ], 400);
             }
 
@@ -292,7 +300,7 @@ public function addFunds(Request $request, $userId)
             $description = $request->description;
             $reference = 'ADMIN_DED_' . strtoupper(Str::random(10));
 
-            // Check if user has sufficient balance
+            // Check sufficient balance
             if ($user->wallet->balance < $amount) {
                 return response()->json([
                     'success' => false,
@@ -300,12 +308,12 @@ public function addFunds(Request $request, $userId)
                 ], 400);
             }
 
-            // Update wallet balance
+            // Deduct balance
             $oldBalance = $user->wallet->balance;
             $user->wallet->balance -= $amount;
             $user->wallet->save();
 
-            // Create user transaction record
+            // Log user transaction
             Transaction::create([
                 'reference' => $reference,
                 'user_id' => $user->id,
@@ -319,9 +327,9 @@ public function addFunds(Request $request, $userId)
                 'response' => $description
             ]);
 
-            // Create admin transaction record
+            // Log admin transaction
             AdminTransaction::create([
-                'admin_id' => $admin ? $admin->id : null,
+                'admin_id' => $admin->id,
                 'action' => 'DEDUCT_FUNDS',
                 'amount' => $amount,
                 'affected_user_id' => $user->id,
@@ -347,7 +355,7 @@ public function addFunds(Request $request, $userId)
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Deduct funds error: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to deduct funds. Please try again.'
@@ -355,62 +363,71 @@ public function addFunds(Request $request, $userId)
         }
     }
 
+
     /**
      * Update user password with admin transaction logging
      */
     public function updateUserPassword(Request $request, $userId)
-    {
-        $validator = Validator::make($request->all(), [
-            'password' => 'required|string|min:8|confirmed',
+{
+    $validator = Validator::make($request->all(), [
+        'password' => 'required|string|min:8|confirmed',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'success' => false,
+            'message' => $validator->errors()->first()
+        ], 422);
+    }
+
+    try {
+        DB::beginTransaction();
+
+        $user = User::findOrFail($userId);
+        $admin = Auth::guard('admins')->user(); // ✅ fixed guard name
+
+        if (!$admin) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: Admin not logged in.'
+            ], 403);
+        }
+
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        // Log admin action
+        AdminTransaction::create([
+            'admin_id' => $admin->id,
+            'action' => 'UPDATE_PASSWORD',
+            'amount' => 0,
+            'affected_user_id' => $user->id,
+            'description' => sprintf(
+                'Updated password for user: %s (%s)',
+                $user->username,
+                $user->email
+            ),
+            'reference' => 'PWD_' . strtoupper(Str::random(8))
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => $validator->errors()->first()
-            ], 422);
-        }
+        DB::commit();
 
-        try {
-            DB::beginTransaction();
+        return response()->json([
+            'success' => true,
+            'message' => 'Password updated successfully'
+        ]);
 
-            $user = User::findOrFail($userId);
-            $admin = Auth::guard('admin')->user();
-            
-            $user->password = Hash::make($request->password);
-            $user->save();
+    } catch (\Exception $e) {
+        DB::rollBack();
+        \Log::error('Update password error: ' . $e->getMessage());
 
-            // Create admin transaction record for password change
-            AdminTransaction::create([
-                'admin_id' => $admin ? $admin->id : null,
-                'action' => 'UPDATE_PASSWORD',
-                'amount' => 0,
-                'affected_user_id' => $user->id,
-                'description' => sprintf(
-                    'Updated password for user: %s (%s)',
-                    $user->username,
-                    $user->email
-                ),
-                'reference' => 'PWD_' . strtoupper(Str::random(8))
-            ]);
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Password updated successfully'
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Update password error: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update password'
-            ], 500);
-        }
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to update password'
+        ], 500);
     }
+}
+
 
     /**
      * Update user PIN with admin transaction logging
@@ -432,7 +449,7 @@ public function addFunds(Request $request, $userId)
             DB::beginTransaction();
 
             $user = User::findOrFail($userId);
-            $admin = Auth::guard('admin')->user();
+            $admin = Auth::guard('admins')->user();
             
             $user->pin = Hash::make($request->pin);
             $user->save();

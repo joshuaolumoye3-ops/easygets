@@ -47,5 +47,8 @@ return [
         'api_key'     => env('DEMMY_API_KEY'),
         'pass_phrase' => env('DEMMY_PASS_PHRASE'),
     ],
+    'flutterwave' => [
+        'base_url' => env('FLW_BASE_URL'),
+    ]
 
 ];

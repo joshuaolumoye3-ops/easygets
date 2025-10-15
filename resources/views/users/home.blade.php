@@ -1,17 +1,15 @@
 @extends('layouts.app')
 
-{{-- You can set a unique title for each page --}}
 @section('title', 'Dashboard')
 
 @section('content')
 <!-- Main container that simulates a mobile screen on larger displays -->
-<!-- The `pb-28` adds padding at the bottom to prevent content being hidden by the fixed footer -->
 <div class="max-w-xl mx-auto py-8 font-[Inter] bg-brand-gray-light mt-0 pt-0">
 
     <!-- Header Section -->
     <header class="p-4 flex items-center space-x-3 bg-white">
-        <img src="https://placehold.co/48x48/E6F5F1/0D5443?text={{ strtoupper(substr(Auth::user()->first_name, 0, 1)) }}" 
-            alt="User Avatar" 
+        <img src="https://placehold.co/48x48/E6F5F1/0D5443?text={{ strtoupper(substr(Auth::user()->first_name, 0, 1)) }}"
+            alt="User Avatar"
             class="w-12 h-12 rounded-full">
         <div>
             <p class="text-sm text-gray-500">Welcome Back,</p>
@@ -25,82 +23,100 @@
     <div class="p-4 space-y-5">
         <!-- Wallet Balance Card -->
         <div class="bg-brand-green text-white rounded-xl p-5 shadow-lg">
-            @if($wallet && $wallet->virtualAccounts->count() > 0)
-                <!-- User has a wallet and at least one virtual account -->
-                <div class="flex justify-between items-start">
-                    <div>
-                        <p class="text-sm opacity-80">Wallet Balance</p>
-                        <p class="text-3xl font-bold mt-1">₦{{ number_format($wallet->balance, 2) }}</p>
-                    </div>
-                    <div class="flex flex-col items-end space-y-2">
-                        <a href="transactions" class="text-sm">Transactions</a>
-                        <button id="addFundsBtn"
-                                data-has-account="true"
-                                class="bg-white text-[#03624C] font-bold py-2 px-4 rounded-full text-sm hover:bg-white/30 transition-colors">
-                            + Add Funds
-                        </button>
-                    </div>
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm opacity-80">Wallet Balance</p>
+                    <p class="text-3xl font-bold mt-1">₦{{ number_format($wallet->balance ?? 0, 2) }}</p>
                 </div>
-            @else
-                <!-- No account yet -->
-                <div class="text-center">
-                    <p>No wallet found.</p>
+                <div class="flex flex-col items-end space-y-2">
+                    <a href="transactions" class="text-sm underline hover:no-underline">Transactions</a>
                     <button id="addFundsBtn"
-                            data-has-account="false"
-                            class="bg-white text-[#03624C] font-bold py-2 px-4 rounded-full text-sm hover:bg-white/30 transition-colors">
-                        Create Wallet
+                            class="bg-white text-[#03624C] font-bold py-2 px-4 rounded-full text-sm hover:bg-opacity-90 transition-colors">
+                        + Add Funds
                     </button>
                 </div>
-            @endif
-        </div>
-
-        <!-- BVN/NIN Input Modal -->
-        <div id="bvnNinModal" class="fixed inset-0 bg-black/50 hidden flex justify-center items-center">
-            <div class="bg-white p-6 rounded-lg w-full max-w-md relative">
-                <button class="absolute top-3 right-3 text-gray-500 hover:text-gray-800" onclick="closeModal('bvnNinModal')">✕</button>
-                <h2 class="text-lg font-bold mb-4">Create a Virtual Account</h2>
-                <form id="bvnNinForm" action="{{ route('wallets.createAccount') }}" method="POST">
-                    @csrf
-                    <div class="flex gap-4 mb-4">
-                        <label class="flex-1">
-                            <input type="radio" name="id_type" value="bvn" checked> Use BVN
-                        </label>
-                        <label class="flex-1">
-                            <input type="radio" name="id_type" value="nin"> Use NIN
-                        </label>
-                    </div>
-                    <input type="text" name="id_value" required
-                        class="border rounded px-3 py-2 w-full"
-                        placeholder="Enter your BVN or NIN">
-                    <button type="submit"
-                            class="mt-4 bg-brand-green text-white py-2 px-4 rounded-lg w-full">
-                        Continue
-                    </button>
-                </form>
             </div>
         </div>
 
-        <!-- Account Details Modal -->
-        @if($wallet && $wallet->virtualAccounts->count() > 0)
-        <div id="accountDetailsModal" class="fixed inset-0 bg-black/50 hidden flex justify-center items-center">
-            <div class="bg-white p-6 rounded-lg w-full max-w-md relative">
-                <button class="absolute top-3 right-3 text-gray-500 hover:text-gray-800" onclick="closeModal('accountDetailsModal')">✕</button>
-                <h2 class="text-lg font-bold mb-4">Your Virtual Account Details</h2>
-                @foreach($wallet->virtualAccounts as $account)
-                    <div class="mb-4 p-3 border rounded-lg">
-                        <p class="font-semibold">{{ $account->bank_name }}</p>
-                        <p class="text-sm">Account Number: 
-                            <span id="acct-num-{{ $account->id }}">{{ $account->account_number }}</span>
-                            <button onclick="copyToClipboard('acct-num-{{ $account->id }}')" class="text-brand-green font-bold text-sm ml-2">Copy</button>
-                        </p>
-                        <p class="text-sm">Account Name: 
-                            <span id="acct-num-{{ $account->id }}">{{ $account->customer_name }}</span>
-                        </p>
+        <!-- One-Time Virtual Account Modal -->
+        <div id="addFundsModal" class="fixed inset-0 bg-black/50 hidden justify-center items-center z-50">
+            <div class="bg-white p-6 rounded-lg w-full max-w-md relative mx-4">
+                <button id="closeModalBtn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-800 text-xl font-bold">✕</button>
+                <h2 class="text-lg font-bold mb-4">Add Funds</h2>
+
+                <!-- Display virtual account details if generated -->
+                @if(session('account_data'))
+                    <div class="virtual-account-info mb-4 p-4 border border-green-200 rounded-lg bg-green-50">
+                        <h5 class="text-green-700 font-bold mb-3">One-Time Account Generated!</h5>
+                        <p class="text-sm text-gray-600 mb-3">Transfer funds to this account to add money to your wallet:</p>
+                        <div class="space-y-2">
+                            <div class="bg-white p-2 rounded">
+                                <p class="text-xs text-gray-600">Account Number</p>
+                                <p class="font-bold text-lg flex items-center justify-between">
+                                    <span id="account-number" class="font-mono">{{ session('account_data')['account_number'] ?? 'N/A' }}</span>
+                                    <button onclick="copyToClipboard('account-number')" class="text-brand-green font-bold text-sm">Copy</button>
+                                </p>
+                            </div>
+                            <p><strong>Bank Name:</strong> {{ session('account_data')['bank_name'] ?? 'N/A' }}</p>
+                            <p><strong>Account Name:</strong> {{ session('account_data')['account_name'] ?? Auth::user()->first_name . ' ' . Auth::user()->last_name }}</p>
+                            <p><strong>Amount:</strong> <span class="text-brand-green font-bold">₦{{ number_format(session('account_data')['amount'] ?? 0, 2) }}</span></p>
+                            @if(session('account_data')['expires_at'] ?? false)
+                                <p class="text-xs text-gray-600 mt-2"><strong>Expires:</strong> {{ session('account_data')['expires_at'] }}</p>
+                            @endif
+                        </div>
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4">
+                            <p class="text-xs text-yellow-800">
+                                <strong>Note:</strong> This is a one-time account. Once payment is received, it will be automatically credited to your wallet.
+                            </p>
+                        </div>
+                        <div class="mt-4">
+                            <button onclick="closeAndClearModal()"
+                                    class="w-full bg-brand-green text-white py-2 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors">
+                                Done
+                            </button>
+                        </div>
                     </div>
-                @endforeach
+                @else
+                    <!-- Generate One-Time Virtual Account Form -->
+                    <form id="generateAccountForm" action="{{ route('virtual-account.create') }}" method="POST">
+                        @csrf
+                        <div class="mb-4">
+                            <p class="text-sm text-gray-600 mb-4">
+                                Enter the amount you want to add to your wallet. We'll generate a one-time account number for the transfer.
+                            </p>
+
+                            <!-- Amount Input -->
+                            <div class="mb-4">
+                                <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Amount (₦)
+                                </label>
+                                <input type="number"
+                                       id="amount"
+                                       name="amount"
+                                       required
+                                       min="100"
+                                       step="0.01"
+                                       placeholder="Enter amount e.g. 1000"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent">
+                                <p class="text-xs text-gray-500 mt-1">Minimum amount: ₦100</p>
+                            </div>
+
+                            <!-- Info Box -->
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                                <p class="text-sm text-blue-800">
+                                    <strong>How it works:</strong> Generate a one-time account number, transfer the amount from your bank, and your wallet will be credited automatically.
+                                </p>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="generateBtn"
+                                class="w-full bg-brand-green text-white py-3 px-4 rounded-lg font-semibold hover:bg-light-green transition-colors flex items-center justify-center">
+                            Generate Account Number
+                        </button>
+                    </form>
+                @endif
             </div>
         </div>
-        @endif
 
         <!-- Action Buttons -->
         <div class="grid grid-cols-2 gap-4">
@@ -181,7 +197,7 @@
                     <span class="text-xs font-medium text-gray-700">Betting</span>
                 </a>
                  <!-- Service Item -->
-                 <a href="#" class="flex flex-col items-center space-y-2">
+                 <a href="esim" class="flex flex-col items-center space-y-2">
                     <div class="bg-brand-green-light rounded-full w-14 h-14 flex items-center justify-center">
                         <img src="assets/e-sim.svg" class="w-8 h-8 text-brand-green" alt="">
                     </div>
@@ -263,6 +279,7 @@
 
 @include('partials.social-form')
 @include('partials.footer')
+
 <script>
     function openSocialModal() {
         document.getElementById('socialModal').classList.remove('hidden');
@@ -271,30 +288,101 @@
     function closeSocialModal() {
         document.getElementById('socialModal').classList.add('hidden');
     }
-</script>
 
-<script>
-function closeModal(modalId) {
-    document.getElementById(modalId).classList.add('hidden');
-}
-
-function copyToClipboard(elementId) {
-    const text = document.getElementById(elementId).textContent;
-    navigator.clipboard.writeText(text).then(() => {
-        alert('Copied!');
-    });
-}
-
-document.getElementById('addFundsBtn').addEventListener('click', function () {
-    const hasAccount = this.getAttribute('data-has-account') === 'true';
-    if (hasAccount) {
-        document.getElementById('accountDetailsModal').classList.remove('hidden');
-    } else {
-        document.getElementById('bvnNinModal').classList.remove('hidden');
+    function copyToClipboard(elementId) {
+        const element = document.getElementById(elementId);
+        const text = element.textContent.trim();
+        
+        navigator.clipboard.writeText(text).then(() => {
+            // Show temporary success message
+            const button = element.nextElementSibling;
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            button.classList.add('text-green-600');
+            
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.classList.remove('text-green-600');
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            alert('Failed to copy. Please copy manually.');
+        });
     }
-});
+
+    // Close modal and clear session
+    function closeAndClearModal() {
+        const modal = document.getElementById('addFundsModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        
+        // Clear session data via AJAX
+        fetch('{{ route("virtual-account.clear-session") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        }).then(response => {
+            console.log('Session cleared');
+            // Optionally reload the page to reset the form
+            window.location.reload();
+        }).catch(error => {
+            console.error('Error clearing session:', error);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const addFundsBtn = document.getElementById('addFundsBtn');
+        const modal = document.getElementById('addFundsModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const generateForm = document.getElementById('generateAccountForm');
+
+        // Open modal when Add Funds button is clicked
+        if (addFundsBtn) {
+            addFundsBtn.addEventListener('click', function() {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            });
+        }
+
+        // Close modal button
+        if (closeModalBtn) {
+            closeModalBtn.addEventListener('click', function() {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            });
+        }
+
+        // Close modal when clicking outside
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        });
+
+        // Add loading state to the form
+        if (generateForm) {
+            generateForm.addEventListener('submit', function() {
+                const button = document.getElementById('generateBtn');
+                const amount = document.getElementById('amount').value;
+                button.disabled = true;
+                button.innerHTML = `
+                    <svg class="animate-spin h-5 w-5 mr-2 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Generating...
+                `;
+            });
+        }
+
+        // Auto-open modal if account was just generated
+        @if(session('account_data'))
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        @endif
+    });
 </script>
-
-
-
 @endsection

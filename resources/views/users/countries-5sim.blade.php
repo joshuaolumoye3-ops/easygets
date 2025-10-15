@@ -18,8 +18,8 @@
 
         <!-- Provider Badge -->
         <div class="mb-6 flex items-center justify-center">
-            <div class="inline-flex items-center space-x-2 bg-blue-50 px-4 py-2 rounded-full">
-                <div class="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center text-white text-xs font-bold">
+            <div class="inline-flex items-center space-x-2 bg-blue-50 px-4 py-2 rounded-full border border-blue-200">
+                <div class="w-6 h-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded-md flex items-center justify-center text-white text-xs font-bold">
                     5S
                 </div>
                 <span class="text-sm font-medium text-blue-900">Provider 1 (5sim.net)</span>
@@ -41,72 +41,150 @@
             >
         </div>
 
+        <!-- Service Info -->
+        <div class="mb-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-100">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                        <span class="text-lg">📱</span>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-600">Selected Service</p>
+                        <p class="font-bold text-gray-800">{{ ucfirst($serviceCode) }}</p>
+                    </div>
+                </div>
+                <span id="countryCount" class="text-xs font-semibold text-blue-700 bg-blue-100 px-3 py-1 rounded-full">
+                    {{ count($countries) }} countries
+                </span>
+            </div>
+        </div>
+
         <!-- All Countries -->
         <div>
             <h2 class="text-xl font-bold text-gray-800 mb-4">Available Countries</h2>
             <div id="countryList" class="space-y-3">
                 @forelse ($countries as $country)
-                    <a href="{{ route('services.5sim.operators', ['serviceId' => $serviceId, 'country' => $country['name']]) }}" 
-                       class="block group">
-                        <div class="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:border-blue-200 hover:bg-blue-50/50 transition-all duration-200 group-hover:shadow-sm">
-                            <div class="flex items-center space-x-4">
-                                <img class="w-10 h-10 rounded-full object-cover shadow-sm" 
+                    <a href="{{ route('services.5sim.operators', ['serviceCode' => $serviceCode, 'country' => $country['name']]) }}" 
+                       class="block group country-item" data-country-name="{{ strtolower($country['name']) }}">
+                        <div class="flex items-center justify-between p-4 bg-white border-2 border-gray-100 rounded-xl hover:border-blue-500 hover:bg-blue-50/50 transition-all duration-200 group-hover:shadow-md">
+                            <div class="flex items-center space-x-4 flex-1">
+                                <img class="w-12 h-12 rounded-full object-cover shadow-sm" 
                                      src="https://flagcdn.com/w80/{{ $country['code'] }}.png" 
-                                     onerror="this.src='https://via.placeholder.com/40?text={{ strtoupper(substr($country['name'],0,1)) }}'" 
+                                     onerror="this.src='https://via.placeholder.com/48?text={{ strtoupper(substr($country['name'],0,1)) }}'" 
                                      alt="{{ ucfirst($country['name']) }}">
-                                <div>
-                                    <span class="font-semibold text-gray-800 group-hover:text-blue-700 transition">
+                                <div class="flex-1">
+                                    <span class="font-semibold text-gray-800 group-hover:text-blue-700 transition country-name block">
                                         {{ ucfirst($country['name']) }}
                                     </span>
-                                    <p class="text-xs text-gray-500 mt-0.5">
-                                        {{ count($country['operators']) }} operator(s) available
-                                    </p>
+                                    <div class="flex items-center space-x-3 mt-1">
+                                        <span class="text-xs text-gray-500">
+                                            Available: {{ number_format($country['qty']) }}
+                                        </span>
+                                        <span class="text-xs text-green-600 font-medium">
+                                            ${{ number_format($country['price'], 2) }}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-blue-600 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-blue-600 transition flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                             </svg>
                         </div>
                     </a>
                 @empty
-                    <div class="text-center py-12">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div class="text-center py-12" id="emptyState">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
                         </svg>
-                        <p class="text-gray-500">No countries available for this service.</p>
-                        <a href="{{ route('services.list') }}" class="text-blue-600 hover:text-blue-700 text-sm mt-2 inline-block">
+                        <p class="text-gray-500 font-medium mb-2">No countries available</p>
+                        <p class="text-sm text-gray-400 mb-4">This service may not be available yet</p>
+                        <a href="{{ route('services.list') }}" class="inline-block px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition">
                             ← Back to services
                         </a>
                     </div>
                 @endforelse
             </div>
+
+            <!-- No Results Message -->
+            <div id="noResults" class="text-center py-12 hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <p class="text-gray-500 font-medium mb-2">No countries found</p>
+                <p class="text-sm text-gray-400">Try adjusting your search</p>
+            </div>
         </div>
 
-        <!-- Pagination -->
-        @if($countries->hasPages())
-        <div class="mt-6">
-            {{ $countries->links() }}
+        @if(count($countries) > 0)
+        <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="flex items-start space-x-2">
+                <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>
+                <div class="text-xs text-blue-800">
+                    <p class="font-medium mb-1">Next Step:</p>
+                    <p>Choose a country to see available operators and their pricing</p>
+                </div>
+            </div>
         </div>
         @endif
     </div>
 </div>
 
 <script>
-    const serviceId = "{{ $serviceId }}";
+    const serviceCode = "{{ $serviceCode }}";
 
     // Search functionality
     document.getElementById('searchInput')?.addEventListener('input', function () {
         const filter = this.value.toLowerCase().trim();
-        const items = document.querySelectorAll('#countryList > a');
+        const items = document.querySelectorAll('.country-item');
+        let visibleCount = 0;
         
         items.forEach(item => {
-            const countryName = item.textContent.toLowerCase();
+            const countryName = item.getAttribute('data-country-name');
             if (countryName.includes(filter)) {
                 item.style.display = 'block';
+                visibleCount++;
             } else {
                 item.style.display = 'none';
             }
         });
+
+        // Update count
+        document.getElementById('countryCount').textContent = visibleCount + ' countries';
+
+        // Show/hide no results message
+        const noResults = document.getElementById('noResults');
+        const emptyState = document.getElementById('emptyState');
+        
+        if (visibleCount === 0 && items.length > 0) {
+            noResults.classList.remove('hidden');
+            if (emptyState) emptyState.classList.add('hidden');
+        } else {
+            noResults.classList.add('hidden');
+            if (emptyState && items.length === 0) emptyState.classList.remove('hidden');
+        }
     });
 </script>
+
+<style>
+.country-item {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.country-item:hover {
+    transform: translateY(-2px);
+}
+</style>
 @endsection
