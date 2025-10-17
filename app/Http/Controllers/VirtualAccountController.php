@@ -24,10 +24,10 @@ class VirtualAccountController extends Controller
                 'amount' => $request->amount
             ];
 
-            $existing = VirtualAccount::where('wallet_id', $wallet->id)->first();
-            if ($existing) {
-                return redirect()->back()->with('error', 'Virtual account already exists.');
-            }
+            // $existing = VirtualAccount::where('wallet_id', $wallet->id)->first();
+            // if ($existing) {
+            //     return redirect()->back()->with('error', 'Virtual account already exists.');
+            // }
 
             Log::info('Attempting to create virtual account', ['user_id' => $user->id]);
 
