@@ -61,11 +61,11 @@ class VirtualAccountController extends Controller
                     'account_number' => $account->account_number
                 ]);
                 */
-                // dd($data);
+
 
                 return redirect()->back()->with([
                     'success' => 'Virtual account generate successfully!',
-                    'data' => $data
+                    'account_data' => $data
                 ]);
 
 

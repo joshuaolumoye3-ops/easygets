@@ -38,6 +38,87 @@
             </div>
         </div>
 
+        <!-- Virtual Account Details Card -->
+        @if(session('account_data'))
+        <div class="bg-white rounded-xl p-5 shadow-lg border border-green-200">
+            <div class="flex justify-between items-start mb-4">
+                <h3 class="font-bold text-lg text-gray-800">Your Virtual Account</h3>
+                <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                    Active
+                </span>
+            </div>
+
+            <div class="space-y-4">
+                <!-- Account Number -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-sm text-gray-600 mb-1">Account Number</p>
+                    <div class="flex items-center justify-between">
+                        <p class="font-mono text-xl font-bold text-gray-800">
+                            {{ session('account_data')['account_number'] ?? 'N/A' }}
+                        </p>
+                        <button onclick="copyToClipboard('{{ session('account_data')['account_number'] }}')"
+                                class="text-brand-green font-bold text-sm hover:text-green-700 transition-colors">
+                            Copy
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Account Details Grid -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-600">Bank Name</p>
+                        <p class="font-semibold text-gray-800">{{ session('account_data')['bank_name'] ?? 'N/A' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600">Account Name</p>
+                        <p class="font-semibold text-gray-800">{{ session('account_data')['account_name'] ?? Auth::user()->first_name . ' ' . Auth::user()->last_name }}</p>
+                    </div>
+                </div>
+
+                <!-- Amount -->
+                <div class="bg-green-50 p-3 rounded-lg">
+                    <p class="text-sm text-gray-600">Amount to Fund</p>
+                    <p class="text-xl font-bold text-brand-green">
+                        ₦{{ number_format(session('account_data')['amount'] ?? 0, 2) }}
+                    </p>
+                </div>
+
+                <!-- Expiry Information -->
+                @if(session('account_data')['expires_at'] ?? false)
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <div class="flex items-center">
+                        <svg class="w-4 h-4 text-yellow-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                        </svg>
+                        <p class="text-sm text-yellow-800">
+                            <strong>Expires:</strong> {{ session('account_data')['expires_at'] }}
+                        </p>
+                    </div>
+                </div>
+                @endif
+
+                <!-- Instructions -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p class="text-sm text-blue-800">
+                        <strong>How to fund:</strong> Transfer the exact amount to the account number above from your bank. Your wallet will be credited automatically once payment is received.
+                    </p>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex space-x-3">
+                    <button onclick="closeVirtualAccountCard()"
+                            class="flex-1 bg-gray-500 text-white py-2 px-4 rounded-lg font-semibold hover:bg-gray-600 transition-colors">
+                        Close
+                    </button>
+                    <button onclick="generateNewAccount()"
+                            class="flex-1 bg-brand-green text-white py-2 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors">
+                        Generate New
+                    </button>
+                </div>
+            </div>
+        </div>
+        @endif
+
         <!-- One-Time Virtual Account Modal -->
         <div id="addFundsModal" class="fixed inset-0 bg-black/50 hidden justify-center items-center z-50">
             <div class="bg-white p-6 rounded-lg w-full max-w-md relative mx-4">
@@ -289,33 +370,30 @@
         document.getElementById('socialModal').classList.add('hidden');
     }
 
-    function copyToClipboard(elementId) {
-        const element = document.getElementById(elementId);
-        const text = element.textContent.trim();
-        
+    function copyToClipboard(text) {
         navigator.clipboard.writeText(text).then(() => {
             // Show temporary success message
-            const button = element.nextElementSibling;
-            const originalText = button.textContent;
-            button.textContent = 'Copied!';
-            button.classList.add('text-green-600');
-            
-            setTimeout(() => {
-                button.textContent = originalText;
-                button.classList.remove('text-green-600');
-            }, 2000);
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(button => {
+                if (button.textContent.includes('Copy')) {
+                    const originalText = button.textContent;
+                    button.textContent = 'Copied!';
+                    button.classList.add('text-green-600');
+
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.classList.remove('text-green-600');
+                    }, 2000);
+                }
+            });
         }).catch(err => {
             console.error('Failed to copy: ', err);
             alert('Failed to copy. Please copy manually.');
         });
     }
 
-    // Close modal and clear session
-    function closeAndClearModal() {
-        const modal = document.getElementById('addFundsModal');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-        
+    // Close virtual account card
+    function closeVirtualAccountCard() {
         // Clear session data via AJAX
         fetch('{{ route("virtual-account.clear-session") }}', {
             method: 'POST',
@@ -325,10 +403,38 @@
             }
         }).then(response => {
             console.log('Session cleared');
-            // Optionally reload the page to reset the form
             window.location.reload();
         }).catch(error => {
             console.error('Error clearing session:', error);
+            window.location.reload();
+        });
+    }
+
+    // Generate new virtual account
+    function generateNewAccount() {
+        document.getElementById('addFundsModal').classList.remove('hidden');
+        document.getElementById('addFundsModal').classList.add('flex');
+    }
+
+    // Close modal and clear session
+    function closeAndClearModal() {
+        const modal = document.getElementById('addFundsModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+
+        // Clear session data via AJAX
+        fetch('{{ route("virtual-account.clear-session") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        }).then(response => {
+            console.log('Session cleared');
+            window.location.reload();
+        }).catch(error => {
+            console.error('Error clearing session:', error);
+            window.location.reload();
         });
     }
 
@@ -380,8 +486,7 @@
 
         // Auto-open modal if account was just generated
         @if(session('account_data'))
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+            // Modal will open automatically if there's account data
         @endif
     });
 </script>
