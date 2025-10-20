@@ -8,6 +8,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\Product;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 
 class Controller
 {
@@ -28,7 +30,6 @@ class Controller
 
         $services = smm_api()->services();
 
-
         $categories = collect($services)->groupBy('category')->map(function ($services) {
             return $services->map(function ($service) {
                 return (object) [
@@ -42,10 +43,42 @@ class Controller
             });
         });
 
+        // Fetch SMS services for Quick Pick
+        $token = env('SMSBUS_TOKEN');
+        $cacheKey = 'smsbus_services';
+        
+        $smsServices = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($token) {
+            try {
+                $response = Http::timeout(30)
+                    ->withOptions(['verify' => false])
+                    ->get("https://sms-bus.com/api/control/list/projects", [
+                        'token' => $token
+                    ]);
+
+                if ($response->successful()) {
+                    $data = $response->json('data');
+                    if (is_array($data) && !empty($data)) {
+                        return collect($data)->values();
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('SMS-Bus API Error in dashboard', ['error' => $e->getMessage()]);
+            }
+            
+            return collect([]);
+        });
+
+        // Map Quick Pick services
+        $quickPickServices = [
+            'facebook' => $smsServices->firstWhere('code', 'fb'),
+            'whatsapp' => $smsServices->firstWhere('code', 'wa'),
+            'telegram' => $smsServices->firstWhere('code', 'tg'),
+            'google' => $smsServices->firstWhere('code', 'google'),
+        ];
 
         $wallet = $user->wallet()->with('virtualAccounts')->first();
 
-        return view('users.home', compact('latestTransactions', 'wallet', 'categories', 'admin_rate'));
+        return view('users.home', compact('latestTransactions', 'wallet', 'categories', 'admin_rate', 'quickPickServices'));
     }
 
     public function transaction()

@@ -8,13 +8,19 @@
 
         <!-- Header -->
         <div class="relative flex items-center justify-center mb-6">
-            <a href="{{ route('dashboard') }}" class="absolute left-0 text-gray-500 hover:text-gray-700">
+            <a href="{{ route('services.list') }}" class="absolute left-0 text-gray-500 hover:text-gray-700">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
             </a>
-            <h1 class="text-2xl font-bold text-gray-800">Countries</h1>
+            <h1 class="text-2xl font-bold text-gray-800">Select Country</h1>
         </div>
+
+        @if($errors->any())
+            <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p class="text-red-700 text-sm">{{ $errors->first() }}</p>
+            </div>
+        @endif
 
         <!-- Search Bar -->
         <div class="relative mb-8">
@@ -31,38 +37,78 @@
             >
         </div>
 
-        <!-- All Countries -->
+        <!-- Countries List -->
         <div>
-            <h2 class="text-xl font-bold text-gray-800 mb-4">All Countries</h2>
-            <div id="productList" class="space-y-4">
-                @foreach ($countries as $country)
-                    @include('partials.country-card', ['country' => $country])
-                @endforeach
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Available Countries</h2>
+            <div id="productList" class="space-y-3">
+                @forelse ($countries as $country)
+                    <button onclick="buyNow({{ $country['project_id'] }}, {{ $country['country_id'] }}, '{{ addslashes($country['title']) }}', '{{ $country['code'] ?? '' }}')" 
+                            class="w-full group country-item">
+                        <div class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all duration-200 hover:shadow-md">
+                            <div class="flex items-center space-x-4 flex-1">
+                                <img class="w-12 h-12 rounded-full object-cover shadow-sm" 
+                                    src="{{ $country['flag_url'] }}" 
+                                    onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode(substr($country['title'], 0, 2)) }}&background=10b981&color=ffffff&size=48'" 
+                                    alt="{{ $country['title'] }}">
+                                <div class="flex-1 text-left">
+                                    <h3 class="font-semibold text-gray-800 group-hover:text-green-700 transition-colors country-name">
+                                        {{ $country['title'] }}
+                                    </h3>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        Available: <span class="font-medium text-green-600">{{ number_format($country['total_count']) }}</span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="text-right flex-shrink-0 ml-4">
+                                <div class="flex items-center space-x-2">
+                                    <div>
+                                        <p class="text-lg font-bold text-green-600">
+                                            ${{ number_format($country['cost'], 2) }}
+                                        </p>
+                                        @if(isset($country['ws_cost']) && $country['ws_cost'] < $country['cost'])
+                                            <p class="text-xs text-gray-500 line-through">
+                                                ${{ number_format($country['ws_cost'], 2) }}
+                                            </p>
+                                        @endif
+                                    </div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-green-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </button>
+                @empty
+                    <div class="text-center py-12">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 12h.01M12 12h.01M12 12h.01M12 12h.01M12 12h.01M12 20h.01" />
+                        </svg>
+                        <p class="text-gray-500">No countries available for this service.</p>
+                    </div>
+                @endforelse
             </div>
+            
             <!-- Loader -->
-            <div id="loader" class="text-center py-4 hidden text-gray-400">Loading more...</div>
+            <div id="loader" class="text-center py-6 hidden">
+                <div class="inline-flex items-center space-x-2 text-gray-500">
+                    <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Loading more countries...</span>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Modal -->
-<div id="priceModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-    <div class="bg-white rounded-2xl shadow-lg max-w-md w-full p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 id="modalTitle" class="text-xl font-bold text-gray-800">Country Prices</h2>
-            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">&times;</button>
-        </div>
-        <div id="modalContent" class="space-y-2 text-gray-700">
-            <p class="text-center text-gray-400">Loading...</p>
-        </div>
-    </div>
-</div>
-
-<!-- Hidden Form for Buy Now -->
+<!-- Hidden Form for Purchase -->
 <form id="purchaseForm" action="{{ route('prepare.purchase') }}" method="POST" class="hidden">
     @csrf
     <input type="hidden" name="service" id="formService">
     <input type="hidden" name="country" id="formCountry">
+    <input type="hidden" name="country_name" id="formCountryName">
+    <input type="hidden" name="country_code" id="formCountryCode">
 </form>
 
 <script>
@@ -72,127 +118,143 @@
     let loading = false;
     let searchQuery = '';
 
-    // ---- Country Click Binding ----
-    function bindCountryClick() {
-        document.querySelectorAll(".product-item").forEach(btn => {
-            btn.onclick = async () => {
-                const countryId = btn.dataset.countryId;
-                const countryName = btn.dataset.countryName;
-                const modal = document.getElementById("priceModal");
-                const title = document.getElementById("modalTitle");
-                const content = document.getElementById("modalContent");
-
-                title.textContent = countryName + " - Price";
-                content.innerHTML = "<p class='text-center text-gray-400'>Loading...</p>";
-                modal.classList.remove("hidden");
-
-                try {
-                    const res = await fetch(`/services/${serviceId}/countries/${countryId}/prices`);
-                    const result = await res.json();
-
-                    if (result.status && result.data.length > 0) {
-                        const item = result.data[0];
-                        content.innerHTML = `
-                            <div class="p-3 border rounded-lg mb-4">
-                                <div class="flex justify-between items-center">
-                                    <span class="font-medium">${item.name}</span>
-                                    <div class="text-right">
-                                        <p class="text-green-600 font-semibold">$${item.cost.toLocaleString()}</p>
-                                        <p class="text-sm text-gray-500">Total: ${item.count}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="text-center">
-                                <button 
-                                    onclick="buyNow(${item.project_id}, ${countryId})"
-                                    class="mt-2 bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-green-700">
-                                    Buy Now
-                                </button>
-                            </div>
-                        `;
-                    } else {
-                        content.innerHTML = "<p class='text-center text-gray-500'>No price found for this service in this country.</p>";
-                    }
-                } catch (err) {
-                    content.innerHTML = "<p class='text-center text-red-500'>Error fetching price.</p>";
-                }
-            };
-        });
-    }
-    bindCountryClick();
-
-    function closeModal() {
-        document.getElementById("priceModal").classList.add("hidden");
-    }
-
-    // ---- Buy Now Action ----
-    function buyNow(serviceId, countryId) {
+    // Buy Now Action - Updated with country details
+    function buyNow(projectId, countryId, countryName, countryCode) {
         const form = document.getElementById('purchaseForm');
-        document.getElementById('formService').value = serviceId;
+        document.getElementById('formService').value = projectId;
         document.getElementById('formCountry').value = countryId;
+        document.getElementById('formCountryName').value = countryName;
+        document.getElementById('formCountryCode').value = countryCode;
         form.submit();
     }
 
-    // ---- Helper: Render Country ----
+    // Helper: Render Country
     function renderCountry(country) {
+        const flagUrl = `https://flagcdn.com/w80/${country.code}.png`;
+        const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(country.title.substring(0, 2))}&background=10b981&color=ffffff&size=48`;
+        const escapedTitle = country.title.replace(/'/g, "\\'");
+        
         return `
-        <button class="w-full flex items-center justify-between p-3 bg-white rounded-lg hover:bg-gray-50 transition-colors duration-200 product-item"
-            data-country-id="${country.id}" data-country-name="${country.title}">
-            <div class="flex items-center">
-                <img class="w-10 h-10 rounded-full mr-4 object-cover" 
-                    src="https://flagcdn.com/w80/${country.code.toLowerCase()}.png" 
-                    onerror="this.src='https://via.placeholder.com/40?text=${country.code.charAt(0).toUpperCase()}'" 
-                    alt="${country.title}">
-                <span class="font-semibold text-gray-700 product-name">${country.title}</span>
+        <button onclick="buyNow(${country.project_id}, ${country.country_id}, '${escapedTitle}', '${country.code || ''}')" 
+                class="w-full group country-item">
+            <div class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all duration-200 hover:shadow-md">
+                <div class="flex items-center space-x-4 flex-1">
+                    <img class="w-12 h-12 rounded-full object-cover shadow-sm" 
+                        src="${flagUrl}" 
+                        onerror="this.src='${fallbackUrl}'" 
+                        alt="${country.title}">
+                    <div class="flex-1 text-left">
+                        <h3 class="font-semibold text-gray-800 group-hover:text-green-700 transition-colors country-name">
+                            ${country.title}
+                        </h3>
+                        <p class="text-xs text-gray-500 mt-1">
+                            Available: <span class="font-medium text-green-600">${country.total_count.toLocaleString()}</span>
+                        </p>
+                    </div>
+                </div>
+                <div class="text-right flex-shrink-0 ml-4">
+                    <div class="flex items-center space-x-2">
+                        <div>
+                            <p class="text-lg font-bold text-green-600">
+                                $${country.cost.toFixed(2)}
+                            </p>
+                            ${country.ws_cost && country.ws_cost < country.cost ? 
+                                `<p class="text-xs text-gray-500 line-through">$${country.ws_cost.toFixed(2)}</p>` : ''
+                            }
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-green-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </div>
+                </div>
             </div>
         </button>`;
     }
 
-    // ---- Infinite Scroll ----
+    // Infinite Scroll
     window.addEventListener('scroll', async () => {
-        if (loading || searchQuery) return;
+        if (loading || searchQuery || currentPage >= lastPage) return;
+        
         if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
-            if (currentPage < lastPage) {
-                loading = true;
-                document.getElementById('loader').classList.remove('hidden');
-                try {
-                    const res = await fetch(`/services/${serviceId}/countries/load?page=${currentPage + 1}`);
-                    const result = await res.json();
-                    lastPage = result.last_page;
-
+            loading = true;
+            document.getElementById('loader').classList.remove('hidden');
+            
+            try {
+                const res = await fetch(`/services/${serviceId}/countries?page=${currentPage + 1}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                const result = await res.json();
+                
+                if (result.success && result.data) {
                     result.data.forEach(country => {
                         document.getElementById('productList').insertAdjacentHTML('beforeend', renderCountry(country));
                     });
-                    bindCountryClick();
-                    currentPage++;
-                } catch (e) {
-                    console.error("Failed to load more countries", e);
+                    currentPage = result.current_page;
+                    lastPage = result.last_page;
                 }
-                document.getElementById('loader').classList.add('hidden');
-                loading = false;
+            } catch (e) {
+                console.error("Failed to load more countries", e);
             }
+            
+            document.getElementById('loader').classList.add('hidden');
+            loading = false;
         }
     });
 
-    // ---- Search ----
+    // Search with debouncing
+    let searchTimeout;
     document.getElementById('searchInput').addEventListener('input', async function () {
+        clearTimeout(searchTimeout);
         searchQuery = this.value.trim();
-        const list = document.getElementById('productList');
-        list.innerHTML = "<p class='text-center text-gray-400'>Searching...</p>";
-        try {
-            const res = await fetch(`/services/${serviceId}/countries/load?search=${encodeURIComponent(searchQuery)}`);
-            const result = await res.json();
-            lastPage = result.last_page;
-            currentPage = 1;
-
-            list.innerHTML = "";
-            result.data.forEach(country => {
-                list.insertAdjacentHTML('beforeend', renderCountry(country));
-            });
-            bindCountryClick();
-        } catch (e) {
-            list.innerHTML = "<p class='text-center text-red-500'>Error searching countries.</p>";
-        }
+        
+        searchTimeout = setTimeout(async () => {
+            const list = document.getElementById('productList');
+            list.innerHTML = "<p class='text-center text-gray-400 py-8'>Searching...</p>";
+            
+            try {
+                const res = await fetch(`/services/${serviceId}/countries?search=${encodeURIComponent(searchQuery)}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                const result = await res.json();
+                
+                list.innerHTML = "";
+                
+                if (result.success && result.data && result.data.length > 0) {
+                    result.data.forEach(country => {
+                        list.insertAdjacentHTML('beforeend', renderCountry(country));
+                    });
+                    currentPage = result.current_page;
+                    lastPage = result.last_page;
+                } else {
+                    list.innerHTML = `
+                        <div class="text-center py-12">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <p class="text-gray-500">No countries found matching your search.</p>
+                        </div>`;
+                }
+            } catch (e) {
+                list.innerHTML = "<p class='text-center text-red-500 py-8'>Error searching countries.</p>";
+                console.error("Search error:", e);
+            }
+        }, 300);
     });
 </script>
+
+<style>
+.country-item {
+    transition: transform 0.2s ease;
+}
+
+.country-item:active {
+    transform: scale(0.98);
+}
+</style>
 @endsection

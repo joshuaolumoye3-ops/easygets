@@ -14,10 +14,16 @@ class EsimCountry extends Model
         'country_code',
         'base_price',
         'flag_url',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'base_price' => 'decimal:2',
     ];
 
     public function packages()
     {
-        return $this->hasMany(EsimPackage::class);
+        return $this->hasMany(EsimPackage::class, 'esim_country_id');
     }
 }

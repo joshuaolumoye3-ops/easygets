@@ -15,16 +15,36 @@ class EsimUpload extends Model
     ];
 
     protected $casts = [
-        'images' => 'array', // cast JSON to array
+        'images' => 'array', // Automatically cast JSON to array and back
     ];
 
+    /**
+     * Get the user that owns the upload
+     */
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Get the transaction associated with this upload
+     */
     public function transaction()
     {
         return $this->belongsTo(Transaction::class);
+    }
+
+    /**
+     * Get full URLs for images
+     */
+    public function getImageUrlsAttribute()
+    {
+        if (!$this->images) {
+            return [];
+        }
+
+        return collect($this->images)->map(function ($image) {
+            return asset($image);
+        })->toArray();
     }
 }

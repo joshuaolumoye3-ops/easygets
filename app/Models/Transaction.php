@@ -89,4 +89,6 @@ class Transaction extends Model
     {
         return strtolower($this->type) === 'esim purchase';
     }
+    
+  
 }

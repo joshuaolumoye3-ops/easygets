@@ -12,6 +12,7 @@ use App\Helpers\DemmyPayHelper;
 use App\Helpers\PinHelper;
 use App\Models\Product;
 use App\Models\Provider;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class DataController extends Controller
@@ -71,9 +72,6 @@ public function showData()
     return view('users.data', compact('plans', 'wallet'));
 }
 
-
-
-
     /**
      * Get network ID mapping for compatibility
      */
@@ -88,162 +86,166 @@ public function showData()
         
         return $networkIds[$network] ?? '00';
     }
-public function purchase(Request $request)
-{
-    $validated = $request->validate([
-        'network'   => 'required|string|in:mtn,glo,airtel,9mobile,MTN,GLO,AIRTEL,9MOBILE',
-        'data_plan' => 'required|string',
-        'recipient' => 'required|digits:11',
-        'pin'       => 'required|string|size:4',
-    ]);
-    
-    try {
-        // Verify PIN before processing
-        PinHelper::verifyPin($validated['pin']);
 
-        $network    = strtolower($validated['network']);
-        $productId  = $validated['data_plan'];
-        $recipient  = $validated['recipient'];
-        $requestId  = 'DATA_' . uniqid();
-
-        // ✅ Fetch product from DB (not from API)
-        $product = Product::where('product_code', $productId)
-            ->where('is_active', 1)
-            ->first();
-
-        if (!$product) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid data plan selected.',
-                'error_type' => 'validation',
-            ], 400);
-        }
-
-        // ✅ Use client price from DB
-        $amount = (float) ($product->client_price ?? 0);
-        
-        if ($amount <= 0) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid amount for selected data plan.',
-                'error_type' => 'validation',
-            ], 400);
-        }
-
-        // Get user wallet
-        $wallet = Wallet::where('user_id', auth()->id())->lockForUpdate()->first();
-        if (!$wallet || $wallet->balance < $amount) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Insufficient wallet balance. Please fund your account.',
-                'error_type' => 'insufficient_balance',
-            ], 400);
-        }
-
-        DB::beginTransaction();
-
-        // ✅ Call DemmyPay API with product_code
-        $response = DemmyPayHelper::buyData($product->product_code, $recipient, $requestId);
-
-        $networkNames = [
-            'mtn' => 'MTN',
-            'glo' => 'Glo',
-            'airtel' => 'Airtel',
-            '9mobile' => '9Mobile'
-        ];
-        $networkName = $networkNames[$network] ?? ucfirst($network);
-
-        // Save transaction
-        $transaction = Transaction::create([
-            'reference' => $requestId,
-            'user_id'   => auth()->id(),
-            'type'      => 'data',
-            'channel'   => 'DemmyPay',
-            'provider'  => $networkName,
-            'phone'     => $recipient,
-            'amount'    => $amount, // ✅ client price
-            'status'    => (isset($response['status']) && $response['status'] == 200) ? 'success' : 'failed',
-            'response'  => json_encode($response),
+    public function purchase(Request $request)
+    {
+        $validated = $request->validate([
+            'network'   => 'required|string|in:mtn,glo,airtel,9mobile,MTN,GLO,AIRTEL,9MOBILE',
+            'data_plan' => 'required|string',
+            'recipient' => 'required|digits:11',
+            'pin'       => 'required|string|size:4',
         ]);
 
-        if (isset($response['status']) && $response['status'] == 200) {
-            // Deduct wallet
-            $wallet->decrement('balance', $amount);
-            DB::commit();
+        try {
+            // ✅ Verify user PIN first
+            PinHelper::verifyPin($validated['pin']);
 
-            $successMessage = "Your {$networkName} data purchase of ₦" . number_format($amount, 2) . 
-                            " ({$product->name}) to {$recipient} was successful!";
+            $network    = strtolower($validated['network']);
+            $productId  = $validated['data_plan'];
+            $recipient  = $validated['recipient'];
+
+            // ✅ Generate reference (max 100 chars)
+            $requestId  = 'DATA_' . Str::uuid();
+
+            // ✅ Fetch product from DB (not from API)
+            $product = Product::where('product_code', $productId)
+                ->where('is_active', 1)
+                ->first();
+
+            if (!$product) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid data plan selected.',
+                    'error_type' => 'validation',
+                ], 400);
+            }
+
+            $amount = (float) ($product->client_price ?? 0);
+            if ($amount <= 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid amount for selected data plan.',
+                    'error_type' => 'validation',
+                ], 400);
+            }
+
+            // ✅ Fetch and lock user wallet
+            $wallet = Wallet::where('user_id', auth()->id())->lockForUpdate()->first();
+            if (!$wallet || $wallet->balance < $amount) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Insufficient wallet balance. Please fund your account.',
+                    'error_type' => 'insufficient_balance',
+                ], 400);
+            }
+
+            DB::beginTransaction();
+
+            // ✅ Call DemmyPay data purchase API
+            $response = DemmyPayHelper::buyData($product->product_code, $recipient, $requestId);
+
+            $networkNames = [
+                'mtn' => 'MTN',
+                'glo' => 'Glo',
+                'airtel' => 'Airtel',
+                '9mobile' => '9Mobile'
+            ];
+            $networkName = $networkNames[$network] ?? ucfirst($network);
+
+            // ✅ Save transaction record
+            $transaction = Transaction::create([
+                'reference' => substr($requestId, 0, 100),
+                'user_id'   => auth()->id(),
+                'type'      => 'data',
+                'channel'   => 'DemmyPay',
+                'provider'  => $networkName,
+                'phone'     => $recipient,
+                'recipient' => $recipient,
+                'amount'    => $amount,
+                'status'    => isset($response['status']) && $response['status'] == 200 ? 'success' : 'failed',
+                'response'  => substr(json_encode($response, JSON_UNESCAPED_SLASHES), 0, 65535), // safely truncated
+            ]);
+
+            if (isset($response['status']) && (int)$response['status'] === 200) {
+                // ✅ Deduct wallet on success
+                $wallet->decrement('balance', $amount);
+                DB::commit();
+
+                $successMessage = "Your {$networkName} data purchase of ₦" . number_format($amount, 2) .
+                                " ({$product->name}) to {$recipient} was successful!";
+
+                return response()->json([
+                    'success' => true,
+                    'message' => $successMessage,
+                    'data' => [
+                        'transaction_reference' => $requestId,
+                        'network' => $networkName,
+                        'network_code' => $network,
+                        'recipient' => $recipient,
+                        'package_name' => $product->name ?? 'Data Bundle',
+                        'amount' => $amount,
+                        'formatted_amount' => '₦' . number_format($amount, 2),
+                        'new_balance' => $wallet->fresh()->balance,
+                        'formatted_balance' => '₦' . number_format($wallet->fresh()->balance, 2),
+                        'transaction_time' => now()->format('Y-m-d H:i:s'),
+                        'provider_response' => $response['data'] ?? null,
+                    ],
+                    'transaction_id' => $transaction->id,
+                ]);
+            } else {
+                DB::rollBack();
+
+                $errorMessage = $response['detail'] 
+                    ?? $response['message'] 
+                    ?? $response['error'] 
+                    ?? 'Data purchase failed';
+
+                return response()->json([
+                    'success' => false,
+                    'message' => $errorMessage,
+                    'error_code' => $response['status'] ?? 'unknown',
+                    'provider_response' => $response,
+                ], 400);
+            }
+
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            $pinError = $e->validator->errors()->first('pin');
+            
+            if ($pinError) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $pinError,
+                    'error_type' => 'pin_validation',
+                ], 422);
+            }
 
             return response()->json([
-                'success' => true,
-                'message' => $successMessage,
-                'data' => [
-                    'transaction_reference' => $requestId,
-                    'network' => $networkName,
-                    'network_code' => $network,
-                    'recipient' => $recipient,
-                    'package_name' => $product->name ?? 'Data Bundle',
-                    'amount' => $amount,
-                    'formatted_amount' => '₦' . number_format($amount, 2),
-                    'new_balance' => $wallet->fresh()->balance,
-                    'formatted_balance' => '₦' . number_format($wallet->fresh()->balance, 2),
-                    'transaction_time' => now()->format('Y-m-d H:i:s'),
-                    'provider_response' => $response['data'] ?? null,
-                ],
-                'transaction_id' => $transaction->id,
-            ]);
-        } else {
+                'success' => false,
+                'message' => 'Validation failed: ' . $e->getMessage(),
+                'error_type' => 'validation',
+            ], 422);
+
+        } catch (\Exception $e) {
             DB::rollBack();
 
-            $errorMessage = $response['detail'] ?? $response['message'] ?? $response['error'] ?? 'Data purchase failed';
+            \Log::error('Data purchase error', [
+                'user_id' => auth()->id(),
+                'amount' => $amount ?? null,
+                'recipient' => $recipient ?? null,
+                'network' => $network ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
 
             return response()->json([
                 'success' => false,
-                'message' => $errorMessage,
-                'error_code' => $response['status'] ?? 'unknown',
-                'provider_response' => $response,
-            ], 400);
+                'message' => 'An error occurred while processing your request. Please try again.',
+                'error_type' => 'system_error',
+                'debug_message' => app()->environment('local') ? $e->getMessage() : null,
+            ], 500);
         }
-
-    } catch (ValidationException $e) {
-        DB::rollBack();
-        $pinError = $e->validator->errors()->first('pin');
-        
-        if ($pinError) {
-            return response()->json([
-                'success' => false,
-                'message' => $pinError,
-                'error_type' => 'pin_validation',
-            ], 422);
-        }
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Validation failed: ' . $e->getMessage(),
-            'error_type' => 'validation',
-        ], 422);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        
-        \Log::error('Data purchase error', [
-            'user_id' => auth()->id(),
-            'amount' => $amount ?? null,
-            'recipient' => $recipient ?? null,
-            'network' => $network ?? null,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'message' => 'An error occurred while processing your request. Please try again.',
-            'error_type' => 'system_error',
-            'debug_message' => app()->environment('local') ? $e->getMessage() : null,
-        ], 500);
     }
-}
-
 
 /**
  * Render success partial for AJAX requests (if not already in controller)

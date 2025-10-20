@@ -1,179 +1,298 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Helpers\PinHelper;
 use App\Models\Transaction;
+use App\Models\EsimCountry;
+use App\Models\EsimPackage;
+use App\Models\Wallet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class EsimController extends Controller
 {
     public function index()
     {
-        // Cache for 1 day (you can increase to weeks/months if you want)
-        $countries = Cache::remember('countries_list', now()->addDays(30), function () {
-            $list = [];
+        // Get active countries from database that have:
+        // 1. A base_price greater than 0
+        // 2. At least one active package
+        $dbCountries = EsimCountry::where('is_active', true)
+            ->where('base_price', '>', 0)
+            ->whereHas('packages', function($query) {
+                $query->where('is_active', true);
+            })
+            ->withCount(['packages' => function($query) {
+                $query->where('is_active', true);
+            }])
+            ->orderBy('country_name')
+            ->get()
+            ->map(function($country) {
+                return [
+                    'id'    => $country->id,
+                    'code'  => $country->country_code,
+                    'title' => $country->country_name,
+                    'price' => $country->base_price,
+                    'flag_url' => $country->flag_url,
+                    'packages_count' => $country->packages_count,
+                ];
+            })
+            ->toArray();
 
-            try {
-                $response = Http::timeout(15)->get('https://restcountries.com/v3.1/all', [
-                    'fields' => 'cca2,name'
-                ]);
-
-                if ($response->successful()) {
-                    $data = $response->json();
-
-                    foreach ($data as $country) {
-                        $list[] = [
-                            'id'    => $country['cca2'],
-                            'code'  => $country['cca2'],
-                            'title' => $country['name']['common'],
-                            'price' => rand(4, 12),
-                        ];
-                    }
-
-                    // Sort alphabetically by title
-                    usort($list, fn($a, $b) => strcmp($a['title'], $b['title']));
-                } else {
-                    \Log::error('RestCountries API failed', [
-                        'status' => $response->status(),
-                        'body'   => $response->body(),
-                    ]);
-                }
-            } catch (\Exception $e) {
-                \Log::error('Error fetching countries', ['message' => $e->getMessage()]);
-            }
-
-            return $list;
-        });
+        // If no countries in DB, show empty state
+        $countries = $dbCountries;
 
         return view('users.esim', compact('countries'));
     }
 
     public function plan($code)
-{
-    // Get cached countries
-    $countries = Cache::remember('countries_list', now()->addDays(30), function () {
-        $list = [];
+    {
+        // Find country by code from database
+        $country = EsimCountry::where('country_code', strtoupper($code))
+            ->where('is_active', true)
+            ->first();
 
-        try {
-            $response = Http::timeout(15)->get('https://restcountries.com/v3.1/all', [
-                'fields' => 'cca2,name'
-            ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-
-                foreach ($data as $country) {
-                    $list[] = [
-                        'id'    => $country['cca2'],
-                        'code'  => strtoupper($country['cca2']),
-                        'title' => $country['name']['common'],
-                        'price' => rand(4, 12),
-                    ];
-                }
-
-                usort($list, fn($a, $b) => strcmp($a['title'], $b['title']));
-            } else {
-                \Log::error('RestCountries API failed', [
-                    'status' => $response->status(),
-                    'body'   => $response->body(),
-                ]);
-            }
-        } catch (\Exception $e) {
-            \Log::error('Error fetching countries', ['message' => $e->getMessage()]);
+        if (!$country) {
+            abort(404, 'Country not found');
         }
 
-        return $list;
-    });
+        // Get packages for this country
+        $packages = $country->packages()
+            ->where('is_active', true)
+            ->orderBy('validity_days')
+            ->orderBy('price')
+            ->get()
+            ->map(function($package) {
+                return [
+                    'id' => $package->id,
+                    'title' => $package->plan,
+                    'validity' => $package->validity_days . ' days',
+                    'price' => number_format($package->price, 2),
+                    'badge' => '',
+                    'badgeColor' => '',
+                ];
+            })
+            ->toArray();
 
-    // Find selected country by code (case insensitive)
-    $country = collect($countries)->firstWhere('code', strtoupper($code));
+        // If no packages, show message
+        if (empty($packages)) {
+            return back()->with('error', 'No packages available for this country yet.');
+        }
 
-    if (!$country) {
-        abort(404, 'Country not found');
-    }
+        // Format country data for view
+        $countryData = [
+            'id' => $country->id,
+            'code' => $country->country_code,
+            'title' => $country->country_name,
+            'flag_url' => $country->flag_url,
+        ];
 
-    // Mock packages for now
-    $packages = [
-        ['id' => 1, 'title' => '1GB', 'validity' => '7 days', 'price' => 4.50],
-        ['id' => 2, 'title' => '2GB', 'validity' => '15 days', 'price' => 6.50],
-        ['id' => 3, 'title' => '3GB', 'validity' => '30 days', 'price' => 8.50],
-        ['id' => 4, 'title' => '5GB', 'validity' => '30 days', 'price' => 11.50],
-        ['id' => 5, 'title' => '10GB', 'validity' => '30 days', 'price' => 18.00],
-        ['id' => 6, 'title' => '20GB', 'validity' => '30 days', 'price' => 34.00],
-        ['id' => 7, 'title' => 'Unlimited', 'validity' => '10 days', 'price' => 35.00],
-    ];
-
-    $features = [
+        $features = [
             'network' => '4G LTE / 5G',
             'speed'   => 'High speed (depends on local provider)',
             'phone'   => 'No local phone number',
             'topup'   => 'Not supported',
-    ];
+        ];
 
-    return view('users.esim-plan', compact('country', 'packages', 'features'));
-}
-
+        return view('users.esim-plan', [
+            'country' => $countryData,
+            'packages' => $packages,
+            'features' => $features
+        ]);
+    }
 
     public function checkout($code, $packageId)
     {
-        // Get country from cache
-        $countries = Cache::get('countries_list', []);
-        $country = collect($countries)->firstWhere('code', strtoupper($code));
-        if (!$country) abort(404, 'Country not found');
+        // Get country from database
+        $country = EsimCountry::where('country_code', strtoupper($code))
+            ->where('is_active', true)
+            ->first();
 
-        // Mock packages (same as before)
-        $packages = [
-            ['id' => 1, 'title' => '1GB', 'validity' => '7 days', 'price' => 4.50],
-            ['id' => 2, 'title' => '2GB', 'validity' => '15 days', 'price' => 6.50],
-            ['id' => 3, 'title' => '3GB', 'validity' => '30 days', 'price' => 8.50],
-            ['id' => 4, 'title' => '5GB', 'validity' => '30 days', 'price' => 11.50],
-            ['id' => 5, 'title' => '10GB', 'validity' => '30 days', 'price' => 18.00],
-            ['id' => 6, 'title' => '20GB', 'validity' => '30 days', 'price' => 34.00],
-            ['id' => 7, 'title' => 'Unlimited', 'validity' => '10 days', 'price' => 35.00],
+        if (!$country) {
+            abort(404, 'Country not found');
+        }
+
+        // Get specific package
+        $package = EsimPackage::where('id', $packageId)
+            ->where('esim_country_id', $country->id)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$package) {
+            abort(404, 'Package not found');
+        }
+
+        // Format data for view
+        $countryData = [
+            'id' => $country->id,
+            'code' => $country->country_code,
+            'title' => $country->country_name,
+            'flag_url' => $country->flag_url,
         ];
 
-        $package = collect($packages)->firstWhere('id', $packageId);
-        if (!$package) abort(404, 'Package not found');
+        $packageData = [
+            'id' => $package->id,
+            'title' => $package->plan,
+            'validity' => $package->validity_days . ' days',
+            'price' => number_format($package->price, 2),
+        ];
 
-        return view('users.esim-checkout', compact('country', 'package'));
+        return view('users.esim-checkout', [
+            'country' => $countryData,
+            'package' => $packageData
+        ]);
     }
 
     public function store(Request $request, string $countryCode, string $packageId)
     {
-        $request->validate([
-            'pin' => 'required|array|size:4',
-            'pin.*' => 'required|numeric|digits:1',
-        ]);
+        try {
+            $request->validate([
+                'pin' => 'required|array|size:4',
+                'pin.*' => 'required|numeric|digits:1',
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid PIN format. Please enter 4 digits.',
+            ], 422);
+        }
 
         // Combine PIN array into one string
         $inputPin = implode('', $request->pin);
 
-        // Verify PIN
-        PinHelper::verifyPin($inputPin);
+        try {
+            // Verify PIN
+            PinHelper::verifyPin($inputPin);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->validator->errors()->first('pin') ?? 'Invalid PIN',
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('PIN verification failed', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'PIN verification failed. Please try again.',
+            ], 400);
+        }
 
-        // Example: lookup package price from DB/API (replace with your logic)
-        $packagePrice = 10; // <-- replace with actual package price
-        $providerName = strtoupper($countryCode); // you can change this if needed
+        // Fetch active country
+        $country = EsimCountry::where('country_code', strtoupper($countryCode))
+            ->where('is_active', true)
+            ->first();
 
-        // Create transaction
-        $transaction = Transaction::create([
-            'reference'  => Str::uuid()->toString(),
-            'user_id'    => auth()->id(),
-            'type'       => 'eSIM Purchase',
-            'channel'    => 'web',
-            'provider'   => $providerName,
-            'phone'      => null, // optional if not tied to phone
-            'recipient'  => $countryCode, // store country code as recipient
-            'amount'     => $packagePrice,
-            'status'     => 'Pending',
-            'response'   => null, // will be filled after API response
-        ]);
+        if (!$country) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Country not found or inactive',
+            ], 404);
+        }
 
-        return redirect()
-            ->route('transactions.show', $transaction->id)
-            ->with('success', 'Transaction created successfully and is pending.');
+        // Fetch active package
+        $package = EsimPackage::where('id', $packageId)
+            ->where('esim_country_id', $country->id)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$package) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Package not found or inactive',
+            ], 404);
+        }
+
+        $userId = auth()->id();
+        $amount = (float) $package->price;
+
+        try {
+            DB::beginTransaction();
+
+            // Lock wallet to prevent race condition
+            $wallet = Wallet::where('user_id', $userId)->lockForUpdate()->first();
+
+            if (!$wallet) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Wallet not found. Please contact support.',
+                ], 400);
+            }
+
+            if ($wallet->balance < $amount) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Insufficient balance. You need ₦' . number_format($amount, 2) . ' but have ₦' . number_format($wallet->balance, 2),
+                ], 400);
+            }
+
+            // Generate shorter unique transaction reference (max 30 chars)
+            $reference = 'ESIM' . time() . strtoupper(Str::random(10));
+
+            // Create transaction record
+            $transaction = Transaction::create([
+                'reference' => $reference,
+                'user_id' => $userId,
+                'type' => 'esim',
+                'title' => 'eSIM Purchase',
+                'channel' => 'web',
+                'provider' => $country->country_name,
+                'phone' => null,
+                'recipient' => $country->country_name . ' - ' . $package->plan,
+                'amount' => $amount,
+                'status' => 'pending',
+                'response' => json_encode([
+                    'country' => $country->country_name,
+                    'package' => $package->plan,
+                    'validity' => $package->validity_days . ' days',
+                ]),
+            ]);
+
+            // Deduct wallet balance
+            $wallet->decrement('balance', $amount);
+
+            DB::commit();
+
+            Log::info('eSIM purchase successful', [
+                'transaction_id' => $transaction->id,
+                'reference' => $reference,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'eSIM purchase successful! Check your transactions for details.',
+                'transaction_id' => $transaction->id,
+                'data' => [
+                    'transaction_reference' => $reference,
+                    'country' => $country->country_name,
+                    'package' => $package->plan,
+                    'validity' => $package->validity_days . ' days',
+                    'amount' => $amount,
+                    'formatted_amount' => '₦' . number_format($amount, 2),
+                    'new_balance' => $wallet->fresh()->balance,
+                    'formatted_balance' => '₦' . number_format($wallet->fresh()->balance, 2),
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('eSIM purchase error', [
+                'user_id' => $userId,
+                'country_code' => $countryCode,
+                'package_id' => $packageId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while processing your request. Please try again.',
+            ], 500);
+        }
     }
 }

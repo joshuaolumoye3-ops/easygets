@@ -16,15 +16,7 @@
             <h1 class="text-2xl font-bold text-gray-800">Select Country</h1>
         </div>
 
-        <!-- Provider Badge -->
-        <div class="mb-6 flex items-center justify-center">
-            <div class="inline-flex items-center space-x-2 bg-blue-50 px-4 py-2 rounded-full border border-blue-200">
-                <div class="w-6 h-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded-md flex items-center justify-center text-white text-xs font-bold">
-                    5S
-                </div>
-                <span class="text-sm font-medium text-blue-900">Provider 1 (5sim.net)</span>
-            </div>
-        </div>
+        
 
         <!-- Search Bar -->
         <div class="relative mb-8">

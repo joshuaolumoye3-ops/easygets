@@ -13,8 +13,13 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ asset('assets/styles/modern-vertical.css') }}">
-    <link rel="shortcut icon" href="{{ asset('assets/images/favicon.png') }}" />
+    <link rel="shortcut icon" href="{{ asset('easygets-fav-black.png') }}" />
     <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: black;
+        }
         .bg-green { background: #03624C; }
         .bg-red { background: red; }
         .text-white { color: white; }
@@ -22,7 +27,7 @@
         /* alert positioning */
         .alert-message {
             position: fixed;
-            top: 20px;
+            top: 90px;
             right: 20px;
             z-index: 9999;
             min-width: 250px;
@@ -38,9 +43,9 @@
         }
     </style>
 </head>
-<body class="bg-gray-100">
+<body>
 
-    <!-- Sidebar -->
+    <!-- Include Sidebar and Navbar Component -->
     @include('partials.admin.header')
 
     <!-- Flash Messages -->
@@ -66,20 +71,12 @@
         </div>
     @endif
 
-    <!-- Main Content -->
-    <div class="flex-1 min-h-screen flex flex-col bg-black">
-        <main class="flex-1 p-4">
-            @yield('content')
-        </main>
-    </div>
-
     <!-- JS -->
     <script src="{{ asset('assets/vendors/js/vendor.bundle.base.js') }}"></script>
     <script src="{{ asset('assets/vendors/chart.js/chart.umd.js') }}"></script>
     <script src="{{ asset('assets/vendors/owl-carousel-2/owl.carousel.min.js') }}"></script>
     <script src="{{ asset('assets/js/dashboard.js') }}"></script>
     <script src="{{ asset('assets/js/todolist.js') }}"></script>
-    <script src="{{ asset('assets/js/sidebar.js') }}"></script>
 
     <script>
         // Auto-hide flash messages after 5 seconds
@@ -88,7 +85,7 @@
             if (flash) {
                 setTimeout(() => {
                     flash.style.animation = "fadeOut 0.5s forwards";
-                    setTimeout(() => flash.remove(), 500); // remove after fadeout
+                    setTimeout(() => flash.remove(), 500);
                 }, 5000);
             }
         });

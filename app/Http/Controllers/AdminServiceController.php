@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use App\Models\Transaction;
 use App\Models\EsimUpload;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AdminServiceController extends Controller
 {
@@ -244,131 +246,147 @@ class AdminServiceController extends Controller
     }
 
 
-   public function saveProducts(Request $request, $providerId)
-{
-    $provider = Provider::findOrFail($providerId);
+    public function saveProducts(Request $request, $providerId)
+    {
+        $provider = Provider::findOrFail($providerId);
 
-    try {
-        if ($provider->api_identifier === 'demmyglobal') {
-            // Handle Data Products (Demmy Global)
-            $response = DemmyPayHelper::getDataProducts();
-            $apiProducts = $response['data'] ?? [];
-            $clientPrice = $request->input('client_price');
-
-            foreach ($apiProducts as $apiProduct) {
-                $productCode = (string)($apiProduct['id']);
-                $apiPrice    = (float)($apiProduct['amount']);
-
-                $productName = ($apiProduct['name'] ?? 'Unknown') .
-                               ' - ' . ($apiProduct['size'] ?? 'N/A') .
-                               ' (' . ($apiProduct['validity'] ?? 'N/A') . ')';
-
-                Product::updateOrCreate(
-                    [
-                        'provider_id'  => $provider->id,
-                        'product_code' => $productCode,
-                    ],
-                    [
-                        'name'         => $productName,
-                        'category'     => strtoupper($apiProduct['network']['name'] ?? 'DATA'),
-                        'api_price'    => $apiPrice,
-                        'client_price' => $clientPrice,
-                    ]
-                );
-            }
-        }elseif($provider->api_identifier === 'morethanpanel'){
-             $clientPrice = $request->input('client_price');
-            Product::updateOrCreate(
-                    [
-                        'provider_id'  => $provider->id,
-                        'product_code' => 'morethanpanel',
-                    ],
-                    [
-                        'name'         => 'MoreThanPanel',
-                        'category'     => 'social',
-                        'api_price'    => 0,
-                        'client_price' => $clientPrice,
-                    ]
-                );
-
-
-        } elseif ($provider->api_identifier === 'clubkonnect-electricity') {
-            // Handle Electricity Products
-            $userId = env('CLUBKONNECT_USERID');
-            $response = Http::get("https://www.nellobytesystems.com/APIElectricityDiscosV1.asp", [
-                'UserID' => $userId
-            ]);
-
-            if ($response->ok()) {
-                $apiResponse = $response->json();
+        try {
+            if ($provider->api_identifier === 'demmyglobal') {
+                // Handle Data Products (Demmy Global)
+                $response = DemmyPayHelper::getDataProducts();
+                $apiProducts = $response['data'] ?? [];
                 $clientPrice = $request->input('client_price');
 
-                foreach ($apiResponse as $discoKey => $discoArray) {
-                    foreach ($discoArray as $disco) {
-                        $companyId   = (string)($disco['ID'] ?? '');
-                        $companyName = $disco['NAME'] ?? 'Unknown Disco';
+                foreach ($apiProducts as $apiProduct) {
+                    $productCode = (string)($apiProduct['id']);
+                    $apiPrice    = (float)($apiProduct['amount']);
 
-                        foreach ($disco['PRODUCT'] as $product) {
-                            $productCode = $companyId . '-' . ($product['PRODUCT_ID'] ?? '');
-                            $productName = $companyName . ' - ' . ucfirst($product['PRODUCT_TYPE'] ?? 'Unknown');
+                    $productName = ($apiProduct['name'] ?? 'Unknown') .
+                                ' - ' . ($apiProduct['size'] ?? 'N/A') .
+                                ' (' . ($apiProduct['validity'] ?? 'N/A') . ')';
 
-                            $min = $product['MINIMUN_AMOUNT'] ?? $product['MINAMOUNT'] ?? 0;
-                            $max = $product['MAXIMUM_AMOUNT'] ?? $product['MAXAMOUNT'] ?? 0;
+                    Product::updateOrCreate(
+                        [
+                            'provider_id'  => $provider->id,
+                            'product_code' => $productCode,
+                        ],
+                        [
+                            'name'         => $productName,
+                            'category'     => strtoupper($apiProduct['network']['name'] ?? 'DATA'),
+                            'api_price'    => $apiPrice,
+                            'client_price' => $clientPrice,
+                        ]
+                    );
+                }
+            }elseif($provider->api_identifier === 'morethanpanel'){
+                $clientPrice = $request->input('client_price');
+                Product::updateOrCreate(
+                        [
+                            'provider_id'  => $provider->id,
+                            'product_code' => 'morethanpanel',
+                        ],
+                        [
+                            'name'         => 'MoreThanPanel',
+                            'category'     => 'social',
+                            'api_price'    => 0,
+                            'client_price' => $clientPrice,
+                        ]
+                    );
 
-                            Product::updateOrCreate(
-                                [
-                                    'provider_id'  => $provider->id,
-                                    'product_code' => $productCode,
-                                ],
-                                [
-                                    'name'         => $productName . " (₦{$min} - ₦{$max})",
-                                    'category'     => 'ELECTRICITY',
-                                    'api_price'    => 0,
-                                    'client_price' => $clientPrice,
-                                ]
-                            );
+
+            } elseif ($provider->api_identifier === 'clubkonnect-electricity') {
+                // Handle Electricity Products
+                $userId = env('CLUBKONNECT_USERID');
+                $response = Http::get("https://www.nellobytesystems.com/APIElectricityDiscosV1.asp", [
+                    'UserID' => $userId
+                ]);
+
+                if ($response->ok()) {
+                    $apiResponse = $response->json();
+                    $clientPrice = $request->input('client_price');
+
+                    foreach ($apiResponse as $discoKey => $discoArray) {
+                        foreach ($discoArray as $disco) {
+                            $companyId   = (string)($disco['ID'] ?? '');
+                            $companyName = $disco['NAME'] ?? 'Unknown Disco';
+
+                            foreach ($disco['PRODUCT'] as $product) {
+                                $productCode = $companyId . '-' . ($product['PRODUCT_ID'] ?? '');
+                                $productName = $companyName . ' - ' . ucfirst($product['PRODUCT_TYPE'] ?? 'Unknown');
+
+                                $min = $product['MINIMUN_AMOUNT'] ?? $product['MINAMOUNT'] ?? 0;
+                                $max = $product['MAXIMUM_AMOUNT'] ?? $product['MAXAMOUNT'] ?? 0;
+
+                                Product::updateOrCreate(
+                                    [
+                                        'provider_id'  => $provider->id,
+                                        'product_code' => $productCode,
+                                    ],
+                                    [
+                                        'name'         => $productName . " (₦{$min} - ₦{$max})",
+                                        'category'     => 'ELECTRICITY',
+                                        'api_price'    => 0,
+                                        'client_price' => $clientPrice,
+                                    ]
+                                );
+                            }
                         }
                     }
                 }
-            }
-        } elseif ($provider->api_identifier === 'clubkonnect-cable') {
-            // Handle Cable TV Products
-            $userId = env('CLUBKONNECT_USERID');
-            $response = Http::get("https://www.nellobytesystems.com/APICableTVPackagesV2.asp", [
-                'UserID' => $userId
-            ]);
+            } elseif ($provider->api_identifier === 'clubkonnect-cable') {
+                // Handle Cable TV Products
+                $userId = env('CLUBKONNECT_USERID');
+                $response = Http::get("https://www.nellobytesystems.com/APICableTVPackagesV2.asp", [
+                    'UserID' => $userId
+                ]);
 
-            if ($response->ok()) {
-                $apiResponse = $response->json();
-                $clientPrice = $request->input('client_price');
+                if ($response->ok()) {
+                    $apiResponse = $response->json();
+                    $clientPrice = $request->input('client_price');
 
-                if (!empty($apiResponse['TV_ID'])) {
-                    foreach ($apiResponse['TV_ID'] as $companyName => $companyArray) {
-                        foreach ($companyArray as $companyData) {
-                            if (!empty($companyData['PRODUCT']) && is_array($companyData['PRODUCT'])) {
-                                foreach ($companyData['PRODUCT'] as $product) {
-                                    $productCode = (string)($product['PACKAGE_ID'] ?? '');
-                                    $productName = $product['PACKAGE_NAME'] ?? 'Unknown';
-                                    $apiPrice    = (float)($product['PACKAGE_AMOUNT'] ?? 0);
+                    if (!empty($apiResponse['TV_ID'])) {
+                        foreach ($apiResponse['TV_ID'] as $companyName => $companyArray) {
+                            foreach ($companyArray as $companyData) {
+                                if (!empty($companyData['PRODUCT']) && is_array($companyData['PRODUCT'])) {
+                                    foreach ($companyData['PRODUCT'] as $product) {
+                                        $productCode = (string)($product['PACKAGE_ID'] ?? '');
+                                        $productName = $product['PACKAGE_NAME'] ?? 'Unknown';
+                                        $apiPrice    = (float)($product['PACKAGE_AMOUNT'] ?? 0);
 
-                                    Product::updateOrCreate(
-                                        [
-                                            'provider_id'  => $provider->id,
-                                            'product_code' => $productCode,
-                                        ],
-                                        [
-                                            'name'         => $productName,
-                                            'category'     => strtoupper($companyName), // e.g. DSTV, GOTV, STARTIMES
-                                            'api_price'    => $apiPrice,
-                                            'client_price' => $clientPrice,
-                                        ]
-                                    );
+                                        Product::updateOrCreate(
+                                            [
+                                                'provider_id'  => $provider->id,
+                                                'product_code' => $productCode,
+                                            ],
+                                            [
+                                                'name'         => $productName,
+                                                'category'     => strtoupper($companyName), // e.g. DSTV, GOTV, STARTIMES
+                                                'api_price'    => $apiPrice,
+                                                'client_price' => $clientPrice,
+                                            ]
+                                        );
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
+            }elseif ($provider->api_identifier === 'Admin-otp' || $provider->api_identifier === 'otp') {
+            // ✅ Handle OTP Provider Products
+            $clientPrice = $request->input('client_price');
+
+            Product::updateOrCreate(
+                [
+                    'provider_id'  => $provider->id,
+                    'product_code' => 'otp-verification',
+                ],
+                [
+                    'name'         => 'OTP Verification Service',
+                    'category'     => 'OTP',
+                    'api_price'    => 0,
+                    'client_price' => $clientPrice,
+                ]
+            );
         }
 
         return redirect()->back()->with('success', 'All plans saved successfully.');
@@ -423,10 +441,10 @@ class AdminServiceController extends Controller
     public function esimindex(Request $request)
     {
         // Get only eSIM transactions using the 'type' column
-        $transactions = Transaction::where('type', 'eSIM Purchase')
+        $transactions = Transaction::where('type', 'esim')
             ->latest()
             ->paginate(15);
-
+        // dd($transactions);
         return view('admin.esim', compact('transactions'));
     }
 
@@ -453,42 +471,126 @@ class AdminServiceController extends Controller
     /**
      * Handle admin upload (numbers, details, images).
      */
-    public function upload(Request $request)
-    {
-        $request->validate([
-            'transaction_id' => 'required|exists:transactions,id',
-            'numbers'        => 'nullable|string|max:255',
-            'details'        => 'nullable|string',
-            'images.*'       => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-        ]);
+    /**
+ * Upload or Update eSIM details for a transaction
+ */
+public function upload(Request $request)
+{
+    $request->validate([
+        'transaction_id' => 'required|exists:transactions,id',
+        'esim_upload_id' => 'nullable|exists:esim_uploads,id',
+        'numbers' => 'nullable|string',
+        'details' => 'nullable|string',
+        'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max per image
+    ]);
 
-        $txn = Transaction::findOrFail($request->transaction_id);
+    try {
+        DB::beginTransaction();
 
-        // Prepare image paths
-        $images = [];
-        if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $img) {
-                $filename = time() . '_' . uniqid() . '.' . $img->getClientOriginalExtension();
-                $img->move(public_path('uploads/esim'), $filename);
-                $images[] = 'uploads/esim/' . $filename; // relative path for frontend
-            }
+        $transaction = \App\Models\Transaction::findOrFail($request->transaction_id);
+        
+        // Check if we're updating or creating
+        $esimUpload = null;
+        if ($request->esim_upload_id) {
+            $esimUpload = \App\Models\EsimUpload::findOrFail($request->esim_upload_id);
+        } else {
+            $esimUpload = \App\Models\EsimUpload::where('transaction_id', $transaction->id)->first();
         }
 
-        // Save into esim_uploads table
-        EsimUpload::create([
-            'user_id'       => auth()->id(),
-            'transaction_id'=> $txn->id,
-            'number'        => $request->numbers,
-            'details'       => $request->details,
-            'images'        => $images,
+        // Prepare data for update/create
+        $data = [
+            'user_id' => $transaction->user_id,
+            'transaction_id' => $transaction->id,
+        ];
+
+        // Only update fields that were provided
+        if ($request->filled('numbers')) {
+            $data['number'] = $request->numbers;
+        }
+
+        if ($request->filled('details')) {
+            $data['details'] = $request->details;
+        }
+
+        // Handle image uploads
+        $existingImages = [];
+        if ($esimUpload && $esimUpload->images) {
+            // Get existing images
+            $existingImages = is_array($esimUpload->images) 
+                ? $esimUpload->images 
+                : json_decode($esimUpload->images, true) ?? [];
+        }
+
+        if ($request->hasFile('images')) {
+            $newImages = [];
+            
+            foreach ($request->file('images') as $image) {
+                try {
+                    // Create directory if it doesn't exist
+                    $directory = 'uploads/esim';
+                    if (!file_exists(public_path($directory))) {
+                        mkdir(public_path($directory), 0755, true);
+                    }
+
+                    // Generate unique filename
+                    $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+                    $path = $directory . '/' . $filename;
+
+                    // Move file to public directory
+                    $image->move(public_path($directory), $filename);
+
+                    $newImages[] = $path;
+                    
+                    Log::info('Image uploaded successfully', [
+                        'filename' => $filename,
+                        'path' => $path
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Error uploading image', [
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            // Merge existing and new images
+            $allImages = array_merge($existingImages, $newImages);
+            $data['images'] = json_encode($allImages);
+        }
+
+        // Update or create the eSIM upload record
+        if ($esimUpload) {
+            // Update existing record (only update provided fields)
+            $esimUpload->update($data);
+            $action = 'updated';
+        } else {
+            // Create new record
+            $esimUpload = \App\Models\EsimUpload::create($data);
+            $action = 'created';
+        }
+
+        DB::commit();
+
+        Log::info("eSIM details {$action}", [
+            'esim_upload_id' => $esimUpload->id,
+            'transaction_id' => $transaction->id,
+            'user_id' => $transaction->user_id,
+            'has_images' => $request->hasFile('images'),
+            'image_count' => $request->hasFile('images') ? count($request->file('images')) : 0
         ]);
 
-        // Update transaction status to Approved
-        $txn->update([
-            'status' => 'Approved'
+        return redirect()->back()->with('success', "eSIM details {$action} successfully!");
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        
+        Log::error('Error uploading eSIM details', [
+            'transaction_id' => $request->transaction_id,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
         ]);
 
-        return back()->with('success', 'Details uploaded and transaction approved successfully.');
+        return redirect()->back()->with('error', 'Failed to save eSIM details: ' . $e->getMessage());
     }
+}
 
 }

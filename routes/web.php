@@ -19,7 +19,9 @@ use App\Http\Controllers\AdminEsimController;
 use App\Http\Controllers\AdminServiceController;
 use App\Http\Controllers\EsimController;
 use App\Http\Controllers\FlutterwaveWebhookController;
+use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\VirtualAccountController;
+use Illuminate\Support\Facades\Http;
 
 Route::middleware('guest')->group(function () {
 
@@ -64,6 +66,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/data/purchase', [DataController::class, 'purchase'])->name('data.purchase');
     Route::post('/airtime/recharge', [AirtimeController::class, 'recharge'])->name('airtime.recharge');
     Route::patch('/update-profile', [RegisterController::class, 'updateProfile'])->name('updateProfile.submit');
+
+    Route::get('/history', [HistoryController::class, 'index'])->name('history');
+    Route::post('/history/get-sms', [HistoryController::class, 'getSmsCode'])->name('history.get-sms');
+    Route::post('/history/cancel-activation', [HistoryController::class, 'cancelActivation'])->name('history.cancel-activation');
 
     Route::post('/purchase/prepare', [CountryController::class, 'preparePurchase'])->name('prepare.purchase');
     Route::get('/purchase/confirm', [CountryController::class, 'showConfirm'])->name('confirm.payment');
@@ -136,9 +142,6 @@ Route::post('/process-payment', [CountryController::class, 'process'])
     Route::get('/social/services', [SocialController::class, 'services'])->name('social.services');
     Route::post('/social/order', [SocialController::class, 'order'])->name('social.order');
 
-    Route::get('/history', function () {
-        return view('users.history');
-    });
     Route::get('/more-services', function () {
         return view('users.moreService');
     });
@@ -206,16 +209,20 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
     Route::post('/providers/{provider}/products/save', [AdminServiceController::class, 'saveProducts'])->name('admin.products.save');
     Route::post('/providers/{provider}/markup', [AdminServiceController::class, 'applyMarkup'])->name('admin.providers.markup');
     Route::delete('/products/{id}', [AdminServiceController::class, 'destroy'])->name('admin.products.delete');
-    // Route::get('/esim-transaction', [AdminServiceController::class, 'esimindex'])->name('admin.esim.index');
+    Route::get('/esim-transaction', [AdminServiceController::class, 'esimindex'])->name('admin.esim.transaction');
     Route::get('/esim/{id}', [AdminServiceController::class, 'show'])->name('admin.esim.show');
     Route::post('/esim/upload', [AdminServiceController::class, 'upload'])->name('admin.esim.upload');
     
     Route::prefix('esim')->group(function () {
         Route::get('/', [AdminEsimController::class, 'index'])->name('admin.esim.index');
+        Route::post('/refresh-countries', [AdminEsimController::class, 'refreshCountries'])->name('admin.esim.refresh');
+        Route::post('/seed-countries', [AdminEsimController::class, 'seedSampleCountries'])->name('admin.esim.seed');
         Route::post('/{id}/update-price', [AdminEsimController::class, 'updatePrice'])->name('admin.esim.updatePrice');
         Route::get('/{countryId}/packages', [AdminEsimController::class, 'packages'])->name('admin.esim.packages');
         Route::post('/{countryId}/packages/save', [AdminEsimController::class, 'savePackage'])->name('admin.esim.savePackage');
         Route::delete('/packages/{id}', [AdminEsimController::class, 'deletePackage'])->name('admin.esim.deletePackage');
+        Route::post('/{id}/toggle-status', [AdminEsimController::class, 'toggleCountryStatus'])->name('admin.esim.toggleStatus');
+        Route::get('/transaction/{id}', [AdminEsimController::class, 'showTransaction'])->name('admin.esim.transaction.show');
     });
 
 
@@ -227,3 +234,4 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
 Route::middleware(['admin:super_admin'])->prefix('admin')->group(function () {
     Route::post('/create', [AdminController::class, 'createAdmin'])->name('admin.create');
 });
+
