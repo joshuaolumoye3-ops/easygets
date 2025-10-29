@@ -1,7 +1,7 @@
 <footer class="fixed bottom-0 left-0 right-0 max-w-xl mx-auto bg-white border-t border-gray-200 shadow-[0_-1px_4px_rgba(0,0,0,0.05)]">
     <nav class="flex justify-around items-center h-20">
         <!-- Nav Item: Home -->
-        <a href="/dashboard"
+        <a href="dashboard"
            class="flex flex-col items-center justify-center text-center w-full
             {{ request()->is('dashboard') ? 'text-brand-green font-bold' : 'text-black hover:text-brand-green transition-colors' }}">
             <!-- Icon -->
@@ -30,7 +30,7 @@
         </a>
 
         <!-- Nav Item: History -->
-        <a href="/history"
+        <a href="history"
            class="flex flex-col items-center justify-center text-center w-full
             {{ request()->is('history') ? 'text-brand-green font-bold' : 'text-black hover:text-brand-green transition-colors' }}">
             <!-- Icon -->
@@ -42,7 +42,7 @@
         </a>
 
         <!-- Nav Item: Profile -->
-        <a href="/profile"
+        <a href="profile"
             class="flex flex-col items-center justify-center text-center w-full
                     {{ request()->is('profile') ? 'text-brand-green font-bold' : 'text-black hover:text-brand-green transition-colors' }}">
                 <!-- Icon -->

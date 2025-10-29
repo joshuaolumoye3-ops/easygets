@@ -16,7 +16,11 @@
             <h1 class="text-2xl font-bold text-gray-800">Select Country</h1>
         </div>
 
-        
+        @if($errors->any())
+            <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p class="text-red-700 text-sm">{{ $errors->first() }}</p>
+            </div>
+        @endif
 
         <!-- Search Bar -->
         <div class="relative mb-8">
@@ -56,7 +60,7 @@
             <h2 class="text-xl font-bold text-gray-800 mb-4">Available Countries</h2>
             <div id="countryList" class="space-y-3">
                 @forelse ($countries as $country)
-                    <a href="{{ route('services.5sim.operators', ['serviceCode' => $serviceCode, 'country' => $country['name']]) }}" 
+                    <a href="{{ route('operators.5sim', ['serviceCode' => $serviceCode, 'country' => $country['name']]) }}" 
                        class="block group country-item" data-country-name="{{ strtolower($country['name']) }}">
                         <div class="flex items-center justify-between p-4 bg-white border-2 border-gray-100 rounded-xl hover:border-blue-500 hover:bg-blue-50/50 transition-all duration-200 group-hover:shadow-md">
                             <div class="flex items-center space-x-4 flex-1">
@@ -72,15 +76,24 @@
                                         <span class="text-xs text-gray-500">
                                             Available: {{ number_format($country['qty']) }}
                                         </span>
-                                        <span class="text-xs text-green-600 font-medium">
-                                            ${{ number_format($country['price'], 2) }}
-                                        </span>
                                     </div>
                                 </div>
                             </div>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-blue-600 transition flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                            </svg>
+                            <div class="text-right flex-shrink-0 ml-4">
+                                <div class="flex items-center space-x-2">
+                                    <div>
+                                        <p class="text-lg font-bold text-green-600">
+                                            ₦{{ number_format($country['price_ngn'], 2) }}
+                                        </p>
+                                        {{-- <p class="text-xs text-gray-400 mt-0.5">
+                                            ${{ number_format($country['price_usd'], 2) }}
+                                        </p> --}}
+                                    </div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-blue-600 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </div>
+                            </div>
                         </div>
                     </a>
                 @empty
@@ -107,19 +120,19 @@
             </div>
         </div>
 
-        @if(count($countries) > 0)
+        {{-- @if(count($countries) > 0)
         <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div class="flex items-start space-x-2">
                 <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
                 </svg>
                 <div class="text-xs text-blue-800">
-                    <p class="font-medium mb-1">Next Step:</p>
-                    <p>Choose a country to see available operators and their pricing</p>
+                    <p class="font-medium mb-1">Pricing Information:</p>
+                    <p>Prices shown in Naira (₦) with USD reference. Exchange rate: ₦{{ number_format($exchangeRate ?? 1600, 2) }}</p>
                 </div>
             </div>
         </div>
-        @endif
+        @endif --}}
     </div>
 </div>
 

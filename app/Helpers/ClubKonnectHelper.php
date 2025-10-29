@@ -3,6 +3,7 @@
 namespace App\Helpers;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class ClubKonnectHelper
 {
@@ -27,6 +28,116 @@ class ClubKonnectHelper
     }
 
     /**
+     * Get Available Betting Companies
+     */
+    public static function getBettingCompanies()
+    {
+        try {
+            $response = Http::withoutVerifying()
+                ->timeout(15)
+                ->acceptJson()
+                ->get('https://www.nellobytesystems.com/APIBettingCompaniesV2.asp');
+
+            if ($response->successful()) {
+                $data = $response->json();
+
+                if (!empty($data) && isset($data['BETTING_COMPANY'])) {
+                    return $data; // ✅ return array, not JsonResponse
+                }
+            }
+
+            return ['BETTING_COMPANY' => []];
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch betting companies: ' . $e->getMessage());
+            return ['BETTING_COMPANY' => []];
+        }
+    }
+
+    /**
+     * Place a Bet / Fund Betting Account
+     */
+    public static function placeBet($bettingCompany, $customerId, $amount, $requestId, $callbackUrl = null)
+    {
+        $params = [
+            'UserID' => self::getUserId(),
+            'APIKey' => self::getApiKey(),
+            'BettingCompany' => $bettingCompany,
+            'CustomerID' => $customerId,
+            'Amount' => $amount,
+            'RequestID' => $requestId,
+            'CallBackURL' => $callbackUrl ?? self::getCallbackUrl(),
+        ];
+
+        try {
+            $url = self::getBaseUrl() . '/APIBettingV1.asp';
+
+            $response = Http::timeout(30)->get($url, $params);
+
+            \Log::info('Betting API Request', ['url' => $url, 'params' => $params]);
+            \Log::info('Betting API Response', ['response' => $response->body()]);
+
+            // Decode safely
+            $data = json_decode($response->body(), true);
+
+            // If API returns XML or plain text (sometimes ClubKonnect does this)
+            if ($data === null) {
+                // Try XML decode fallback
+                if (str_contains($response->body(), '<')) {
+                    try {
+                        $xml = simplexml_load_string($response->body(), 'SimpleXMLElement', LIBXML_NOCDATA);
+                        $data = json_decode(json_encode($xml), true);
+                    } catch (\Exception $e) {
+                        \Log::error('XML decode failed: ' . $e->getMessage());
+                    }
+                }
+            }
+
+            // Normalize
+            if (!is_array($data)) {
+                return [
+                    'status' => false,
+                    'statuscode' => '500',
+                    'message' => 'Invalid API response',
+                    'raw' => $response->body(),
+                ];
+            }
+
+            return $data;
+        } catch (\Exception $e) {
+            \Log::error('Betting API Exception: ' . $e->getMessage(), ['params' => $params]);
+            return [
+                'status' => false,
+                'statuscode' => '500',
+                'message' => 'API request failed',
+            ];
+        }
+    }
+
+
+    /**
+     * Verify Betting Customer ID
+     */
+    public static function verifyBettingCustomer($bettingCompany, $customerId)
+    {
+        $params = [
+            'UserID' => self::getUserId(),
+            'APIKey' => self::getApiKey(),
+            'BettingCompany' => $bettingCompany,
+            'CustomerID' => $customerId
+        ];
+
+        try {
+            $response = Http::timeout(15)->get(self::getBaseUrl() . '/APIVerifyBettingV1.asp', $params);
+            return $response->json();
+        } catch (\Exception $e) {
+            \Log::error('Customer verification error: ' . $e->getMessage());
+            return [
+                'customer_name' => 'Error, verification failed'
+            ];
+        }
+    }
+
+    /**
      * Buy Airtime
      */
     public static function buyAirtime($mobileNetwork, $amount, $mobileNumber, $requestId, $callbackUrl = null, $bonusType = null)
@@ -46,7 +157,6 @@ class ClubKonnectHelper
         }
 
         $response = Http::get(self::getBaseUrl() . '/APIAirtimeV1.asp', $params);
-
         return $response->json();
     }
 
@@ -66,7 +176,6 @@ class ClubKonnectHelper
         ];
 
         $response = Http::get(self::getBaseUrl() . '/APIDatabundleV1.asp', $params);
-
         return $response->json();
     }
 
@@ -87,7 +196,6 @@ class ClubKonnectHelper
         ];
 
         $response = Http::get(self::getBaseUrl() . '/APICableTVV1.asp', $params);
-
         return $response->json();
     }
 
@@ -104,7 +212,6 @@ class ClubKonnectHelper
         ];
 
         $response = Http::get(self::getBaseUrl() . '/APIVerifyCableTVV1.0.asp', $params);
-
         return $response->json();
     }
 
@@ -119,7 +226,6 @@ class ClubKonnectHelper
         ];
 
         $response = Http::get(self::getBaseUrl() . '/APICableTVPackagesV2.asp', $params);
-
         return $response->json();
     }
 
@@ -140,7 +246,6 @@ class ClubKonnectHelper
         }
 
         $response = Http::get(self::getBaseUrl() . '/APIQueryV1.asp', $params);
-
         return $response->json();
     }
 
@@ -156,124 +261,61 @@ class ClubKonnectHelper
         ];
 
         $response = Http::get(self::getBaseUrl() . '/APICancelV1.asp', $params);
-
         return $response->json();
     }
 
+    /**
+     * Buy Electricity Bill
+     */
+    public static function buyElectricity($electricCompany, $package, $meterNo, $amount, $phoneNo, $requestId, $callbackUrl = null)
+    {
+        $params = [
+            'UserID'          => self::getUserId(),
+            'APIKey'          => self::getApiKey(),
+            'ElectricCompany' => $electricCompany,
+            'MeterType'       => $package,
+            'MeterNo'         => $meterNo,
+            'Amount'          => $amount,
+            'PhoneNo'         => $phoneNo,
+            'RequestID'       => $requestId,
+            'CallBackURL'     => $callbackUrl ?? self::getCallbackUrl()
+        ];
+
+        $response = Http::get(self::getBaseUrl() . '/APIElectricityV1.asp', $params);
+        return $response->json();
+    }
 
     /**
- * Place a bet
- */
-public static function placeBet($bettingCompany, $customerId, $amount, $requestId, $callbackUrl = null)
-{
-    $params = [
-        'UserID' => self::getUserId(),
-        'APIKey' => self::getApiKey(),
-        'BettingCompany' => $bettingCompany,
-        'CustomerID' => $customerId,
-        'Amount' => $amount,
-        'RequestID' => $requestId,
-        'CallBackURL' => $callbackUrl ?? self::getCallbackUrl()
-    ];
+     * Verify Electricity Meter Number
+     */
+    public static function verifyElectricityMeter($electricCompany, $meterNo)
+    {
+        $params = [
+            'UserID'          => self::getUserId(),
+            'APIKey'          => self::getApiKey(),
+            'ElectricCompany' => $electricCompany,
+            'MeterNo'         => $meterNo
+        ];
 
-    $response = Http::get(self::getBaseUrl() . '/APIBettingV1.asp', $params);
+        $response = Http::get(self::getBaseUrl() . '/APIVerifyElectricityV1.asp', $params);
+        return $response->json();
+    }
 
-    return $response->json();
-}
+    /**
+     * Buy JAMB PIN
+     */
+    public static function buyJamb($phoneNo, $requestId, $examType = 'utme', $callbackUrl = null)
+    {
+        $params = [
+            'UserID' => self::getUserId(),
+            'APIKey' => self::getApiKey(),
+            'ExamType' => $examType,
+            'PhoneNo' => $phoneNo,
+            'RequestID' => $requestId,
+            'CallBackURL' => $callbackUrl ?? self::getCallbackUrl()
+        ];
 
-// /**
-//  * Buy Electricity Bill
-//  */
-// public static function buyElectricity($electricCompany, $package, $meterNo, $amount, $phoneNo, $requestId, $callbackUrl = null)
-// {
-//     $params = [
-//         'UserID'          => self::getUserId(),
-//         'APIKey'          => self::getApiKey(),
-//         'ElectricCompany' => $electricCompany, // e.g. '01' for Eko Electric
-//         'MeterType'       => $package,       // '01' Prepaid, '02' Postpaid
-//         'MeterNo'         => $meterNo,
-//         'Amount'          => $amount,
-//         'PhoneNo'         => $phoneNo,
-//         'RequestID'       => $requestId,
-//         'CallBackURL'     => $callbackUrl ?? self::getCallbackUrl()
-//     ];
-
-//     $response = Http::get(self::getBaseUrl() . '/APIElectricityV1.asp', $params);
-
-//     return $response->json();
-// }
-
-// /**
-//  * Verify Electricity Meter Number
-//  */
-// public static function verifyElectricityMeter($electricCompany, $meterNo)
-// {
-//     $params = [
-//         'UserID'          => self::getUserId(),
-//         'APIKey'          => self::getApiKey(),
-//         'ElectricCompany' => $electricCompany,
-//         'MeterNo'         => $meterNo
-//     ];
-
-//     $response = Http::get(self::getBaseUrl() . '/APIVerifyElectricityV1.asp', $params);
-
-//     return $response->json();
-// }
-
-
-/**
- * Buy Electricity Bill
- */
-public static function buyElectricity($electricCompany, $package, $meterNo, $amount, $phoneNo, $requestId, $callbackUrl = null)
-{
-    $params = [
-        'UserID'          => self::getUserId(),
-        'APIKey'          => self::getApiKey(),
-        'ElectricCompany' => $electricCompany, // e.g. '01' for Eko Electric
-        'MeterType'       => $package,       // '01' Prepaid, '02' Postpaid
-        'MeterNo'         => $meterNo,
-        'Amount'          => $amount,
-        'PhoneNo'         => $phoneNo,
-        'RequestID'       => $requestId,
-        'CallBackURL'     => $callbackUrl ?? self::getCallbackUrl()
-    ];
-
-    $response = Http::get(self::getBaseUrl() . '/APIElectricityV1.asp', $params);
-
-    return $response->json();
-}
-
-/**
- * Verify Electricity Meter Number
- */
-public static function verifyElectricityMeter($electricCompany, $meterNo)
-{
-    $params = [
-        'UserID'          => self::getUserId(),
-        'APIKey'          => self::getApiKey(),
-        'ElectricCompany' => $electricCompany,
-        'MeterNo'         => $meterNo
-    ];
-
-    $response = Http::get(self::getBaseUrl() . '/APIVerifyElectricityV1.asp', $params);
-
-    return $response->json();
-}
-
-
-public static function buyJamb($phoneNo,  $requestId, $examType = 'utme', $callbackUrl = null) {
-    $params = [
-        'UserID' => self::getUserId(),
-        'APIKey' => self::getApiKey(),
-        'ExamType' => $examType,
-        'PhoneNo' => $phoneNo,
-        'RequestID' => $requestId,
-        'CallBackURL' => $callbackUrl ?? self::getCallbackUrl()
-    ];
-
-    $response = Http::get(self::getBaseUrl() . '/APIJAMBV1.asp', $params);
-
-    return $response->json();
-}
-
+        $response = Http::get(self::getBaseUrl() . '/APIJAMBV1.asp', $params);
+        return $response->json();
+    }
 }

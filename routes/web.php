@@ -20,6 +20,7 @@ use App\Http\Controllers\AdminServiceController;
 use App\Http\Controllers\EsimController;
 use App\Http\Controllers\FlutterwaveWebhookController;
 use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\SocialBoostController;
 use App\Http\Controllers\VirtualAccountController;
 use Illuminate\Support\Facades\Http;
 
@@ -89,6 +90,17 @@ Route::middleware('auth')->group(function () {
     Route::post('/verify-electricity-meter', [ElectricityController::class, 'verifyElectricityMeter'])->name('verify.meter');
     Route::post('/electricity/purchase', [ElectricityController::class, 'purchase'])->name('electricity.purchase');
 
+    Route::get('/social-boost', [SocialBoostController::class, 'index'])->name('social-boost.index');
+    
+    // Process purchase
+    Route::post('/social-boost/purchase', [SocialBoostController::class, 'purchase'])->name('social-boost.purchase');
+    
+    // View user's orders
+    Route::get('/social-boost/orders', [SocialBoostController::class, 'orders'])->name('social-boost.orders');
+    
+    // Check order status
+    Route::get('/social-boost/status/{orderId}', [SocialBoostController::class, 'checkStatus'])->name('social-boost.status');
+
     // Services list
 Route::get('/services', [CountryController::class, 'showServices'])->name('services.list');
 
@@ -96,6 +108,10 @@ Route::get('/services', [CountryController::class, 'showServices'])->name('servi
 // Step 1: Show countries for a service
 Route::get('/services/{serviceCode}/5sim/countries', [CountryController::class, 'showCountries5sim'])
     ->name('services.5sim.countries');
+
+    Route::get('/services/{serviceCode}/countries-5sim', [CountryController::class, 'showCountries5sim'])->name('countries.5sim');
+    Route::get('/services/{serviceCode}/countries-5sim/{country}/operators', [CountryController::class, 'showOperators5sim'])->name('operators.5sim');
+    Route::post('/prepare-purchase-5sim', [CountryController::class, 'preparePurchase5sim'])->name('prepare.purchase.5sim');
 
 // Step 2: Show operators for a country
 Route::get('/services/{serviceCode}/5sim/{country}/operators', [CountryController::class, 'showOperators5sim'])
@@ -164,6 +180,10 @@ Route::post('/process-payment', [CountryController::class, 'process'])
     Route::get('/betting', [BettingController::class, 'show'])->name('bettinng.show');
 
     Route::post('/fund-bet', [BettingController::class, 'fund_account'])->name('fund_bet');
+
+    Route::post('/betting/verify-customer', [BettingController::class, 'verifyCustomer'])->name('betting.verify-customer');
+
+    Route::post('/clubkonnect/callback', [BettingController::class, 'handleCallback'])->name('clubkonnect.callback');
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 });

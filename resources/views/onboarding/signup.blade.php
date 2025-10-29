@@ -7,7 +7,7 @@
 <div class="flex flex-col items-center justify-center min-h-screen px-4 py-12 bg-white" style="font-family: 'Inter', sans-serif;">
     <div class="w-full max-w-sm mx-auto">
         <div class="flex justify-center mb-6">
-            <img src="https://i.ibb.co/6gT3YvJ/avatar.png" alt="User avatar" class="w-20 h-20 rounded-full" />
+            <img src="easygets-logo.jpg" alt="User avatar" class="w-36 h-36 rounded-full" />
         </div>
 
         <div class="text-center">

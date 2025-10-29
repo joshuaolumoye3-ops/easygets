@@ -99,10 +99,10 @@
                 <span class="font-medium">Status</span>
                 <span id="txnStatus" class="px-2 py-1 rounded-full text-xs"></span>
             </div>
-            <div class="flex justify-between">
+            {{-- <div class="flex justify-between">
                 <span class="font-medium">Channel</span>
                 <span id="txnChannel" class="text-gray-600"></span>
-            </div>
+            </div> --}}
             <div class="flex justify-between">
                 <span class="font-medium">Provider</span>
                 <span id="txnProvider" class="text-gray-600"></span>
@@ -151,7 +151,7 @@
     const txnReference = document.getElementById('txnReference');
     const txnAmount = document.getElementById('txnAmount');
     const txnStatus = document.getElementById('txnStatus');
-    const txnChannel = document.getElementById('txnChannel');
+    //const txnChannel = document.getElementById('txnChannel');
     const txnProvider = document.getElementById('txnProvider');
     const txnPhone = document.getElementById('txnPhone');
     const txnRecipient = document.getElementById('txnRecipient');
@@ -184,7 +184,7 @@
             txnStatus.textContent = txn.status;
             txnStatus.className = `px-2 py-1 rounded-full text-xs ${statuses[txn.status.toLowerCase()] || 'bg-gray-100 text-gray-700'}`;
 
-            txnChannel.textContent = txn.channel ?? '-';
+            //txnChannel.textContent = txn.channel ?? '-';
             txnProvider.textContent = txn.provider ?? '-';
             txnPhone.textContent = txn.phone ?? '-';
             txnRecipient.textContent = txn.recipient ?? '-';

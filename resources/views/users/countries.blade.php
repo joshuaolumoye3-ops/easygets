@@ -22,6 +22,18 @@
             </div>
         @endif
 
+        {{-- <!-- Exchange Rate Info -->
+        @if(isset($exchangeRate))
+            <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div class="flex items-center space-x-2 text-sm text-blue-800">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                    </svg>
+                    <span>Exchange Rate: ₦{{ number_format($exchangeRate, 2) }}/USD</span>
+                </div>
+            </div>
+        @endif --}}
+
         <!-- Search Bar -->
         <div class="relative mb-8">
             <span class="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -63,13 +75,18 @@
                                 <div class="flex items-center space-x-2">
                                     <div>
                                         <p class="text-lg font-bold text-green-600">
-                                            ${{ number_format($country['cost'], 2) }}
+                                            ₦{{ number_format($country['cost'], 2) }}
                                         </p>
-                                        @if(isset($country['ws_cost']) && $country['ws_cost'] < $country['cost'])
+                                        {{-- @if(isset($country['ws_cost']) && $country['ws_cost'] < $country['cost'])
                                             <p class="text-xs text-gray-500 line-through">
-                                                ${{ number_format($country['ws_cost'], 2) }}
+                                                ₦{{ number_format($country['ws_cost'], 2) }}
                                             </p>
-                                        @endif
+                                        @endif --}}
+                                        {{-- @if(isset($country['cost_usd']))
+                                            <p class="text-xs text-gray-400 mt-0.5">
+                                                ${{ number_format($country['cost_usd'], 2) }}
+                                            </p>
+                                        @endif --}}
                                     </div>
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-green-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -118,7 +135,7 @@
     let loading = false;
     let searchQuery = '';
 
-    // Buy Now Action - Updated with country details
+    // Buy Now Action
     function buyNow(projectId, countryId, countryName, countryCode) {
         const form = document.getElementById('purchaseForm');
         document.getElementById('formService').value = projectId;
@@ -133,6 +150,21 @@
         const flagUrl = `https://flagcdn.com/w80/${country.code}.png`;
         const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(country.title.substring(0, 2))}&background=10b981&color=ffffff&size=48`;
         const escapedTitle = country.title.replace(/'/g, "\\'");
+        
+        // Format NGN prices
+        const costNGN = new Intl.NumberFormat('en-NG', {
+            style: 'currency',
+            currency: 'NGN',
+            minimumFractionDigits: 2
+        }).format(country.cost);
+        
+        const wsCostNGN = country.ws_cost ? new Intl.NumberFormat('en-NG', {
+            style: 'currency',
+            currency: 'NGN',
+            minimumFractionDigits: 2
+        }).format(country.ws_cost) : null;
+        
+        const costUSD = country.cost_usd ? `$${country.cost_usd.toFixed(2)}` : '';
         
         return `
         <button onclick="buyNow(${country.project_id}, ${country.country_id}, '${escapedTitle}', '${country.code || ''}')" 
@@ -156,11 +188,9 @@
                     <div class="flex items-center space-x-2">
                         <div>
                             <p class="text-lg font-bold text-green-600">
-                                $${country.cost.toFixed(2)}
+                                ${costNGN}
                             </p>
-                            ${country.ws_cost && country.ws_cost < country.cost ? 
-                                `<p class="text-xs text-gray-500 line-through">$${country.ws_cost.toFixed(2)}</p>` : ''
-                            }
+                           
                         </div>
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-green-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />

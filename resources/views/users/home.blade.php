@@ -201,7 +201,7 @@
 
         <!-- Action Buttons -->
         <div class="grid grid-cols-2 gap-4">
-            <button onclick="window.location.href='{{ url('services') }}'" class="bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-700 transition-colors">
+            <button onclick="window.location.href='services'" class="bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-700 transition-colors">
                 Get OTP
             </button>
             <button onclick="openSocialModal()" class="bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-700 transition-colors">
@@ -599,9 +599,9 @@ function closeProviderModal() {
 
 function selectProvider(provider) {
     if (provider === '5sim') {
-        window.location.href = `/services/${selectedServiceCode}/5sim/countries`;
+        window.location.href = `/app/services/${selectedServiceCode}/5sim/countries`;
     } else {
-        window.location.href = `/services/${selectedServiceId}/countries`;
+        window.location.href = `/app/services/${selectedServiceId}/countries`;
     }
 }
 

@@ -109,7 +109,7 @@
                     <div class="absolute -right-2 -top-2 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                 </div>
                 
-                @if(isset($purchase['original_cost_usd']))
+                {{-- @if(isset($purchase['original_cost_usd']))
                     <div class="mt-4 pt-4 border-t border-gray-100">
                         <div class="flex items-center justify-center space-x-2 text-sm text-gray-500">
                             <span>USD ${{ number_format($purchase['original_cost_usd'], 2) }}</span>
@@ -124,7 +124,7 @@
                             </p>
                         @endif
                     </div>
-                @endif
+                @endif --}}
             </div>
         </div>
 

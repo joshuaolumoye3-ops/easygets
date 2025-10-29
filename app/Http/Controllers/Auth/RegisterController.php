@@ -20,75 +20,83 @@ class RegisterController extends Controller
     }
 
     public function register(Request $request)
-    {
-        // Validate input
-        $validated = $request->validate([
-            'username' => 'required|string',
-            'first_name' => 'required|string',
-            'last_name' => 'required|string',
-            'email' => 'required|email',
-            'phone_number' => 'nullable|string',
-            'password' => 'required|string|min:6|confirmed',
-        ]);
+{
+    // Validate input
+    $validated = $request->validate([
+        'username' => 'required|string|max:50',
+        'first_name' => 'required|string|max:100',
+        'last_name' => 'required|string|max:100',
+        'email' => 'required|email|max:255',
+        'phone_number' => 'nullable|string|max:20',
+        'password' => 'required|string|min:6|confirmed',
+    ]);
 
-        // Check if username already exists
-        if (User::where('username', $validated['username'])->exists()) {
-            return back()->withErrors(['username' => 'The username is already taken.'])->withInput();
-        }
-
-        // Check if user already exists by email
-        $existingUser = User::where('email', $validated['email'])->first();
-
-        if ($existingUser) {
-            if ($existingUser->email_verified_at) {
-                // User already verified → redirect to sign in
-                return redirect()->route('login')
-                    ->with('info', 'You already have an account. Please sign in.');
-            } else {
-                // User exists but email not verified → Resend OTP
-                $otp = rand(100000, 999999);
-
-                EmailOtp::updateOrCreate(
-                    ['user_id' => $existingUser->id],
-                    [
-                        'otp' => $otp,
-                        'expires_at' => Carbon::now()->addMinutes(5),
-                    ]
-                );
-
-                Mail::to($existingUser->email)->send(new OtpMail($otp));
-
-
-                return redirect()->route('onboarding.emailOtp', ['user' => $existingUser->id])
-                    ->with('warning', 'You already have an existing account with us. Please verify your email. A new OTP has been sent.');
-            }
-        }
-
-        // Create new user
-        $user = User::create([
-            'username' => $validated['username'],
-            'first_name' => $validated['first_name'],
-            'last_name' => $validated['last_name'],
-            'email' => $validated['email'],
-            'phone_number' => $validated['phone_number'] ?? null,
-            'password' => Hash::make($validated['password']),
-        ]);
-
-
-        // Generate OTP for new user
-        $otp = rand(100000, 999999);
-
-        EmailOtp::create([
-            'user_id' => $user->id,
-            'otp' => $otp,
-            'expires_at' => Carbon::now()->addMinutes(5),
-        ]);
-
-        Mail::to($user->email)->send(new OtpMail($otp));
-
-        return redirect()->route('onboarding.emailOtp', ['user' => $user->id])
-                        ->with('success', 'Account created! Check your email for OTP.');
+    // Check for unique username
+    if (User::where('username', $validated['username'])->exists()) {
+        return back()->withErrors(['username' => 'The username is already taken.'])->withInput();
     }
+
+    // Check for unique email
+    $existingUser = User::where('email', $validated['email'])->first();
+    if ($existingUser) {
+        if ($existingUser->email_verified_at) {
+            return redirect()->route('login')
+                ->with('info', 'You already have an account. Please sign in.');
+        } else {
+            $otp = rand(100000, 999999);
+
+            EmailOtp::updateOrCreate(
+                ['user_id' => $existingUser->id],
+                [
+                    'otp' => $otp,
+                    'expires_at' => Carbon::now()->addMinutes(5),
+                ]
+            );
+
+            Mail::to($existingUser->email)->send(new OtpMail($otp));
+
+            return redirect()->route('onboarding.emailOtp', ['user' => $existingUser->id])
+                ->with('warning', 'You already have an existing account. Please verify your email. A new OTP has been sent.');
+        }
+    }
+
+    // Check for unique phone number (if provided)
+    if (!empty($validated['phone_number']) && User::where('phone_number', $validated['phone_number'])->exists()) {
+        return back()->withErrors(['phone_number' => 'The phone number is already associated with another account.'])->withInput();
+    }
+
+    // Create new user
+    $user = User::create([
+        'username' => $validated['username'],
+        'first_name' => $validated['first_name'],
+        'last_name' => $validated['last_name'],
+        'email' => $validated['email'],
+        'phone_number' => $validated['phone_number'] ?? null,
+        'password' => Hash::make($validated['password']),
+    ]);
+
+    // Automatically create wallet for the new user
+    Wallet::create([
+        'user_id' => $user->id,
+        'balance' => 0, // default balance
+    ]);
+
+    // Generate and send OTP
+    $otp = rand(100000, 999999);
+
+    EmailOtp::create([
+        'user_id' => $user->id,
+        'otp' => $otp,
+        'expires_at' => Carbon::now()->addMinutes(5),
+    ]);
+
+    Mail::to($user->email)->send(new OtpMail($otp));
+
+    return redirect()->route('onboarding.emailOtp', ['user' => $user->id])
+                    ->with('success', 'Account created successfully! A wallet has been created for you. Check your email for the OTP.');
+}
+
+
 
     public function verifyOtp(Request $request)
     {

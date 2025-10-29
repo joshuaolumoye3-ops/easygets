@@ -17,7 +17,7 @@
     <!-- Tabs -->
     <div class="flex justify-between px-4 mb-6 bg-white py-4">
         <button id="activationsBtn" class="flex-1 text-center py-3 rounded-full font-semibold bg-green-800 text-white mr-2">Activations</button>
-        <button id="socialsBtn" class="flex-1 text-center py-3 rounded-full font-semibold bg-black text-white opacity-50 cursor-not-allowed" disabled>Socials (Coming Soon)</button>
+        <button id="socialsBtn" class="flex-1 text-center py-3 rounded-full font-semibold bg-gray-200 text-gray-600">Socials</button>
     </div>
 
     <!-- Activations Content -->
@@ -59,10 +59,56 @@
         </div>
         @endforelse
     </div>
+
+    <!-- Socials Content -->
+    <div id="socialsContent" class="space-y-3 px-4 hidden transition-all duration-500 ease-in-out">
+        @forelse($socialBoosts as $boost)
+        <div onclick="openSocialModal({{ $boost['id'] }})" 
+             class="cursor-pointer flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-2xl">
+                    {{ $boost['service_logo'] }}
+                </div>
+                <div>
+                    <p class="font-semibold text-gray-800">{{ $boost['service_name'] }}</p>
+                    <p class="text-xs text-gray-500 mt-0.5">{{ number_format($boost['quantity']) }} units</p>
+                    <p class="text-xs text-gray-400 mt-0.5">{{ $boost['date'] }}</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="font-semibold text-gray-800">{{ $boost['amount'] }}</p>
+                <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1
+                    @if($boost['raw_status'] === 'completed') bg-green-100 text-green-700
+                    @elseif($boost['raw_status'] === 'processing' || $boost['raw_status'] === 'pending') bg-blue-100 text-blue-700
+                    @elseif($boost['raw_status'] === 'partial') bg-orange-100 text-orange-700
+                    @else bg-red-100 text-red-700
+                    @endif">
+                    {{ $boost['status'] }}
+                </span>
+            </div>
+        </div>
+        @empty
+        <div class="text-center py-12">
+            <div class="text-6xl mb-4">🚀</div>
+            <p class="text-gray-500 font-medium">No social boost history yet</p>
+            <p class="text-sm text-gray-400 mt-1">Your social orders will appear here</p>
+            <a href="{{ route('social-boost.index') }}" class="inline-block mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                Start Boosting
+            </a>
+        </div>
+        @endforelse
+    </div>
 </div>
 
 <!-- Activation Modal -->
 <div id="activationModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <!-- Modal content will be loaded here -->
+    </div>
+</div>
+
+<!-- Social Boost Modal -->
+<div id="socialModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <!-- Modal content will be loaded here -->
     </div>
@@ -73,6 +119,7 @@
 <script>
 let pollingInterval = null;
 let currentActivationId = null;
+let currentSocialBoostId = null;
 
 // Auto-open modal for new activation
 @if($newActivationId)
@@ -83,11 +130,230 @@ let currentActivationId = null;
     });
 @endif
 
+// Auto-open modal for new social boost
+@if($newSocialBoostId)
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+            switchTab('socials');
+            openSocialModal({{ $newSocialBoostId }});
+        }, 500);
+    });
+@endif
+
+// Tab switching
+document.getElementById('activationsBtn').addEventListener('click', () => switchTab('activations'));
+document.getElementById('socialsBtn').addEventListener('click', () => switchTab('socials'));
+
+function switchTab(tab) {
+    const activationsBtn = document.getElementById('activationsBtn');
+    const socialsBtn = document.getElementById('socialsBtn');
+    const activationsContent = document.getElementById('activationsContent');
+    const socialsContent = document.getElementById('socialsContent');
+
+    if (tab === 'activations') {
+        activationsBtn.classList.add('bg-green-800', 'text-white');
+        activationsBtn.classList.remove('bg-gray-200', 'text-gray-600');
+        socialsBtn.classList.remove('bg-purple-600', 'text-white');
+        socialsBtn.classList.add('bg-gray-200', 'text-gray-600');
+        activationsContent.classList.remove('hidden');
+        socialsContent.classList.add('hidden');
+    } else {
+        socialsBtn.classList.add('bg-purple-600', 'text-white');
+        socialsBtn.classList.remove('bg-gray-200', 'text-gray-600');
+        activationsBtn.classList.remove('bg-green-800', 'text-white');
+        activationsBtn.classList.add('bg-gray-200', 'text-gray-600');
+        socialsContent.classList.remove('hidden');
+        activationsContent.classList.add('hidden');
+    }
+}
+
+// ==================== SOCIAL BOOST MODAL ====================
+
+function openSocialModal(boostId) {
+    currentSocialBoostId = boostId;
+    const modal = document.getElementById('socialModal');
+    
+    const socialBoosts = @json($socialBoosts);
+    const boost = socialBoosts.find(b => b.id === boostId);
+    
+    if (!boost) {
+        alert('Social boost order not found');
+        return;
+    }
+    
+    const statusColors = {
+        'pending': 'bg-yellow-100 text-yellow-700',
+        'processing': 'bg-blue-100 text-blue-700',
+        'completed': 'bg-green-100 text-green-700',
+        'partial': 'bg-orange-100 text-orange-700',
+        'failed': 'bg-red-100 text-red-700',
+        'cancelled': 'bg-gray-100 text-gray-700',
+        'refunded': 'bg-purple-100 text-purple-700'
+    };
+    
+    const statusColor = statusColors[boost.raw_status] || 'bg-gray-100 text-gray-700';
+    
+    const modalContent = `
+        <div class="p-6">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-900">Order Details</h2>
+                <button onclick="closeSocialModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Service Info -->
+            <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 mb-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 bg-white rounded-lg flex items-center justify-center text-2xl">
+                            ${boost.service_logo}
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800">${boost.service_name}</p>
+                            <p class="text-xs text-gray-600">${boost.category}</p>
+                        </div>
+                    </div>
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${statusColor}">
+                        ${boost.status}
+                    </span>
+                </div>
+            </div>
+            
+            <!-- Link -->
+            ${boost.link ? `
+            <div class="bg-gray-50 rounded-xl p-4 mb-4">
+                <p class="text-xs text-gray-500 font-medium uppercase mb-1">Target Link</p>
+                <div class="flex items-center justify-between">
+                    <p class="text-sm font-medium text-gray-900 truncate flex-1 mr-2">${boost.link}</p>
+                    <button onclick="copyToClipboard('${boost.link}')" class="text-purple-600 hover:text-purple-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            ` : ''}
+            
+            <!-- Progress Section -->
+            <div class="bg-white border-2 border-gray-200 rounded-xl p-4 mb-4">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs text-gray-500 font-medium uppercase">Order Progress</p>
+                    ${boost.raw_status === 'pending' || boost.raw_status === 'processing' ? `
+                    <button onclick="checkSocialStatus(${boost.id})" class="text-xs text-purple-600 hover:text-purple-700 font-medium">
+                        Refresh Status
+                    </button>
+                    ` : ''}
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                        <p class="text-gray-500">Quantity</p>
+                        <p class="font-semibold text-gray-900">${boost.quantity.toLocaleString()}</p>
+                    </div>
+                    ${boost.start_count ? `
+                    <div>
+                        <p class="text-gray-500">Start Count</p>
+                        <p class="font-semibold text-gray-900">${boost.start_count.toLocaleString()}</p>
+                    </div>
+                    ` : ''}
+                    ${boost.remains ? `
+                    <div>
+                        <p class="text-gray-500">Remaining</p>
+                        <p class="font-semibold text-gray-900">${boost.remains.toLocaleString()}</p>
+                    </div>
+                    ` : ''}
+                </div>
+                
+                ${boost.raw_status === 'processing' || boost.raw_status === 'pending' ? `
+                <div class="mt-3">
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="bg-purple-600 h-2 rounded-full animate-pulse" style="width: ${boost.remains ? ((boost.quantity - boost.remains) / boost.quantity * 100).toFixed(0) : 0}%"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1 text-center">
+                        ${boost.remains ? `${((boost.quantity - boost.remains) / boost.quantity * 100).toFixed(0)}% Complete` : 'Processing...'}
+                    </p>
+                </div>
+                ` : ''}
+            </div>
+            
+            <!-- Transaction Details -->
+            <div class="bg-gray-50 rounded-xl p-4 mb-4">
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                        <p class="text-gray-500">Amount</p>
+                        <p class="font-semibold text-gray-900">${boost.amount}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Service Type</p>
+                        <p class="font-semibold text-gray-900">${boost.service_type}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Date</p>
+                        <p class="font-semibold text-gray-900 text-xs">${boost.date}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Order ID</p>
+                        <p class="font-semibold text-gray-900 text-xs">${boost.request_id}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    modal.querySelector('.bg-white').innerHTML = modalContent;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeSocialModal() {
+    const modal = document.getElementById('socialModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    currentSocialBoostId = null;
+}
+
+function checkSocialStatus(boostId) {
+    const button = event.target;
+    button.disabled = true;
+    button.textContent = 'Checking...';
+    
+    fetch('/history/get-social-status', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({ transaction_id: boostId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Status updated! Refreshing...');
+            location.reload();
+        } else {
+            alert(data.message || 'Unable to fetch status');
+            button.disabled = false;
+            button.textContent = 'Refresh Status';
+        }
+    })
+    .catch(error => {
+        console.error('Error checking status:', error);
+        alert('Error checking status');
+        button.disabled = false;
+        button.textContent = 'Refresh Status';
+    });
+}
+
+// ==================== ACTIVATION MODAL (EXISTING) ====================
+
 function openActivationModal(activationId) {
     currentActivationId = activationId;
     const modal = document.getElementById('activationModal');
     
-    // Find activation data
     const activations = @json($activations);
     const activation = activations.find(a => a.id === activationId);
     
@@ -96,10 +362,8 @@ function openActivationModal(activationId) {
         return;
     }
     
-    // Build modal content
     const modalContent = `
         <div class="p-6">
-            <!-- Header -->
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-bold text-gray-900">Activation Details</h2>
                 <button onclick="closeActivationModal()" class="text-gray-400 hover:text-gray-600">
@@ -109,7 +373,6 @@ function openActivationModal(activationId) {
                 </button>
             </div>
             
-            <!-- Service Info -->
             <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 mb-4">
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center space-x-3">
@@ -126,7 +389,6 @@ function openActivationModal(activationId) {
                 </div>
             </div>
             
-            <!-- Phone Number -->
             <div class="bg-gray-50 rounded-xl p-4 mb-4">
                 <p class="text-xs text-gray-500 font-medium uppercase mb-1">Phone Number</p>
                 <div class="flex items-center justify-between">
@@ -139,7 +401,6 @@ function openActivationModal(activationId) {
                 </div>
             </div>
             
-            <!-- SMS Code Section -->
             <div class="bg-white border-2 border-gray-200 rounded-xl p-4 mb-4" id="smsCodeSection">
                 <div class="flex items-center justify-between mb-3">
                     <p class="text-xs text-gray-500 font-medium uppercase">SMS Code</p>
@@ -176,7 +437,6 @@ function openActivationModal(activationId) {
                 `}
             </div>
             
-            <!-- Transaction Details -->
             <div class="bg-gray-50 rounded-xl p-4 mb-4">
                 <div class="grid grid-cols-2 gap-3 text-sm">
                     <div>
@@ -198,7 +458,6 @@ function openActivationModal(activationId) {
                 </div>
             </div>
             
-            <!-- Actions -->
             ${activation.raw_status === 'pending' ? `
                 <button onclick="cancelActivation(${activation.id})" 
                         class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors">
@@ -212,7 +471,6 @@ function openActivationModal(activationId) {
     modal.classList.remove('hidden');
     modal.classList.add('flex');
     
-    // Start polling if pending
     if (activation.raw_status === 'pending') {
         startPolling(activationId, activation.expires_at);
     }
@@ -229,16 +487,13 @@ function closeActivationModal() {
 function startPolling(activationId, expiresAt) {
     stopPolling();
     
-    // Update countdown
     updateCountdown(expiresAt);
     const countdownInterval = setInterval(() => updateCountdown(expiresAt), 1000);
     
-    // Poll for SMS every 5 seconds
     pollingInterval = setInterval(() => {
         checkForSms(activationId);
     }, 5000);
     
-    // Store countdown interval
     window.countdownInterval = countdownInterval;
 }
 
@@ -333,7 +588,6 @@ function cancelActivation(activationId) {
 
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(() => {
-        // Show toast notification
         const toast = document.createElement('div');
         toast.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50';
         toast.textContent = 'Copied to clipboard!';
@@ -348,10 +602,16 @@ function copyToClipboard(text) {
     });
 }
 
-// Close modal on outside click
+// Close modals on outside click
 document.getElementById('activationModal').addEventListener('click', function(e) {
     if (e.target === this) {
         closeActivationModal();
+    }
+});
+
+document.getElementById('socialModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeSocialModal();
     }
 });
 </script>
@@ -363,6 +623,15 @@ document.getElementById('activationModal').addEventListener('click', function(e)
 
 .animate-spin {
     animation: spin 1s linear infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .5; }
+}
+
+.animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 </style>
 @endsection
