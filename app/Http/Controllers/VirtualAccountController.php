@@ -14,59 +14,61 @@ class VirtualAccountController extends Controller
     public function createAccount(Request $request)
     {
         $request->validate([
-        'amount' => 'required|numeric|min:100'
-    ]);
+            'amount' => 'required|numeric|min:100'
+        ]);
+
         try {
             $user = User::findOrFail(auth()->id());
             $wallet = Wallet::firstOrCreate(['user_id' => $user->id]);
+
+            $accountReference = 'VA_' . uniqid() . '_' . time();
+
             $user_data = [
                 'user' => $user,
-                'amount' => $request->amount
+                'amount' => $request->amount,
+                'tx_ref' => $accountReference
             ];
 
-            // $existing = VirtualAccount::where('wallet_id', $wallet->id)->first();
-            // if ($existing) {
-            //     return redirect()->back()->with('error', 'Virtual account already exists.');
-            // }
-
-            Log::info('Attempting to create virtual account', ['user_id' => $user->id]);
+            Log::info('Creating new virtual account', [
+                'user_id' => $user->id,
+                'amount' => $request->amount,
+                'reference' => $accountReference
+            ]);
 
             $response = FlutterwaveHelper::createUserVirtualAccount($user_data);
 
             if (!$response) {
-                Log::error('No response from Flutterwave service');
-                return redirect()->back()->with('error', 'Payment service unavailable. Please try again.');
+                return redirect()->back()->with('error', 'Payment service unavailable');
             }
-
-            Log::info('Full Flutterwave Response Structure', ['response' => $response]);
 
             if (isset($response['status']) && $response['status'] === 'success') {
                 $data = $response['data'];
 
-                // For permanent account - uncomment when ready to save
-                /*
-                $account = VirtualAccount::create([
+
+                $virtualAccount = VirtualAccount::create([
                     'wallet_id' => $wallet->id,
-                    'account_reference' => $data['order_ref'] ?? $data['id'] ?? uniqid(),
-                    'customer_email' => $data['email'] ?? $user->email,
-                    'customer_name' => $data['customer']['name'] ?? $user->name,
+                    'account_reference' => $accountReference,
+                    'customer_email' => $user->email,
+                    'customer_name' => "{$user->first_name} {$user->last_name}",
                     'bank_name' => $data['bank_name'] ?? 'Flutterwave Bank',
                     'bank_code' => $data['bank_code'] ?? '',
                     'account_number' => $data['account_number'],
-                    'flw_reference' => $data['flw_ref'] ?? null,
+                    'status' => 'pending',
+                    'amount' => $request->amount,
+                    'expires_at' => Carbon::now()->addHours(24)
                 ]);
 
-                Log::info('Virtual account created successfully', [
-                    'account_id' => $account->id,
-                    'account_number' => $account->account_number
-                ]);
-                */
 
+                session(['account_data' => [
+                    'account_number' => $data['account_number'],
+                    'bank_name' => $data['bank_name'],
+                    'account_name' => "{$user->first_name} {$user->last_name}",
+                    'amount' => $request->amount,
+                    'expires_at' => $virtualAccount->expires_at->format('Y-m-d H:i:s'),
+                    'reference' => $accountReference
+                ]]);
 
-                return redirect()->back()->with([
-                    'success' => 'Virtual account generate successfully!',
-                    'account_data' => $data
-                ]);
+                return redirect()->back()->with('success', 'Virtual account generated successfully');
 
 
 

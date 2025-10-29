@@ -27,7 +27,7 @@ class FlutterwaveService
         $payload = [
             'email' => $user->email,
             'is_permanent' => false,
-            'tx_ref' => 'easygets-' . uniqid() . '-' . time(),
+            'tx_ref' => $user_data['tx_ref'] ?? ('easygets-' . uniqid() . '-' . time()),
             'firstname' => $user->first_name,
             'lastname' => $user->last_name ,
             'phonenumber' => $user->phone_number,

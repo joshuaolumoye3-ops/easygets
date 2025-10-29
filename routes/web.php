@@ -54,6 +54,7 @@ Route::post('/webhook/monnify', [MonnifyWebhookController::class, 'handle'])
 Route::post('/flutterwave/webhook', [FlutterwaveWebhookController::class, 'handle'])
   ->name('flutterwave.webhook');
 
+
 Route::middleware('auth')->group(function () {
     Route::post('/virtual-account/create', [VirtualAccountController::class, 'createAccount'])
           ->name('virtual-account.create');
@@ -84,49 +85,49 @@ Route::middleware('auth')->group(function () {
     Route::post('/electricity/purchase', [ElectricityController::class, 'purchase'])->name('electricity.purchase');
 
     // Services list
-Route::get('/services', [CountryController::class, 'showServices'])->name('services.list');
+    Route::get('/services', [CountryController::class, 'showServices'])->name('services.list');
 
-// ==================== 5SIM PROVIDER ROUTES ====================
-// Step 1: Show countries for a service
-Route::get('/services/{serviceCode}/5sim/countries', [CountryController::class, 'showCountries5sim'])
-    ->name('services.5sim.countries');
+    // ==================== 5SIM PROVIDER ROUTES ====================
+    // Step 1: Show countries for a service
+    Route::get('/services/{serviceCode}/5sim/countries', [CountryController::class, 'showCountries5sim'])
+        ->name('services.5sim.countries');
 
-// Step 2: Show operators for a country
-Route::get('/services/{serviceCode}/5sim/{country}/operators', [CountryController::class, 'showOperators5sim'])
-    ->name('services.5sim.operators');
+    // Step 2: Show operators for a country
+    Route::get('/services/{serviceCode}/5sim/{country}/operators', [CountryController::class, 'showOperators5sim'])
+        ->name('services.5sim.operators');
 
-// Step 3: Prepare purchase (creates session)
-Route::post('/prepare-purchase/5sim', [CountryController::class, 'preparePurchase5sim'])
-    ->name('prepare.purchase.5sim')
-    ->middleware('auth');
+    // Step 3: Prepare purchase (creates session)
+    Route::post('/prepare-purchase/5sim', [CountryController::class, 'preparePurchase5sim'])
+        ->name('prepare.purchase.5sim')
+        ->middleware('auth');
 
-// ==================== SMS-BUS PROVIDER ROUTES ====================
-// Step 1: Show countries for a service
-Route::get('/services/{serviceId}/countries', [CountryController::class, 'showCountries'])
-    ->name('services.countries');
+    // ==================== SMS-BUS PROVIDER ROUTES ====================
+    // Step 1: Show countries for a service
+    Route::get('/services/{serviceId}/countries', [CountryController::class, 'showCountries'])
+        ->name('services.countries');
 
-// For AJAX loading (optional)
-Route::get('/services/{serviceId}/countries/load', [CountryController::class, 'showCountries']);
+    // For AJAX loading (optional)
+    Route::get('/services/{serviceId}/countries/load', [CountryController::class, 'showCountries']);
 
-// Step 2: Get prices for a country
-Route::get('/services/{serviceId}/countries/{countryId}/prices', [CountryController::class, 'getPrices'])
-    ->name('countries.prices');
+    // Step 2: Get prices for a country
+    Route::get('/services/{serviceId}/countries/{countryId}/prices', [CountryController::class, 'getPrices'])
+        ->name('countries.prices');
 
-// Step 3: Prepare purchase (creates session)
-Route::post('/prepare-purchase', [CountryController::class, 'preparePurchase'])
-    ->name('prepare.purchase')
-    ->middleware('auth');
+    // Step 3: Prepare purchase (creates session)
+    Route::post('/prepare-purchase', [CountryController::class, 'preparePurchase'])
+        ->name('prepare.purchase')
+        ->middleware('auth');
 
-// ==================== COMMON ROUTES (BOTH PROVIDERS) ====================
-// Payment confirmation page
-Route::get('/confirm-payment', [CountryController::class, 'showConfirm'])
-    ->name('confirm.payment')
-    ->middleware('auth');
+    // ==================== COMMON ROUTES (BOTH PROVIDERS) ====================
+    // Payment confirmation page
+    Route::get('/confirm-payment', [CountryController::class, 'showConfirm'])
+        ->name('confirm.payment')
+        ->middleware('auth');
 
-// Process payment (actual purchase)
-Route::post('/process-payment', [CountryController::class, 'process'])
-    ->name('process.payment')
-    ->middleware('auth');
+    // Process payment (actual purchase)
+    Route::post('/process-payment', [CountryController::class, 'process'])
+        ->name('process.payment')
+        ->middleware('auth');
     // When user clicks on a product, show country selection for that product
     Route::get('/products/{id}/countries', [CountryController::class, 'showCountries'])->name('products.countries');
     Route::post('/jamb', [CableController::class, 'jamb'])->name('jamb');
@@ -209,7 +210,7 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
     // Route::get('/esim-transaction', [AdminServiceController::class, 'esimindex'])->name('admin.esim.index');
     Route::get('/esim/{id}', [AdminServiceController::class, 'show'])->name('admin.esim.show');
     Route::post('/esim/upload', [AdminServiceController::class, 'upload'])->name('admin.esim.upload');
-    
+
     Route::prefix('esim')->group(function () {
         Route::get('/', [AdminEsimController::class, 'index'])->name('admin.esim.index');
         Route::post('/{id}/update-price', [AdminEsimController::class, 'updatePrice'])->name('admin.esim.updatePrice');

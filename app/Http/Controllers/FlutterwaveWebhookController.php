@@ -13,64 +13,82 @@ class FlutterwaveWebhookController extends Controller
 {
     public function handle(Request $request)
     {
-        // Verify Flutterwave signature
+        // Verify webhook signature
         $signature = $request->header('verif-hash');
         if (!$signature || $signature !== env('FLW_SECRET_HASH')) {
             Log::warning('Invalid webhook signature received');
             return response('Invalid signature', 401);
         }
 
-        $data = $request->input('data');
+        $payload = $request->all();
+        $data = $payload['data'];
 
-        Log::info('Flutterwave Webhook Received', $data);
+        Log::info('Flutterwave Webhook Received', ['payload' => $payload]);
 
-        // Process only successful transactions
-        if (isset($data['status']) && $data['status'] === 'successful') {
-            $accountNumber = $data['account_number'] ?? null;
+        if ($payload['event'] !== 'virtual.account.credited') {
+            return response('Ignored non-credit event', 200);
+        }
 
-            if (!$accountNumber) {
-                Log::warning('No account number in Flutterwave webhook payload');
-                return response('Missing account number', 400);
-            }
+        try {
+            DB::beginTransaction();
 
-            // Find virtual account by account number
-            $virtualAccount = VirtualAccount::where('account_number', $accountNumber)->first();
+            // Find virtual account by reference
+            $virtualAccount = VirtualAccount::where('account_reference', $data['tx_ref'])
+                ->where('status', 'pending')
+                ->first();
 
             if (!$virtualAccount) {
-                Log::error("No matching virtual account found for account number: {$accountNumber}");
-                return response('Account not found', 404);
+                Log::error('Virtual account not found or already processed', [
+                    'reference' => $data['tx_ref']
+                ]);
+                return response('Invalid account', 404);
             }
 
-            // Get linked wallet and user
-            $wallet = $virtualAccount->wallet;
-            $user = $wallet->user;
-
-            // Prevent duplicate transactions
-            $existingTransaction = Transaction::where('reference', $data['tx_ref'])->first();
-            if ($existingTransaction) {
-                Log::info("Duplicate transaction ignored: {$data['tx_ref']}");
-                return response('Duplicate transaction', 200);
+            // Verify amount matches expected amount
+            if ((float)$data['amount'] !== (float)$virtualAccount->amount) {
+                Log::warning('Amount mismatch', [
+                    'expected' => $virtualAccount->amount,
+                    'received' => $data['amount']
+                ]);
+                // Still process the payment but log warning
             }
 
-            // Record transaction
-            Transaction::create([
-                'user_id' => $user->id,
-                'amount' => $data['amount'],
+            // Create transaction record
+            $transaction = Transaction::create([
                 'reference' => $data['tx_ref'],
-                'status' => 'success',
+                'user_id' => $virtualAccount->wallet->user_id,
                 'type' => 'credit',
                 'channel' => 'Flutterwave',
-                'recipient' => $accountNumber,
-                'response' => json_encode($data),
+                'amount' => $data['amount'],
+                'status' => 'success',
+                'recipient' => $data['account_number'],
+                'response' => json_encode($data)
+            ]);
+
+            // Update virtual account status
+            $virtualAccount->update([
+                'status' => 'completed'
             ]);
 
             // Credit wallet
-            $wallet->balance += $data['amount'];
-            $wallet->save();
+            $virtualAccount->wallet->increment('balance', $data['amount']);
 
-            Log::info("Wallet credited for {$user->email} with ₦{$data['amount']} | New balance: ₦{$wallet->balance}");
+            DB::commit();
+
+            Log::info('Payment processed successfully', [
+                'reference' => $data['tx_ref'],
+                'amount' => $data['amount']
+            ]);
+
+            return response('OK', 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Payment processing failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response('Internal server error', 500);
         }
-
-        return response('OK', 200);
     }
 }
