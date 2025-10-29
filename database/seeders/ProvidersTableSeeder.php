@@ -14,7 +14,8 @@ class ProvidersTableSeeder extends Seeder
         $dataService        = Service::where('slug', 'data')->first();
         $electricityService = Service::where('slug', 'electricity')->first();
         $cableService       = Service::where('slug', 'cable')->first();
-        $esimService  = Service::where('slug', 'esim')->first();
+        $esimService        = Service::where('slug', 'esim')->first();
+        $otpService         = Service::where('slug', 'otp')->first();
 
         if ($dataService) {
             Provider::updateOrCreate(
@@ -57,6 +58,19 @@ class ProvidersTableSeeder extends Seeder
                     'name'           => 'Admin eSIM',
                     'api_identifier' => 'Admin-esim',
                     'percentage'     => 0,
+                    'status'         => 'active',
+                ]
+            );
+        }
+
+        if ($otpService) {
+            Provider::updateOrCreate(
+                ['api_identifier' => 'otp'],
+                [
+                    'service_id'     => $otpService->id,
+                    'name'           => 'Admin otp',
+                    'api_identifier' => 'Admin-otp',
+                    'percentage'     => 1,
                     'status'         => 'active',
                 ]
             );

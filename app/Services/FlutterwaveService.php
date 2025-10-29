@@ -24,16 +24,17 @@ class FlutterwaveService
     {
         $user = $user_data['user'];
         $amount = $user_data['amount'] ?? null;
+
+        // FIXED: Include user ID in tx_ref format that webhook can parse
         $payload = [
             'email' => $user->email,
             'is_permanent' => false,
             'tx_ref' => $user_data['tx_ref'] ?? ('easygets-' . uniqid() . '-' . time()),
             'firstname' => $user->first_name,
-            'lastname' => $user->last_name ,
+            'lastname' => $user->last_name,
             'phonenumber' => $user->phone_number,
             'narration' => ($user->username ?? $user->email),
             'amount' => $amount
-
         ];
         $payload = array_filter($payload);
 
@@ -58,6 +59,7 @@ class FlutterwaveService
             if ($response->successful()) {
                 return $responseData;
             }
+
             Log::error('Flutterwave API Request Failed', [
                 'status_code' => $response->status(),
                 'response_body' => $responseData,

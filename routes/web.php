@@ -19,7 +19,10 @@ use App\Http\Controllers\AdminEsimController;
 use App\Http\Controllers\AdminServiceController;
 use App\Http\Controllers\EsimController;
 use App\Http\Controllers\FlutterwaveWebhookController;
+use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\SocialBoostController;
 use App\Http\Controllers\VirtualAccountController;
+use Illuminate\Support\Facades\Http;
 
 Route::middleware('guest')->group(function () {
 
@@ -66,6 +69,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/airtime/recharge', [AirtimeController::class, 'recharge'])->name('airtime.recharge');
     Route::patch('/update-profile', [RegisterController::class, 'updateProfile'])->name('updateProfile.submit');
 
+    Route::get('/history', [HistoryController::class, 'index'])->name('history');
+    Route::post('/history/get-sms', [HistoryController::class, 'getSmsCode'])->name('history.get-sms');
+    Route::post('/history/cancel-activation', [HistoryController::class, 'cancelActivation'])->name('history.cancel-activation');
+
     Route::post('/purchase/prepare', [CountryController::class, 'preparePurchase'])->name('prepare.purchase');
     Route::get('/purchase/confirm', [CountryController::class, 'showConfirm'])->name('confirm.payment');
     Route::post('/payments/process', [CountryController::class, 'process'])->name('payments.process');
@@ -84,6 +91,17 @@ Route::middleware('auth')->group(function () {
     Route::post('/verify-electricity-meter', [ElectricityController::class, 'verifyElectricityMeter'])->name('verify.meter');
     Route::post('/electricity/purchase', [ElectricityController::class, 'purchase'])->name('electricity.purchase');
 
+    Route::get('/social-boost', [SocialBoostController::class, 'index'])->name('social-boost.index');
+
+    // Process purchase
+    Route::post('/social-boost/purchase', [SocialBoostController::class, 'purchase'])->name('social-boost.purchase');
+
+    // View user's orders
+    Route::get('/social-boost/orders', [SocialBoostController::class, 'orders'])->name('social-boost.orders');
+
+    // Check order status
+    Route::get('/social-boost/status/{orderId}', [SocialBoostController::class, 'checkStatus'])->name('social-boost.status');
+
     // Services list
     Route::get('/services', [CountryController::class, 'showServices'])->name('services.list');
 
@@ -91,6 +109,10 @@ Route::middleware('auth')->group(function () {
     // Step 1: Show countries for a service
     Route::get('/services/{serviceCode}/5sim/countries', [CountryController::class, 'showCountries5sim'])
         ->name('services.5sim.countries');
+
+    Route::get('/services/{serviceCode}/countries-5sim', [CountryController::class, 'showCountries5sim'])->name('countries.5sim');
+    Route::get('/services/{serviceCode}/countries-5sim/{country}/operators', [CountryController::class, 'showOperators5sim'])->name('operators.5sim');
+    Route::post('/prepare-purchase-5sim', [CountryController::class, 'preparePurchase5sim'])->name('prepare.purchase.5sim');
 
     // Step 2: Show operators for a country
     Route::get('/services/{serviceCode}/5sim/{country}/operators', [CountryController::class, 'showOperators5sim'])
@@ -137,9 +159,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/social/services', [SocialController::class, 'services'])->name('social.services');
     Route::post('/social/order', [SocialController::class, 'order'])->name('social.order');
 
-    Route::get('/history', function () {
-        return view('users.history');
-    });
     Route::get('/more-services', function () {
         return view('users.moreService');
     });
@@ -162,6 +181,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/betting', [BettingController::class, 'show'])->name('bettinng.show');
 
     Route::post('/fund-bet', [BettingController::class, 'fund_account'])->name('fund_bet');
+
+    Route::post('/betting/verify-customer', [BettingController::class, 'verifyCustomer'])->name('betting.verify-customer');
+
+    Route::post('/clubkonnect/callback', [BettingController::class, 'handleCallback'])->name('clubkonnect.callback');
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 });
@@ -207,16 +230,20 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
     Route::post('/providers/{provider}/products/save', [AdminServiceController::class, 'saveProducts'])->name('admin.products.save');
     Route::post('/providers/{provider}/markup', [AdminServiceController::class, 'applyMarkup'])->name('admin.providers.markup');
     Route::delete('/products/{id}', [AdminServiceController::class, 'destroy'])->name('admin.products.delete');
-    // Route::get('/esim-transaction', [AdminServiceController::class, 'esimindex'])->name('admin.esim.index');
+    Route::get('/esim-transaction', [AdminServiceController::class, 'esimindex'])->name('admin.esim.transaction');
     Route::get('/esim/{id}', [AdminServiceController::class, 'show'])->name('admin.esim.show');
     Route::post('/esim/upload', [AdminServiceController::class, 'upload'])->name('admin.esim.upload');
 
     Route::prefix('esim')->group(function () {
         Route::get('/', [AdminEsimController::class, 'index'])->name('admin.esim.index');
+        Route::post('/refresh-countries', [AdminEsimController::class, 'refreshCountries'])->name('admin.esim.refresh');
+        Route::post('/seed-countries', [AdminEsimController::class, 'seedSampleCountries'])->name('admin.esim.seed');
         Route::post('/{id}/update-price', [AdminEsimController::class, 'updatePrice'])->name('admin.esim.updatePrice');
         Route::get('/{countryId}/packages', [AdminEsimController::class, 'packages'])->name('admin.esim.packages');
         Route::post('/{countryId}/packages/save', [AdminEsimController::class, 'savePackage'])->name('admin.esim.savePackage');
         Route::delete('/packages/{id}', [AdminEsimController::class, 'deletePackage'])->name('admin.esim.deletePackage');
+        Route::post('/{id}/toggle-status', [AdminEsimController::class, 'toggleCountryStatus'])->name('admin.esim.toggleStatus');
+        Route::get('/transaction/{id}', [AdminEsimController::class, 'showTransaction'])->name('admin.esim.transaction.show');
     });
 
 

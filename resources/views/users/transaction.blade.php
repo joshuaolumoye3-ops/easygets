@@ -67,7 +67,13 @@
     @endforelse
 </div>
 
-<!-- Modal -->
+<!-- Image Full Screen Modal -->
+<div id="imageModal" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center z-[60]">
+    <button id="closeImageModal" class="absolute top-5 right-5 text-white hover:text-gray-300 text-4xl font-bold">&times;</button>
+    <img id="fullScreenImage" src="" alt="Full Screen" class="max-w-[90%] max-h-[90%] object-contain">
+</div>
+
+<!-- Transaction Details Modal -->
 <div id="txnModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-2xl shadow-xl w-11/12 max-w-md p-6 relative animate-fadeIn">
         <button id="closeModal" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
@@ -93,10 +99,10 @@
                 <span class="font-medium">Status</span>
                 <span id="txnStatus" class="px-2 py-1 rounded-full text-xs"></span>
             </div>
-            <div class="flex justify-between">
+            {{-- <div class="flex justify-between">
                 <span class="font-medium">Channel</span>
                 <span id="txnChannel" class="text-gray-600"></span>
-            </div>
+            </div> --}}
             <div class="flex justify-between">
                 <span class="font-medium">Provider</span>
                 <span id="txnProvider" class="text-gray-600"></span>
@@ -109,12 +115,8 @@
                 <span class="font-medium">Recipient</span>
                 <span id="txnRecipient" class="text-gray-600"></span>
             </div>
-            {{-- <div class="flex flex-col">
-                <span class="font-medium mb-1">Response</span>
-                <span id="txnResponse" class="text-gray-600 break-words"></span>
-            </div> --}}
             <div id="esimDetails" class="space-y-2 mt-4 hidden">
-                <div class="font-semibold text-green-700">eSIM Upload Details</div>
+                <div class="font-semibold text-green-700">eSIM Details</div>
                 <div><span class="font-medium">Number:</span> <span id="esimNumber"></span></div>
                 <div><span class="font-medium">Details:</span> <span id="esimUploadDetails"></span></div>
                 <div id="esimImages" class="flex flex-wrap gap-2"></div>
@@ -149,11 +151,10 @@
     const txnReference = document.getElementById('txnReference');
     const txnAmount = document.getElementById('txnAmount');
     const txnStatus = document.getElementById('txnStatus');
-    const txnChannel = document.getElementById('txnChannel');
+    //const txnChannel = document.getElementById('txnChannel');
     const txnProvider = document.getElementById('txnProvider');
     const txnPhone = document.getElementById('txnPhone');
     const txnRecipient = document.getElementById('txnRecipient');
-    // const txnResponse = document.getElementById('txnResponse');
 
     rows.forEach(row => {
         row.addEventListener('click', () => {
@@ -183,20 +184,19 @@
             txnStatus.textContent = txn.status;
             txnStatus.className = `px-2 py-1 rounded-full text-xs ${statuses[txn.status.toLowerCase()] || 'bg-gray-100 text-gray-700'}`;
 
-            txnChannel.textContent = txn.channel ?? '-';
+            //txnChannel.textContent = txn.channel ?? '-';
             txnProvider.textContent = txn.provider ?? '-';
             txnPhone.textContent = txn.phone ?? '-';
             txnRecipient.textContent = txn.recipient ?? '-';
-            // txnResponse.textContent = txn.response ?? '-';
 
             // eSIM details logic
             const esimDetailsDiv = document.getElementById('esimDetails');
-            if (txn.type.toLowerCase() === 'esim purchase' && txn.esim_upload) {
+            if (txn.type.toLowerCase() === 'esim' && txn.esim_upload) {
                 esimDetailsDiv.classList.remove('hidden');
                 document.getElementById('esimNumber').textContent = txn.esim_upload.number ?? '-';
                 document.getElementById('esimUploadDetails').textContent = txn.esim_upload.details ?? '-';
 
-                // Images
+                // Images with full-screen functionality
                 const imagesDiv = document.getElementById('esimImages');
                 imagesDiv.innerHTML = '';
                 if (Array.isArray(txn.esim_upload.images)) {
@@ -205,12 +205,19 @@
                         imageElem.src = '/' + img;
                         imageElem.style.width = '60px';
                         imageElem.style.borderRadius = '6px';
+                        imageElem.style.cursor = 'pointer';
+                        imageElem.addEventListener('click', () => {
+                            document.getElementById('fullScreenImage').src = imageElem.src;
+                            document.getElementById('imageModal').classList.remove('hidden');
+                            document.getElementById('imageModal').classList.add('flex');
+                        });
                         imagesDiv.appendChild(imageElem);
                     });
                 }
             } else {
                 esimDetailsDiv.classList.add('hidden');
             }
+
             modal.classList.remove('hidden');
             modal.classList.add('flex');
         });
@@ -227,6 +234,22 @@
         if (e.target === modal) {
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+        }
+    });
+
+    // Image modal handlers
+    const imageModal = document.getElementById('imageModal');
+    const closeImageModal = document.getElementById('closeImageModal');
+
+    closeImageModal.addEventListener('click', () => {
+        imageModal.classList.add('hidden');
+        imageModal.classList.remove('flex');
+    });
+
+    imageModal.addEventListener('click', (e) => {
+        if (e.target === imageModal) {
+            imageModal.classList.add('hidden');
+            imageModal.classList.remove('flex');
         }
     });
 </script>

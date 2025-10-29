@@ -40,7 +40,7 @@
 
                     <h3 class="text-lg font-bold text-gray-800">{{ $package['title'] }}</h3>
                     <p class="text-sm text-gray-500 mb-2">Valid for {{ $package['validity'] }}</p>
-                    <span class="text-gray-900 font-bold">${{ $package['price'] }}</span>
+                    <span class="text-gray-900 font-bold">₦{{ $package['price'] }}</span>
                 </button>
             @endforeach
         </div>
@@ -103,7 +103,7 @@
                 validity: btn.dataset.validity
             };
 
-            selectedPrice.textContent = `$${selectedPackage.price}`;
+            selectedPrice.textContent = `₦${selectedPackage.price}`;
             selectedInfo.textContent = `${selectedPackage.title} / ${selectedPackage.validity}`;
             checkoutBtn.disabled = false;
         });

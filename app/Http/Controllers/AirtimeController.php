@@ -95,40 +95,39 @@ class AirtimeController extends Controller
     public function recharge(Request $request)
     {
         $validated = $request->validate([
-            'amount'    => 'required|numeric|min:50|max:50000',
-            'network'   => 'required|string|in:01,02,03,04',
+            'amount' => 'required|numeric|min:50|max:50000',
+            'network' => 'required|string|in:01,02,03,04',
             'recipient' => 'required|string|min:8|max:15',
-            'pin'       => 'required|string|size:4', // Add PIN validation
+            'pin' => 'required|string|size:4',
         ]);
 
         try {
-            // Verify PIN first before any other operations
+            // ✅ Verify user's transaction PIN first
             PinHelper::verifyPin($validated['pin']);
 
-            // --- sanitize input ---
-            $amount    = (float) $validated['amount']; // decimal allowed
-            $network   = trim($validated['network']);
+            // Sanitize input
+            $amount = (float) $validated['amount'];
+            $network = trim($validated['network']);
             $recipient = preg_replace('/\D/', '', $validated['recipient']); // digits only
 
-            // validate phone number again
+            // ✅ Validate recipient phone number
             if (strlen($recipient) < 8 || strlen($recipient) > 15) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid recipient phone number',
+                    'message' => 'Invalid recipient phone number.',
                 ], 400);
             }
 
-            // Get productId from mapping
+            // ✅ Map network codes to product IDs (for DemmyPay API)
             $productId = $this->getAirtimeProductId($network);
-
             if (!$productId) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid network code provided',
+                    'message' => 'Invalid network code provided.',
                 ], 400);
             }
 
-            // Get user wallet
+            // ✅ Fetch user wallet and check balance
             $wallet = Wallet::where('user_id', auth()->id())->lockForUpdate()->first();
             if (!$wallet || $wallet->balance < $amount) {
                 return response()->json([
@@ -137,12 +136,12 @@ class AirtimeController extends Controller
                 ], 400);
             }
 
-            // Generate unique reference
-            $customerReference = 'AIRTIME_' . Str::uuid();
+            // ✅ Generate a unique reference
+            $customerReference = 'airtime_' . strtolower(Str::slug(Str::random(10) . '_' . uniqid()));
 
             DB::beginTransaction();
 
-            // Call helper
+            // ✅ Call DemmyPay API to perform airtime purchase
             $response = DemmyPayHelper::buyAirtime(
                 $amount,
                 $productId,
@@ -150,42 +149,41 @@ class AirtimeController extends Controller
                 $customerReference
             );
 
-            // Get network name for response
+            // ✅ Network name mapping
             $networkNames = [
                 '01' => 'MTN',
                 '02' => 'Glo',
                 '03' => 'Airtel',
-                '04' => '9mobile'
+                '04' => '9mobile',
             ];
             $networkName = $networkNames[$network] ?? 'Unknown';
 
-            // Save transaction
+            // ✅ Save transaction with service name as provider
             $transaction = Transaction::create([
-                'reference' => $customerReference,
+                'reference' => substr($customerReference, 0, 100),
                 'user_id'   => auth()->id(),
                 'type'      => 'airtime',
                 'channel'   => 'DemmyPay',
-                'provider'  => $network,
+                'provider'  => $networkName, // ✅ Save readable name
                 'phone'     => $recipient,
                 'amount'    => $amount,
                 'status'    => (isset($response['status']) && $response['status'] == 200) ? 'success' : 'failed',
                 'response'  => json_encode($response),
             ]);
 
+            // ✅ If successful, deduct wallet balance and commit
             if (isset($response['status']) && $response['status'] == 200) {
-                // Deduct wallet
                 $wallet->decrement('balance', $amount);
                 DB::commit();
 
-                // Format success message with transaction details
-                $successMessage = "Your {$networkName} airtime recharge of ₦" . number_format($amount, 2) . 
+                $successMessage = "Your {$networkName} airtime recharge of ₦" . number_format($amount, 2) .
                                 " to {$recipient} was successful!";
 
                 return response()->json([
                     'success' => true,
                     'message' => $successMessage,
                     'data' => [
-                        'transaction_reference' => $customerReference,
+                        'transaction_reference' => $transaction->reference,
                         'network' => $networkName,
                         'network_code' => $network,
                         'recipient' => $recipient,
@@ -198,32 +196,25 @@ class AirtimeController extends Controller
                     ],
                     'transaction_id' => $transaction->id,
                 ]);
-            } else {
-                DB::rollBack();
-                
-                // Get more specific error message from provider response
-                $errorMessage = 'Airtime purchase failed';
-                if (isset($response['detail'])) {
-                    $errorMessage = $response['detail'];
-                } elseif (isset($response['message'])) {
-                    $errorMessage = $response['message'];
-                } elseif (isset($response['error'])) {
-                    $errorMessage = $response['error'];
-                }
-
-                return response()->json([
-                    'success' => false,
-                    'message' => $errorMessage,
-                    'error_code' => $response['status'] ?? 'unknown',
-                    'provider_response' => $response,
-                ], 400);
             }
+
+            // ❌ Handle failed transaction
+            DB::rollBack();
+            $errorMessage = $response['detail']
+                ?? $response['message']
+                ?? $response['error']
+                ?? 'Airtime purchase failed';
+
+            return response()->json([
+                'success' => false,
+                'message' => $errorMessage,
+                'error_code' => $response['status'] ?? 'unknown',
+                'provider_response' => $response,
+            ], 400);
 
         } catch (ValidationException $e) {
             DB::rollBack();
-            // Handle PIN validation errors specifically
             $pinError = $e->validator->errors()->first('pin');
-            
             if ($pinError) {
                 return response()->json([
                     'success' => false,
@@ -231,7 +222,6 @@ class AirtimeController extends Controller
                     'error_type' => 'pin_validation',
                 ], 422);
             }
-
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed: ' . $e->getMessage(),
@@ -240,8 +230,6 @@ class AirtimeController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            // Log the error for debugging
             \Log::error('Airtime purchase error', [
                 'user_id' => auth()->id(),
                 'amount' => $amount ?? null,

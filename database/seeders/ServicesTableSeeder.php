@@ -13,12 +13,13 @@ class ServicesTableSeeder extends Seeder
     public function run(): void
 {
     $services = [
-        ['name' => 'Data', 'slug' => 'data'],
-        ['name' => 'Electricity', 'slug' => 'electricity'],
-        ['name' => 'Cable TV', 'slug' => 'cable'],
-        ['name' => 'ESIM', 'slug' => 'esim'],
-        ['name' => 'Socials', 'slug' => 'socials'],
-        ['name' => 'Airtime', 'slug' => 'airtime'],
+        // ['name' => 'Data', 'slug' => 'data'],
+        // ['name' => 'Electricity', 'slug' => 'electricity'],
+        // ['name' => 'Cable TV', 'slug' => 'cable'],
+        // ['name' => 'ESIM', 'slug' => 'esim'],
+        // ['name' => 'Socials', 'slug' => 'socials'],
+        // ['name' => 'Airtime', 'slug' => 'airtime'],
+        ['name' => 'Otp', 'slug' => 'otp'],
     ];
 
     foreach ($services as $service) {

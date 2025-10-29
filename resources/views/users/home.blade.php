@@ -71,7 +71,7 @@
                     </div>
                     <div>
                         <p class="text-sm text-gray-600">Account Name</p>
-                        <p class="font-semibold text-gray-800">{{ session('account_data')['account_name'] ?? Auth::user()->first_name . ' ' . Auth::user()->last_name }}</p>
+                        <p class="font-semibold text-gray-800">{{ session('account_data')['account_name'] ?? Auth::user()->username . ' Flw' }}</p>
                     </div>
                 </div>
 
@@ -201,7 +201,7 @@
 
         <!-- Action Buttons -->
         <div class="grid grid-cols-2 gap-4">
-            <button onclick="window.location.href='{{ url('services') }}'" class="bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-700 transition-colors">
+            <button onclick="window.location.href='services'" class="bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-700 transition-colors">
                 Get OTP
             </button>
             <button onclick="openSocialModal()" class="bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-700 transition-colors">
@@ -213,29 +213,114 @@
         <div class="bg-white rounded-xl p-4 shadow-sm">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="font-bold text-gray-800">Quick Pick</h2>
-                <a href="#" class="text-sm font-semibold text-brand-green">See All</a>
+                <a href="{{ route('services.list') }}" class="text-sm font-semibold text-brand-green">See All</a>
             </div>
             <div class="grid grid-cols-4 gap-4 text-center">
-                <!-- Quick Pick Item -->
-                <a href="#" class="flex flex-col items-center justify-center space-y-2">
+                <!-- Facebook -->
+                @if(isset($quickPickServices['facebook']))
+                <button onclick="showProviderModal('{{ $quickPickServices['facebook']['id'] }}', '{{ $quickPickServices['facebook']['title'] }}', 'fb')" 
+                        class="flex flex-col items-center justify-center space-y-2">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" class="w-10 h-10" alt="Facebook">
                     <span class="text-xs text-gray-600">Facebook</span>
-                </a>
-                <!-- Quick Pick Item -->
-                 <a href="#" class="flex flex-col items-center justify-center space-y-2">
+                </button>
+                @endif
+
+                <!-- WhatsApp -->
+                @if(isset($quickPickServices['whatsapp']))
+                <button onclick="showProviderModal('{{ $quickPickServices['whatsapp']['id'] }}', '{{ $quickPickServices['whatsapp']['title'] }}', 'wa')" 
+                        class="flex flex-col items-center justify-center space-y-2">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" class="w-10 h-10" alt="WhatsApp">
                     <span class="text-xs text-gray-600">WhatsApp</span>
-                </a>
-                 <!-- Quick Pick Item -->
-                 <a href="#" class="flex flex-col items-center justify-center space-y-2">
+                </button>
+                @endif
+
+                <!-- Telegram -->
+                @if(isset($quickPickServices['telegram']))
+                <button onclick="showProviderModal('{{ $quickPickServices['telegram']['id'] }}', '{{ $quickPickServices['telegram']['title'] }}', 'tg')" 
+                        class="flex flex-col items-center justify-center space-y-2">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" class="w-10 h-10" alt="Telegram">
                     <span class="text-xs text-gray-600">Telegram</span>
-                </a>
-                 <!-- Quick Pick Item -->
-                 <a href="#" class="flex flex-col items-center justify-center space-y-2">
+                </button>
+                @endif
+
+                <!-- Google Voice -->
+                @if(isset($quickPickServices['google']))
+                <button onclick="showProviderModal('{{ $quickPickServices['google']['id'] }}', '{{ $quickPickServices['google']['title'] }}', 'google')" 
+                        class="flex flex-col items-center justify-center space-y-2">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Google_Voice_icon_%282020%29.svg" class="w-10 h-10" alt="Google Voice">
                     <span class="text-xs text-gray-600">Google Voice</span>
-                </a>
+                </button>
+                @endif
+            </div>
+        </div>
+
+        {{-- Provider Selection Modal --}}
+        <div id="providerModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+                <div class="bg-gradient-to-r from-green-600 to-green-700 p-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h2 id="modalServiceTitle" class="text-xl font-bold text-white">Select Provider</h2>
+                            <p class="text-green-100 text-sm mt-1">Choose your preferred SMS provider</p>
+                        </div>
+                        <button onclick="closeProviderModal()" class="text-white hover:text-gray-200 transition">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="p-6 space-y-4">
+                    {{-- Provider 1: 5sim.net --}}
+                    <button onclick="selectProvider('5sim')" 
+                            class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-200">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:shadow-lg transition">
+                                EG1
+                            </div>
+                            <div class="flex-1 text-left">
+                                <h3 class="font-bold text-gray-800 group-hover:text-blue-700 transition">Provider 1</h3>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <span class="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
+                                    <span class="text-xs text-gray-600">Global coverage, multiple operators</span>
+                                </div>
+                            </div>
+                            <svg class="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </div>
+                    </button>
+
+                    {{-- Provider 2: SMS-Bus --}}
+                    <button onclick="selectProvider('smsbus')" 
+                            class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all duration-200">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:shadow-lg transition">
+                                EG2
+                            </div>
+                            <div class="flex-1 text-left">
+                                <h3 class="font-bold text-gray-800 group-hover:text-green-700 transition">Provider 2</h3>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <span class="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
+                                    <span class="text-xs text-gray-600">Fast & reliable</span>
+                                </div>
+                            </div>
+                            <svg class="w-5 h-5 text-gray-400 group-hover:text-green-600 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </div>
+                    </button>
+                </div>
+
+                <div class="bg-gray-50 px-6 py-4 border-t border-gray-100">
+                    <p class="text-xs text-gray-600 text-center">
+                        <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                        </svg>
+                        Both providers offer secure SMS verification services
+                    </p>
+                </div>
             </div>
         </div>
 
@@ -247,7 +332,7 @@
                     <div class="bg-brand-green-light rounded-full w-14 h-14 flex items-center justify-center">
                         <img src="assets/wifi.svg" class="w-8 h-8 text-brand-green" alt="">
                     </div>
-                    <span class="text-xs font-medium text-gray-700">Internet</span>
+                    <span class="text-xs font-medium text-gray-700">Data</span>
                 </a>
                  <!-- Service Item -->
                  <a href="airtime" class="flex flex-col items-center space-y-2">
@@ -489,5 +574,49 @@
             // Modal will open automatically if there's account data
         @endif
     });
+</script>
+<script>
+    let selectedServiceId = null;
+let selectedServiceName = null;
+let selectedServiceCode = null;
+
+function showProviderModal(serviceId, serviceName, serviceCode) {
+    selectedServiceId = serviceId;
+    selectedServiceName = serviceName;
+    selectedServiceCode = serviceCode;
+    
+    document.getElementById('modalServiceTitle').textContent = serviceName;
+    const modal = document.getElementById('providerModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeProviderModal() {
+    const modal = document.getElementById('providerModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function selectProvider(provider) {
+    if (provider === '5sim') {
+        window.location.href = `/app/services/${selectedServiceCode}/5sim/countries`;
+    } else {
+        window.location.href = `/app/services/${selectedServiceId}/countries`;
+    }
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeProviderModal();
+    }
+});
+
+// Close modal on outside click
+document.getElementById('providerModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeProviderModal();
+    }
+});
 </script>
 @endsection

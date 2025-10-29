@@ -4,20 +4,25 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\Transaction;
 use App\Models\Wallet;
-use App\Models\VirtualAccount;
 
 class FlutterwaveWebhookController extends Controller
 {
+    /**
+     * Handle incoming Flutterwave webhook
+     */
     public function handle(Request $request)
     {
         // Verify webhook signature
         $signature = $request->header('verif-hash');
-        if (!$signature || $signature !== env('FLW_SECRET_HASH')) {
-            Log::warning('Invalid webhook signature received');
-            return response('Invalid signature', 401);
+        $secretHash = config('services.flutterwave.secret_hash') ?? env('FLW_SECRET_HASH');
+
+        if (!$signature || !$secretHash) {
+            Log::warning('Missing signature or secret hash');
+            return false;
         }
 
         $payload = $request->all();

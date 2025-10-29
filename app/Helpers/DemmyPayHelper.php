@@ -27,26 +27,36 @@ class DemmyPayHelper
 
         Log::info('DemmyPay: Starting authentication...');
 
-        $response = Http::withHeaders([
-            'Content-Type' => 'application/json',
-        ])->post(self::$baseUrl . '/api/v1/authentication', [
+        $payload = [
             'apiKey'     => self::$apiKey,
             'passPhrase' => self::$passPhrase,
-        ]);
+        ];
 
-        Log::info('DemmyPay Auth Response:', ['status' => $response->status(), 'body' => $response->body()]);
+        $url = self::$baseUrl . '/api/v1/authentication';
+
+        // Debug: log what’s being sent
+        Log::info('DemmyPay Auth Request:', ['url' => $url, 'payload' => $payload]);
+
+        $response = Http::withHeaders([
+            'Content-Type' => 'application/json',
+        ])->post($url, $payload);
+
+        Log::info('DemmyPay Auth Response:', [
+            'status' => $response->status(),
+            'body'   => $response->body(),
+        ]);
 
         if ($response->successful()) {
             $data = $response->json();
             self::$accessToken = $data['data']['accessToken'] ?? null;
-            
+
             if (self::$accessToken) {
                 Log::info('DemmyPay: Authentication successful');
                 return self::$accessToken;
             }
         }
 
-        Log::error('DemmyPay Authentication failed:', ['response' => $response->body()]);
+        // Return the response directly for easier debugging
         throw new \Exception('DemmyPay Authentication failed: ' . $response->body());
     }
 
@@ -112,6 +122,7 @@ class DemmyPayHelper
         ])->post(self::$baseUrl . '/api/v1/purchase', $payload);
 
         Log::info('DemmyPay Data Purchase Response:', ['status' => $response->status(), 'body' => $response->body()]);
+        Log::info('DemmyPay Purchase Raw Response:', ['raw' => $response->body()]);
 
         return $response->json();
     }

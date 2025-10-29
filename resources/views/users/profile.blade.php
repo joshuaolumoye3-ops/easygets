@@ -13,25 +13,24 @@
     </div>
 
      <div class="bg-brand-green text-white rounded-xl p-5 shadow-lg">
-            @if($wallet && $wallet->virtualAccounts->count() > 0)
+            {{-- @if($wallet && $wallet->virtualAccounts->count() > 0) --}}
                 <!-- User has a wallet and at least one virtual account -->
                 <div class="flex justify-between items-start">
                     <div>
                         <p class="text-sm opacity-80">Wallet Balance</p>
-                        <p class="text-3xl font-bold mt-1">₦{{ number_format($wallet->balance, 2) }}</p>
+                        <p class="text-3xl font-bold mt-1">₦{{ number_format($wallet->balance ?? 0, 2) }}</p>
                     </div>
                     <div class="flex flex-col items-end space-y-2">
                         <a href="transactions" class="text-sm">Transactions</a>
-                        <button id="addFundsBtn"
-                                data-has-account="true"
+                        <a href="dashboard"
                                 class="bg-white text-[#03624C] font-bold py-2 px-4 rounded-full text-sm hover:bg-white/30 transition-colors">
                             + Add Funds
-                        </button>
+                    </a>
                     </div>
                 </div>
-            @else
+            {{-- @else --}}
                 <!-- No account yet -->
-                <div class="text-center">
+                {{-- <div class="text-center">
                     <p>No wallet found.</p>
                     <button id="addFundsBtn"
                             data-has-account="false"
@@ -39,7 +38,7 @@
                         Create Wallet
                     </button>
                 </div>
-            @endif
+            @endif --}}
         </div>
 
         <!-- BVN/NIN Input Modal -->
@@ -99,7 +98,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
             </a>
-            <a href="/pin" class="flex justify-between items-center p-4 hover:bg-gray-50">
+            <a href="pin" class="flex justify-between items-center p-4 hover:bg-gray-50">
                 <span>Account Security</span>
                 <span class="text-gray-400">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">

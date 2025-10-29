@@ -47,6 +47,10 @@ return [
         'api_key'     => env('DEMMY_API_KEY'),
         'pass_phrase' => env('DEMMY_PASS_PHRASE'),
     ],
+    'morethanpanel' => [
+        'api_url' => env('MORETHANPANEL_API_URL', 'https://morethanpanel.com/api/v2'),
+        'api_key' => env('MORETHANPANEL_API_KEY'),
+    ],
     'flutterwave' => [
         'base_url' => env('FLW_BASE_URL'),
     ]

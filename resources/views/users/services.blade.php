@@ -118,6 +118,10 @@
                 <span>Loading more services...</span>
             </div>
         </div>
+
+        <div id="endOfList" class="text-center py-6 text-gray-500 text-sm hidden">
+            You've reached the end of the list
+        </div>
     </div>
 </div>
 
@@ -144,11 +148,11 @@
                     class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-200">
                 <div class="flex items-center space-x-4">
                     <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:shadow-lg transition">
-                        5S
+                        EG1
                     </div>
                     <div class="flex-1 text-left">
                         <h3 class="font-bold text-gray-800 group-hover:text-blue-700 transition">Provider 1</h3>
-                        <p class="text-sm text-gray-500">5sim.net - Premium service</p>
+                        {{-- <p class="text-sm text-gray-500">Premium service</p> --}}
                         <div class="flex items-center space-x-2 mt-1">
                             <span class="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
                             <span class="text-xs text-gray-600">Global coverage, multiple operators</span>
@@ -165,11 +169,11 @@
                     class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all duration-200">
                 <div class="flex items-center space-x-4">
                     <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:shadow-lg transition">
-                        SB
+                        EG2
                     </div>
                     <div class="flex-1 text-left">
                         <h3 class="font-bold text-gray-800 group-hover:text-green-700 transition">Provider 2</h3>
-                        <p class="text-sm text-gray-500">SMS-Bus - Standard service</p>
+                        {{-- <p class="text-sm text-gray-500">SMS-Bus - Standard service</p> --}}
                         <div class="flex items-center space-x-2 mt-1">
                             <span class="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
                             <span class="text-xs text-gray-600">Fast & reliable</span>
@@ -228,6 +232,10 @@
     let selectedServiceId = null;
     let selectedServiceName = null;
     let selectedServiceCode = null;
+    let hasMorePages = {{ $nextPage ? 'true' : 'false' }};
+    let currentSearch = '';
+
+    console.log('Initial state:', { nextPage, hasMorePages });
 
     function showProviderModal(serviceId, serviceName, serviceCode) {
         selectedServiceId = serviceId;
@@ -244,10 +252,8 @@
 
     function selectProvider(provider) {
         if (provider === '5sim') {
-            // For 5sim, use the service code (lowercase)
             window.location.href = `/services/${selectedServiceCode}/5sim/countries`;
         } else {
-            // For SMS-Bus, use the numeric service ID
             window.location.href = `/services/${selectedServiceId}/countries`;
         }
     }
@@ -266,39 +272,88 @@
         }
     });
 
-    // Infinite scroll
+    // Improved infinite scroll
     window.addEventListener('scroll', function() {
-        if (isLoading || !nextPage) return;
+        if (isLoading || !hasMorePages || !nextPage) {
+            return;
+        }
 
-        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const windowHeight = window.innerHeight;
+        const documentHeight = document.documentElement.scrollHeight;
+        
+        // Trigger when user is 400px from bottom
+        if (scrollTop + windowHeight >= documentHeight - 400) {
+            console.log('Scroll triggered loadMore');
             loadMore();
         }
     });
 
     function loadMore() {
-        if (isLoading || !nextPage) return;
+        if (isLoading || !hasMorePages || !nextPage) {
+            console.log('LoadMore blocked:', { isLoading, hasMorePages, nextPage });
+            if (!hasMorePages) {
+                document.getElementById('endOfList').classList.remove('hidden');
+            }
+            return;
+        }
         
         isLoading = true;
         document.getElementById('loading').classList.remove('hidden');
+        
+        console.log('Loading page:', nextPage);
 
-        fetch(`?page=${nextPage}`, {
+        const url = window.location.pathname + '?page=' + nextPage + '&ajax=1' + (currentSearch ? '&search=' + encodeURIComponent(currentSearch) : '');
+        
+        console.log('Fetching URL:', url);
+
+        fetch(url, {
+            method: 'GET',
             headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
             }
         })
-        .then(res => res.json())
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error('Network response was not ok: ' + response.status);
+            }
+            return response.json();
+        })
         .then(data => {
-            if (data.html) {
+            console.log('Data received:', {
+                html_length: data.html ? data.html.length : 0,
+                next_page: data.next_page,
+                has_more: data.has_more,
+                current_page: data.current_page
+            });
+            
+            if (data.html && data.html.trim() !== '') {
                 document.getElementById('productList').insertAdjacentHTML('beforeend', data.html);
                 nextPage = data.next_page;
+                hasMorePages = data.has_more || (data.next_page !== null);
+                
+                console.log('Updated state:', { nextPage, hasMorePages });
+                
+                if (!hasMorePages) {
+                    document.getElementById('endOfList').classList.remove('hidden');
+                }
+            } else {
+                console.log('No HTML content received');
+                hasMorePages = false;
+                document.getElementById('endOfList').classList.remove('hidden');
             }
         })
         .catch(error => {
             console.error('Error loading more services:', error);
+            hasMorePages = false;
         })
         .finally(() => {
             isLoading = false;
             document.getElementById('loading').classList.add('hidden');
+            console.log('LoadMore completed. isLoading:', isLoading);
         });
     }
 
@@ -309,6 +364,8 @@
         const filter = this.value.trim();
         
         searchTimeout = setTimeout(() => {
+            currentSearch = filter;
+            
             const url = new URL(window.location);
             if (filter) {
                 url.searchParams.set('search', filter);
@@ -318,7 +375,11 @@
             
             window.history.replaceState({}, '', url);
             
-            fetch(`?search=${encodeURIComponent(filter)}`)
+            fetch(`?search=${encodeURIComponent(filter)}`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
                 .then(res => res.text())
                 .then(html => {
                     let parser = new DOMParser();
@@ -327,7 +388,17 @@
                     if (newContent) {
                         document.getElementById('productList').innerHTML = newContent.innerHTML;
                     }
-                    nextPage = filter ? null : 2;
+                    
+                    // Reset pagination for search
+                    if (filter) {
+                        nextPage = null;
+                        hasMorePages = false;
+                        document.getElementById('endOfList').classList.add('hidden');
+                    } else {
+                        nextPage = 2;
+                        hasMorePages = true;
+                        document.getElementById('endOfList').classList.add('hidden');
+                    }
                 })
                 .catch(error => {
                     console.error('Error searching services:', error);
@@ -341,7 +412,10 @@
         const searchTerm = urlParams.get('search');
         if (searchTerm) {
             document.getElementById('searchInput').value = searchTerm;
+            currentSearch = searchTerm;
         }
+        
+        console.log('DOM loaded. Initial state:', { nextPage, hasMorePages, currentSearch });
     });
 </script>
 @endsection
