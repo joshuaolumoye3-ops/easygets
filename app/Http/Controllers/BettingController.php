@@ -35,7 +35,7 @@ class BettingController extends Controller
             return [];
         }
     });
-    // dd($bettingCompanies);
+    // dd($bettingCompanies); // removed for production
     return view('users.betting', compact('wallet', 'bettingCompanies'));
 }
 
@@ -192,7 +192,7 @@ class BettingController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Something went wrong. Please try again later.',
-                'debug' => config('app.debug') ? [
+                // 'debug' => config('app.debug') ? [ // removed for production
                     'error' => $e->getMessage(),
                     'line' => $e->getLine(),
                     'file' => basename($e->getFile()),

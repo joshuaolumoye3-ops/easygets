@@ -15,10 +15,12 @@ class EsimCountry extends Model
         'base_price',
         'flag_url',
         'is_active',
+        'local_number_available',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'local_number_available' => 'boolean',
         'base_price' => 'decimal:2',
     ];
 

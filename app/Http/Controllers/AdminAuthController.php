@@ -36,6 +36,14 @@ class AdminAuthController extends Controller
             Auth::guard('admins')->login($admin, $request->filled('remember'));
         }
 
+        // regenerate session to prevent CSRF/session fixation issues
+        try {
+            $request->session()->regenerate();
+        } catch (\Exception $e) {
+            // Log but don't fail the login
+            \Illuminate\Support\Facades\Log::warning('Session regenerate failed during admin login: ' . $e->getMessage());
+        }
+
         // update last login timestamp
         $admin = Auth::guard('admins')->user();
         $admin->update(['last_login' => now()]);
@@ -52,6 +60,13 @@ class AdminAuthController extends Controller
     // }
     public function showLogin()
     {
+        // Regenerate CSRF token to ensure the login form receives a fresh token
+        try {
+            session()->regenerateToken();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to regenerate CSRF token for admin login: ' . $e->getMessage());
+        }
+
         return view('admin.login');
     }
 

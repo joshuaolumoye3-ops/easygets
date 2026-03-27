@@ -170,7 +170,7 @@
 
                 // Redirect to transactions after 3 seconds
                 setTimeout(() => {
-                    window.location.href = '/transactions';
+                    window.location.href = '/app/transactions';
                 }, 3000);
             } else {
                 errorMsg.textContent = result.message || "An error occurred. Please try again.";

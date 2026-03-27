@@ -1,79 +1,303 @@
 <!DOCTYPE html>
 <html lang="en">
-
-
-<!-- Mirrored from demo.bootstrapdash.com/corona-tailwind/themes/modern-vertical/pages/user-pages/login.html by HTTrack Website Copier/3.x [XR&CO'2014], Mon, 15 Sep 2025 11:58:53 GMT -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Corona Tailwind</title>
-    <!-- plugins:css -->
-    <link rel="stylesheet" href="../../../assets/vendors/mdi/css/materialdesignicons.min.css">
-    <!-- endinject -->
-    <link rel="stylesheet" href="../../../assets/styles/modern-vertical.css">
+    <title>Easygets Admin Login</title>
     <link rel="shortcut icon" href="../../../assets/images/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        .modern-primary{
-            background: #03624C !important;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .text-red{
-            color: red;
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #03624C 0%, #0a4a38 50%, #157A61 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
         }
-        .bg-red{
-            background:red
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(230, 245, 241, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        body::after {
+            content: '';
+            position: absolute;
+            bottom: -20%;
+            left: -5%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(21, 122, 97, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 45px;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(3, 98, 76, 0.25), 0 0 0 1px rgba(3, 98, 76, 0.05);
+            animation: slideUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            z-index: 10;
+        }
+
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #03624C 0%, #157A61 100%);
+            border-radius: 16px 16px 0 0;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .login-header h1 {
+            font-size: 32px;
+            color: #03624C;
+            margin-bottom: 10px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .login-header p {
+            font-size: 14px;
+            color: #999;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #03624C;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 13px 16px;
+            border: 2px solid #E6F5F1;
+            border-radius: 10px;
+            font-size: 14px;
+            color: #333;
+            background: #F9FAFB;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 500;
+        }
+
+        .form-group input:hover {
+            border-color: #D0EAE6;
+            background: #ffffff;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #03624C;
+            background: #ffffff;
+            box-shadow: 0 0 0 4px rgba(3, 98, 76, 0.1);
+        }
+
+        .form-group input::placeholder {
+            color: #bbb;
+            font-weight: 400;
+        }
+
+        .error-message {
+            display: block;
+            margin-top: 6px;
+            font-size: 12px;
+            color: #d32f2f;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+        }
+
+        .alert-error {
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+            border: 2px solid #ef5350;
+            color: #c62828;
+            padding: 14px 16px;
+            border-radius: 10px;
+            margin-bottom: 24px;
+            font-size: 13px;
+            animation: slideDown 0.3s ease-out;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-15px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, #03624C 0%, #157A61 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-top: 12px;
+            box-shadow: 0 4px 15px rgba(3, 98, 76, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .submit-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(3, 98, 76, 0.35);
+        }
+
+        .submit-btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .submit-btn:active {
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 35px 25px;
+                margin: 20px;
+                border-radius: 14px;
+            }
+
+            .login-header h1 {
+                font-size: 28px;
+            }
+
+            .login-header {
+                margin-bottom: 32px;
+            }
         }
     </style>
 </head>
 
-<body class="bg-auth-login bg-cover bg-center bg-no-repeat flex items-center justify-center min-h-screen">
-    <div class="w-full max-w-sm p-4 bg-navbar_bg border border-gray-200 rounded-lg shadow sm:p-6 md:p-8">
-        <form class="space-y-6" action="{{ route('admin.login') }}" method="POST">
-            @csrf
-            <h5 class="text-xl font-medium text-light">Sign in</h5>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>Easygets Admin</h1>
+            <p>Enter your credentials to continue</p>
+        </div>
 
-            {{-- Show general error (like invalid credentials) --}}
+        <form action="{{ route('admin.login') }}" method="POST">
+            @csrf
+
+            {{-- Show general error --}}
             @if ($errors->has('email'))
-                <div class="p-2 mb-2 text-sm text-white bg-red rounded-md">
+                <div class="alert-error">
                     {{ $errors->first('email') }}
                 </div>
             @endif
 
-            <div>
-                <label for="email" class="block mb-2 text-sm font-medium text-light">
-                    Username or Email
-                </label>
-                <input type="text" name="email" value="{{ old('email') }}"
-                    class="bg-input_bg border border-border_color text-white text-sm rounded-md focus:outline-none focus:ring-0 focus:ring-modern-success focus:border-modern-success/80 w-full p-2.5 @error('email') border-red-500 @enderror"
-                    placeholder="Username or Email" required />
-
+            {{-- Email Field --}}
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input 
+                    type="text" 
+                    id="email"
+                    name="email" 
+                    value="{{ old('email') }}"
+                    placeholder="admin@easygets.com" 
+                    required 
+                />
                 @error('email')
-                    <span class="text-red text-xs">{{ $message }}</span>
+                    <span class="error-message">{{ $message }}</span>
                 @enderror
             </div>
 
-            <div>
-                <label for="password" class="block mb-2 text-sm font-medium text-light">
-                    Password
-                </label>
-                <input type="password" name="password"
-                    class="bg-input_bg border border-border_color text-white text-sm rounded-md focus:outline-none focus:ring-0 focus:ring-modern-success focus:border-modern-success/80 w-full p-2.5 @error('password') border-red-500 @enderror"
-                    placeholder="Password" required />
-
+            {{-- Password Field --}}
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input 
+                    type="password" 
+                    id="password"
+                    name="password"
+                    placeholder="Enter your password" 
+                    required 
+                />
                 @error('password')
-                    <span class="text-red text-xs">{{ $message }}</span>
+                    <span class="error-message">{{ $message }}</span>
                 @enderror
             </div>
 
-            <button type="submit"
-                class="w-full text-white bg-modern-primary hover:bg-modern-primary/80 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
-                Login
+            {{-- Submit Button --}}
+            <button type="submit" class="submit-btn">
+                Sign In
             </button>
         </form>
     </div>
-
 </body>
-
-
-
-<!-- Mirrored from demo.bootstrapdash.com/corona-tailwind/themes/modern-vertical/pages/user-pages/login.html by HTTrack Website Copier/3.x [XR&CO'2014], Mon, 15 Sep 2025 11:58:53 GMT -->
 </html>

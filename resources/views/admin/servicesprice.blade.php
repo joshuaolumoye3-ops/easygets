@@ -107,8 +107,22 @@
                                                 @endif
                                             });
                                         </script>
+
+                                        @if(isset($product->is_active) && !$product->is_active)
+                                            <div class="mt-2 text-sm text-yellow-300">Deactivated</div>
+                                        @endif
                                     @else
-                                        <span class="text-gray-400 text-sm">Not saved yet</span>
+                                        <!-- Allow saving an individual API product (reactivate by saving) -->
+                                        <form action="{{ route('admin.products.create', $provider->id) }}" method="POST" class="flex items-center gap-2">
+                                            @csrf
+                                            <input type="hidden" name="product_code" value="{{ $product->product_code }}">
+                                            <input type="hidden" name="name" value="{{ $product->name }}">
+                                            <input type="hidden" name="category" value="{{ $product->category }}">
+                                            <input type="hidden" name="api_price" value="{{ $product->api_price }}">
+
+                                            <input type="number" step="0.01" name="client_price" class="px-2 py-1 rounded text-black w-32" placeholder="Client Price" required>
+                                            <button type="submit" class="bg-green px-3 py-1 rounded-lg">Save</button>
+                                        </form>
                                     @endif
                                 </td>
                                 <td class="px-4 py-3 flex items-center gap-3">
@@ -116,16 +130,23 @@
                                         Last Updated: {{ $product->updated_at->diffForHumans() }}
                                     </span>
 
-                                    <!-- Delete Button -->
+                                    <!-- Actions: Delete/Reactivate -->
                                     @if ($product->id)
-                                        <form action="{{ route('admin.products.delete', ['id' => $product->id]) }}"
-                                            method="POST"
-                                            onsubmit="return confirm('Are you sure you want to delete this product?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit"
-                                                class="bg-red-600 text-white px-3 py-1 rounded-lg">Delete</button>
-                                        </form>
+                                        @if (isset($product->is_active) && !$product->is_active)
+                                            <form action="{{ route('admin.products.toggle', ['id' => $product->id]) }}" method="POST">
+                                                @csrf
+                                                <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded-lg">Reactivate</button>
+                                            </form>
+                                        @else
+                                            <form action="{{ route('admin.products.delete', ['id' => $product->id]) }}"
+                                                method="POST"
+                                                onsubmit="return confirm('Are you sure you want to deactivate this product?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit"
+                                                    class="bg-red-600 text-white px-3 py-1 rounded-lg">Deactivate</button>
+                                            </form>
+                                        @endif
                                     @endif
                                 </td>
                             </tr>

@@ -11,7 +11,7 @@
             <h1 style="font-size:18px; font-weight:bold; color:white; margin-bottom:16px;">
                 ESIM Transactions
             </h1>
-            <a href="/admin/esim" 
+            <a href="/app/admin/esim" 
                 class="inline-block px-4 py-2 rounded-lg bg-green hover:bg-green-700 text-white font-medium text-sm transition duration-200 text-center w-full max-w-xs">
                 Manage eSIM Plans
             </a>
@@ -68,11 +68,11 @@
                             </td>
                             <td style="padding:12px 16px;">
                                 @if($txn->esimUpload)
-                                    <span style="padding:4px 8px; border-radius:6px; font-size:12px; font-weight:500; background:#22c55e; color:white;">
+                                    <span class="badge-approved" style="padding:4px 8px; border-radius:6px; font-size:12px; font-weight:500;">
                                         ✓ Uploaded
                                     </span>
                                 @else
-                                    <span style="padding:4px 8px; border-radius:6px; font-size:12px; font-weight:500; background:#6b7280; color:white;">
+                                    <span class="badge-not-uploaded" style="padding:4px 8px; border-radius:6px; font-size:12px; font-weight:500;">
                                         Not Uploaded
                                     </span>
                                 @endif
@@ -184,11 +184,18 @@
         <img id="fullScreenImage" src="" alt="Full Screen" style="max-width:90%; max-height:90%; object-fit:contain;">
     </div>
 </main>
+
+<style>
+    /* eSIM upload badge styles */
+    .badge-approved { background:#22c55e; color:white; }
+    .badge-not-uploaded { background:#6b7280; color:white; }
+</style>
+
 <script>
 let currentTransactionData = null;
 
 function openTxnModal(txnId) {
-    fetch(`/admin/esim/transaction/${txnId}`)
+    fetch(`/app/admin/esim/transaction/${txnId}`)
         .then(res => {
             if (!res.ok) {
                 throw new Error(`HTTP error! status: ${res.status}`);
@@ -239,7 +246,14 @@ function openTxnModal(txnId) {
                 banner.style.display = 'block';
                 banner.style.background = '#22c55e';
                 banner.style.color = 'white';
-                banner.innerHTML = '✓ eSIM Details Already Uploaded - Edit Below to Update';
+
+                // If transaction is marked Success, show Approved wording to emphasize green approval
+                if (txn.status === 'Success') {
+                    banner.innerHTML = '✓ eSIM Details Approved';
+                } else {
+                    banner.innerHTML = '✓ eSIM Details Already Uploaded - Edit Below to Update';
+                }
+
                 submitBtn.textContent = 'Update Upload';
                 sectionTitle.textContent = 'Edit eSIM Details';
 

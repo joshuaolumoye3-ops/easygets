@@ -1,5 +1,3 @@
-
-
 @extends('layouts.app')
 
 @section('title', 'Services')
@@ -9,13 +7,52 @@
     <div class="container mx-auto px-4 py-8 max-w-md w-full">
 
         <!-- Header -->
-        <div class="relative flex items-center justify-center mb-8 sm:mb-12">
+        <div class="relative flex items-center justify-center mb-6 sm:mb-8">
             <a href="dashboard" class="absolute left-0 text-gray-600 hover:text-gray-800">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
             </a>
             <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Social Media Boost</h1>
+        </div>
+
+        <!-- Tier Legend -->
+        <div class="mb-6 bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-4 border border-gray-200">
+            <h3 class="text-sm font-semibold text-gray-700 mb-3 text-center">Service Quality Tiers</h3>
+            <div class="grid grid-cols-3 gap-3">
+                <!-- Basic Tier -->
+                <div class="bg-white rounded-xl p-3 shadow-sm hover:shadow-md transition cursor-pointer tier-legend-item" data-tier="Basic">
+                    <div class="flex flex-col items-center">
+                        🟡
+                        <p class="text-xs font-semibold text-gray-800">Basic</p>
+                        <p class="text-[10px] text-gray-500 text-center mt-1">Budget</p>
+                    </div>
+                </div>
+
+                <!-- Medium Tier -->
+                <div class="bg-white rounded-xl p-3 shadow-sm hover:shadow-md transition cursor-pointer tier-legend-item" data-tier="Medium">
+                    <div class="flex flex-col items-center">
+                        🟢
+                        <p class="text-xs font-semibold text-gray-800">Medium</p>
+                        <p class="text-[10px] text-gray-500 text-center mt-1">Quality</p>
+                    </div>
+                </div>
+
+                <!-- Elite Tier -->
+                <div class="bg-white rounded-xl p-3 shadow-sm hover:shadow-md transition cursor-pointer tier-legend-item" data-tier="Elite">
+                    <div class="flex flex-col items-center">
+                        🔵
+                        <p class="text-xs font-semibold text-gray-800">Elite</p>
+                        <p class="text-[10px] text-gray-500 text-center mt-1">Premium</p>
+                    </div>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 text-center mt-3">
+                <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                </svg>
+                Tap any tier to learn more
+            </p>
         </div>
 
         @if(isset($error))
@@ -39,6 +76,10 @@
         <!-- Social Boost Form -->
         <form id="socialBoostForm" method="POST" class="space-y-8">
             @csrf
+
+            <!-- Selected service description (shows when a service is chosen) -->
+            <div id="selectedServiceDescription" class="hidden text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+            </div>
 
             <!-- Platform Selection -->
             <div class="pt-6 lg:pt-0">
@@ -128,8 +169,13 @@
     <div id="serviceModalContent" class="rounded-t-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden transform transition-all duration-300 ease-out translate-y-full h-2/3 pb-16">
         <div class="px-6 py-4 pb-5 bg-brand-green">
             <h3 id="serviceModalTitle" class="text-lg font-semibold text-white text-center">Choose a Service</h3>   
+            {{-- <p id="serviceModalDescription" class="text-sm text-white/90 mt-2 text-center px-2"></p> --}}
         </div>
         <div class="bg-white p-4 h-full overflow-y-auto">
+            <!-- Search input for services -->
+            <div class="mb-3">
+                <input id="serviceSearch" type="search" placeholder="Search services (name, type, category)" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-full placeholder-gray-400 focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none transition duration-200">
+            </div>
             <ul id="serviceList" class="space-y-2"></ul>
         </div>
     </div>
@@ -170,6 +216,9 @@ window.socialServices = @json($groupedServices);
 window.socialWalletBalance = {{ $wallet->balance ?? 0 }};
 const EXCHANGE_RATE = {{ $exchangeRate ?? 1500 }};
 
+function getServiceDescription(service, platform = '') {
+    return (service.description || '').trim();
+}
 document.addEventListener('DOMContentLoaded', function () {
     const platformSelect = document.getElementById('platformSelect');
     const platformInput = document.getElementById('platformInput');
@@ -185,6 +234,7 @@ document.addEventListener('DOMContentLoaded', function () {
     
     const platformList = document.getElementById('platformList');
     const serviceList = document.getElementById('serviceList');
+    const serviceSearch = document.getElementById('serviceSearch');
     const serviceModalTitle = document.getElementById('serviceModalTitle');
     
     const quantityInfo = document.getElementById('quantityInfo');
@@ -210,6 +260,160 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => {
             modal.classList.add('hidden');
         }, 300);
+    }
+
+    // Get tier information based on rate
+    function getTierInfo(rate) {
+        if (rate <= 50) {
+            return {
+                name: 'Basic',
+                icon: 'B',
+                bgColor: 'bg-yellow-400',
+                textColor: 'text-white',
+                fullBgColor: 'bg-yellow-50',
+                accentColor: 'text-yellow-600',
+                borderColor: 'border-yellow-400'
+            };
+        } else if (rate <= 150) {
+            return {
+                name: 'Medium',
+                icon: 'M',
+                bgColor: 'bg-green-500',
+                textColor: 'text-white',
+                fullBgColor: 'bg-green-50',
+                accentColor: 'text-green-600',
+                borderColor: 'border-green-500'
+            };
+        } else {
+            return {
+                name: 'Elite',
+                icon: 'E',
+                bgColor: 'bg-blue-500',
+                textColor: 'text-white',
+                fullBgColor: 'bg-blue-50',
+                accentColor: 'text-blue-600',
+                borderColor: 'border-blue-500'
+            };
+        }
+    }
+
+    // Show tier information modal
+    function showTierInfoModal(tierInfo) {
+        const tierDescriptions = {
+            'Basic': {
+                title: 'Basic Plan',
+                emoji: '💛',
+                description: 'Most affordable boost services',
+                features: [
+                    'Budget-friendly pricing',
+                    'Fairly lower quality engagement',
+                    'May experience occasional drops',
+                    'Possible delivery slowdowns',
+                    'No quality guarantee for this tier'
+                ],
+                note: 'Best for: Testing services or tight budgets'
+            },
+            'Medium': {
+                title: 'Medium Plan',
+                emoji: '💚',
+                description: 'Where quality meets reliability',
+                features: [
+                    'Solid and realistic engagement',
+                    'Consistent delivery speed',
+                    'Reliable performance',
+                    'Minimal to no drops',
+                    'Great value for money'
+                ],
+                note: 'Best for: Regular boost campaigns and steady growth'
+            },
+            'Elite': {
+                title: 'Elite Plan',
+                emoji: '💙',
+                description: 'Premium quality for maximum impact',
+                features: [
+                    'Highest quality engagement available',
+                    'Premium organic-looking profiles',
+                    'Guaranteed delivery and retention',
+                    'Priority processing',
+                    'Zero drops with full support'
+                ],
+                note: 'Best for: Professional campaigns and brand reputation'
+            }
+        };
+
+        const info = tierDescriptions[tierInfo.name];
+        
+        const modalWrapper = document.createElement('div');
+        modalWrapper.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-[60] p-4 tier-modal';
+        
+        modalWrapper.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full relative transform animate-bounce-in">
+                <button class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition text-xl font-bold z-10 close-tier-modal">
+                    ✕
+                </button>
+                
+                <div class="p-6">
+                    <div class="flex items-center justify-center mb-4">
+                        <div class="w-20 h-20 rounded-full ${tierInfo.bgColor} flex items-center justify-center shadow-lg">
+                            <span class="text-4xl">${info.emoji}</span>
+                        </div>
+                    </div>
+                    
+                    <h2 class="text-2xl font-bold text-center ${tierInfo.accentColor} mb-2">
+                        ${info.title}
+                    </h2>
+                    
+                    <p class="text-center text-gray-700 font-medium mb-4">
+                        ${info.description}
+                    </p>
+                    
+                    <div class="bg-gray-50 rounded-xl p-4 mb-4">
+                        <h3 class="font-semibold text-gray-800 mb-3 flex items-center">
+                            <svg class="w-5 h-5 mr-2 ${tierInfo.accentColor}" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                                <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/>
+                            </svg>
+                            Features
+                        </h3>
+                        <ul class="space-y-2">
+                            ${info.features.map(feature => `
+                                <li class="flex items-start text-sm text-gray-700">
+                                    <svg class="w-5 h-5 ${tierInfo.accentColor} mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span>${feature}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    
+                    <div class="${tierInfo.fullBgColor} border ${tierInfo.borderColor} rounded-lg p-3 mb-4">
+                        <p class="text-sm ${tierInfo.accentColor} font-medium">
+                            💡 ${info.note}
+                        </p>
+                    </div>
+                    
+                    <button class="w-full ${tierInfo.bgColor} ${tierInfo.textColor} font-semibold py-3 px-4 rounded-xl hover:opacity-90 transition duration-200 shadow-md close-tier-modal">
+                        Got it!
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modalWrapper);
+        
+        const closeModal = () => {
+            modalWrapper.classList.add('animate-fade-out');
+            setTimeout(() => modalWrapper.remove(), 300);
+        };
+        
+        modalWrapper.querySelectorAll('.close-tier-modal').forEach(btn => {
+            btn.addEventListener('click', closeModal);
+        });
+        
+        modalWrapper.addEventListener('click', (e) => {
+            if (e.target === modalWrapper) closeModal();
+        });
     }
 
     // Populate platforms
@@ -285,21 +489,72 @@ document.addEventListener('DOMContentLoaded', function () {
             const li = document.createElement('li');
             li.className = 'p-3 rounded-lg cursor-pointer border-b border-gray-200 hover:bg-gray-100 transition duration-150 service-option';
             li.dataset.serviceId = service.service_id;
+            // searchable fields
+            li.dataset.search = `${service.name} ${service.type} ${service.category || ''}`.toLowerCase();
+            li.dataset.description = getServiceDescription(service, selectedPlatform) || '';
             
-            li.innerHTML = `
-                <div class="flex justify-between items-start">
-                    <div class="flex-1">
-                        <p class="text-gray-800 font-medium">${service.name}</p>
-                        <p class="text-xs text-gray-500 mt-1">${service.type}</p>
-                        <p class="text-xs text-gray-500">Min: ${service.min.toLocaleString()} | Max: ${service.max.toLocaleString()}</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-brand-green font-semibold">₦${service.rate_local.toFixed(2)}/1k</p>
-                    </div>
+            // Determine tier based on rate
+            let tierInfo = getTierInfo(service.rate_local);
+            
+            // Create the list item with tier icon
+            const tierIconDiv = document.createElement('div');
+            tierIconDiv.className = 'flex-shrink-0 mt-1';
+            tierIconDiv.innerHTML = `
+                <div class="w-10 h-10 rounded-full ${tierInfo.bgColor} flex items-center justify-center cursor-help tier-icon shadow-md" 
+                     data-tier="${tierInfo.name}"
+                     title="Click for ${tierInfo.name} tier details">
+                    <span class="text-base font-bold ${tierInfo.textColor}">${tierInfo.icon}</span>
                 </div>
             `;
             
-            li.addEventListener('click', () => selectService(service));
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'flex-1 min-w-0';
+            contentDiv.innerHTML = `
+                <p class="text-gray-800 font-medium truncate">${service.name}</p>
+                <p class="text-xs text-gray-500 mt-1">${service.type}</p>
+                <p class="text-xs text-gray-500">Min: ${service.min.toLocaleString()} | Max: ${service.max.toLocaleString()}</p>
+            `;
+            
+            const priceDiv = document.createElement('div');
+            priceDiv.className = 'text-right flex-shrink-0';
+            priceDiv.innerHTML = `
+                <p class="text-brand-green font-semibold whitespace-nowrap">₦${service.rate_local.toFixed(2)}/1k</p>
+            `;
+            
+            const wrapper = document.createElement('div');
+            wrapper.className = 'flex justify-between items-start gap-3';
+            wrapper.appendChild(tierIconDiv);
+            wrapper.appendChild(contentDiv);
+            wrapper.appendChild(priceDiv);
+            
+            li.appendChild(wrapper);
+            
+            // Add click listener for tier icon
+            const tierIcon = tierIconDiv.querySelector('.tier-icon');
+            tierIcon.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showTierInfoModal(tierInfo);
+            });
+            
+            // Add click listener for service selection (but not on tier icon)
+            li.addEventListener('click', (e) => {
+                if (!e.target.closest('.tier-icon')) {
+                    selectService(service);
+                }
+            });
+            
+            // Instead of placing descriptions inside each list item, show a preview
+            // in the modal header when the user hovers a service.
+            li.addEventListener('mouseenter', () => {
+                const desc = getServiceDescription(service, selectedPlatform);
+                const modalDescEl = document.getElementById('serviceModalDescription');
+                if (modalDescEl) modalDescEl.textContent = desc || '';
+            });
+            li.addEventListener('mouseleave', () => {
+                const modalDescEl = document.getElementById('serviceModalDescription');
+                if (modalDescEl) modalDescEl.textContent = '';
+            });
+
             serviceList.appendChild(li);
         });
 
@@ -320,50 +575,129 @@ document.addEventListener('DOMContentLoaded', function () {
         quantityInput.setAttribute('max', service.max);
         quantityInput.value = service.min;
         
-        // Show additional fields based on service type
-        renderAdditionalFields(service.type);
+        // Show additional fields based on full service object (type, name, description)
+        renderAdditionalFields(service);
         
         // Calculate cost immediately
         calculateCost();
         
         hideModal(serviceModal, serviceModalContent);
+        // Show the selected service description prominently above the form
+        const selectedDescEl = document.getElementById('selectedServiceDescription');
+        const desc = getServiceDescription(service, selectedPlatform) || '';
+        if (desc && selectedDescEl) {
+            selectedDescEl.innerHTML = `<strong class="block mb-1">Service Description:</strong><div class="text-sm text-gray-700">${desc.replace(/\n/g, '<br>')}</div>`;
+            selectedDescEl.classList.remove('hidden');
+        } else if (selectedDescEl) {
+            selectedDescEl.classList.add('hidden');
+            selectedDescEl.innerHTML = '';
+        }
     }
 
-    // Render additional fields based on service type
-    function renderAdditionalFields(type) {
+    // Render additional fields based on service object (type, name, description)
+    function renderAdditionalFields(service) {
         additionalFields.innerHTML = '';
-        
-        if (type === 'Custom Comments') {
+
+        const type = (service.type || '').toLowerCase();
+        const name = (service.name || '').toLowerCase();
+        const desc = getServiceDescription(service, selectedPlatform) || '';
+
+        // Custom comments
+        if (type.includes('custom comments') || name.includes('comments')) {
             additionalFields.innerHTML = `
                 <div class="pt-6 lg:pt-0">
                     <label for="comments" class="block text-sm font-semibold text-gray-700 mb-2">Comments (one per line)</label>
-                    <textarea 
-                        id="comments" 
-                        name="comments" 
-                        rows="4"
-                        placeholder="Great post!&#10;Amazing content!&#10;Love this!"
-                        class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg placeholder-gray-400 focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none transition duration-200"
-                        required
-                    ></textarea>
+                    <textarea id="comments" name="comments" rows="4" placeholder="Great post!&#10;Amazing content!&#10;Love this!" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg placeholder-gray-400 focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none transition duration-200"></textarea>
                     <p class="text-xs text-gray-500 mt-1">Enter one comment per line</p>
                 </div>
             `;
-        } else if (type.includes('Mentions') || type.includes('Mention')) {
-            additionalFields.innerHTML = `
+        }
+
+        // Mentions and username lists
+        if (type.includes('mentions') || name.includes('mentions') || type.includes('username') || name.includes('username')) {
+            additionalFields.innerHTML += `
                 <div class="pt-6 lg:pt-0">
-                    <label for="username" class="block text-sm font-semibold text-gray-700 mb-2">Username</label>
-                    <input 
-                        type="text" 
-                        id="username" 
-                        name="username" 
-                        placeholder="username"
-                        class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-full placeholder-gray-400 focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none transition duration-200"
-                        required
-                    >
-                    <p class="text-xs text-gray-500 mt-1">Enter username without @</p>
+                    <label for="usernames" class="block text-sm font-semibold text-gray-700 mb-2">Usernames (one per line or comma separated)</label>
+                    <textarea id="usernames" name="usernames" rows="3" placeholder="user1&#10;user2&#10;user3" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg placeholder-gray-400 focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none transition duration-200"></textarea>
+                    <p class="text-xs text-gray-500 mt-1">For single username-based services use the "username" field (below)</p>
+                </div>
+                <div class="pt-4">
+                    <label for="username" class="block text-sm font-semibold text-gray-700 mb-2">Single Username (optional)</label>
+                    <input type="text" id="username" name="username" placeholder="username" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-full placeholder-gray-400 focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none transition duration-200">
+                    <p class="text-xs text-gray-500 mt-1">Enter username if the service requires a single username</p>
                 </div>
             `;
         }
+
+        // Groups input (used by Snapchat DM, PayPal package delivery info, Invites etc.)
+        if (type.includes('groups') || name.includes('snapchat') || name.includes('paypal') || name.includes('invites') || desc.toLowerCase().includes('groups')) {
+            additionalFields.innerHTML += `
+                <div class="pt-6 lg:pt-0">
+                    <label for="groups" class="block text-sm font-semibold text-gray-700 mb-2">Groups / Additional Info</label>
+                    <textarea id="groups" name="groups" rows="5" placeholder="Provide target country, message, or account details (one per line). For PayPal provide: Full Name\nAddress\nAge\nTimezone" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg placeholder-gray-400 focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none transition duration-200"></textarea>
+                    <p class="text-xs text-gray-500 mt-1">Use this field per service instructions. See service description for guidance.</p>
+                </div>
+            `;
+        }
+
+        // Media (URLs to images/videos)
+        if (type.includes('media') || name.includes('media') || desc.toLowerCase().includes('media') || name.includes('snapchat') ) {
+            additionalFields.innerHTML += `
+                <div class="pt-4">
+                    <label for="media" class="block text-sm font-semibold text-gray-700 mb-2">Media URL (optional)</label>
+                    <input type="url" id="media" name="media" placeholder="https://example.com/media.mp4" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-full placeholder-gray-400 focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none transition duration-200">
+                    <p class="text-xs text-gray-500 mt-1">Provide direct link to image/video if required by service.</p>
+                </div>
+            `;
+        }
+
+        // Hashtags / keywords
+        if (type.includes('seo') || name.includes('seo') || desc.toLowerCase().includes('keywords') || desc.toLowerCase().includes('hashtags')) {
+            additionalFields.innerHTML += `
+                <div class="pt-4">
+                    <label for="keywords" class="block text-sm font-semibold text-gray-700 mb-2">Keywords / Hashtags</label>
+                    <input type="text" id="keywords" name="keywords" placeholder="test, example, #hashtag" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-full placeholder-gray-400 focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none transition duration-200">
+                    <p class="text-xs text-gray-500 mt-1">Comma separated keywords or hashtags</p>
+                </div>
+            `;
+        }
+
+        // Drip-feed: runs & interval
+        if (desc.toLowerCase().includes('drip') || name.includes('drip') || desc.toLowerCase().includes('runs')) {
+            additionalFields.innerHTML += `
+                <div class="grid grid-cols-2 gap-3 pt-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Runs</label>
+                        <input type="number" id="runs" name="runs" min="1" placeholder="e.g. 10" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-full">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Interval (sec)</label>
+                        <input type="number" id="interval" name="interval" min="1" placeholder="e.g. 60" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-full">
+                    </div>
+                </div>
+            `;
+        }
+
+        // Poll / answer_number
+        if (name.includes('poll') || desc.toLowerCase().includes('poll')) {
+            additionalFields.innerHTML += `
+                <div class="pt-4">
+                    <label for="answer_number" class="block text-sm font-semibold text-gray-700 mb-2">Answer Number</label>
+                    <input type="text" id="answer_number" name="answer_number" placeholder="e.g. 7" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-full">
+                    <p class="text-xs text-gray-500 mt-1">Provide the answer number for poll services if required.</p>
+                </div>
+            `;
+        }
+
+        // Show service description/instructions (use fallback mapping if API missing it)
+        // if (desc) {
+        //     additionalFields.innerHTML += `
+        //         <div class="pt-4 text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
+        //             <strong>Service Info:</strong>
+        //             <div class="mt-1">${desc}</div>
+        //         </div>
+        //     `;
+        // }
     }
 
     // Calculate cost
@@ -380,8 +714,18 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         
-        // Calculate: (quantity / 1000) * rate_local
-        const cost = (quantity / 1000) * selectedService.rate_local;
+        // Use client_price from database if available, otherwise fall back to API rate calculation
+        let cost = 0;
+        if (selectedService.client_price !== undefined && !isNaN(selectedService.client_price)) {
+            // Use database-driven per-unit price from products table
+            cost = quantity * parseFloat(selectedService.client_price);
+        } else if (selectedService.rate_local_per_unit && !isNaN(selectedService.rate_local_per_unit)) {
+            // Fallback: per-unit rate when provided by backend
+            cost = quantity * parseFloat(selectedService.rate_local_per_unit);
+        } else {
+            // Last resort: (quantity / 1000) * rate_local (rate_local is per-1000 units)
+            cost = (quantity / 1000) * selectedService.rate_local;
+        }
         costEstimate.textContent = `Estimated Cost: ₦${cost.toFixed(2)}`;
         
         // Warn if insufficient balance
@@ -404,6 +748,22 @@ document.addEventListener('DOMContentLoaded', function () {
         populateServices();
     });
 
+    // Filter services in modal by search input
+    if (serviceSearch) {
+        serviceSearch.addEventListener('input', function () {
+            const q = this.value.trim().toLowerCase();
+            serviceList.querySelectorAll('li.service-option').forEach(li => {
+                if (!q) {
+                    li.style.display = '';
+                    return;
+                }
+                const hay = li.dataset.search || '';
+                const desc = (li.dataset.description || '').toLowerCase();
+                li.style.display = (hay.includes(q) || desc.includes(q)) ? '' : 'none';
+            });
+        });
+    }
+
     quantityInput.addEventListener('input', calculateCost);
 
     // Close modals on background click
@@ -413,6 +773,44 @@ document.addEventListener('DOMContentLoaded', function () {
                 const content = modal === platformModal ? platformModalContent : serviceModalContent;
                 hideModal(modal, content);
             }
+        });
+    });
+
+    // Add event listeners for tier legend items
+    document.querySelectorAll('.tier-legend-item').forEach(item => {
+        item.addEventListener('click', function() {
+            const tierName = this.dataset.tier;
+            const tierInfo = {
+                'Basic': {
+                    name: 'Basic',
+                    icon: 'B',
+                    bgColor: 'bg-yellow-400',
+                    textColor: 'text-white',
+                    fullBgColor: 'bg-yellow-50',
+                    accentColor: 'text-yellow-600',
+                    borderColor: 'border-yellow-400'
+                },
+                'Medium': {
+                    name: 'Medium',
+                    icon: 'M',
+                    bgColor: 'bg-green-500',
+                    textColor: 'text-white',
+                    fullBgColor: 'bg-green-50',
+                    accentColor: 'text-green-600',
+                    borderColor: 'border-green-500'
+                },
+                'Elite': {
+                    name: 'Elite',
+                    icon: 'E',
+                    bgColor: 'bg-blue-500',
+                    textColor: 'text-white',
+                    fullBgColor: 'bg-blue-50',
+                    accentColor: 'text-blue-600',
+                    borderColor: 'border-blue-500'
+                }
+            };
+            
+            showTierInfoModal(tierInfo[tierName]);
         });
     });
 
@@ -440,21 +838,28 @@ document.addEventListener('DOMContentLoaded', function () {
                 return showSocialCustomModal('Error', `Quantity must be between ${selectedService.min.toLocaleString()} and ${selectedService.max.toLocaleString()}.`, 'text-red-600');
             }
             
-            // Check for additional required fields
-            if (selectedService.type === 'Custom Comments') {
-                const comments = document.getElementById('comments')?.value.trim();
-                if (!comments) {
-                    document.getElementById('comments')?.focus();
-                    return showSocialCustomModal('Error', 'Please enter at least one comment.', 'text-red-600');
+            // Check for additional required fields based on rendered inputs
+            const commentsEl = document.getElementById('comments');
+            if (commentsEl && commentsEl.value.trim() === '') {
+                commentsEl.focus();
+                return showSocialCustomModal('Error', 'Please enter at least one comment.', 'text-red-600');
+            }
+
+            const usernameEl = document.getElementById('username');
+            const usernamesEl = document.getElementById('usernames');
+            if ((usernameEl || usernamesEl)) {
+                const usernameVal = usernameEl ? usernameEl.value.trim() : '';
+                const usernamesVal = usernamesEl ? usernamesEl.value.trim() : '';
+                if (!usernameVal && !usernamesVal) {
+                    (usernameEl || usernamesEl).focus();
+                    return showSocialCustomModal('Error', 'Please enter a username or usernames list.', 'text-red-600');
                 }
             }
-            
-            if (selectedService.type.includes('Mentions')) {
-                const username = document.getElementById('username')?.value.trim();
-                if (!username) {
-                    document.getElementById('username')?.focus();
-                    return showSocialCustomModal('Error', 'Please enter a username.', 'text-red-600');
-                }
+
+            const groupsEl = document.getElementById('groups');
+            if (groupsEl && groupsEl.value.trim() === '') {
+                groupsEl.focus();
+                return showSocialCustomModal('Error', 'Please provide required additional information in the Groups field.', 'text-red-600');
             }
             
             const cost = (quantity / 1000) * selectedService.rate_local;

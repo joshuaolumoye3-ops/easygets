@@ -66,6 +66,9 @@
                                 <div class="flex-1">
                                     <span class="font-semibold text-gray-700 block product-name">{{ $country['title'] }}</span>
                                     <span class="text-xs text-gray-500">{{ $country['packages_count'] }} {{ Str::plural('package', $country['packages_count']) }} available</span>
+                                    @if(!empty($country['local_number_available']))
+                                        <span class="inline-flex items-center ml-2 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Local number</span>
+                                    @endif
                                 </div>
                             </div>
                             <div class="text-right">

@@ -16,6 +16,13 @@
  
         <form id="otpForm" method="POST" action="{{ route('login.submit') }}" class="mt-8 space-y-6">
             @csrf
+            @if ($errors->any())
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-4">
+                    @foreach ($errors->all() as $error)
+                        <div>{{ $error }}</div>
+                    @endforeach
+                </div>
+            @endif
             <div class="flex justify-center">
                 <div class="space-y-5 flex flex-col w-full max-w-xs">
                     <input
@@ -25,7 +32,7 @@
                         class="w-full px-3 py-3 text-sm tracking-widest bg-white text-black rounded-full md:rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
                         required
                     />
-                        <input
+                    <input
                         type="password"
                         name="password"
                         placeholder="Password"

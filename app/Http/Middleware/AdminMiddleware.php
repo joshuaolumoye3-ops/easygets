@@ -16,19 +16,37 @@ class AdminMiddleware
     {
         $admin = Auth::guard('admins')->user();
 
-        // If not logged in → redirect to login page
+        // If not logged in → return JSON for AJAX or redirect for regular requests
         if (!$admin) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthenticated. Please login to access this page.'
+                ], 401);
+            }
             return redirect()->route('admin.login')
                 ->with('error', 'Please login to access this page.');
         }
 
-        // If role is not allowed → redirect back with error message
+        // If role is not allowed → return JSON for AJAX or redirect for regular requests
         if (!in_array($admin->role, ['super_admin', 'admin'])) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access.'
+                ], 403);
+            }
             return redirect()->back()->with('error', 'Unauthorized access.');
         }
 
         // Role-based restriction
         if (!empty($roles) && !in_array($admin->role, $roles)) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You do not have the required role.'
+                ], 403);
+            }
             return redirect()->back()->with('error', 'You do not have the required role.');
         }
 

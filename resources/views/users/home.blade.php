@@ -38,164 +38,125 @@
             </div>
         </div>
 
-        <!-- Virtual Account Details Card -->
-        @if(session('account_data'))
-        <div class="bg-white rounded-xl p-5 shadow-lg border border-green-200">
-            <div class="flex justify-between items-start mb-4">
-                <h3 class="font-bold text-lg text-gray-800">Your Virtual Account</h3>
-                <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                    Active
-                </span>
-            </div>
-
-            <div class="space-y-4">
-                <!-- Account Number -->
-                <div class="bg-gray-50 p-4 rounded-lg">
-                    <p class="text-sm text-gray-600 mb-1">Account Number</p>
-                    <div class="flex items-center justify-between">
-                        <p class="font-mono text-xl font-bold text-gray-800">
-                            {{ session('account_data')['account_number'] ?? 'N/A' }}
-                        </p>
-                        <button onclick="copyToClipboard('{{ session('account_data')['account_number'] }}')"
-                                class="text-brand-green font-bold text-sm hover:text-green-700 transition-colors">
-                            Copy
-                        </button>
-                    </div>
+        <!-- Payment Success/Error Messages -->
+        @if(session('success'))
+        <div class="bg-green-50 border border-green-200 rounded-xl p-4 shadow-sm">
+            <div class="flex items-start">
+                <svg class="w-5 h-5 text-green-600 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-green-800">{{ session('success') }}</p>
                 </div>
-
-                <!-- Account Details Grid -->
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <p class="text-sm text-gray-600">Bank Name</p>
-                        <p class="font-semibold text-gray-800">{{ session('account_data')['bank_name'] ?? 'N/A' }}</p>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-600">Account Name</p>
-                        <p class="font-semibold text-gray-800">{{ session('account_data')['account_name'] ?? Auth::user()->username . ' Flw' }}</p>
-                    </div>
-                </div>
-
-                <!-- Amount -->
-                <div class="bg-green-50 p-3 rounded-lg">
-                    <p class="text-sm text-gray-600">Amount to Fund</p>
-                    <p class="text-xl font-bold text-brand-green">
-                        ₦{{ number_format(session('account_data')['amount'] ?? 0, 2) }}
-                    </p>
-                </div>
-
-                <!-- Expiry Information -->
-                @if(session('account_data')['expires_at'] ?? false)
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                    <div class="flex items-center">
-                        <svg class="w-4 h-4 text-yellow-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
-                        </svg>
-                        <p class="text-sm text-yellow-800">
-                            <strong>Expires:</strong> {{ session('account_data')['expires_at'] }}
-                        </p>
-                    </div>
-                </div>
-                @endif
-
-                <!-- Instructions -->
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p class="text-sm text-blue-800">
-                        <strong>How to fund:</strong> Transfer the exact amount to the account number above from your bank. Your wallet will be credited automatically once payment is received.
-                    </p>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="flex space-x-3">
-                    <button onclick="closeVirtualAccountCard()"
-                            class="flex-1 bg-gray-500 text-white py-2 px-4 rounded-lg font-semibold hover:bg-gray-600 transition-colors">
-                        Close
-                    </button>
-                    <button onclick="generateNewAccount()"
-                            class="flex-1 bg-brand-green text-white py-2 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors">
-                        Generate New
-                    </button>
-                </div>
+                <button onclick="this.parentElement.parentElement.remove()" class="text-green-600 hover:text-green-800">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
             </div>
         </div>
         @endif
 
-        <!-- One-Time Virtual Account Modal -->
+        @if(session('error'))
+        <div class="bg-red-50 border border-red-200 rounded-xl p-4 shadow-sm">
+            <div class="flex items-start">
+                <svg class="w-5 h-5 text-red-600 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-red-800">{{ session('error') }}</p>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" class="text-red-600 hover:text-red-800">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        @endif
+
+        <!-- Flutterwave Checkout Modal -->
         <div id="addFundsModal" class="fixed inset-0 bg-black/50 hidden justify-center items-center z-50">
             <div class="bg-white p-6 rounded-lg w-full max-w-md relative mx-4">
                 <button id="closeModalBtn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-800 text-xl font-bold">✕</button>
-                <h2 class="text-lg font-bold mb-4">Add Funds</h2>
+                <h2 class="text-lg font-bold mb-4">Add Funds to Wallet</h2>
 
-                <!-- Display virtual account details if generated -->
-                @if(session('account_data'))
-                    <div class="virtual-account-info mb-4 p-4 border border-green-200 rounded-lg bg-green-50">
-                        <h5 class="text-green-700 font-bold mb-3">One-Time Account Generated!</h5>
-                        <p class="text-sm text-gray-600 mb-3">Transfer funds to this account to add money to your wallet:</p>
-                        <div class="space-y-2">
-                            <div class="bg-white p-2 rounded">
-                                <p class="text-xs text-gray-600">Account Number</p>
-                                <p class="font-bold text-lg flex items-center justify-between">
-                                    <span id="account-number" class="font-mono">{{ session('account_data')['account_number'] ?? 'N/A' }}</span>
-                                    <button onclick="copyToClipboard('account-number')" class="text-brand-green font-bold text-sm">Copy</button>
-                                </p>
+                <!-- Flutterwave Checkout Form -->
+                <form id="generateAccountForm" action="{{ route('virtual-account.create') }}" method="POST">
+                    @csrf
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-4">
+                            Enter the amount you want to add to your wallet. You'll be redirected to Flutterwave's secure checkout page.
+                        </p>
+
+                        <!-- Amount Input -->
+                        <div class="mb-4">
+                            <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">
+                                Amount (₦)
+                            </label>
+                            <input type="number"
+                                   id="amount"
+                                   name="amount"
+                                   required
+                                   min="100"
+                                   step="0.01"
+                                   placeholder="Enter amount e.g. 1000"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent">
+                            <p class="text-xs text-gray-500 mt-1">Minimum amount: ₦100</p>
+                        </div>
+
+                        <!-- Info Box -->
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                            <div class="flex items-start space-x-2">
+                                <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                </svg>
+                                <div>
+                                    <p class="text-sm text-blue-800 font-semibold mb-1">How it works:</p>
+                                    <ul class="text-xs text-blue-700 space-y-1">
+                                        <li>• You'll be redirected to Flutterwave's secure payment page</li>
+                                        <li>• Complete payment with card, bank transfer, or USSD</li>
+                                        <li>• Your wallet will be credited automatically</li>
+                                    </ul>
+                                </div>
                             </div>
-                            <p><strong>Bank Name:</strong> {{ session('account_data')['bank_name'] ?? 'N/A' }}</p>
-                            <p><strong>Account Name:</strong> {{ session('account_data')['account_name'] ?? Auth::user()->first_name . ' ' . Auth::user()->last_name }}</p>
-                            <p><strong>Amount:</strong> <span class="text-brand-green font-bold">₦{{ number_format(session('account_data')['amount'] ?? 0, 2) }}</span></p>
-                            @if(session('account_data')['expires_at'] ?? false)
-                                <p class="text-xs text-gray-600 mt-2"><strong>Expires:</strong> {{ session('account_data')['expires_at'] }}</p>
-                            @endif
                         </div>
-                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4">
-                            <p class="text-xs text-yellow-800">
-                                <strong>Note:</strong> This is a one-time account. Once payment is received, it will be automatically credited to your wallet.
-                            </p>
-                        </div>
-                        <div class="mt-4">
-                            <button onclick="closeAndClearModal()"
-                                    class="w-full bg-brand-green text-white py-2 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors">
-                                Done
-                            </button>
+
+                        <!-- Payment Methods -->
+                        <div class="mb-4">
+                            <p class="text-xs text-gray-600 mb-2">Supported payment methods:</p>
+                            <div class="flex items-center space-x-3">
+                                <div class="flex items-center space-x-1 text-xs text-gray-600">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
+                                        <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span>Card</span>
+                                </div>
+                                <div class="flex items-center space-x-1 text-xs text-gray-600">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span>Bank Transfer</span>
+                                </div>
+                                <div class="flex items-center space-x-1 text-xs text-gray-600">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+                                    </svg>
+                                    <span>USSD</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                @else
-                    <!-- Generate One-Time Virtual Account Form -->
-                    <form id="generateAccountForm" action="{{ route('virtual-account.create') }}" method="POST">
-                        @csrf
-                        <div class="mb-4">
-                            <p class="text-sm text-gray-600 mb-4">
-                                Enter the amount you want to add to your wallet. We'll generate a one-time account number for the transfer.
-                            </p>
 
-                            <!-- Amount Input -->
-                            <div class="mb-4">
-                                <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Amount (₦)
-                                </label>
-                                <input type="number"
-                                       id="amount"
-                                       name="amount"
-                                       required
-                                       min="100"
-                                       step="0.01"
-                                       placeholder="Enter amount e.g. 1000"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent">
-                                <p class="text-xs text-gray-500 mt-1">Minimum amount: ₦100</p>
-                            </div>
-
-                            <!-- Info Box -->
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                                <p class="text-sm text-blue-800">
-                                    <strong>How it works:</strong> Generate a one-time account number, transfer the amount from your bank, and your wallet will be credited automatically.
-                                </p>
-                            </div>
-                        </div>
-
-                        <button type="submit" id="generateBtn"
-                                class="w-full bg-brand-green text-white py-3 px-4 rounded-lg font-semibold hover:bg-light-green transition-colors flex items-center justify-center">
-                            Generate Account Number
-                        </button>
-                    </form>
-                @endif
+                    <button type="submit" id="generateBtn"
+                            class="w-full bg-brand-green text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                        Proceed to Payment
+                    </button>
+                </form>
             </div>
         </div>
 
@@ -204,7 +165,7 @@
             <button onclick="window.location.href='services'" class="bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-700 transition-colors">
                 Get OTP
             </button>
-            <button onclick="openSocialModal()" class="bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-700 transition-colors">
+            <button onclick="window.location.href='social-boost'" class="bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-700 transition-colors">
                 Socials
             </button>
         </div>
@@ -218,7 +179,7 @@
             <div class="grid grid-cols-4 gap-4 text-center">
                 <!-- Facebook -->
                 @if(isset($quickPickServices['facebook']))
-                <button onclick="showProviderModal('{{ $quickPickServices['facebook']['id'] }}', '{{ $quickPickServices['facebook']['title'] }}', 'fb')" 
+                <button onclick="showProviderModal('{{ $quickPickServices['facebook']['id'] }}', '{{ $quickPickServices['facebook']['title'] }}', 'fb')"
                         class="flex flex-col items-center justify-center space-y-2">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" class="w-10 h-10" alt="Facebook">
                     <span class="text-xs text-gray-600">Facebook</span>
@@ -227,7 +188,7 @@
 
                 <!-- WhatsApp -->
                 @if(isset($quickPickServices['whatsapp']))
-                <button onclick="showProviderModal('{{ $quickPickServices['whatsapp']['id'] }}', '{{ $quickPickServices['whatsapp']['title'] }}', 'wa')" 
+                <button onclick="showProviderModal('{{ $quickPickServices['whatsapp']['id'] }}', '{{ $quickPickServices['whatsapp']['title'] }}', 'wa')"
                         class="flex flex-col items-center justify-center space-y-2">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" class="w-10 h-10" alt="WhatsApp">
                     <span class="text-xs text-gray-600">WhatsApp</span>
@@ -236,7 +197,7 @@
 
                 <!-- Telegram -->
                 @if(isset($quickPickServices['telegram']))
-                <button onclick="showProviderModal('{{ $quickPickServices['telegram']['id'] }}', '{{ $quickPickServices['telegram']['title'] }}', 'tg')" 
+                <button onclick="showProviderModal('{{ $quickPickServices['telegram']['id'] }}', '{{ $quickPickServices['telegram']['title'] }}', 'tg')"
                         class="flex flex-col items-center justify-center space-y-2">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" class="w-10 h-10" alt="Telegram">
                     <span class="text-xs text-gray-600">Telegram</span>
@@ -245,9 +206,9 @@
 
                 <!-- Google Voice -->
                 @if(isset($quickPickServices['google']))
-                <button onclick="showProviderModal('{{ $quickPickServices['google']['id'] }}', '{{ $quickPickServices['google']['title'] }}', 'google')" 
+                <button onclick="showProviderModal('{{ $quickPickServices['google']['id'] }}', '{{ $quickPickServices['google']['title'] }}', 'google')"
                         class="flex flex-col items-center justify-center space-y-2">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Google_Voice_icon_%282020%29.svg" class="w-10 h-10" alt="Google Voice">
+                    <img src="https://static.cdnlogo.com/logos/g/86/google-voice.svg" class="w-10 h-10" alt="Google Voice">
                     <span class="text-xs text-gray-600">Google Voice</span>
                 </button>
                 @endif
@@ -270,10 +231,10 @@
                         </button>
                     </div>
                 </div>
-                
+
                 <div class="p-6 space-y-4">
                     {{-- Provider 1: 5sim.net --}}
-                    <button onclick="selectProvider('5sim')" 
+                    <button onclick="selectProvider('5sim')"
                             class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-200">
                         <div class="flex items-center space-x-4">
                             <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:shadow-lg transition">
@@ -293,7 +254,7 @@
                     </button>
 
                     {{-- Provider 2: SMS-Bus --}}
-                    <button onclick="selectProvider('smsbus')" 
+                    <button onclick="selectProvider('smsbus')"
                             class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all duration-200">
                         <div class="flex items-center space-x-4">
                             <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:shadow-lg transition">
@@ -455,74 +416,6 @@
         document.getElementById('socialModal').classList.add('hidden');
     }
 
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => {
-            // Show temporary success message
-            const buttons = document.querySelectorAll('button');
-            buttons.forEach(button => {
-                if (button.textContent.includes('Copy')) {
-                    const originalText = button.textContent;
-                    button.textContent = 'Copied!';
-                    button.classList.add('text-green-600');
-
-                    setTimeout(() => {
-                        button.textContent = originalText;
-                        button.classList.remove('text-green-600');
-                    }, 2000);
-                }
-            });
-        }).catch(err => {
-            console.error('Failed to copy: ', err);
-            alert('Failed to copy. Please copy manually.');
-        });
-    }
-
-    // Close virtual account card
-    function closeVirtualAccountCard() {
-        // Clear session data via AJAX
-        fetch('{{ route("virtual-account.clear-session") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            }
-        }).then(response => {
-            console.log('Session cleared');
-            window.location.reload();
-        }).catch(error => {
-            console.error('Error clearing session:', error);
-            window.location.reload();
-        });
-    }
-
-    // Generate new virtual account
-    function generateNewAccount() {
-        document.getElementById('addFundsModal').classList.remove('hidden');
-        document.getElementById('addFundsModal').classList.add('flex');
-    }
-
-    // Close modal and clear session
-    function closeAndClearModal() {
-        const modal = document.getElementById('addFundsModal');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-
-        // Clear session data via AJAX
-        fetch('{{ route("virtual-account.clear-session") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            }
-        }).then(response => {
-            console.log('Session cleared');
-            window.location.reload();
-        }).catch(error => {
-            console.error('Error clearing session:', error);
-            window.location.reload();
-        });
-    }
-
     document.addEventListener('DOMContentLoaded', function() {
         const addFundsBtn = document.getElementById('addFundsBtn');
         const modal = document.getElementById('addFundsModal');
@@ -558,21 +451,21 @@
             generateForm.addEventListener('submit', function() {
                 const button = document.getElementById('generateBtn');
                 const amount = document.getElementById('amount').value;
+
+                if (!amount || amount < 100) {
+                    return;
+                }
+
                 button.disabled = true;
                 button.innerHTML = `
                     <svg class="animate-spin h-5 w-5 mr-2 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Generating...
+                    Redirecting to Payment...
                 `;
             });
         }
-
-        // Auto-open modal if account was just generated
-        @if(session('account_data'))
-            // Modal will open automatically if there's account data
-        @endif
     });
 </script>
 <script>
@@ -584,7 +477,7 @@ function showProviderModal(serviceId, serviceName, serviceCode) {
     selectedServiceId = serviceId;
     selectedServiceName = serviceName;
     selectedServiceCode = serviceCode;
-    
+
     document.getElementById('modalServiceTitle').textContent = serviceName;
     const modal = document.getElementById('providerModal');
     modal.classList.remove('hidden');

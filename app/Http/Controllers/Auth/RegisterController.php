@@ -40,9 +40,11 @@ class RegisterController extends Controller
     $existingUser = User::where('email', $validated['email'])->first();
     if ($existingUser) {
         if ($existingUser->email_verified_at) {
+            // User already verified → redirect to login
             return redirect()->route('login')
                 ->with('info', 'You already have an account. Please sign in.');
         } else {
+            // User exists but not verified → resend OTP
             $otp = rand(100000, 999999);
 
             EmailOtp::updateOrCreate(
@@ -75,12 +77,6 @@ class RegisterController extends Controller
         'password' => Hash::make($validated['password']),
     ]);
 
-    // Automatically create wallet for the new user
-    Wallet::create([
-        'user_id' => $user->id,
-        'balance' => 0, // default balance
-    ]);
-
     // Generate and send OTP
     $otp = rand(100000, 999999);
 
@@ -93,9 +89,8 @@ class RegisterController extends Controller
     Mail::to($user->email)->send(new OtpMail($otp));
 
     return redirect()->route('onboarding.emailOtp', ['user' => $user->id])
-                    ->with('success', 'Account created successfully! A wallet has been created for you. Check your email for the OTP.');
+                    ->with('success', 'Account created successfully! Check your email for the OTP.');
 }
-
 
 
     public function verifyOtp(Request $request)

@@ -5,95 +5,168 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use App\Models\User;
 use App\Models\Transaction;
 use App\Models\Wallet;
+use App\Models\User;
 
 class FlutterwaveWebhookController extends Controller
 {
-    /**
-     * Handle incoming Flutterwave webhook
-     */
     public function handle(Request $request)
     {
+        Log::info('🔔 Flutterwave Webhook Hit', [
+            'headers' => $request->headers->all(),
+            'raw_body' => $request->getContent(),
+            'parsed_body' => $request->all()
+        ]);
+
         // Verify webhook signature
         $signature = $request->header('verif-hash');
-        $secretHash = config('services.flutterwave.secret_hash') ?? env('FLW_SECRET_HASH');
+        $secretHash = env('FLW_SECRET_HASH');
 
-        if (!$signature || !$secretHash) {
-            Log::warning('Missing signature or secret hash');
-            return false;
+        if (!$secretHash) {
+            Log::error('FLW_SECRET_HASH not set in .env');
+            return response('Server Misconfigured', 500);
         }
 
+        if (!$signature || $signature !== $secretHash) {
+            Log::warning('⚠️ Invalid or Missing Webhook Signature', [
+                'received' => $signature,
+                'expected' => $secretHash
+            ]);
+            return response('Invalid signature', 401);
+        }
+
+        Log::info('✅ Webhook Signature Verified');
+
         $payload = $request->all();
-        $data = $payload['data'];
 
-        Log::info('Flutterwave Webhook Received', ['payload' => $payload]);
+        // Handle charge.completed event (standard checkout)
+        if (($payload['event'] ?? null) === 'charge.completed') {
+            return $this->handleChargeCompleted($payload);
+        }
 
-        if ($payload['event'] !== 'virtual.account.credited') {
-            return response('Ignored non-credit event', 200);
+        Log::info('Webhook ignored: Unsupported event', [
+            'event' => $payload['event'] ?? null
+        ]);
+
+        return response('Ignored', 200);
+    }
+
+    /**
+     * Handle successful charge completion
+     */
+    protected function handleChargeCompleted($payload)
+    {
+        $data = $payload['data'] ?? [];
+
+        // Verify payment was successful
+        if (($data['status'] ?? '') !== 'successful') {
+            Log::info('Payment not successful', ['status' => $data['status'] ?? 'unknown']);
+            return response('Payment not successful', 200);
+        }
+
+        $txRef = $data['tx_ref'] ?? null;
+        $amount = $data['amount'] ?? 0;
+        $transactionId = $data['id'] ?? null;
+
+        if (!$txRef || !$transactionId) {
+            Log::error('Missing required fields in webhook', $data);
+            return response('Invalid data', 400);
         }
 
         try {
             DB::beginTransaction();
 
-            // Find virtual account by reference
-            $virtualAccount = VirtualAccount::where('account_reference', $data['tx_ref'])
-                ->where('status', 'pending')
-                ->first();
-
-            if (!$virtualAccount) {
-                Log::error('Virtual account not found or already processed', [
-                    'reference' => $data['tx_ref']
-                ]);
-                return response('Invalid account', 404);
+            // Check for duplicate transaction
+            $existingTransaction = Transaction::where('reference', $txRef)->first();
+            if ($existingTransaction) {
+                Log::warning('⚠️ Duplicate transaction ignored', ['tx_ref' => $txRef]);
+                DB::commit();
+                return response('Duplicate transaction', 200);
             }
 
-            // Verify amount matches expected amount
-            if ((float)$data['amount'] !== (float)$virtualAccount->amount) {
-                Log::warning('Amount mismatch', [
-                    'expected' => $virtualAccount->amount,
-                    'received' => $data['amount']
+            // Extract user_id from tx_ref (format: FLW_{user_id}_{timestamp}_{unique})
+            $userId = $this->extractUserIdFromRef($txRef, $data);
+
+            if (!$userId) {
+                Log::error('Could not extract user_id from transaction', [
+                    'tx_ref' => $txRef,
+                    'data' => $data
                 ]);
-                // Still process the payment but log warning
+                DB::rollBack();
+                return response('User not found', 404);
             }
+
+            $wallet = Wallet::where('user_id', $userId)->first();
+
+            if (!$wallet) {
+                Log::error('Wallet not found for user', ['user_id' => $userId]);
+                DB::rollBack();
+                return response('Wallet not found', 404);
+            }
+
+            // Credit wallet
+            $oldBalance = $wallet->balance;
+            $wallet->increment('balance', $amount);
 
             // Create transaction record
-            $transaction = Transaction::create([
-                'reference' => $data['tx_ref'],
-                'user_id' => $virtualAccount->wallet->user_id,
+            Transaction::create([
+                'reference' => $txRef,
+                'user_id' => $userId,
                 'type' => 'credit',
                 'channel' => 'Flutterwave',
-                'amount' => $data['amount'],
+                'provider' => 'Flutterwave Checkout',
+                'amount' => $amount,
                 'status' => 'success',
-                'recipient' => $data['account_number'],
+                'description' => "Wallet funding via Flutterwave - ₦" . number_format($amount, 2),
                 'response' => json_encode($data)
             ]);
 
-            // Update virtual account status
-            $virtualAccount->update([
-                'status' => 'completed'
-            ]);
-
-            // Credit wallet
-            $virtualAccount->wallet->increment('balance', $data['amount']);
-
             DB::commit();
 
-            Log::info('Payment processed successfully', [
-                'reference' => $data['tx_ref'],
-                'amount' => $data['amount']
+            Log::info('💰 Payment Processed Successfully', [
+                'tx_ref' => $txRef,
+                'user_id' => $userId,
+                'amount' => $amount,
+                'old_balance' => $oldBalance,
+                'new_balance' => $wallet->balance
             ]);
 
             return response('OK', 200);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Payment processing failed', [
+
+            Log::error('❌ Payment Processing Failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+
             return response('Internal server error', 500);
         }
+    }
+
+    /**
+     * Extract user ID from transaction reference or metadata
+     */
+    protected function extractUserIdFromRef($txRef, $data)
+    {
+        // Try to extract from tx_ref format: FLW_{user_id}_{timestamp}_{unique}
+        if (preg_match('/^FLW_(\d+)_/', $txRef, $matches)) {
+            return (int) $matches[1];
+        }
+
+        // Try to get from meta data
+        if (isset($data['meta']['user_id'])) {
+            return (int) $data['meta']['user_id'];
+        }
+
+        // Try to find user by email
+        if (isset($data['customer']['email'])) {
+            $user = User::where('email', $data['customer']['email'])->first();
+            return $user ? $user->id : null;
+        }
+
+        return null;
     }
 }

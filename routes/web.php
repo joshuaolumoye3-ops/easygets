@@ -23,7 +23,28 @@ use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\SocialBoostController;
 use App\Http\Controllers\VirtualAccountController;
 use Illuminate\Support\Facades\Http;
+use App\Http\Controllers\OtpController;
 
+Route::prefix('app')->group(function () {
+
+// OTP (5sim) endpoints for web (monolith)
+    Route::prefix('otp')->group(function () {
+            Route::get('/check/{order_id}', [OtpController::class, 'check'])
+                ->name('otp.check')
+                ->withoutMiddleware([
+                    \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+                    \Illuminate\Auth\Middleware\Authenticate::class,
+                    \Illuminate\Session\Middleware\AuthenticateSession::class
+                ]);
+            Route::post('/cancel/{order_id}', [OtpController::class, 'cancel'])
+                ->name('otp.cancel')
+                ->withoutMiddleware([
+                    \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+                    \Illuminate\Auth\Middleware\Authenticate::class,
+                    \Illuminate\Session\Middleware\AuthenticateSession::class
+                ]);
+            Route::post('/rebuy/{product}/{number}', [OtpController::class, 'rebuy'])->name('otp.rebuy');
+                });
 Route::middleware('guest')->group(function () {
 
     Route::get('/', function () {
@@ -51,17 +72,23 @@ Route::middleware('guest')->group(function () {
 // end of auth routes#
 
 
+
 Route::post('/webhook/monnify', [MonnifyWebhookController::class, 'handle'])
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
 Route::post('/flutterwave/webhook', [FlutterwaveWebhookController::class, 'handle'])
-  ->name('flutterwave.webhook');
+    ->name('flutterwave.webhook');
 
 
 Route::middleware('auth')->group(function () {
     Route::post('/virtual-account/create', [VirtualAccountController::class, 'createAccount'])
-          ->name('virtual-account.create');
-    Route::post('/clear-virtual-account-session', [VirtualAccountController::class, 'clearSession'])->name('virtual-account.clear-session');
+        ->name('virtual-account.create');
+
+    Route::get('/flutterwave/callback', [VirtualAccountController::class, 'handleCallback'])
+        ->name('flutterwave.callback');
+
+    Route::post('/clear-virtual-account-session', [VirtualAccountController::class, 'clearSession'])
+        ->name('virtual-account.clear-session');
 
     Route::get('/dashboard', [Controller::class, 'dashboard'])->name('dashboard');
     Route::get('/transactions', [Controller::class, 'transaction'])->name('transaction');
@@ -72,6 +99,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/history', [HistoryController::class, 'index'])->name('history');
     Route::post('/history/get-sms', [HistoryController::class, 'getSmsCode'])->name('history.get-sms');
     Route::post('/history/cancel-activation', [HistoryController::class, 'cancelActivation'])->name('history.cancel-activation');
+    Route::post('/history/get-social-status', [HistoryController::class, 'getSocialStatus'])->name('history.get-social-status');
+
+        // Expire activation if countdown hits zero and SMS not delivered
+        Route::post('/history/expire-activation', [HistoryController::class, 'expireActivation'])->name('history.expire-activation');
 
     Route::post('/purchase/prepare', [CountryController::class, 'preparePurchase'])->name('prepare.purchase');
     Route::get('/purchase/confirm', [CountryController::class, 'showConfirm'])->name('confirm.payment');
@@ -86,10 +117,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/cabletv/purchase', [CableController::class, 'purchase'])->name('cabletv.purchase');
     Route::post('/wallet/create-account', [WalletController::class, 'createAccount'])->name('wallets.createAccount');
     Route::get('/profile', [Controller::class, 'profile'])->name('profile');
+
+    // Update or create transaction PIN
+    Route::post('/profile/pin', [Controller::class, 'updatePin'])->name('updateProfile.pin');
     Route::get('/electricity', [ElectricityController::class, 'showElectricityPlans'])->name('electricity');
     Route::post('/electricity/render-success', [ElectricityController::class, 'renderSuccessPartial'])->name('electricity.render-success');
     Route::post('/verify-electricity-meter', [ElectricityController::class, 'verifyElectricityMeter'])->name('verify.meter');
     Route::post('/electricity/purchase', [ElectricityController::class, 'purchase'])->name('electricity.purchase');
+
+    
 
     Route::get('/social-boost', [SocialBoostController::class, 'index'])->name('social-boost.index');
 
@@ -228,8 +264,10 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
     Route::get('/providers/{provider}/products', [AdminServiceController::class, 'products'])->name('admin.products');
     Route::post('/products/{id}/update', [AdminServiceController::class, 'updateProduct'])->name('admin.products.update');
     Route::post('/providers/{provider}/products/save', [AdminServiceController::class, 'saveProducts'])->name('admin.products.save');
+    Route::post('/providers/{provider}/products/create', [AdminServiceController::class, 'createProduct'])->name('admin.products.create');
     Route::post('/providers/{provider}/markup', [AdminServiceController::class, 'applyMarkup'])->name('admin.providers.markup');
     Route::delete('/products/{id}', [AdminServiceController::class, 'destroy'])->name('admin.products.delete');
+    Route::post('/products/{id}/toggle', [AdminServiceController::class, 'toggleActive'])->name('admin.products.toggle');
     Route::get('/esim-transaction', [AdminServiceController::class, 'esimindex'])->name('admin.esim.transaction');
     Route::get('/esim/{id}', [AdminServiceController::class, 'show'])->name('admin.esim.show');
     Route::post('/esim/upload', [AdminServiceController::class, 'upload'])->name('admin.esim.upload');
@@ -243,9 +281,15 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
         Route::post('/{countryId}/packages/save', [AdminEsimController::class, 'savePackage'])->name('admin.esim.savePackage');
         Route::delete('/packages/{id}', [AdminEsimController::class, 'deletePackage'])->name('admin.esim.deletePackage');
         Route::post('/{id}/toggle-status', [AdminEsimController::class, 'toggleCountryStatus'])->name('admin.esim.toggleStatus');
+        Route::post('/{id}/toggle-local-number', [AdminEsimController::class, 'toggleLocalNumber'])->name('admin.esim.toggleLocalNumber');
         Route::get('/transaction/{id}', [AdminEsimController::class, 'showTransaction'])->name('admin.esim.transaction.show');
     });
 
+    Route::prefix('social')->group(function () {
+        Route::get('/services', [SocialBoostController::class, 'adminListServices'])->name('admin.social.services');
+        Route::get('/refresh', [SocialBoostController::class, 'adminRefreshServices'])->name('admin.social.refresh');
+        Route::post('/update-description', [SocialBoostController::class, 'adminUpdateDescription'])->name('admin.social.updateDescription');
+    });
 
     Route::get('/list', [AdminAuthController::class, 'index'])->name('admin.list');
     Route::get('/{admin}', [AdminAuthController::class, 'showadmin'])->name('admins.show');
@@ -254,4 +298,6 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
 });
 Route::middleware(['admin:super_admin'])->prefix('admin')->group(function () {
     Route::post('/create', [AdminController::class, 'createAdmin'])->name('admin.create');
+});
+
 });

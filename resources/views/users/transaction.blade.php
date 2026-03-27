@@ -34,12 +34,28 @@
                     'failed'  => 'bg-red-100 text-red-700',
                 ];
                 $statusColor = $statusColors[strtolower($txn->status)] ?? 'bg-gray-100 text-gray-700';
+
+                // Prepare image URLs (normalize stored formats) to avoid complex inline closures
+                $imageUrls = null;
+                if ($txn->esimUpload) {
+                    $imagesRaw = $txn->esimUpload->images;
+                    if (is_array($imagesRaw)) {
+                        $imageUrls = array_map(function($i) { return asset($i); }, $imagesRaw);
+                    } elseif (is_string($imagesRaw)) {
+                        $decoded = json_decode($imagesRaw, true) ?? [];
+                        $imageUrls = array_map(function($i) { return asset($i); }, $decoded);
+                    } else {
+                        $imageUrls = [];
+                    }
+                }
             @endphp
 
             <div 
                 class="flex items-center justify-between p-5 border-b cursor-pointer hover:bg-gray-50 txn-row"
                 data-transaction='@json(array_merge($txn->toArray(), [
-                    "esim_upload" => $txn->esimUpload ? $txn->esimUpload->toArray() : null
+                    "esim_upload" => $txn->esimUpload ? array_merge($txn->esimUpload->toArray(), [
+                        'image_urls' => $imageUrls
+                    ]) : null
                 ]))'
             >
                 <div class="flex items-center space-x-4">
@@ -199,10 +215,26 @@
                 // Images with full-screen functionality
                 const imagesDiv = document.getElementById('esimImages');
                 imagesDiv.innerHTML = '';
-                if (Array.isArray(txn.esim_upload.images)) {
-                    txn.esim_upload.images.forEach(img => {
+
+                // Prefer full URLs if available (image_urls), otherwise handle images field (string or array)
+                let imgs = txn.esim_upload.image_urls ?? txn.esim_upload.images ?? [];
+
+                if (typeof imgs === 'string') {
+                    try {
+                        imgs = JSON.parse(imgs);
+                    } catch (e) {
+                        imgs = [imgs];
+                    }
+                }
+
+                if (Array.isArray(imgs)) {
+                    imgs.forEach(img => {
                         const imageElem = document.createElement('img');
-                        imageElem.src = '/' + img;
+                        const src = (typeof img === 'string' && (img.startsWith('http://') || img.startsWith('https://')))
+                            ? img
+                            : ('/' + img.replace(/^\//, ''));
+
+                        imageElem.src = src;
                         imageElem.style.width = '60px';
                         imageElem.style.borderRadius = '6px';
                         imageElem.style.cursor = 'pointer';

@@ -201,7 +201,7 @@ public function purchase(Request $request)
             $requestId,
             $callbackUrl
         );
-        // dd($response); // debug if needed
+        // dd($response); // removed for production
 
         // ✅ Step 4: Store transaction
         $transaction = Transaction::create([

@@ -263,7 +263,7 @@
         <li class="nav-category">Navigation</li>
         
         <li class="menu-item">
-            <a class="nav-link {{ request()->is('admin') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}">
+            <a class="nav-link {{ request()->is('app/admin') || request()->is('app/admin/') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}">
                 <span class="nav-icon" style="color: #3b82f6;">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                         <circle cx="12" cy="12" r="10"/>
@@ -275,9 +275,9 @@
                 <span>Dashboard</span>
             </a>
         </li>
-        
+
         <li class="menu-item">
-            <a class="nav-link {{ request()->is('admin/list*') ? 'active' : '' }}" href="{{ route('admin.list') }}">
+            <a class="nav-link {{ request()->is('app/admin/list*') ? 'active' : '' }}" href="{{ route('admin.list') }}">
                 <span class="nav-icon" style="color: #f59e0b;">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -310,7 +310,7 @@
         </li> --}}
 
         <li class="menu-item">
-            <a class="nav-link {{ request()->is('admin/services*') ? 'active' : '' }}" href="/admin/services">
+            <a class="nav-link {{ request()->is('app/admin/services*') ? 'active' : '' }}" href="{{ route('admin.services') }}">
                 <span class="nav-icon" style="color: #3b82f6;">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="2" y="3" width="20" height="14" rx="2"/>
@@ -321,9 +321,9 @@
                 <span>Service Settings</span>
             </a>
         </li>
-        
+
         <li class="menu-item">
-            <a class="nav-link {{ request()->is('admin/esim-transaction*') ? 'active' : '' }}" href="admin.esim-transaction">
+            <a class="nav-link {{ request()->is('app/admin/esim-transaction*') ? 'active' : '' }}" href="{{ route('admin.esim.transaction') }}">
                 <span class="nav-icon" style="color: #3b82f6;">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="1" x2="12" y2="23"/>
@@ -331,6 +331,30 @@
                     </svg>
                 </span>
                 <span>eSIM Transactions</span>
+            </a>
+        </li>
+
+        <li class="menu-item">
+            <a class="nav-link {{ request()->is('app/admin/esim') || request()->is('app/admin/esim/*') ? 'active' : '' }}" href="{{ route('admin.esim.index') }}">
+                <span class="nav-icon" style="color: #8b5cf6;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+                        <line x1="12" y1="18" x2="12.01" y2="18"/>
+                    </svg>
+                </span>
+                <span>eSIM Countries</span>
+            </a>
+        </li>
+
+        <li class="menu-item">
+            <a class="nav-link {{ request()->is('app/admin/social/services*') ? 'active' : '' }}" href="{{ route('admin.social.services') }}">
+                <span class="nav-icon" style="color: #10b981;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/>
+                        <path d="M9 10h6M9 14h6M9 18h6"/>
+                    </svg>
+                </span>
+                <span>Social Services</span>
             </a>
         </li>
     </ul>

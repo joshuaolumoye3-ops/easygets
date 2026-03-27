@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Helpers\PinHelper;
 use App\Helpers\MoreThanPanelHelper;
+use App\Models\SocialServiceDescription;
 
 class SocialBoostController extends Controller
 {
@@ -129,7 +130,7 @@ class SocialBoostController extends Controller
             ]);
             
             // Show detailed error in development
-            $isDev = config('app.debug');
+            $isDev = false; // force production mode
             $errorMessage = $isDev 
                 ? 'Error: ' . $e->getMessage() . ' (Line: ' . $e->getLine() . ')' 
                 : 'An error occurred while loading services. Please try again.';
@@ -240,7 +241,7 @@ class SocialBoostController extends Controller
             
             $wallet = $user->wallet;
 
-            // Validate request
+            // Validate request (allow commonly used extra params supported by MTP)
             $validated = $request->validate([
                 'service_id' => 'required|integer',
                 'link' => 'required|url|max:500',
@@ -248,6 +249,18 @@ class SocialBoostController extends Controller
                 'pin' => 'required|digits:4',
                 'comments' => 'nullable|string|max:5000',
                 'username' => 'nullable|string|max:100',
+                'usernames' => 'nullable|string|max:5000',
+                'groups' => 'nullable|string|max:8000',
+                'media' => 'nullable|url|max:1000',
+                'keywords' => 'nullable|string|max:1000',
+                'hashtags' => 'nullable|string|max:1000',
+                'runs' => 'nullable|integer|min:1',
+                'interval' => 'nullable|integer|min:1',
+                'answer_number' => 'nullable|string|max:10',
+                'posts' => 'nullable|integer',
+                'delay' => 'nullable|integer',
+                'expiry' => 'nullable|string',
+                'old_posts' => 'nullable|integer',
             ]);
 
             // Verify PIN
@@ -281,8 +294,8 @@ class SocialBoostController extends Controller
                 ], 422);
             }
 
-            // Calculate cost
-            $costs = $this->mtpHelper->calculateCost($service['rate'], $validated['quantity'], $this->exchangeRate);
+            // Calculate cost (pass service id so product-level `client_price` can be applied)
+            $costs = $this->mtpHelper->calculateCost($service['rate'], $validated['quantity'], $this->exchangeRate, $service['service'] ?? null);
             $costLocal = $costs['cost_local'];
             $costUsd = $costs['cost_usd'];
 
@@ -305,13 +318,38 @@ class SocialBoostController extends Controller
                     'quantity' => $validated['quantity'],
                 ];
 
-                // Add additional fields based on service type
-                if ($service['type'] === 'Custom Comments' && !empty($validated['comments'])) {
+                // Attach commonly used additional params if present
+                if (!empty($validated['comments'])) {
                     $orderData['comments'] = $validated['comments'];
                 }
-                
-                if (strpos($service['type'], 'Mentions') !== false && !empty($validated['username'])) {
+                if (!empty($validated['username'])) {
                     $orderData['username'] = $validated['username'];
+                }
+                if (!empty($validated['usernames'])) {
+                    $orderData['usernames'] = $validated['usernames'];
+                }
+                if (!empty($validated['groups'])) {
+                    $orderData['groups'] = $validated['groups'];
+                }
+                if (!empty($validated['media'])) {
+                    $orderData['media'] = $validated['media'];
+                }
+                if (!empty($validated['keywords'])) {
+                    $orderData['keywords'] = $validated['keywords'];
+                }
+                if (!empty($validated['hashtags'])) {
+                    $orderData['hashtags'] = $validated['hashtags'];
+                }
+                foreach (['runs','interval','posts','delay','old_posts'] as $p) {
+                    if (isset($validated[$p]) && $validated[$p] !== null) {
+                        $orderData[$p] = $validated[$p];
+                    }
+                }
+                if (!empty($validated['answer_number'])) {
+                    $orderData['answer_number'] = $validated['answer_number'];
+                }
+                if (!empty($validated['expiry'])) {
+                    $orderData['expiry'] = $validated['expiry'];
                 }
 
                 // Place order with MoreThanPanel
@@ -341,8 +379,9 @@ class SocialBoostController extends Controller
                     'reference' => $reference,
                     'request_id' => $orderResponse['order'],
                     'type' => 'social_boost',
-                    'channel' => 'morethanpanel',
-                    'provider' => 'morethanpanel',
+                    // Use friendly provider name
+                    'channel' => 'Easyget Social Package',
+                    'provider' => 'Easyget Social Package',
                     'service_id' => $validated['service_id'],
                     'service_name' => $service['name'],
                     'service_logo' => $this->mtpHelper->getServiceLogo($service['category'], $service['name']),
@@ -357,6 +396,11 @@ class SocialBoostController extends Controller
                         'category' => $service['category'],
                         'comments' => $validated['comments'] ?? null,
                         'username' => $validated['username'] ?? null,
+                        'usernames' => $validated['usernames'] ?? null,
+                        'groups' => $validated['groups'] ?? null,
+                        'media' => $validated['media'] ?? null,
+                        'keywords' => $validated['keywords'] ?? null,
+                        'hashtags' => $validated['hashtags'] ?? null,
                         'min' => $service['min'],
                         'max' => $service['max'],
                         'rate_per_k' => $service['rate'],
@@ -514,23 +558,97 @@ class SocialBoostController extends Controller
     {
         $grouped = [];
         $skipped = 0;
-        
+
+        // Fetch all custom overrides from database (indexed by service_id)
+        $custom = SocialServiceDescription::get()->keyBy('service_id');
+
         foreach ($services as $service) {
             // Skip services with missing required fields
-            if (!isset($service['category']) || !isset($service['service'])) {
+            if (empty($service['service']) || empty($service['name'])) {
                 $skipped++;
+                Log::warning('Skipping service with missing required fields', [
+                    'service' => $service
+                ]);
                 continue;
             }
-            
-            $category = $service['category'];
-            
-            if (!isset($grouped[$category])) {
-                $grouped[$category] = [];
-            }
-            
+
             try {
                 // Format service with local pricing
                 $formatted = $this->mtpHelper->formatServiceForDisplay($service, $this->exchangeRate);
+
+                // Apply any admin overrides (description, custom name, custom category)
+                $svcId = $formatted['service_id'];
+                if (isset($custom[$svcId])) {
+                    $record = $custom[$svcId];
+                    if (!empty($record->description)) {
+                        $formatted['description'] = $record->description;
+                    }
+                    $formatted['custom_name'] = $record->custom_name ?? null;
+                    $formatted['custom_category'] = $record->custom_category ?? null;
+                    // Persist admin percentage so downstream price calcs can use it
+                    $formatted['admin_percentage'] = intval($record->admin_percentage ?? 0);
+                    if (!empty($record->custom_name)) {
+                        $formatted['name'] = $record->custom_name;
+                    }
+                    if (!empty($record->custom_category)) {
+                        $formatted['category'] = $record->custom_category;
+                    }
+                } else {
+                    $formatted['custom_name'] = null;
+                    $formatted['custom_category'] = null;
+                    $formatted['admin_percentage'] = 0;
+                }
+
+                // Determine category to group by (after applying overrides)
+                $category = !empty($formatted['category']) ? $formatted['category'] : 'Other';
+                if (!isset($grouped[$category])) {
+                    $grouped[$category] = [];
+                }
+
+                // Attach client_price and provider percentage (if available)
+                $serviceCode = $service['service'] ?? null;
+                $pricing = $this->mtpHelper->getProductPricing($serviceCode);
+                if (!empty($pricing) && isset($pricing['client_price']) && $pricing['client_price'] !== null) {
+                    $clientPriceRaw = $pricing['client_price'];
+                    $providerPercentage = intval($pricing['provider_percentage'] ?? 0);
+                    $finalPerUnit = round($clientPriceRaw * (1 + ($providerPercentage / 100)), 2);
+
+                    // base per-unit before admin percentage
+                    $basePerUnit = $finalPerUnit;
+
+                    // Apply admin percentage (if any)
+                    $adminPct = intval($formatted['admin_percentage'] ?? 0);
+                    if ($adminPct > 0) {
+                        $mult = 1 + ($adminPct / 100);
+                        $basePerUnit = round($basePerUnit * $mult, 2);
+                    }
+
+                    $formatted['client_price_raw'] = $clientPriceRaw; // raw database client_price
+                    $formatted['client_price'] = $basePerUnit; // final per-unit price after provider+admin markup
+                    $formatted['percentage_applied'] = $providerPercentage + ($formatted['admin_percentage'] ?? 0);
+                    $formatted['pricing_source'] = 'product_database';
+
+                    // Also normalize rate_local/per_unit to reflect final per-unit price
+                    $formatted['rate_local_per_unit'] = round($basePerUnit, 4);
+                    $formatted['rate_local'] = round($basePerUnit * 1000, 2);
+                } else {
+                    // Use API rate as fallback
+                    $formatted['pricing_source'] = 'api_rate';
+                    // Use admin percentage (if any) as the applied percentage for API-derived prices
+                    $adminPct = intval($formatted['admin_percentage'] ?? 0);
+                    $formatted['percentage_applied'] = $adminPct;
+
+                    // Determine base per-unit from api-calculated value
+                    $basePerUnit = $formatted['rate_local_per_unit'] ?? (isset($formatted['rate_local']) ? $formatted['rate_local'] / 1000 : 0);
+                    if ($adminPct > 0) {
+                        $mult = 1 + ($adminPct / 100);
+                        $basePerUnit = round($basePerUnit * $mult, 4);
+                    }
+
+                    $formatted['rate_local_per_unit'] = $basePerUnit;
+                    $formatted['rate_local'] = round($basePerUnit * 1000, 2);
+                }
+
                 $grouped[$category][] = $formatted;
             } catch (\Exception $e) {
                 Log::warning('Failed to format service', [
@@ -544,12 +662,119 @@ class SocialBoostController extends Controller
         Log::info('Services grouped', [
             'total_input' => count($services),
             'categories' => count($grouped),
-            'skipped' => $skipped
+            'skipped' => $skipped,
+            'category_list' => array_keys($grouped)
         ]);
 
         // Sort categories alphabetically
         ksort($grouped);
 
         return $grouped;
+    }
+
+    /**
+     * Admin: List all services for description management
+     */
+    public function adminListServices()
+    {
+        try {
+            $services = $this->getCachedServices();
+
+            // Fetch any custom names/categories/descriptions and key by service_id
+            $custom = SocialServiceDescription::get()->keyBy('service_id');
+
+            $formattedServices = [];
+            foreach ($services as $service) {
+                $formatted = $this->mtpHelper->formatServiceForDisplay($service, $this->exchangeRate);
+
+                $svcId = $formatted['service_id'];
+                $formatted['description'] = $custom[$svcId]->description ?? null;
+
+                // Allow admin to override the service name, category, and apply admin percentage
+                if (isset($custom[$svcId])) {
+                    $record = $custom[$svcId];
+                    $formatted['custom_name'] = $record->custom_name ?? null;
+                    $formatted['custom_category'] = $record->custom_category ?? null;
+                    $formatted['admin_percentage'] = intval($record->admin_percentage ?? 0);
+
+                    if (!empty($record->custom_name)) {
+                        $formatted['name'] = $record->custom_name;
+                    }
+
+                    if (!empty($record->custom_category)) {
+                        $formatted['category'] = $record->custom_category;
+                    }
+                } else {
+                    $formatted['custom_name'] = null;
+                    $formatted['custom_category'] = null;
+                    $formatted['admin_percentage'] = 0;
+                }
+
+                $formattedServices[] = $formatted;
+            }
+
+            return view('admin.social-services', ['services' => $formattedServices]);
+        } catch (\Exception $e) {
+            Log::error('Admin list services error', ['error' => $e->getMessage()]);
+            return view('admin.social-services', ['services' => []])
+                ->with('error', 'Failed to load services');
+        }
+    }
+
+    /**
+     * Admin: Refresh services cache
+     */
+    public function adminRefreshServices()
+    {
+        try {
+            $cachePath = storage_path('app/cache/mtp_services.json');
+            if (file_exists($cachePath)) {
+                unlink($cachePath);
+            }
+
+            $this->getCachedServices();
+
+            return redirect()->route('admin.social.services')->with('success', 'Services refreshed successfully');
+        } catch (\Exception $e) {
+            Log::error('Admin refresh services error', ['error' => $e->getMessage()]);
+            return redirect()->route('admin.social.services')->with('error', 'Failed to refresh services');
+        }
+    }
+
+    /**
+     * Admin: Update service description
+     */
+    public function adminUpdateDescription(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'service_id' => 'required|string',
+                'description' => 'nullable|string',
+                'custom_name' => 'nullable|string|max:255',
+                'custom_category' => 'nullable|string|max:255',
+                'admin_percentage' => 'nullable|numeric|min:0',
+            ]);
+    
+            SocialServiceDescription::updateOrCreate(
+                ['service_id' => $validated['service_id']],
+                [
+                    'description' => $validated['description'] ?? null,
+                    'custom_name' => $validated['custom_name'] ?? null,
+                    'custom_category' => $validated['custom_category'] ?? null,
+                    'admin_percentage' => intval($validated['admin_percentage'] ?? 0),
+                ]
+            );
+    
+            // Clear the cache so updates show immediately
+            $cachePath = storage_path('app/cache/mtp_services.json');
+            if (file_exists($cachePath)) {
+                unlink($cachePath);
+            }
+    
+            return redirect()->route('admin.social.services')->with('success', 'Description updated successfully');
+        } catch (\Exception $e) {
+            Log::error('Admin update description error', ['error' => $e->getMessage()]);
+            return redirect()->route('admin.social.services')->with('error', 'Failed to update description');
+        }
     }
 }

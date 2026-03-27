@@ -338,6 +338,40 @@ class AdminEsimController extends Controller
     }
 
     /**
+     * Toggle local phone number availability flag
+     */
+    public function toggleLocalNumber($id)
+    {
+        try {
+            $country = EsimCountry::findOrFail($id);
+            $country->local_number_available = !$country->local_number_available;
+            $country->save();
+
+            Log::info("Toggled local number availability", [
+                'country' => $country->country_name,
+                'country_code' => $country->country_code,
+                'local_number_available' => $country->local_number_available
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => $country->local_number_available ? 'Local numbers enabled' : 'Local numbers disabled',
+                'local_number_available' => $country->local_number_available
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error toggling local number availability', [
+                'country_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update local number availability'
+            ], 500);
+        }
+    }
+
+    /**
      * Seed database with sample countries manually (for testing)
      */
     public function seedSampleCountries()

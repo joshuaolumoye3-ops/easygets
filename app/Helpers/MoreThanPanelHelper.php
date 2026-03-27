@@ -4,11 +4,15 @@ namespace App\Helpers;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class MoreThanPanelHelper
 {
     private $apiUrl;
     private $apiKey;
+    // Cache to avoid repeated DB queries for provider and products
+    private $providerCache = null;
+    private $productMapCache = null; // associative array: lower(product_code) => product row
 
     public function __construct()
     {
@@ -49,7 +53,7 @@ class MoreThanPanelHelper
             if ($response->successful()) {
                 $result = $response->json();
                 
-                // Log response structure for debugging
+                // Log response structure for debugging (removed for production)
                 Log::info('MoreThanPanel API response received', [
                     'action' => $action,
                     'type' => gettype($result),
@@ -213,19 +217,137 @@ class MoreThanPanelHelper
     }
 
     /**
-     * Calculate order cost (converts from USD to your local currency)
+     * Get product client price by service code (product_code)
+     * Returns the per-unit NGN price from the products table
      */
-    public function calculateCost($rateUsd, $quantity, $exchangeRate = 1500)
+    public function getProductClientPrice($serviceCode)
     {
-        // Rate is per 1000 units, so divide quantity by 1000
-        $costUsd = ($quantity / 1000) * floatval($rateUsd);
+        try {
+            // Delegate to the richer pricing helper
+            $pricing = $this->getProductPricing($serviceCode);
+            return $pricing['client_price'] ?? null;
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching product client price', [
+                'service_code' => $serviceCode,
+                'error' => $e->getMessage()
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Get product pricing and provider percentage by service code.
+     * Returns array: ['client_price' => float|null, 'provider_percentage' => int|null, 'provider_id' => int|null]
+     */
+    public function getProductPricing($serviceCode)
+    {
+        try {
+            // Load provider and product map into cache if not already loaded
+            if ($this->providerCache === null || $this->productMapCache === null) {
+                $provider = DB::table('providers')
+                    ->where('api_identifier', 'morethanpanel')
+                    ->orWhere('name', 'Morethanpanel')
+                    ->first();
+
+                if (!$provider) {
+                    Log::warning('MoreThanPanel provider not found in database');
+                    $this->providerCache = null;
+                    $this->productMapCache = [];
+                    return ['client_price' => null, 'provider_percentage' => null, 'provider_id' => null];
+                }
+
+                $this->providerCache = $provider;
+
+                // Load all active products for this provider and map by lowercased product_code
+                $products = DB::table('products')
+                    ->where('provider_id', $provider->id)
+                    ->where('is_active', 1)
+                    ->get();
+
+                $map = [];
+                foreach ($products as $p) {
+                    $code = strtolower($p->product_code ?? '');
+                    if ($code !== '') {
+                        $map[$code] = $p;
+                    }
+                }
+
+                $this->productMapCache = $map;
+            }
+
+            $provider = $this->providerCache;
+
+            $lookupCode = strtolower($serviceCode ?? '');
+            $product = $this->productMapCache[$lookupCode] ?? null;
+
+            if ($product) {
+                return [
+                    'client_price' => $product->client_price !== null ? floatval($product->client_price) : null,
+                    'provider_percentage' => intval($provider->percentage),
+                    'provider_id' => $provider->id,
+                ];
+            }
+
+            // Product not found in map
+            Log::info('Product not found for service code: ' . $serviceCode);
+            return ['client_price' => null, 'provider_percentage' => intval($provider->percentage), 'provider_id' => $provider->id];
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching product pricing', [
+                'service_code' => $serviceCode,
+                'error' => $e->getMessage()
+            ]);
+            return ['client_price' => null, 'provider_percentage' => null, 'provider_id' => null];
+        }
+    }
+
+    /**
+     * Calculate order cost using product-level client_price
+     * If client_price exists, use it directly; otherwise fall back to API rate with exchange
+     */
+    public function calculateCost($rateUsd, $quantity, $exchangeRate = 1500, $serviceCode = null)
+    {
+        // Try to get product-level client_price first
+        $clientPricePerUnit = null;
+        $providerPercentage = 0;
         
-        // Convert to local currency
-        $costLocal = $costUsd * $exchangeRate;
-        
+        if (!empty($serviceCode)) {
+            $pricing = $this->getProductPricing($serviceCode);
+            $clientPricePerUnit = $pricing['client_price'] ?? null;
+            $providerPercentage = isset($pricing['provider_percentage']) ? intval($pricing['provider_percentage']) : 0;
+        }
+
+        // If we have a product client_price, use it and apply provider percentage as markup
+        if ($clientPricePerUnit !== null && $clientPricePerUnit > 0) {
+            $markupMultiplier = 1 + ($providerPercentage / 100);
+            $finalPerUnit = round($clientPricePerUnit * $markupMultiplier, 2);
+            $costLocal = round($finalPerUnit * $quantity, 2);
+
+            // For reference, also calculate what the USD cost would be
+            $costUsd = round($costLocal / $exchangeRate, 2);
+
+            return [
+                'cost_usd' => $costUsd,
+                'cost_local' => $costLocal,
+                'cost_local_per_unit' => round($finalPerUnit, 2),
+                'percentage_applied' => $providerPercentage,
+                'source' => 'product_client_price',
+            ];
+        }
+
+        // Fallback: Calculate from API rate (for services without product entry)
+        $costUsdPerUnit = floatval($rateUsd) / 1000;
+        $costUsd = round($costUsdPerUnit * $quantity, 2);
+        $costLocalPerUnit = round($costUsdPerUnit * $exchangeRate, 4);
+        $costLocal = round($costLocalPerUnit * $quantity, 2);
+
         return [
-            'cost_usd' => round($costUsd, 2),
-            'cost_local' => round($costLocal, 2)
+            'cost_usd' => $costUsd,
+            'cost_local' => $costLocal,
+            'cost_local_per_unit' => $costLocalPerUnit,
+            'percentage_applied' => 0,
+            'source' => 'api_rate_with_exchange',
         ];
     }
 
@@ -322,21 +444,26 @@ class MoreThanPanelHelper
      */
     public function formatServiceForDisplay($service, $exchangeRate = 1500)
     {
-        // Calculate cost for 1000 units (standard rate)
-        $costs = $this->calculateCost($service['rate'], 1000, $exchangeRate);
-        
+        // Calculate cost for 1000 units (standard rate) — pass service id for product-level client_price lookup
+        $serviceId = $service['service'] ?? null;
+        $costs = $this->calculateCost($service['rate'], 1000, $exchangeRate, $serviceId);
+
+        $category = $service['category'] ?? 'Other';
+
         return [
             'service_id' => $service['service'],
             'name' => $service['name'],
-            'type' => $service['type'],
-            'category' => $service['category'],
+            'type' => $service['type'] ?? 'General',
+            'category' => $category,
             'rate_usd' => floatval($service['rate']),
-            'rate_local' => $costs['cost_local'], // Cost per 1000 units in local currency
+            'rate_local' => $costs['cost_local'], // Cost per 1000 units in local currency (includes markup)
+            'rate_local_per_unit' => $costs['cost_local_per_unit'],
+            'client_percentage' => $costs['percentage_applied'],
             'min' => intval($service['min']),
             'max' => intval($service['max']),
             'refill' => $service['refill'] ?? false,
             'cancel' => $service['cancel'] ?? false,
-            'logo' => $this->getServiceLogo($service['category'], $service['name']),
+            'logo' => $this->getServiceLogo($category, $service['name']),
             'description' => $service['description'] ?? null,
         ];
     }

@@ -119,6 +119,16 @@
                                     </svg>
                                 </button>
                             </form>
+
+                            <!-- Local number availability -->
+                            <div class="mt-3">
+                                <form class="toggle-local-number" data-id="{{ $country->id }}">
+                                    @csrf
+                                    <button type="button" onclick="toggleLocalNumber({{ $country->id }}, this)" class="px-3 py-2 rounded-lg text-sm {{ $country->local_number_available ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300' }}">
+                                        {{ $country->local_number_available ? 'Local numbers: Enabled' : 'Local numbers: Disabled' }}
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
 
@@ -322,7 +332,7 @@ async function openPackages(id, name) {
     document.getElementById('addPackageForm').reset();
 
     try {
-        const res = await fetch(`/admin/esim/${id}/packages`);
+        const res = await fetch(`/app/admin/esim/${id}/packages`);
         const data = await res.json();
         
         console.log('Packages response:', data); // Debug log
@@ -391,7 +401,7 @@ async function openPackages(id, name) {
         const formData = new FormData(e.target);
         
         try {
-            const res = await fetch(`/admin/esim/${id}/packages/save`, {
+            const res = await fetch(`/app/admin/esim/${id}/packages/save`, {
                 method: 'POST',
                 body: formData,
                 headers: {
@@ -426,7 +436,7 @@ function editPackage(id, plan, validity, price) {
 async function deletePackage(id) {
     if (confirm('Are you sure you want to delete this package?')) {
         try {
-            const res = await fetch(`/admin/esim/packages/${id}`, {
+            const res = await fetch(`/app/admin/esim/packages/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
@@ -477,7 +487,7 @@ function initializePriceForms() {
             `;
             
             try {
-                const res = await fetch(`/admin/esim/${id}/update-price`, {
+                const res = await fetch(`/app/admin/esim/${id}/update-price`, {
                     method: 'POST',
                     body: formData,
                     headers: {
@@ -519,7 +529,7 @@ function initializePriceForms() {
 async function seedCountries() {
     if (confirm('This will add 10 sample countries. Continue?')) {
         try {
-            const res = await fetch('/admin/esim/seed-sample', {
+            const res = await fetch('/app/admin/esim/seed-countries', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
@@ -543,7 +553,8 @@ async function seedCountries() {
 async function refreshCountries() {
     if (confirm('This will fetch all countries from RestCountries API. Continue?')) {
         try {
-            const res = await fetch('/admin/esim/refresh-countries', {
+            const baseUrl = '{{ url('/') }}';
+            const res = await fetch(`${baseUrl}/app/admin/esim/refresh-countries`, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
@@ -563,6 +574,50 @@ async function refreshCountries() {
         }
     }
 }
+
+// Toggle local number availability via admin endpoint
+async function toggleLocalNumber(countryId, btn) {
+    try {
+        btn.disabled = true;
+        const originalText = btn.innerText;
+
+        btn.innerText = 'Updating...';
+
+        const res = await fetch(`/app/admin/esim/${countryId}/toggle-local-number`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!res.ok) {
+            const err = await res.text();
+            console.error('Toggle failed:', err);
+            showNotification('Failed to update local number availability', 'error');
+            btn.disabled = false;
+            btn.innerText = originalText;
+            return;
+        }
+
+        const data = await res.json();
+        const enabled = !!data.local_number_available;
+
+        btn.classList.toggle('bg-green-600', enabled);
+        btn.classList.toggle('text-white', enabled);
+        btn.classList.toggle('bg-gray-700', !enabled);
+        btn.classList.toggle('text-gray-300', !enabled);
+        btn.innerText = enabled ? 'Local numbers: Enabled' : 'Local numbers: Disabled';
+
+        showNotification('Local number availability updated', 'success');
+        btn.disabled = false;
+    } catch (error) {
+        console.error('Error toggling local number:', error);
+        showNotification('Failed to update local number availability', 'error');
+        btn.disabled = false;
+    }
+}
+
 function showNotification(message, type = 'info') {
     const colors = {
         success: 'bg-emerald-600 text-white',

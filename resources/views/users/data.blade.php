@@ -44,6 +44,18 @@
                 </div>
             </div>
 
+            <!-- Type Selection -->
+            <div class="pt-6 lg:pt-0">
+                <label for="type" class="block text-sm font-semibold text-gray-700 mb-2">Plan Duration</label>
+                <div 
+                    id="typeSelect" 
+                    class="custom-select w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-gray-500 cursor-pointer focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200"
+                >
+                    Choose Plan Duration
+                </div>
+                <input type="hidden" name="data_type" id="typeInput">
+            </div>
+
             <!-- Package Selection -->
             <div class="pt-6 lg:pt-0">
                 <label for="package" class="block text-sm font-semibold text-gray-700 mb-2">Package</label>
@@ -122,6 +134,18 @@
         </div>
     </div>
 </div>
+<!-- Type Modal -->
+<div id="typeModal" class="fixed inset-0 z-50 flex items-end justify-center hidden modal-overlay bg-black/60 opacity-0 transition-opacity duration-300">
+    <div id="typeModalContent" class="rounded-t-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden transform transition-all duration-300 ease-out translate-y-full h-auto pb-16">
+        <div class="px-6 py-4 pb-5">
+            <h3 id="typeModalTitle" class="text-lg font-semibold text-white text-center">Choose Plan Duration</h3>   
+        </div>
+        <div class="bg-white p-4 overflow-y-auto">
+            <ul id="typeList" class="space-y-2"></ul>
+        </div>
+    </div>
+</div>
+
 <!-- Package Modal -->
 <div id="packageModal" class="fixed inset-0 z-50 flex items-end justify-center hidden modal-overlay bg-black/60 opacity-0 transition-opacity duration-300">
     <div id="packageModalContent" class="rounded-t-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden transform transition-all duration-300 ease-out translate-y-full h-2/3 pb-16">
@@ -137,21 +161,28 @@
 document.addEventListener('DOMContentLoaded', function () {
     const networkSelect = document.getElementById('network');
     const networkInput = document.getElementById('networkInput');
+    const typeSelect = document.getElementById('typeSelect');
+    const typeInput = document.getElementById('typeInput');
     const packageTrigger = document.getElementById('packageSelect');
     const packageInput = document.getElementById('packageInput');
-    const amountInput = document.getElementById('amountInput'); // New: amount input
+    const amountInput = document.getElementById('amountInput');
 
     const networkModal = document.getElementById('networkModal');
+    const typeModal = document.getElementById('typeModal');
     const packageModal = document.getElementById('packageModal');
     const modalContent = document.getElementById('modalContent');
+    const typeModalContent = document.getElementById('typeModalContent');
+    const typeModalTitle = document.getElementById('typeModalTitle');
     const packageModalContent = document.getElementById('packageModalContent');
     const packageModalTitle = document.getElementById('packageModalTitle');
 
     const networkOptions = document.querySelectorAll('.network-option');
+    const typeList = document.getElementById('typeList');
     const packageList = document.getElementById('packageList');
 
     const dataPlans = window.dataPlans || {};
     let selectedNetwork = '';
+    let selectedType = '';
 
     function showModal(modal, content) {
         modal.classList.remove('hidden');
@@ -180,9 +211,29 @@ document.addEventListener('DOMContentLoaded', function () {
         return raw?.[0]?.PRODUCT || [];
     }
 
+    function getAvailableTypes(networkKey) {
+        const plans = populatePackages(networkKey);
+        const typesSet = new Set();
+        
+        plans.forEach(plan => {
+            if (plan.PRODUCT_TYPE) {
+                typesSet.add(plan.PRODUCT_TYPE);
+            }
+        });
+        
+        // Sort types in logical order
+        const typeOrder = ['Daily', '2-Day', '3-Day', 'Weekly', 'Bi-Monthly', 'Monthly', 'Quarterly', 'Yearly', 'Other'];
+        return typeOrder.filter(t => typesSet.has(t));
+    }
+
+    function filterPackagesByType(networkKey, planType) {
+        const plans = populatePackages(networkKey);
+        return plans.filter(plan => plan.PRODUCT_TYPE === planType);
+    }
+
     // Prevent native <select> dropdown and open modal instead
     networkSelect.addEventListener('mousedown', function (e) {
-        e.preventDefault(); // Prevent default dropdown
+        e.preventDefault();
         showModal(networkModal, modalContent);
     });
 
@@ -193,8 +244,9 @@ document.addEventListener('DOMContentLoaded', function () {
             const selectedText = this.querySelector('span')?.textContent || selectedValue;
 
             selectedNetwork = selectedValue;
+            selectedType = ''; // Reset type
             networkInput.value = selectedValue;
-            packageTrigger.dataset.networkName = selectedText;
+            typeSelect.dataset.networkName = selectedText;
 
             // Update visible <select> for UI consistency
             networkSelect.querySelectorAll('option').forEach(opt => {
@@ -203,13 +255,69 @@ document.addEventListener('DOMContentLoaded', function () {
             networkSelect.classList.remove('text-gray-500');
             networkSelect.classList.add('text-gray-800');
 
-            // Reset package UI
+            // Reset type and package UI
+            typeSelect.textContent = 'Choose Plan Duration';
+            typeInput.value = '';
             packageTrigger.textContent = 'Choose a Package';
             packageInput.value = '';
-            amountInput.value = ''; // Reset amount too
+            amountInput.value = '';
+            typeSelect.classList.remove('text-gray-800');
+            typeSelect.classList.add('text-gray-500');
+            packageTrigger.classList.remove('text-gray-800');
+            packageTrigger.classList.add('text-gray-500');
 
             hideModal(networkModal, modalContent);
         });
+    });
+
+    // Show type modal
+    typeSelect.addEventListener('click', function () {
+        if (!selectedNetwork) {
+            alert('Please select a network first.');
+            return;
+        }
+
+        const availableTypes = getAvailableTypes(selectedNetwork);
+        const networkName = typeSelect.dataset.networkName || 'Selected Network';
+
+        typeModalTitle.textContent = `${networkName} - Choose Plan Duration`;
+        typeList.innerHTML = '';
+
+        availableTypes.forEach(type => {
+            const li = document.createElement('li');
+            li.className = 'flex items-center p-4 rounded-lg cursor-pointer border-b border-gray-200 hover:bg-gray-100 transition duration-150 type-option';
+            li.dataset.type = type;
+
+            li.innerHTML = `
+                <span class="text-gray-800 font-medium">${type}</span>
+            `;
+            typeList.appendChild(li);
+        });
+
+        showModal(typeModal, typeModalContent);
+    });
+
+    // Handle type selection
+    typeList.addEventListener('click', function (e) {
+        const target = e.target.closest('.type-option');
+        if (target) {
+            const selectedTypeValue = target.dataset.type;
+            
+            selectedType = selectedTypeValue;
+            typeInput.value = selectedTypeValue;
+            typeSelect.textContent = selectedTypeValue;
+            typeSelect.classList.remove('text-gray-500');
+            typeSelect.classList.add('text-gray-800');
+
+            // Reset package selection
+            packageTrigger.textContent = 'Choose a Package';
+            packageInput.value = '';
+            amountInput.value = '';
+            packageTrigger.classList.remove('text-gray-800');
+            packageTrigger.classList.add('text-gray-500');
+
+            hideModal(typeModal, typeModalContent);
+        }
     });
 
     // Show package modal
@@ -218,24 +326,25 @@ document.addEventListener('DOMContentLoaded', function () {
             alert('Please select a network first.');
             return;
         }
+        
+        if (!selectedType) {
+            alert('Please select a plan duration first.');
+            return;
+        }
 
-        const plans = populatePackages(selectedNetwork);
-        const networkName = packageTrigger.dataset.networkName || 'Selected';
+        const plans = filterPackagesByType(selectedNetwork, selectedType);
+        const networkName = typeSelect.dataset.networkName || 'Selected Network';
 
-        packageModalTitle.textContent = `${networkName} Packages`;
+        packageModalTitle.textContent = `${networkName} - ${selectedType} Packages`;
         packageList.innerHTML = '';
 
         plans.forEach(plan => {
             const li = document.createElement('li');
             li.className = 'flex items-center p-3 rounded-lg cursor-pointer border-b border-gray-200 pt-5 hover:bg-gray-100 transition duration-150 package-option';
             li.dataset.value = plan.PRODUCT_CODE;
-            li.dataset.amount = plan.PRODUCT_AMOUNT; // Store amount as data attribute
+            li.dataset.amount = plan.PRODUCT_AMOUNT;
 
             li.innerHTML = `
-                <svg class="w-6 h-6 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M17.778 8.222c-4.296-4.296-11.264-4.296-15.56 0L2 8.444l.222.222c3.904 3.904 10.232 3.904 14.136 0l.222-.222-.222-.222zM10 12a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
-                    <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM10 4a6 6 0 100 12 6 6 0 000-12z" fill-rule="evenodd" clip-rule="evenodd"></path>
-                </svg>
                 <span class="text-gray-800 font-medium">${plan.PRODUCT_NAME} - ₦${parseFloat(plan.PRODUCT_AMOUNT).toFixed(0)}</span>
             `;
             packageList.appendChild(li);
@@ -253,7 +362,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const selectedText = target.textContent.trim();
 
             packageInput.value = selectedValue;
-            amountInput.value = selectedAmount; // Set the amount input value
+            amountInput.value = selectedAmount;
             packageTrigger.textContent = selectedText;
             packageTrigger.classList.remove('text-gray-500');
             packageTrigger.classList.add('text-gray-800');
@@ -263,16 +372,19 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Close modals on background click
-    [networkModal, packageModal].forEach(modal => {
+    [networkModal, typeModal, packageModal].forEach(modal => {
         modal.addEventListener('click', function (e) {
             if (e.target === modal) {
-                const content = modal === networkModal ? modalContent : packageModalContent;
+                const content = e.target === networkModal ? modalContent : 
+                               e.target === typeModal ? typeModalContent : 
+                               packageModalContent;
                 hideModal(modal, content);
             }
         });
     });
 });
 </script>
+
 
 <script>
     window.dataPlans = @json($plans);

@@ -36,12 +36,38 @@
            <form action="{{ route('updateProfile.pin') }}" method="POST" class="max-w-md mx-auto bg-white shadow-md rounded-2xl p-8">
                 @csrf
 
-                <h2 class="text-2xl font-semibold text-gray-800 text-center mb-6">Create Transaction PIN</h2>
+                @php $hasPin = Auth::user()->pin ? true : false; @endphp
+
+                <h2 class="text-2xl font-semibold text-gray-800 text-center mb-6">{{ $hasPin ? 'Update Transaction PIN' : 'Create Transaction PIN' }}</h2>
                 <p class="text-gray-500 text-center mb-8 text-sm">
-                    Your 4-digit PIN will be used to authorize secure transactions.
+                    @if($hasPin)
+                        Enter your current PIN and choose a new 4-digit PIN.
+                    @else
+                        Your 4-digit PIN will be used to authorize secure transactions.
+                    @endif
                 </p>
 
                 <div class="space-y-6">
+                    @if($hasPin)
+                    <div>
+                        <label for="previous_pin" class="block text-sm font-medium text-gray-700 mb-2">Current 4-Digit PIN</label>
+                        <input
+                            type="password"
+                            id="previous_pin"
+                            name="previous_pin"
+                            maxlength="4"
+                            class="block w-full text-center text-3xl tracking-widest bg-gray-100 rounded-xl p-4 border focus:ring-2 focus:ring-green-600 focus:outline-none @error('previous_pin') border-red-500 @enderror"
+                            autocomplete="off"
+                            inputmode="numeric"
+                            pattern="[0-9]{4}"
+                            required
+                        >
+                        @error('previous_pin')
+                            <p class="text-red-500 text-xs mt-2">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    @endif
+
                     <!-- PIN Field -->
                     <div>
                         <label for="pin" class="block text-sm font-medium text-gray-700 mb-2">Enter 4-Digit PIN</label>

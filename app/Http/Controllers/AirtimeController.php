@@ -243,7 +243,7 @@ class AirtimeController extends Controller
                 'success' => false,
                 'message' => 'An error occurred while processing your request. Please try again.',
                 'error_type' => 'system_error',
-                'debug_message' => app()->environment('local') ? $e->getMessage() : null,
+                // 'debug_message' => app()->environment('local') ? $e->getMessage() : null, // removed for production
             ], 500);
         }
     }

@@ -22,80 +22,85 @@
 
     <!-- Activations Content -->
     <div id="activationsContent" class="space-y-3 px-4 transition-all duration-500 ease-in-out">
+        <!-- Active Polling Indicator -->
+        <div id="pollingIndicator" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center space-x-2">
+            <div class="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+            <span class="text-sm text-blue-700 font-medium">Auto-checking for SMS codes...</span>
+        </div>
+        
         @forelse($activations as $activation)
-        <div onclick="openActivationModal({{ $activation['id'] }})" 
-             class="cursor-pointer flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-            <div class="flex items-center space-x-3">
-                <img src="https://flagcdn.com/w40/{{ $activation['flag'] }}.png" 
-                     alt="flag" 
-                     class="w-10 h-10 rounded-full object-cover border-2 border-gray-100">
-                <div>
-                    <p class="font-semibold text-gray-800">{{ $activation['number'] }}</p>
-                    <p class="text-xs text-gray-500 mt-0.5">{{ $activation['service_name'] }} • {{ $activation['country_name'] }}</p>
-                    <p class="text-xs text-gray-400 mt-0.5">{{ $activation['date'] }}</p>
+            <div data-activation-id="{{ $activation['id'] }}"
+                 data-otp-order-id="{{ $activation['request_id'] ?? '' }}"
+                 data-otp-status="{{ $activation['raw_status'] ?? '' }}"
+                 onclick="openActivationModal(event, {{ $activation['id'] }})"
+                 class="cursor-pointer flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow relative group">
+                <div class="flex items-center space-x-3">
+                    <img src="https://flagcdn.com/w40/{{ $activation['flag'] }}.png"
+                         alt="flag"
+                         class="w-10 h-10 rounded-full object-cover border-2 border-gray-100">
+                    <div>
+                        <p class="font-semibold text-gray-800">{{ $activation['number'] }}</p>
+                        <p class="text-xs text-gray-500 mt-0.5">{{ $activation['service_name'] }} • {{ $activation['country_name'] }}</p>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ $activation['date'] }}</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span class="otp-status inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1
+                        {{ $activation['raw_status'] === 'completed' ? 'bg-green-100 text-green-700' :
+                          ($activation['raw_status'] === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700') }}">
+                        {{ $activation['status'] }}
+                    </span>
+                    @if($activation['raw_status'] === 'pending')
+                        <div class="hidden group-hover:flex items-center space-x-1 text-xs text-blue-600 mt-1">
+                            <div class="animate-spin rounded-full h-3 w-3 border-2 border-blue-600 border-t-transparent"></div>
+                            <span>Checking...</span>
+                        </div>
+                    @endif
                 </div>
             </div>
-            <div class="text-right">
-                <p class="font-semibold text-gray-800">{{ $activation['amount'] }}</p>
-                <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1
-                    @if($activation['raw_status'] === 'completed') bg-green-100 text-green-700
-                    @elseif($activation['raw_status'] === 'pending') bg-yellow-100 text-yellow-700
-                    @else bg-red-100 text-red-700
-                    @endif">
-                    {{ $activation['status'] }}
-                </span>
-            </div>
-        </div>
         @empty
-        <div class="text-center py-12">
-            <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-            </svg>
-            <p class="text-gray-500 font-medium">No activation history yet</p>
-            <p class="text-sm text-gray-400 mt-1">Your activations will appear here</p>
-            <a href="{{ route('services.list') }}" class="inline-block mt-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                Get Started
-            </a>
-        </div>
+            <div class="text-center py-12">
+                <div class="text-6xl mb-4">📱</div>
+                <p class="text-gray-500 font-medium">No activation history yet</p>
+                <p class="text-sm text-gray-400 mt-1">Your SMS activations will appear here</p>
+            </div>
         @endforelse
     </div>
 
     <!-- Socials Content -->
-    <div id="socialsContent" class="space-y-3 px-4 hidden transition-all duration-500 ease-in-out">
+    <div id="socialsContent" class="space-y-3 px-4 transition-all duration-500 ease-in-out hidden">
         @forelse($socialBoosts as $boost)
-        <div onclick="openSocialModal({{ $boost['id'] }})" 
-             class="cursor-pointer flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-2xl">
-                    {{ $boost['service_logo'] }}
+            <div onclick="openSocialModal({{ $boost['id'] }})"
+                 class="cursor-pointer flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-xl">
+                        {{ $boost['service_logo'] }}
+                    </div>
+                    <div>
+                        <p class="font-semibold text-gray-800">{{ $boost['service_name'] }}</p>
+                        <p class="text-xs text-gray-500 mt-0.5">{{ $boost['category'] }} • {{ number_format($boost['quantity']) }}</p>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ $boost['date'] }}</p>
+                    </div>
                 </div>
-                <div>
-                    <p class="font-semibold text-gray-800">{{ $boost['service_name'] }}</p>
-                    <p class="text-xs text-gray-500 mt-0.5">{{ number_format($boost['quantity']) }} units</p>
-                    <p class="text-xs text-gray-400 mt-0.5">{{ $boost['date'] }}</p>
+                <div class="text-right">
+                    <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1
+                        {{ $boost['raw_status'] === 'completed' ? 'bg-green-100 text-green-700' :
+                          ($boost['raw_status'] === 'processing' ? 'bg-blue-100 text-blue-700' :
+                          ($boost['raw_status'] === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                          ($boost['raw_status'] === 'partial' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-700'))) }}">
+                        {{ $boost['status'] }}
+                    </span>
                 </div>
             </div>
-            <div class="text-right">
-                <p class="font-semibold text-gray-800">{{ $boost['amount'] }}</p>
-                <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1
-                    @if($boost['raw_status'] === 'completed') bg-green-100 text-green-700
-                    @elseif($boost['raw_status'] === 'processing' || $boost['raw_status'] === 'pending') bg-blue-100 text-blue-700
-                    @elseif($boost['raw_status'] === 'partial') bg-orange-100 text-orange-700
-                    @else bg-red-100 text-red-700
-                    @endif">
-                    {{ $boost['status'] }}
-                </span>
-            </div>
-        </div>
         @empty
-        <div class="text-center py-12">
-            <div class="text-6xl mb-4">🚀</div>
-            <p class="text-gray-500 font-medium">No social boost history yet</p>
-            <p class="text-sm text-gray-400 mt-1">Your social orders will appear here</p>
-            <a href="{{ route('social-boost.index') }}" class="inline-block mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-                Start Boosting
-            </a>
-        </div>
+            <div class="text-center py-12">
+                <div class="text-6xl mb-4">🚀</div>
+                <p class="text-gray-500 font-medium">No social boost history yet</p>
+                <p class="text-sm text-gray-400 mt-1">Your social orders will appear here</p>
+                <a href="{{ route('social-boost.index') }}" class="inline-block mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                    Start Boosting
+                </a>
+            </div>
         @endforelse
     </div>
 </div>
@@ -120,27 +125,136 @@
 let pollingInterval = null;
 let currentActivationId = null;
 let currentSocialBoostId = null;
+let globalPollingInterval = null;
+let activationPollingStatus = {};
 
-// Auto-open modal for new activation
-@if($newActivationId)
-    document.addEventListener('DOMContentLoaded', function() {
-        setTimeout(() => {
-            openActivationModal({{ $newActivationId }});
-        }, 500);
+// ==================== AUTO-POLLING ON PAGE LOAD ====================
+document.addEventListener('DOMContentLoaded', function() {
+    const activations = @json($activations);
+    
+    // Start auto-polling for all pending activations
+    activations.forEach(activation => {
+        if (activation.raw_status === 'pending') {
+            activationPollingStatus[activation.id] = true;
+        }
     });
-@endif
+    
+    // Poll all pending orders every 3 seconds
+    if (Object.keys(activationPollingStatus).length > 0) {
+        startGlobalPolling();
+    }
+});
 
-// Auto-open modal for new social boost
-@if($newSocialBoostId)
-    document.addEventListener('DOMContentLoaded', function() {
-        setTimeout(() => {
-            switchTab('socials');
-            openSocialModal({{ $newSocialBoostId }});
-        }, 500);
-    });
-@endif
+function startGlobalPolling() {
+    if (globalPollingInterval) return; // Prevent duplicate intervals
+    
+    // Show polling indicator
+    const indicator = document.getElementById('pollingIndicator');
+    if (indicator) document.getElementById('pollingIndicator').classList.remove('hidden');
+    
+    globalPollingInterval = setInterval(() => {
+        const activations = @json($activations);
+        let anyPending = false;
+        
+        activations.forEach(activation => {
+            if (activation.raw_status === 'pending' && activationPollingStatus[activation.id]) {
+                anyPending = true;
+                checkForSmsBackground(activation.id);
+            }
+        });
+        
+        // Hide indicator if no more pending activations
+        if (!anyPending) {
+            stopGlobalPolling();
+        }
+    }, 3000); // Check every 3 seconds
+}
 
-// Tab switching
+function stopGlobalPolling() {
+    if (globalPollingInterval) {
+        clearInterval(globalPollingInterval);
+        globalPollingInterval = null;
+        
+        // Hide polling indicator
+        const indicator = document.getElementById('pollingIndicator');
+        if (indicator) indicator.classList.add('hidden');
+    }
+}
+
+function checkForSmsBackground(activationId) {
+    fetch('/app/history/get-sms', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({ activation_id: activationId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.sms_code) {
+            // SMS received - update the card and modal if open
+            activationPollingStatus[activationId] = false;
+            updateActivationCardFrontend(activationId, data.sms_code, 'completed');
+            
+            // If modal is open with this activation, update it
+            if (currentActivationId === activationId) {
+                updateOpenModalWithSms(activationId, data.sms_code);
+            }
+            
+            showToast('📱 SMS received! Check your history', 'success');
+        } else if (data.status === 'expired') {
+            activationPollingStatus[activationId] = false;
+            updateActivationCardFrontend(activationId, null, 'expired');
+            showToast('Activation expired', 'error');
+        }
+    })
+    .catch(error => console.error('Background SMS check error:', error));
+}
+
+function updateActivationCardFrontend(activationId, smsCode, status) {
+    const card = document.querySelector(`[data-activation-id="${activationId}"]`);
+    if (card) {
+        const badge = card.querySelector('.otp-status');
+        if (badge) {
+            if (status === 'completed') {
+                badge.textContent = 'Completed';
+                badge.className = 'otp-status inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1 bg-green-100 text-green-700';
+            } else if (status === 'expired') {
+                badge.textContent = 'Expired';
+                badge.className = 'otp-status inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1 bg-red-100 text-red-700';
+            }
+        }
+    }
+}
+
+function updateOpenModalWithSms(activationId, smsCode) {
+    const smsSection = document.getElementById('smsCodeSection');
+    if (smsSection) {
+        smsSection.innerHTML = `
+            <div class="bg-green-50 border-2 border-green-200 rounded-lg p-4 animate-pulse">
+                <div class="flex items-center justify-between">
+                    <p class="text-3xl font-bold text-green-700 tracking-wider">${smsCode}</p>
+                    <button onclick="copyToClipboard('${smsCode}')" class="text-green-600 hover:text-green-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>`;
+
+        const statusBadge = document.getElementById('statusBadge');
+        if (statusBadge) {
+            statusBadge.textContent = 'Completed';
+            statusBadge.className = 'px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700';
+        }
+    }
+    
+    stopPolling();
+}
+
+// ==================== TAB SWITCHING ====================
 document.getElementById('activationsBtn').addEventListener('click', () => switchTab('activations'));
 document.getElementById('socialsBtn').addEventListener('click', () => switchTab('socials'));
 
@@ -172,15 +286,15 @@ function switchTab(tab) {
 function openSocialModal(boostId) {
     currentSocialBoostId = boostId;
     const modal = document.getElementById('socialModal');
-    
+
     const socialBoosts = @json($socialBoosts);
     const boost = socialBoosts.find(b => b.id === boostId);
-    
+
     if (!boost) {
         alert('Social boost order not found');
         return;
     }
-    
+
     const statusColors = {
         'pending': 'bg-yellow-100 text-yellow-700',
         'processing': 'bg-blue-100 text-blue-700',
@@ -190,9 +304,9 @@ function openSocialModal(boostId) {
         'cancelled': 'bg-gray-100 text-gray-700',
         'refunded': 'bg-purple-100 text-purple-700'
     };
-    
+
     const statusColor = statusColors[boost.raw_status] || 'bg-gray-100 text-gray-700';
-    
+
     const modalContent = `
         <div class="p-6">
             <!-- Header -->
@@ -204,7 +318,7 @@ function openSocialModal(boostId) {
                     </svg>
                 </button>
             </div>
-            
+
             <!-- Service Info -->
             <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 mb-4">
                 <div class="flex items-center justify-between mb-3">
@@ -217,12 +331,12 @@ function openSocialModal(boostId) {
                             <p class="text-xs text-gray-600">${boost.category}</p>
                         </div>
                     </div>
-                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${statusColor}">
+                    <span id="modal-status-badge" class="px-2 py-1 text-xs font-semibold rounded-full ${statusColor}">
                         ${boost.status}
                     </span>
                 </div>
             </div>
-            
+
             <!-- Link -->
             ${boost.link ? `
             <div class="bg-gray-50 rounded-xl p-4 mb-4">
@@ -237,19 +351,19 @@ function openSocialModal(boostId) {
                 </div>
             </div>
             ` : ''}
-            
+
             <!-- Progress Section -->
-            <div class="bg-white border-2 border-gray-200 rounded-xl p-4 mb-4">
+            <div class="bg-white border-2 border-gray-200 rounded-xl p-4 mb-4" id="modal-progress-section">
                 <div class="flex items-center justify-between mb-3">
                     <p class="text-xs text-gray-500 font-medium uppercase">Order Progress</p>
                     ${boost.raw_status === 'pending' || boost.raw_status === 'processing' ? `
-                    <button onclick="checkSocialStatus(${boost.id})" class="text-xs text-purple-600 hover:text-purple-700 font-medium">
+                    <button onclick="checkSocialStatus(${boost.id})" id="refresh-status-btn" class="text-xs text-purple-600 hover:text-purple-700 font-medium">
                         Refresh Status
                     </button>
                     ` : ''}
                 </div>
-                
-                <div class="grid grid-cols-2 gap-3 text-sm">
+
+                <div class="grid grid-cols-2 gap-3 text-sm" id="modal-progress-grid">
                     <div>
                         <p class="text-gray-500">Quantity</p>
                         <p class="font-semibold text-gray-900">${boost.quantity.toLocaleString()}</p>
@@ -257,29 +371,29 @@ function openSocialModal(boostId) {
                     ${boost.start_count ? `
                     <div>
                         <p class="text-gray-500">Start Count</p>
-                        <p class="font-semibold text-gray-900">${boost.start_count.toLocaleString()}</p>
+                        <p class="font-semibold text-gray-900" id="modal-start-count">${boost.start_count.toLocaleString()}</p>
                     </div>
                     ` : ''}
-                    ${boost.remains ? `
+                    ${boost.remains !== null && boost.remains !== undefined ? `
                     <div>
                         <p class="text-gray-500">Remaining</p>
-                        <p class="font-semibold text-gray-900">${boost.remains.toLocaleString()}</p>
+                        <p class="font-semibold text-gray-900" id="modal-remains">${boost.remains.toLocaleString()}</p>
                     </div>
                     ` : ''}
                 </div>
-                
+
                 ${boost.raw_status === 'processing' || boost.raw_status === 'pending' ? `
-                <div class="mt-3">
+                <div class="mt-3" id="modal-progress-bar">
                     <div class="w-full bg-gray-200 rounded-full h-2">
-                        <div class="bg-purple-600 h-2 rounded-full animate-pulse" style="width: ${boost.remains ? ((boost.quantity - boost.remains) / boost.quantity * 100).toFixed(0) : 0}%"></div>
+                        <div class="bg-purple-600 h-2 rounded-full animate-pulse" id="modal-progress-fill" style="width: ${boost.remains ? ((boost.quantity - boost.remains) / boost.quantity * 100).toFixed(0) : 0}%"></div>
                     </div>
-                    <p class="text-xs text-gray-500 mt-1 text-center">
+                    <p class="text-xs text-gray-500 mt-1 text-center" id="modal-progress-text">
                         ${boost.remains ? `${((boost.quantity - boost.remains) / boost.quantity * 100).toFixed(0)}% Complete` : 'Processing...'}
                     </p>
                 </div>
                 ` : ''}
             </div>
-            
+
             <!-- Transaction Details -->
             <div class="bg-gray-50 rounded-xl p-4 mb-4">
                 <div class="grid grid-cols-2 gap-3 text-sm">
@@ -303,7 +417,7 @@ function openSocialModal(boostId) {
             </div>
         </div>
     `;
-    
+
     modal.querySelector('.bg-white').innerHTML = modalContent;
     modal.classList.remove('hidden');
     modal.classList.add('flex');
@@ -317,11 +431,12 @@ function closeSocialModal() {
 }
 
 function checkSocialStatus(boostId) {
-    const button = event.target;
+    const button = event?.target || document.getElementById('refresh-status-btn');
+    const originalText = button.textContent;
     button.disabled = true;
     button.textContent = 'Checking...';
-    
-    fetch('/history/get-social-status', {
+
+    fetch('/app/history/get-social-status', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -331,37 +446,118 @@ function checkSocialStatus(boostId) {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success) {
-            alert('Status updated! Refreshing...');
-            location.reload();
+        if (data.success && data.data) {
+            updateModalStatus(data.data);
+            showToast('Status updated successfully!', 'success');
+
+            if (data.data.local_status === 'completed') {
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
         } else {
-            alert(data.message || 'Unable to fetch status');
+            showToast(data.message || 'Unable to fetch status', 'error');
             button.disabled = false;
-            button.textContent = 'Refresh Status';
+            button.textContent = originalText;
         }
     })
     .catch(error => {
         console.error('Error checking status:', error);
-        alert('Error checking status');
+        showToast('Error checking status', 'error');
         button.disabled = false;
-        button.textContent = 'Refresh Status';
+        button.textContent = originalText;
     });
 }
 
-// ==================== ACTIVATION MODAL (EXISTING) ====================
+function updateModalStatus(statusData) {
+    const statusBadge = document.getElementById('modal-status-badge');
+    if (statusBadge && statusData.status_label) {
+        statusBadge.textContent = statusData.status_label;
 
-function openActivationModal(activationId) {
+        const localStatus = statusData.local_status;
+        statusBadge.className = 'px-2 py-1 text-xs font-semibold rounded-full ';
+
+        if (localStatus === 'completed') {
+            statusBadge.className += 'bg-green-100 text-green-700';
+        } else if (localStatus === 'processing' || localStatus === 'pending') {
+            statusBadge.className += 'bg-blue-100 text-blue-700';
+        } else if (localStatus === 'partial') {
+            statusBadge.className += 'bg-orange-100 text-orange-700';
+        } else {
+            statusBadge.className += 'bg-red-100 text-red-700';
+        }
+    }
+
+    if (statusData.start_count) {
+        const startCountEl = document.getElementById('modal-start-count');
+        if (startCountEl) {
+            startCountEl.textContent = parseInt(statusData.start_count).toLocaleString();
+        }
+    }
+
+    if (statusData.remains !== null && statusData.remains !== undefined) {
+        const remainsEl = document.getElementById('modal-remains');
+        if (remainsEl) {
+            remainsEl.textContent = parseInt(statusData.remains).toLocaleString();
+        }
+
+        const progressFill = document.getElementById('modal-progress-fill');
+        const progressText = document.getElementById('modal-progress-text');
+
+        if (progressFill && progressText) {
+            const socialBoosts = @json($socialBoosts);
+            const boost = socialBoosts.find(b => b.id === currentSocialBoostId);
+
+            if (boost) {
+                const quantity = boost.quantity;
+                const remains = parseInt(statusData.remains);
+                const progress = ((quantity - remains) / quantity * 100).toFixed(0);
+
+                progressFill.style.width = progress + '%';
+                progressText.textContent = progress + '% Complete';
+            }
+        }
+    }
+}
+
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    const bgColor = type === 'success' ? 'bg-green-600' : 'bg-red-600';
+    toast.className = `fixed bottom-4 right-4 ${bgColor} text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-slide-in`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('animate-slide-out');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// ==================== ACTIVATION MODAL ====================
+
+function openActivationModal(arg1, arg2) {
+    let activationId = null;
+    if (typeof arg1 === 'number') {
+        activationId = arg1;
+    } else if (typeof arg2 === 'number') {
+        try { arg1.preventDefault(); arg1.stopPropagation(); } catch (e) {}
+        activationId = arg2;
+    } else {
+        return;
+    }
+
     currentActivationId = activationId;
     const modal = document.getElementById('activationModal');
-    
+
     const activations = @json($activations);
     const activation = activations.find(a => a.id === activationId);
-    
+
     if (!activation) {
         alert('Activation not found');
         return;
     }
-    
+
     const modalContent = `
         <div class="p-6">
             <div class="flex justify-between items-center mb-6">
@@ -372,11 +568,11 @@ function openActivationModal(activationId) {
                     </svg>
                 </button>
             </div>
-            
+
             <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 mb-4">
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center space-x-3">
-                        ${activation.service_logo ? 
+                        ${activation.service_logo ?
                             `<img src="${activation.service_logo}" alt="${activation.service_name}" class="w-12 h-12 object-contain bg-white rounded-lg p-2">` :
                             `<div class="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold">${activation.service_name.substring(0, 2).toUpperCase()}</div>`
                         }
@@ -388,7 +584,7 @@ function openActivationModal(activationId) {
                     <img src="https://flagcdn.com/w80/${activation.flag}.png" alt="flag" class="w-12 h-12 rounded-lg object-cover">
                 </div>
             </div>
-            
+
             <div class="bg-gray-50 rounded-xl p-4 mb-4">
                 <p class="text-xs text-gray-500 font-medium uppercase mb-1">Phone Number</p>
                 <div class="flex items-center justify-between">
@@ -400,7 +596,7 @@ function openActivationModal(activationId) {
                     </button>
                 </div>
             </div>
-            
+
             <div class="bg-white border-2 border-gray-200 rounded-xl p-4 mb-4" id="smsCodeSection">
                 <div class="flex items-center justify-between mb-3">
                     <p class="text-xs text-gray-500 font-medium uppercase">SMS Code</p>
@@ -411,7 +607,7 @@ function openActivationModal(activationId) {
                         ${activation.status}
                     </span>
                 </div>
-                
+
                 ${activation.sms_code ? `
                     <div class="bg-green-50 border-2 border-green-200 rounded-lg p-4">
                         <div class="flex items-center justify-between">
@@ -425,27 +621,26 @@ function openActivationModal(activationId) {
                     </div>
                 ` : activation.raw_status === 'pending' ? `
                     <div class="text-center py-6">
-                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-3"></div>
+                        <div class="flex items-center justify-center mb-3">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                            <span class="ml-2 text-sm text-green-600 font-medium">Checking for SMS...</span>
+                        </div>
                         <p class="text-gray-600 font-medium">Waiting for SMS...</p>
                         <p class="text-sm text-gray-500 mt-1" id="countdownTimer"></p>
                     </div>
                 ` : `
                     <div class="text-center py-4">
                         <p class="text-red-600 font-medium">No SMS received</p>
-                        <p class="text-sm text-gray-500 mt-1">This activation has ${activation.raw_status}</p>
+                        <p class="text-sm text-gray-500 mt-1" id="countdownTimer">Ensure to use the number before 5mins</p>
                     </div>
                 `}
             </div>
-            
+
             <div class="bg-gray-50 rounded-xl p-4 mb-4">
                 <div class="grid grid-cols-2 gap-3 text-sm">
                     <div>
                         <p class="text-gray-500">Amount</p>
                         <p class="font-semibold text-gray-900">${activation.amount}</p>
-                    </div>
-                    <div>
-                        <p class="text-gray-500">Provider</p>
-                        <p class="font-semibold text-gray-900">${activation.provider === 'smsbus' ? 'SMS-Bus' : '5sim'}</p>
                     </div>
                     <div>
                         <p class="text-gray-500">Date</p>
@@ -457,22 +652,35 @@ function openActivationModal(activationId) {
                     </div>
                 </div>
             </div>
-            
+
             ${activation.raw_status === 'pending' ? `
-                <button onclick="cancelActivation(${activation.id})" 
+                <button onclick="cancelActivation(${activation.id}, this)"
                         class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors">
                     Cancel & Refund
                 </button>
             ` : ''}
         </div>
     `;
-    
+
     modal.querySelector('.bg-white').innerHTML = modalContent;
     modal.classList.remove('hidden');
     modal.classList.add('flex');
-    
+
     if (activation.raw_status === 'pending') {
+        setTimeout(function() {
+            updateCountdown(activation.expires_at);
+        }, 10);
         startPolling(activationId, activation.expires_at);
+
+        if (window.countdownExpireCheck) clearInterval(window.countdownExpireCheck);
+        window.countdownExpireCheck = setInterval(() => {
+            updateCountdown(activation.expires_at);
+            const timer = document.getElementById('countdownTimer');
+            if (timer && timer.textContent && timer.textContent.includes('expired')) {
+                checkForSms(activationId);
+                clearInterval(window.countdownExpireCheck);
+            }
+        }, 1000);
     }
 }
 
@@ -486,14 +694,14 @@ function closeActivationModal() {
 
 function startPolling(activationId, expiresAt) {
     stopPolling();
-    
+
     updateCountdown(expiresAt);
     const countdownInterval = setInterval(() => updateCountdown(expiresAt), 1000);
-    
+
     pollingInterval = setInterval(() => {
         checkForSms(activationId);
     }, 5000);
-    
+
     window.countdownInterval = countdownInterval;
 }
 
@@ -506,33 +714,35 @@ function stopPolling() {
         clearInterval(window.countdownInterval);
         window.countdownInterval = null;
     }
+    if (window.countdownExpireCheck) {
+        clearInterval(window.countdownExpireCheck);
+        window.countdownExpireCheck = null;
+    }
 }
 
 function updateCountdown(expiresAt) {
     const timer = document.getElementById('countdownTimer');
     if (!timer) return;
-    
     const now = new Date().getTime();
     const expiry = new Date(expiresAt).getTime();
     const remaining = expiry - now;
-    
     if (remaining <= 0) {
-        timer.textContent = 'Expired';
+        timer.textContent = 'This activation has expired';
         stopPolling();
-        location.reload();
         return;
     }
-    
-    const minutes = Math.floor(remaining / 60000);
+    const hours = Math.floor(remaining / 3600000);
+    const minutes = Math.floor((remaining % 3600000) / 60000);
     const seconds = Math.floor((remaining % 60000) / 1000);
-    timer.textContent = `Expires in ${minutes}:${seconds.toString().padStart(2, '0')}`;
+    timer.textContent = `Expires in ${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
 }
 
 function checkForSms(activationId) {
-    fetch('/history/get-sms', {
+    fetch('/app/history/get-sms', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
         },
         body: JSON.stringify({ activation_id: activationId })
@@ -541,28 +751,86 @@ function checkForSms(activationId) {
     .then(data => {
         if (data.success && data.sms_code) {
             stopPolling();
-            location.reload();
+
+            const smsSection = document.getElementById('smsCodeSection');
+            if (smsSection) {
+                smsSection.innerHTML = `
+                    <div class="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+                        <div class="flex items-center justify-between">
+                            <p class="text-3xl font-bold text-green-700 tracking-wider">${data.sms_code}</p>
+                            <button onclick="copyToClipboard('${data.sms_code}')" class="text-green-600 hover:text-green-700">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>`;
+
+                const statusBadge = document.getElementById('statusBadge');
+                if (statusBadge) {
+                    statusBadge.textContent = 'Completed';
+                    statusBadge.className = 'px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700';
+                }
+            }
+
+            const card = document.querySelector(`[data-activation-id="${activationId}"]`);
+            if (card) {
+                const badge = card.querySelector('.otp-status');
+                if (badge) {
+                    badge.textContent = 'Completed';
+                    badge.className = 'otp-status inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1 bg-green-100 text-green-700';
+                }
+            }
+
+            showToast('SMS received', 'success');
+
         } else if (data.status === 'expired') {
             stopPolling();
-            location.reload();
+
+            const smsSection = document.getElementById('smsCodeSection');
+            if (smsSection) {
+                smsSection.innerHTML = `
+                    <div class="text-center py-4">
+                        <p class="text-red-600 font-medium">No SMS received</p>
+                        <p class="text-sm text-gray-500 mt-1">This activation has expired</p>
+                    </div>`;
+            }
+
+            const statusBadge = document.getElementById('statusBadge');
+            if (statusBadge) {
+                statusBadge.textContent = 'Expired';
+                statusBadge.className = 'px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700';
+            }
+
+            const card = document.querySelector(`[data-activation-id="${activationId}"]`);
+            if (card) {
+                const badge = card.querySelector('.otp-status');
+                if (badge) {
+                    badge.textContent = 'Expired';
+                    badge.className = 'otp-status inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1 bg-red-100 text-red-700';
+                }
+            }
         }
     })
     .catch(error => console.error('Error checking SMS:', error));
 }
 
-function cancelActivation(activationId) {
+function cancelActivation(activationId, btnEl) {
     if (!confirm('Are you sure you want to cancel this activation? Your balance will be refunded.')) {
         return;
     }
-    
-    const button = event.target;
-    button.disabled = true;
-    button.textContent = 'Cancelling...';
-    
-    fetch('/history/cancel-activation', {
+
+    const button = btnEl || (event && event.target) || null;
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Cancelling...';
+    }
+
+    fetch('/app/history/cancel-activation', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
         },
         body: JSON.stringify({ activation_id: activationId })
@@ -570,32 +838,38 @@ function cancelActivation(activationId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert(data.message);
-            location.reload();
+            showToast(data.message || 'Activation cancelled and refunded', 'success');
+            closeActivationModal();
+
+            const card = document.querySelector(`[data-activation-id="${activationId}"]`);
+            if (card) {
+                const badge = card.querySelector('.otp-status');
+                if (badge) {
+                    badge.textContent = 'Cancelled';
+                    badge.className = 'otp-status inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1 bg-gray-100 text-gray-700';
+                }
+            }
         } else {
             alert(data.message || 'Failed to cancel activation');
-            button.disabled = false;
-            button.textContent = 'Cancel & Refund';
+            if (button) {
+                button.disabled = false;
+                button.textContent = 'Cancel & Refund';
+            }
         }
     })
     .catch(error => {
         console.error('Error cancelling activation:', error);
         alert('An error occurred while cancelling');
-        button.disabled = false;
-        button.textContent = 'Cancel & Refund';
+        if (button) {
+            button.disabled = false;
+            button.textContent = 'Cancel & Refund';
+        }
     });
 }
 
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(() => {
-        const toast = document.createElement('div');
-        toast.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50';
-        toast.textContent = 'Copied to clipboard!';
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.remove();
-        }, 2000);
+        showToast('Copied to clipboard!', 'success');
     }).catch(err => {
         console.error('Failed to copy:', err);
         alert('Failed to copy to clipboard');
@@ -620,18 +894,30 @@ document.getElementById('socialModal').addEventListener('click', function(e) {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
-
 .animate-spin {
     animation: spin 1s linear infinite;
 }
-
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: .5; }
 }
-
 .animate-pulse {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+@keyframes slide-in {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes slide-out {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+.animate-slide-in {
+    animation: slide-in 0.3s ease-out;
+}
+.animate-slide-out {
+    animation: slide-out 0.3s ease-out;
+}
 </style>
+
 @endsection

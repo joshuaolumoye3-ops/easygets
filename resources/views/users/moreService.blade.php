@@ -5,9 +5,11 @@
 @section('content')
 <div class="max-w-xl mx-auto py-8 font-[Inter] px-5">
     <div class="flex items-center space-x-2 mb-6">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-        </svg>
+        <a href="dashboard">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+        </a>
         <h1 class="text-lg font-semibold text-center flex-1">More Services</h1>
     </div>
 
@@ -19,15 +21,15 @@
 
     <div class="space-y-4">
         @foreach ([
-            ['icon'=>'assets/wifi.svg','name'=>'Data','btn'=>'Buy Data', 'href'=>'data'],
-            ['icon'=>'assets/phone.svg','name'=>'Airtime','btn'=>'Recharge', 'href'=>'airtime'],
-            ['icon'=>'assets/electricity.svg','name'=>'Electricity','btn'=>'Pay Bill', 'href'=>'electricity'],
-            ['icon'=>'assets/tv.svg','name'=>'TV/Cable','btn'=>'Subscribe', 'href'=>'cabletv'],
-            ['icon'=>'🏦','name'=>'Banking','btn'=>'Deposit', 'href'=>'dashboard'],
-            ['icon'=>'assets/e-sim.svg','name'=>'eSIM','btn'=>'Activate', 'href'=>'esim'],
-            ['icon'=>'assets/sim-icon.svg','name'=>'eSIM Renewal','btn'=>'Renew', 'href'=>'esim'],
-            ['icon'=>'assets/ball.svg','name'=>'Bettinng','btn'=>'Betting', 'href'=>'betting'],
-            ['icon'=>'📝','name'=>'JAMB e-PIN','btn'=>'Buy', 'href'=>'jambepin'],
+            ['icon'=>'assets/wifi.svg','name'=>'Data','btn'=>'Buy Data', 'href'=>'app/data'],
+            ['icon'=>'assets/phone.svg','name'=>'Airtime','btn'=>'Recharge', 'href'=>'app/airtime'],
+            ['icon'=>'assets/electricity.svg','name'=>'Electricity','btn'=>'Pay Bill', 'href'=>'app/electricity'],
+            ['icon'=>'assets/tv.svg','name'=>'TV/Cable','btn'=>'Subscribe', 'href'=>'app/cabletv'],
+            ['icon'=>'🏦','name'=>'Banking','btn'=>'Deposit', 'href'=>'app/dashboard'],
+            ['icon'=>'assets/e-sim.svg','name'=>'eSIM','btn'=>'Activate', 'href'=>'app/esim'],
+            ['icon'=>'assets/sim-icon.svg','name'=>'eSIM Renewal','btn'=>'Renew', 'href'=>'app/esim'],
+            ['icon'=>'assets/ball.svg','name'=>'Bettinng','btn'=>'Betting', 'href'=>'app/betting'],
+            ['icon'=>'📝','name'=>'JAMB e-PIN','btn'=>'Buy', 'href'=>'app/jambepin'],
             // ['icon'=>'📖','name'=>'WAEC e-PIN','btn'=>'Buy', 'href'=>'waecepin'],
         ] as $service)
         <div class="flex items-center justify-between border-b pb-3">

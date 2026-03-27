@@ -30,7 +30,7 @@ public function services()
         });
 
     });
- dd($categories);
+ // dd($categories); // removed for production
 
 
     return view('users.socialPackage', compact('categories'));

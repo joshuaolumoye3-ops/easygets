@@ -144,7 +144,8 @@
 
 <script>
 function openAdminModal(adminId) {
-    fetch(`/admin/${adminId}`)
+    const baseUrl = '{{ url('/') }}';
+    fetch(`${baseUrl}/app/admin/${adminId}`)
         .then(res => res.json())
         .then(admin => {
             // Fill Admin Details
@@ -188,7 +189,8 @@ function openAdminModal(adminId) {
             document.getElementById('transactions').innerHTML = txHtml;
 
             // Update Form Action
-            document.getElementById('updateAdminForm').action = `/admin/${admin.id}/update`;
+            const baseUrl = '{{ url('/') }}';
+            document.getElementById('updateAdminForm').action = `${baseUrl}/app/admin/${admin.id}/update`;
 
             // Show Modal
             document.getElementById('adminModal').classList.remove('hidden');

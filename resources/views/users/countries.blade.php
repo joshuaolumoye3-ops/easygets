@@ -49,26 +49,46 @@
             >
         </div>
 
-        <!-- Countries List -->
+        <!-- Service Info -->
+        <div class="mb-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-100">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                        <span class="text-lg">📱</span>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-600">Selected Service</p>
+                        <p class="font-bold text-gray-800">Provider 2</p>
+                    </div>
+                </div>
+                <span id="countryCount" class="text-xs font-semibold text-green-700 bg-green-100 px-3 py-1 rounded-full">
+                    {{ $countries->total() }} countries
+                </span>
+            </div>
+        </div>
+
+        <!-- All Countries -->
         <div>
             <h2 class="text-xl font-bold text-gray-800 mb-4">Available Countries</h2>
-            <div id="productList" class="space-y-3">
+            <div id="countryList" class="space-y-3">
                 @forelse ($countries as $country)
                     <button onclick="buyNow({{ $country['project_id'] }}, {{ $country['country_id'] }}, '{{ addslashes($country['title']) }}', '{{ $country['code'] ?? '' }}')" 
-                            class="w-full group country-item">
-                        <div class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all duration-200 hover:shadow-md">
+                            class="w-full group country-item" data-country-name="{{ strtolower($country['title']) }}">
+                        <div class="flex items-center justify-between p-4 bg-white border-2 border-gray-100 rounded-xl hover:border-green-500 hover:bg-green-50/50 transition-all duration-200 group-hover:shadow-md">
                             <div class="flex items-center space-x-4 flex-1">
                                 <img class="w-12 h-12 rounded-full object-cover shadow-sm" 
-                                    src="{{ $country['flag_url'] }}" 
-                                    onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode(substr($country['title'], 0, 2)) }}&background=10b981&color=ffffff&size=48'" 
-                                    alt="{{ $country['title'] }}">
-                                <div class="flex-1 text-left">
-                                    <h3 class="font-semibold text-gray-800 group-hover:text-green-700 transition-colors country-name">
+                                     src="https://flagcdn.com/w80/{{ strtolower($country['code']) }}.png" 
+                                     onerror="this.src='https://via.placeholder.com/48?text={{ strtoupper(substr($country['title'],0,1)) }}'" 
+                                     alt="{{ $country['title'] }}">
+                                <div class="flex-1">
+                                    <span class="font-semibold text-gray-800 group-hover:text-green-700 transition country-name block">
                                         {{ $country['title'] }}
-                                    </h3>
-                                    <p class="text-xs text-gray-500 mt-1">
-                                        Available: <span class="font-medium text-green-600">{{ number_format($country['total_count']) }}</span>
-                                    </p>
+                                    </span>
+                                    <div class="flex items-center space-x-3 mt-1">
+                                        <span class="text-xs text-gray-500">
+                                            Available: {{ number_format($country['total_count']) }}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                             <div class="text-right flex-shrink-0 ml-4">
@@ -77,18 +97,8 @@
                                         <p class="text-lg font-bold text-green-600">
                                             ₦{{ number_format($country['cost'], 2) }}
                                         </p>
-                                        {{-- @if(isset($country['ws_cost']) && $country['ws_cost'] < $country['cost'])
-                                            <p class="text-xs text-gray-500 line-through">
-                                                ₦{{ number_format($country['ws_cost'], 2) }}
-                                            </p>
-                                        @endif --}}
-                                        {{-- @if(isset($country['cost_usd']))
-                                            <p class="text-xs text-gray-400 mt-0.5">
-                                                ${{ number_format($country['cost_usd'], 2) }}
-                                            </p>
-                                        @endif --}}
                                     </div>
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-green-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-green-600 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                                     </svg>
                                 </div>
@@ -96,29 +106,38 @@
                         </div>
                     </button>
                 @empty
-                    <div class="text-center py-12">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 12h.01M12 12h.01M12 12h.01M12 12h.01M12 12h.01M12 20h.01" />
+                    <div class="text-center py-12" id="emptyState">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0110.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
                         </svg>
-                        <p class="text-gray-500">No countries available for this service.</p>
+                        <p class="text-gray-500 font-medium mb-2">No countries available</p>
+                        <p class="text-sm text-gray-400 mb-4">This service may not be available yet</p>
+                        <a href="{{ route('services.list') }}" class="inline-block px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition">
+                            ← Back to services
+                        </a>
                     </div>
                 @endforelse
             </div>
-            
-            <!-- Loader -->
-            <div id="loader" class="text-center py-6 hidden">
+
+            <!-- No Results Message -->
+            <div id="noResults" class="text-center py-12 hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <p class="text-gray-500 font-medium mb-2">No countries found</p>
+                <p class="text-sm text-gray-400">Try adjusting your search</p>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="loading" class="text-center py-6 hidden">
                 <div class="inline-flex items-center space-x-2 text-gray-500">
-                    <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Loading more countries...</span>
+                    <div class="w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-sm">Loading more countries...</span>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
 <!-- Hidden Form for Purchase -->
 <form id="purchaseForm" action="{{ route('prepare.purchase') }}" method="POST" class="hidden">
     @csrf
@@ -130,10 +149,12 @@
 
 <script>
     const serviceId = "{{ $serviceId }}";
-    let currentPage = {{ $countries->currentPage() }};
-    let lastPage = {{ $countries->lastPage() }};
-    let loading = false;
-    let searchQuery = '';
+    let nextPage = {{ $countries->hasMorePages() ? $countries->currentPage() + 1 : 'null' }};
+    let isLoading = false;
+    let hasMorePages = {{ $countries->hasMorePages() ? 'true' : 'false' }};
+    let isSearching = false;
+    let currentSearch = '';
+    let totalCount = {{ $countries->total() }};
 
     // Buy Now Action
     function buyNow(projectId, countryId, countryName, countryCode) {
@@ -145,146 +166,168 @@
         form.submit();
     }
 
-    // Helper: Render Country
-    function renderCountry(country) {
-        const flagUrl = `https://flagcdn.com/w80/${country.code}.png`;
-        const fallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(country.title.substring(0, 2))}&background=10b981&color=ffffff&size=48`;
-        const escapedTitle = country.title.replace(/'/g, "\\'");
-        
-        // Format NGN prices
-        const costNGN = new Intl.NumberFormat('en-NG', {
-            style: 'currency',
-            currency: 'NGN',
-            minimumFractionDigits: 2
-        }).format(country.cost);
-        
-        const wsCostNGN = country.ws_cost ? new Intl.NumberFormat('en-NG', {
-            style: 'currency',
-            currency: 'NGN',
-            minimumFractionDigits: 2
-        }).format(country.ws_cost) : null;
-        
-        const costUSD = country.cost_usd ? `$${country.cost_usd.toFixed(2)}` : '';
-        
+    // Build country item HTML
+    function buildCountryItemHTML(country) {
         return `
-        <button onclick="buyNow(${country.project_id}, ${country.country_id}, '${escapedTitle}', '${country.code || ''}')" 
-                class="w-full group country-item">
-            <div class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all duration-200 hover:shadow-md">
-                <div class="flex items-center space-x-4 flex-1">
-                    <img class="w-12 h-12 rounded-full object-cover shadow-sm" 
-                        src="${flagUrl}" 
-                        onerror="this.src='${fallbackUrl}'" 
-                        alt="${country.title}">
-                    <div class="flex-1 text-left">
-                        <h3 class="font-semibold text-gray-800 group-hover:text-green-700 transition-colors country-name">
-                            ${country.title}
-                        </h3>
-                        <p class="text-xs text-gray-500 mt-1">
-                            Available: <span class="font-medium text-green-600">${country.total_count.toLocaleString()}</span>
-                        </p>
-                    </div>
-                </div>
-                <div class="text-right flex-shrink-0 ml-4">
-                    <div class="flex items-center space-x-2">
-                        <div>
-                            <p class="text-lg font-bold text-green-600">
-                                ${costNGN}
-                            </p>
-                           
+            <button onclick="buyNow(${country.project_id}, ${country.country_id}, '${country.title.replace(/'/g, "\\'")}', '${country.code}')" 
+                    class="w-full group country-item" data-country-name="${country.title.toLowerCase()}">
+                <div class="flex items-center justify-between p-4 bg-white border-2 border-gray-100 rounded-xl hover:border-green-500 hover:bg-green-50/50 transition-all duration-200 group-hover:shadow-md">
+                    <div class="flex items-center space-x-4 flex-1">
+                        <img class="w-12 h-12 rounded-full object-cover shadow-sm" 
+                             src="https://flagcdn.com/w80/${country.code.toLowerCase()}.png" 
+                             onerror="this.src='https://via.placeholder.com/48?text=${country.title.charAt(0).toUpperCase()}'" 
+                             alt="${country.title}">
+                        <div class="flex-1">
+                            <span class="font-semibold text-gray-800 group-hover:text-green-700 transition country-name block">
+                                ${country.title}
+                            </span>
+                            <div class="flex items-center space-x-3 mt-1">
+                                <span class="text-xs text-gray-500">
+                                    Available: ${country.total_count.toLocaleString()}
+                                </span>
+                            </div>
                         </div>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-green-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                        </svg>
+                    </div>
+                    <div class="text-right flex-shrink-0 ml-4">
+                        <div class="flex items-center space-x-2">
+                            <div>
+                                <p class="text-lg font-bold text-green-600">
+                                    ₦${country.cost.toLocaleString()}
+                                </p>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-green-600 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </button>`;
+            </button>
+        `;
     }
 
-    // Infinite Scroll
-    window.addEventListener('scroll', async () => {
-        if (loading || searchQuery || currentPage >= lastPage) return;
-        
-        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
-            loading = true;
-            document.getElementById('loader').classList.remove('hidden');
-            
-            try {
-                const res = await fetch(`/services/${serviceId}/countries?page=${currentPage + 1}`, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-                
-                const result = await res.json();
-                
-                if (result.success && result.data) {
-                    result.data.forEach(country => {
-                        document.getElementById('productList').insertAdjacentHTML('beforeend', renderCountry(country));
-                    });
-                    currentPage = result.current_page;
-                    lastPage = result.last_page;
-                }
-            } catch (e) {
-                console.error("Failed to load more countries", e);
+    // Load more countries
+    function loadMore() {
+        if (isLoading || !hasMorePages || !nextPage || isSearching) {
+            return;
+        }
+
+        isLoading = true;
+        document.getElementById('loading').classList.remove('hidden');
+
+        const currentUrl = new URL(window.location);
+        const url = `${currentUrl.pathname}?page=${nextPage}&ajax=1`;
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
             }
-            
-            document.getElementById('loader').classList.add('hidden');
-            loading = false;
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success && data.data && data.data.length > 0) {
+                const countryList = document.getElementById('countryList');
+                
+                // Append new countries
+                data.data.forEach(country => {
+                    const html = buildCountryItemHTML(country);
+                    countryList.insertAdjacentHTML('beforeend', html);
+                });
+
+                // Update pagination info
+                nextPage = data.has_more_pages ? data.current_page + 1 : null;
+                hasMorePages = data.has_more_pages;
+
+                // Update visible count
+                const visibleItems = document.querySelectorAll('.country-item:not([style*="display: none"])').length;
+                document.getElementById('countryCount').textContent = visibleItems + ' countries';
+            } else {
+                hasMorePages = false;
+                nextPage = null;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading more countries:', error);
+            hasMorePages = false;
+            nextPage = null;
+        })
+        .finally(() => {
+            isLoading = false;
+            document.getElementById('loading').classList.add('hidden');
+        });
+    }
+
+    // Infinite scroll listener
+    window.addEventListener('scroll', function() {
+        if (isLoading || !hasMorePages || !nextPage || isSearching) {
+            return;
+        }
+
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const windowHeight = window.innerHeight;
+        const documentHeight = document.documentElement.scrollHeight;
+        
+        // Trigger when user is 300px from bottom
+        if (scrollTop + windowHeight >= documentHeight - 300) {
+            loadMore();
         }
     });
 
-    // Search with debouncing
-    let searchTimeout;
-    document.getElementById('searchInput').addEventListener('input', async function () {
-        clearTimeout(searchTimeout);
-        searchQuery = this.value.trim();
+    // Search functionality
+    document.getElementById('searchInput')?.addEventListener('input', function () {
+        const filter = this.value.toLowerCase().trim();
+        const items = document.querySelectorAll('.country-item');
+        let visibleCount = 0;
         
-        searchTimeout = setTimeout(async () => {
-            const list = document.getElementById('productList');
-            list.innerHTML = "<p class='text-center text-gray-400 py-8'>Searching...</p>";
-            
-            try {
-                const res = await fetch(`/services/${serviceId}/countries?search=${encodeURIComponent(searchQuery)}`, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-                
-                const result = await res.json();
-                
-                list.innerHTML = "";
-                
-                if (result.success && result.data && result.data.length > 0) {
-                    result.data.forEach(country => {
-                        list.insertAdjacentHTML('beforeend', renderCountry(country));
-                    });
-                    currentPage = result.current_page;
-                    lastPage = result.last_page;
-                } else {
-                    list.innerHTML = `
-                        <div class="text-center py-12">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            <p class="text-gray-500">No countries found matching your search.</p>
-                        </div>`;
-                }
-            } catch (e) {
-                list.innerHTML = "<p class='text-center text-red-500 py-8'>Error searching countries.</p>";
-                console.error("Search error:", e);
+        items.forEach(item => {
+            const countryName = item.getAttribute('data-country-name');
+            if (countryName.includes(filter)) {
+                item.style.display = 'block';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
             }
-        }, 300);
+        });
+
+        // Update count
+        document.getElementById('countryCount').textContent = visibleCount + ' countries';
+
+        // Show/hide no results message
+        const noResults = document.getElementById('noResults');
+        const emptyState = document.getElementById('emptyState');
+        
+        if (visibleCount === 0 && items.length > 0) {
+            noResults.classList.remove('hidden');
+            if (emptyState) emptyState.classList.add('hidden');
+        } else {
+            noResults.classList.add('hidden');
+            if (emptyState && items.length === 0) emptyState.classList.remove('hidden');
+        }
     });
 </script>
 
 <style>
 .country-item {
-    transition: transform 0.2s ease;
+    animation: fadeIn 0.3s ease-in;
 }
 
-.country-item:active {
-    transform: scale(0.98);
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.country-item:hover {
+    transform: translateY(-2px);
 }
 </style>
 @endsection

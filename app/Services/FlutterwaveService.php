@@ -9,83 +9,136 @@ class FlutterwaveService
 {
     protected $baseUrl;
     protected $secretKey;
+    protected $publicKey;
 
     public function __construct()
     {
         $this->baseUrl = config('services.flutterwave.base_url');
         $this->secretKey = env('FLW_SECRET_KEY');
+        $this->publicKey = env('FLW_PUBLIC_KEY');
+
         Log::info('Flutterwave Service Initialized', [
             'base_url' => $this->baseUrl,
-            'has_secret_key' => !empty($this->secretKey)
+            'has_secret_key' => !empty($this->secretKey),
+            'has_public_key' => !empty($this->publicKey)
         ]);
     }
 
-    public function createVirtualAccount($user_data)
+    /**
+     * Initialize payment checkout
+     */
+    public function initializePayment($user_data)
     {
         $user = $user_data['user'];
-        $amount = $user_data['amount'] ?? null;
+        $amount = $user_data['amount'];
+        $txRef = $user_data['tx_ref'];
 
-        // FIXED: Include user ID in tx_ref format that webhook can parse
         $payload = [
-            'email' => $user->email,
-            'is_permanent' => false,
-            'tx_ref' => $user_data['tx_ref'] ?? ('easygets-' . uniqid() . '-' . time()),
-            'firstname' => $user->first_name,
-            'lastname' => $user->last_name,
-            'phonenumber' => $user->phone_number,
-            'narration' => ($user->username ?? $user->email),
-            'amount' => $amount
+            'tx_ref' => $txRef,
+            'amount' => $amount,
+            'currency' => 'NGN',
+            'redirect_url' => route('flutterwave.callback'),
+            'customer' => [
+                'email' => $user->email,
+                'phonenumber' => $user->phone_number,
+                'name' => "{$user->first_name} {$user->last_name}"
+            ],
+            'customizations' => [
+                'title' => 'Wallet Funding',
+                'description' => "Add ₦" . number_format($amount, 2) . " to wallet",
+                'logo' => asset('images/logo.png')
+            ],
+            'meta' => [
+                'user_id' => $user->id,
+                'wallet_id' => $user->wallet->id ?? null
+            ]
         ];
-        $payload = array_filter($payload);
 
-        Log::info('Sending Flutterwave Virtual Account Request', [
+        Log::info('Initializing Flutterwave Payment', [
             'user_id' => $user->id,
-            'payload' => $payload
+            'amount' => $amount,
+            'tx_ref' => $txRef
         ]);
 
         try {
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $this->secretKey,
                 'Content-Type' => 'application/json'
-            ])->timeout(30)->post("{$this->baseUrl}/virtual-account-numbers", $payload);
+            ])->timeout(30)->post("{$this->baseUrl}/payments", $payload);
 
             $responseData = $response->json();
 
-            Log::info('Flutterwave API Full Response', [
+            Log::info('Flutterwave Payment Initialization Response', [
                 'status_code' => $response->status(),
                 'response' => $responseData
             ]);
 
-            if ($response->successful()) {
-                return $responseData;
+            if ($response->successful() && isset($responseData['status']) && $responseData['status'] === 'success') {
+                return [
+                    'status' => 'success',
+                    'data' => $responseData['data'],
+                    'payment_link' => $responseData['data']['link']
+                ];
             }
 
-            Log::error('Flutterwave API Request Failed', [
+            Log::error('Flutterwave Payment Initialization Failed', [
                 'status_code' => $response->status(),
-                'response_body' => $responseData,
-                'request_payload' => $payload,
-                'headers_used' => [
-                    'base_url' => $this->baseUrl,
-                    'authorization_prefix' => 'Bearer ' . (substr($this->secretKey, 0, 10) . '...')
-                ]
+                'response_body' => $responseData
             ]);
 
             return [
                 'status' => 'error',
-                'message' => $responseData['message'] ?? 'API request failed',
-                'error_code' => $response->status()
+                'message' => $responseData['message'] ?? 'Payment initialization failed'
             ];
 
         } catch (\Exception $e) {
-            Log::error('Flutterwave Service Exception', [
+            Log::error('Flutterwave Payment Initialization Exception', [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
-                'line' => $e->getLine()
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return [
                 'status' => 'error',
                 'message' => 'Service exception: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Verify transaction
+     */
+    public function verifyTransaction($transactionId)
+    {
+        Log::info('Verifying Flutterwave Transaction', [
+            'transaction_id' => $transactionId
+        ]);
+
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->secretKey,
+                'Content-Type' => 'application/json'
+            ])->get("{$this->baseUrl}/transactions/{$transactionId}/verify");
+
+            $responseData = $response->json();
+
+            Log::info('Transaction Verification Response', [
+                'transaction_id' => $transactionId,
+                'response' => $responseData
+            ]);
+
+            return $responseData;
+
+        } catch (\Exception $e) {
+            Log::error('Transaction Verification Failed', [
+                'transaction_id' => $transactionId,
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'status' => 'error',
+                'message' => $e->getMessage()
             ];
         }
     }

@@ -57,12 +57,16 @@ public function showData()
                 ];
             }
 
+            // Detect plan type
+            $type = $this->detectPlanType($product->name);
+
             $structured[$network][0]['PRODUCT'][] = [
                 'PRODUCT_SNO'   => $product->product_sno,
                 'PRODUCT_CODE'  => $product->product_code,
                 'PRODUCT_ID'    => $product->product_id,
                 'PRODUCT_NAME'  => $product->name,
                 'PRODUCT_AMOUNT'=> $product->client_price,
+                'PRODUCT_TYPE'  => $type,
             ];
         }
     }
@@ -70,6 +74,36 @@ public function showData()
     $wallet = Wallet::where('user_id', auth()->id())->first();
 
     return view('users.data', compact('plans', 'wallet'));
+}
+
+/**
+ * Detect plan type from product name
+ */
+private function detectPlanType($productName)
+{
+    $name = strtolower($productName);
+    
+    if (strpos($name, '365 day') !== false || strpos($name, '12 months') !== false) {
+        return 'Yearly';
+    } elseif (strpos($name, '120 day') !== false || strpos($name, '4 months') !== false) {
+        return 'Quarterly';
+    } elseif (strpos($name, '90 day') !== false || strpos($name, '3 months') !== false) {
+        return 'Quarterly';
+    } elseif (strpos($name, '60 day') !== false) {
+        return 'Bi-Monthly';
+    } elseif (strpos($name, '30 day') !== false || strpos($name, 'monthly') !== false) {
+        return 'Monthly';
+    } elseif (strpos($name, '7 day') !== false || strpos($name, 'weekly') !== false) {
+        return 'Weekly';
+    } elseif (strpos($name, '3 day') !== false) {
+        return '3-Day';
+    } elseif (strpos($name, '2 day') !== false) {
+        return '2-Day';
+    } elseif (strpos($name, '1 day') !== false || strpos($name, 'daily') !== false) {
+        return 'Daily';
+    }
+    
+    return 'Other';
 }
 
     /**
@@ -242,7 +276,7 @@ public function showData()
                 'success' => false,
                 'message' => 'An error occurred while processing your request. Please try again.',
                 'error_type' => 'system_error',
-                'debug_message' => app()->environment('local') ? $e->getMessage() : null,
+                // 'debug_message' => app()->environment('local') ? $e->getMessage() : null, // removed for production
             ], 500);
         }
     }

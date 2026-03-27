@@ -11,6 +11,8 @@ use App\Models\Product;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Helpers\PinHelper;
+use Illuminate\Validation\ValidationException;
 
 class Controller
 {
@@ -106,12 +108,31 @@ class Controller
 
     public function updatePin(Request $request)
     {
-        $request->validate([
-            'pin' => ['required', 'digits:4', 'confirmed'], // confirmed checks pin_confirmation
-        ]);
-
         $user = auth()->user();
-        $user->pin = Hash::make($request->pin); // hash pin
+
+        if ($user->pin) {
+            // User already has a PIN: require previous_pin + new pin (confirmed)
+            $request->validate([
+                'previous_pin' => ['required', 'digits:4'],
+                'pin' => ['required', 'digits:4', 'confirmed'],
+            ]);
+
+            // Verify previous pin
+            try {
+                PinHelper::verifyPin($request->previous_pin, $user);
+            } catch (ValidationException $e) {
+                $errors = $e->errors();
+                $message = $errors['pin'][0] ?? 'The current PIN is incorrect.';
+                return back()->withErrors(['previous_pin' => $message])->withInput();
+            }
+        } else {
+            // No existing PIN – allow creation
+            $request->validate([
+                'pin' => ['required', 'digits:4', 'confirmed'],
+            ]);
+        }
+
+        $user->pin = Hash::make($request->pin); // hash new pin
         $user->save();
 
         return redirect()->route('profile')

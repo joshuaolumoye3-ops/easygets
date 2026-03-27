@@ -19,7 +19,7 @@ class CountryController extends Controller
     const PROVIDER_5SIM = '5sim';
     const PROVIDER_SMSBUS = 'smsbus';
 
-    public function showServices(Request $request)
+public function showServices(Request $request)
 {
     $token = env('SMSBUS_TOKEN');
     $cacheKey = 'smsbus_services';
@@ -92,14 +92,17 @@ class CountryController extends Controller
     $popular = $products->filter(fn($p) => in_array(strtolower($p['code']), $popularCodes));
 
     $search = $request->input('search');
-    if ($search) {
+    $isSearching = !empty($search);
+    
+    if ($isSearching) {
         $products = $products->filter(function($p) use ($search) {
             return str_contains(strtolower($p['title']), strtolower($search)) ||
                    str_contains(strtolower($p['code']), strtolower($search));
         });
+        $others = $products; // All filtered results
+    } else {
+        $others = $products->reject(fn($p) => in_array(strtolower($p['code']), $popularCodes));
     }
-
-    $others = $search ? $products : $products->reject(fn($p) => in_array(strtolower($p['code']), $popularCodes));
 
     $perPage = 30;
     $page = $request->input('page', 1);
@@ -108,44 +111,14 @@ class CountryController extends Controller
     $paginated = $others->slice($offset, $perPage)->values();
     $hasMorePages = $others->count() > ($page * $perPage);
 
-    // Handle AJAX requests for infinite scroll
+    // Handle AJAX requests (both infinite scroll and search)
     if ($request->ajax() || $request->input('ajax') == '1') {
-        $html = '';
-        
-        // Build HTML directly instead of using partial view
-        foreach ($paginated as $product) {
-            $iconDisplay = '';
-            if (str_contains($product['icon_url'], '.svg')) {
-                $iconDisplay = '<div class="w-6 h-6 service-icon" style="background-image: url(\'' . $product['icon_url'] . '\'); background-size: contain; background-repeat: no-repeat; background-position: center;"></div>';
-            } else {
-                $iconDisplay = '<img src="' . $product['icon_url'] . '" alt="' . htmlspecialchars($product['title']) . '" class="w-6 h-6 object-contain" loading="lazy" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';">
-                    <div class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold" style="display: none;">' . strtoupper(substr($product['title'], 0, 2)) . '</div>';
-            }
-            
-            $html .= '<button onclick="showProviderModal(\'' . $product['id'] . '\', \'' . addslashes($product['title']) . '\', \'' . strtolower($product['code']) . '\')" class="w-full block group">
-                <div class="flex items-center space-x-4 p-4 border border-gray-100 rounded-xl hover:border-green-200 hover:bg-green-50/50 transition-all duration-200 group-hover:shadow-sm">
-                    <div class="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0 group-hover:bg-white transition-colors duration-200">
-                        ' . $iconDisplay . '
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <h3 class="text-sm font-semibold text-gray-800 group-hover:text-green-700 transition-colors">
-                            ' . htmlspecialchars($product['title']) . '
-                        </h3>
-                        <p class="text-xs text-gray-500 mt-1">
-                            ' . strtoupper($product['code']) . '
-                        </p>
-                    </div>
-                    <div class="flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-green-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                        </svg>
-                    </div>
-                </div>
-            </button>';
-        }
+        $html = $this->buildServiceItemsHtml($paginated);
         
         Log::info('AJAX request processed', [
             'page' => $page,
+            'is_searching' => $isSearching,
+            'search_term' => $search,
             'items_returned' => $paginated->count(),
             'has_more' => $hasMorePages,
             'html_length' => strlen($html)
@@ -156,15 +129,58 @@ class CountryController extends Controller
             'next_page' => $hasMorePages ? $page + 1 : null,
             'has_more' => $hasMorePages,
             'current_page' => $page,
-            'total' => $others->count()
+            'total' => $others->count(),
+            'is_searching' => $isSearching
         ]);
     }
 
     return view('users.services', [
-        'popular'   => $popular,
+        'popular'   => $isSearching ? collect([]) : $popular,
         'products'  => $paginated,
-        'nextPage'  => $hasMorePages ? 2 : null
+        'nextPage'  => $hasMorePages ? 2 : null,
+        'isSearching' => $isSearching,
+        // Whether Provider 1 (5sim) is available (requires FIVESIM_TOKEN)
+        'hasFivesim' => !empty(env('FIVESIM_TOKEN'))
     ]);
+}
+
+// Helper method to build service items HTML
+private function buildServiceItemsHtml($products)
+{
+    $html = '';
+    
+    foreach ($products as $product) {
+        $iconDisplay = '';
+        if (str_contains($product['icon_url'], '.svg')) {
+            $iconDisplay = '<div class="w-6 h-6 service-icon" style="background-image: url(\'' . $product['icon_url'] . '\'); background-size: contain; background-repeat: no-repeat; background-position: center;"></div>';
+        } else {
+            $iconDisplay = '<img src="' . $product['icon_url'] . '" alt="' . htmlspecialchars($product['title']) . '" class="w-6 h-6 object-contain" loading="lazy" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';">
+                <div class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold" style="display: none;">' . strtoupper(substr($product['title'], 0, 2)) . '</div>';
+        }
+        
+        $html .= '<button onclick="showProviderModal(\'' . $product['id'] . '\', \'' . addslashes($product['title']) . '\', \'' . strtolower($product['code']) . '\')" class="w-full block group">
+            <div class="flex items-center space-x-4 p-4 border border-gray-100 rounded-xl hover:border-green-200 hover:bg-green-50/50 transition-all duration-200 group-hover:shadow-sm">
+                <div class="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0 group-hover:bg-white transition-colors duration-200">
+                    ' . $iconDisplay . '
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h3 class="text-sm font-semibold text-gray-800 group-hover:text-green-700 transition-colors">
+                        ' . htmlspecialchars($product['title']) . '
+                    </h3>
+                    <p class="text-xs text-gray-500 mt-1">
+                        ' . strtoupper($product['code']) . '
+                    </p>
+                </div>
+                <div class="flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-green-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </div>
+            </div>
+        </button>';
+    }
+    
+    return $html;
 }
 
 private function getServiceIconMap()
@@ -621,8 +637,9 @@ private function normalize5simServiceCode($serviceCode)
 
     $serviceCode = $request->service;
     $normalizedCode = $this->normalize5simServiceCode($serviceCode);
-    $country = $request->country;
-    $operator = $request->operator;
+    // Ensure country/operator are in expected format for 5sim (lowercase)
+    $country = strtolower($request->country);
+    $operator = strtolower($request->operator);
 
     Log::info('Provider1 preparePurchase', [
         'original_code' => $serviceCode,
@@ -934,36 +951,51 @@ private function normalize5simServiceCode($serviceCode)
             ]);
 
             // Make purchase request to 5sim
+            // Build URL with proper encoding
+            $url = sprintf(
+                'https://5sim.net/v1/user/buy/activation/%s/%s/%s',
+                urlencode($purchase['country']),
+                urlencode($purchase['operator']),
+                urlencode($purchase['service'])
+            );
+
             $response = Http::timeout(30)
                 ->withHeaders([
                     'Authorization' => "Bearer {$token}",
                     'Accept' => 'application/json'
                 ])
-                ->get("https://5sim.net/v1/user/buy/activation/{$purchase['country']}/{$purchase['operator']}/{$purchase['service']}");
+                ->get($url);
+
+            $responseData = $response->json();
 
             Log::info('5sim API response', [
                 'status' => $response->status(),
-                'body' => $response->body()
+                'json' => $responseData,
+                'body' => $response->body(),
+                'url' => $url
             ]);
 
             if ($response->failed()) {
                 $this->refundUserBalance($purchase['cost']);
-                
+
                 Log::error('5sim purchase failed', [
                     'status' => $response->status(),
-                    'body' => $response->body()
+                    'json' => $responseData,
+                    'body' => $response->body(),
+                    'url' => $url
                 ]);
-                
+
                 $errorMsg = 'Failed to purchase number. ';
-                $responseData = $response->json();
-                if (isset($responseData['message'])) {
+                if (is_array($responseData) && isset($responseData['message'])) {
                     $errorMsg .= $responseData['message'];
+                } elseif (is_string($response->body())) {
+                    $errorMsg .= substr($response->body(), 0, 250);
                 }
-                
+
                 return back()->withErrors($errorMsg . ' Your balance has been refunded.');
             }
 
-            $data = $response->json();
+            $data = $responseData ?? [];
 
             // Validate response data
             if (!isset($data['id']) || !isset($data['phone'])) {
@@ -1684,7 +1716,7 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
             'code' => $countryCode
         ];
 
-        // ✅ Log the country information for debugging
+        // Production: debug log removed
         Log::info('Country details in preparePurchase', [
             'country_id' => $countryId,
             'country_name' => $countryName,
@@ -1801,37 +1833,24 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
             return back()->withErrors('Invalid response from service. Your balance has been refunded.');
         }
 
-        // Create activation transaction record
-        $activationTransaction = DB::table('activation_transactions')->insertGetId([
+        // Create activation record in transactions table
+        $activationId = DB::table('transactions')->insertGetId([
             'user_id' => auth()->id(),
             'request_id' => $data['data']['request_id'],
-            'phone_number' => $data['data']['number'],
+            'phone' => $data['data']['number'],
             'service_id' => $purchase['service'],
             'service_name' => $purchase['service_name'],
             'service_logo' => $purchase['service_logo'] ?? null,
             'country_id' => $purchase['country_id'],
             'country_name' => $purchase['country_name'],
             'country_code' => $purchase['country_code'],
-            'cost' => $purchase['cost'],
+            'amount' => $purchase['cost'],
             'original_cost_usd' => $purchase['original_cost_usd'] ?? null,
             'status' => 'pending',
             'provider' => 'smsbus',
             'sms_code' => null,
             'expires_at' => now()->addMinutes(20),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        // Create transaction record
-        DB::table('transactions')->insert([
-            'reference' => 'ACT_' . strtoupper(Str::random(10)),
-            'user_id' => auth()->id(),
             'type' => 'activation',
-            'channel' => 'SMS-Bus',
-            'provider' => $purchase['service_name'],
-            'phone' => $data['data']['number'],
-            'amount' => $purchase['cost'],
-            'status' => 'success',
             'response' => json_encode($data),
             'created_at' => now(),
             'updated_at' => now(),
@@ -1839,7 +1858,7 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
 
         Log::info('Successful Provider2 purchase', [
             'user_id' => auth()->id(),
-            'activation_id' => $activationTransaction,
+            'activation_id' => $activationId,
             'request_id' => $data['data']['request_id'],
             'phone' => $data['data']['number']
         ]);
@@ -1847,7 +1866,7 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
         session()->forget('purchase');
 
         // Redirect to history page with activation ID
-        return redirect()->route('history')->with('new_activation', $activationTransaction);
+        return redirect()->route('history')->with('new_activation', $activationId);
 
     } catch (\Exception $e) {
         $this->refundUserBalance($purchase['cost']);

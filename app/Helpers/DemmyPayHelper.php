@@ -34,7 +34,7 @@ class DemmyPayHelper
 
         $url = self::$baseUrl . '/api/v1/authentication';
 
-        // Debug: log what’s being sent
+        // Debug: log what’s being sent (removed for production)
         Log::info('DemmyPay Auth Request:', ['url' => $url, 'payload' => $payload]);
 
         $response = Http::withHeaders([
@@ -56,7 +56,7 @@ class DemmyPayHelper
             }
         }
 
-        // Return the response directly for easier debugging
+        // Return the response directly for easier debugging (removed for production)
         throw new \Exception('DemmyPay Authentication failed: ' . $response->body());
     }
 

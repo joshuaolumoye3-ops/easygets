@@ -15,6 +15,7 @@ use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 use App\Models\Admin;
 use App\Models\AdminTransaction;
+use App\Helpers\MoreThanPanelHelper;
 use Illuminate\Support\Facades\Auth;
 
 class AdminController extends Controller
@@ -27,16 +28,58 @@ class AdminController extends Controller
         // Get all transactions for calculations (not just 10)
         $transactions = Transaction::with('user')->latest()->get();
         
+        // Define success statuses (case-insensitive) and filter collection
+        $successfulStatuses = ['success', 'completed'];
+        $successfulTx = $transactions->filter(function ($t) use ($successfulStatuses) {
+            return in_array(strtolower($t->status ?? ''), $successfulStatuses);
+        });
+
+        // Exclude failed, expired, refunded, cancelled from turnover
+        $excludeStatuses = ['failed', 'expired', 'refunded', 'cancelled'];
+        $turnoverTx = $transactions->filter(function ($t) use ($excludeStatuses, $successfulStatuses) {
+            $status = strtolower($t->status ?? '');
+            return in_array($status, $successfulStatuses) && !in_array($status, $excludeStatuses);
+        });
+
+        // Compute profit: for each successful transaction, estimate provider cost and subtract from amount
+        $exchangeRate = config('services.exchange_rate', 1500);
+        $totalProfit = 0.0;
+        $todayProfit = 0.0;
+        $thisWeekProfit = 0.0;
+        $thisMonthProfit = 0.0;
+
+        foreach ($successfulTx as $t) {
+            $providerCost = $this->estimateProviderCost($t, $exchangeRate);
+            $profit = round(floatval($t->amount) - floatval($providerCost), 2);
+            $totalProfit += $profit;
+
+            $created = $t->created_at;
+            if ($created->isToday()) {
+                $todayProfit += $profit;
+            }
+            if ($created->between(now()->startOfWeek(), now()->endOfWeek())) {
+                $thisWeekProfit += $profit;
+            }
+            if ($created->isSameMonth(now())) {
+                $thisMonthProfit += $profit;
+            }
+        }
+
         // Additional stats for the dashboard
         $stats = [
-            'total_users' => $users->total(), // Use total() for paginated count
-            'total_revenue' => $transactions->sum('amount'),
-            'total_transactions' => $transactions->count(),
-            'pending_requests' => $transactions->where('status', 'Pending')->count(),
-            'successful_transactions' => $transactions->where('status', 'Success')->count(),
+            'total_users' => $users->total(),
+            // Only include amounts from successful transactions and exclude failed/expired/refunded/cancelled
+            'total_revenue' => $turnoverTx->sum('amount'),
+            'total_transactions' => $turnoverTx->count(),
+            'pending_requests' => $transactions->filter(fn($t) => strtolower($t->status ?? '') === 'pending')->count(),
+            'successful_transactions' => $successfulTx->count(),
             'active_users_30_days' => User::where('created_at', '>=', Carbon::now()->subDays(30))->count(),
             'latest_user' => User::latest()->first(),
             'latest_transaction' => Transaction::with('user')->latest()->first(),
+            'total_profit' => round($totalProfit, 2),
+            'profit_today' => round($todayProfit, 2),
+            'profit_week' => round($thisWeekProfit, 2),
+            'profit_month' => round($thisMonthProfit, 2),
         ];
 
         return view('admin.index', compact('users', 'transactions', 'stats'));
@@ -84,6 +127,33 @@ class AdminController extends Controller
 
     public function getSystemStats()
     {
+        // For system stats we only want to count finalised successful transactions for revenue/counters
+
+        $exchangeRate = config('services.exchange_rate', 1500);
+
+        // Profit calculations
+        $todayProfit = 0.0;
+        $thisWeekProfit = 0.0;
+        $thisMonthProfit = 0.0;
+
+        $todayTx = Transaction::whereDate('created_at', today())
+            ->whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->get();
+        foreach ($todayTx as $t) {
+            $todayProfit += round(floatval($t->amount) - $this->estimateProviderCost($t, $exchangeRate), 2);
+        }
+
+        $weekTx = Transaction::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
+            ->whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->get();
+        foreach ($weekTx as $t) {
+            $thisWeekProfit += round(floatval($t->amount) - $this->estimateProviderCost($t, $exchangeRate), 2);
+        }
+
+        $monthTx = Transaction::whereMonth('created_at', now()->month)
+            ->whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->get();
+        foreach ($monthTx as $t) {
+            $thisMonthProfit += round(floatval($t->amount) - $this->estimateProviderCost($t, $exchangeRate), 2);
+        }
+
         $stats = [
             'users' => [
                 'total' => User::count(),
@@ -91,19 +161,25 @@ class AdminController extends Controller
                 'new_this_month' => User::whereMonth('created_at', now()->month)->count(),
             ],
             'transactions' => [
-                'total' => Transaction::count(),
-                'total_amount' => Transaction::sum('amount'),
-                'successful' => Transaction::where('status', 'Success')->count(),
-                'pending' => Transaction::where('status', 'Pending')->count(),
-                'failed' => Transaction::where('status', 'Failed')->count(),
+                // 'total' here represents completed/successful transactions only
+                'total' => Transaction::whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->count(),
+                'total_amount' => Transaction::whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->sum('amount'),
+                'successful' => Transaction::whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->count(),
+                'pending' => Transaction::whereRaw("LOWER(COALESCE(status, '')) = 'pending'")->count(),
+                'failed' => Transaction::whereRaw("LOWER(COALESCE(status, '')) = 'failed'")->count(),
             ],
             'revenue' => [
-                'today' => Transaction::whereDate('created_at', today())->sum('amount'),
-                'this_week' => Transaction::whereBetween('created_at', [
+                'today' => Transaction::whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->whereDate('created_at', today())->sum('amount'),
+                'this_week' => Transaction::whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->whereBetween('created_at', [
                     now()->startOfWeek(),
                     now()->endOfWeek()
                 ])->sum('amount'),
-                'this_month' => Transaction::whereMonth('created_at', now()->month)->sum('amount'),
+                'this_month' => Transaction::whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->whereMonth('created_at', now()->month)->sum('amount'),
+            ],
+            'profit' => [
+                'today' => round($todayProfit, 2),
+                'this_week' => round($thisWeekProfit, 2),
+                'this_month' => round($thisMonthProfit, 2),
             ]
         ];
 
@@ -111,6 +187,50 @@ class AdminController extends Controller
             'success' => true,
             'stats' => $stats
         ]);
+    }
+
+    /**
+     * Estimate provider cost for a transaction using heuristics
+     */
+    private function estimateProviderCost($transaction, $exchangeRate = 1500)
+    {
+        $mtp = new MoreThanPanelHelper();
+
+        // Normalize response array
+        $response = [];
+        if (is_array($transaction->response)) {
+            $response = $transaction->response;
+        } else {
+            $response = json_decode($transaction->response ?? '[]', true) ?? [];
+        }
+
+        // 1) If original USD cost exists, use it
+        if (!empty($response['original_cost_usd'])) {
+            return round(floatval($response['original_cost_usd']) * $exchangeRate, 2);
+        }
+
+        // 2) Use rate_per_k (USD per 1000 units) and quantity if present
+        if (!empty($response['rate_per_k']) && !empty($response['quantity'])) {
+            $ratePerK = floatval($response['rate_per_k']);
+            $quantity = intval($response['quantity']);
+            $costUsdPerUnit = $ratePerK / 1000.0;
+            $costUsd = round($costUsdPerUnit * $quantity, 4);
+            return round($costUsd * $exchangeRate, 2);
+        }
+
+        // 3) Use product client_price when available (per-unit NGN)
+        $serviceId = $transaction->service_id ?? ($response['service_id'] ?? null);
+        $quantity = intval($response['quantity'] ?? ($transaction->quantity ?? 1));
+        if ($serviceId) {
+            $pricing = $mtp->getProductPricing($serviceId);
+            $clientPrice = $pricing['client_price'] ?? null; // per-unit NGN
+            if ($clientPrice !== null && $clientPrice > 0) {
+                return round(floatval($clientPrice) * $quantity, 2);
+            }
+        }
+
+        // Unknown provider cost — fallback to zero (profit equals amount)
+        return 0.0;
     }
 
     public function deleteUser($id)

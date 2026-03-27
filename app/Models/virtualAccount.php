@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class virtualAccount extends Model
+class VirtualAccount extends Model
 {
     protected $fillable = [
         'wallet_id',
@@ -20,13 +20,11 @@ class virtualAccount extends Model
     ];
 
     protected $casts = [
-        'expires_at' => 'datetime'
+        'expires_at' => 'datetime',
     ];
 
     public function wallet()
     {
         return $this->belongsTo(Wallet::class);
     }
-
-
 }

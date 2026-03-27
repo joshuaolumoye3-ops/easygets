@@ -49,7 +49,7 @@
                     <div>
                         <p class="text-muted text-sm mb-1">Revenue</p>
                         <div class="flex items-center">
-                            <h3 class="text-2xl font-bold text-white mb-0">₦{{ number_format($transactions->sum('amount')) }}</h3>
+                            <h3 class="text-2xl font-bold text-white mb-0">₦{{ number_format($stats['total_revenue'] ?? 0, 2) }}</h3>
                             <p class="text-modern-success text-sm ml-2 mb-0 font-medium">+11%</p>
                         </div>
                     </div>
@@ -62,12 +62,31 @@
                 </div>
             </div>
 
+            <!-- Profit Card -->
+            <div class="flex-1 min-w-[200px] lg:flex-[1_1_22%] rounded-md bg-[#191c24] p-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-muted text-sm mb-1">Profit (Net)</p>
+                        <div class="flex items-center">
+                            <h3 class="text-2xl font-bold text-white mb-0">₦{{ number_format($stats['total_profit'] ?? 0, 2) }}</h3>
+                            <p class="text-modern-success text-sm ml-2 mb-0 font-medium">+7%</p>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2">Today: ₦{{ number_format($stats['profit_today'] ?? 0, 2) }} • Week: ₦{{ number_format($stats['profit_week'] ?? 0, 2) }} • Month: ₦{{ number_format($stats['profit_month'] ?? 0, 2) }}</p>
+                    </div>
+                    <div class="text-modern-primary p-2 flex items-center justify-center w-[40px] h-[37px] bg-modern-primary/15 rounded-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-3 0-5 1-5 4s2 4 5 4 5-1 5-4-2-4-5-4z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
             <div class="flex-1 min-w-[200px] lg:flex-[1_1_22%] rounded-md bg-[#191c24] p-6">
                 <div class="flex justify-between items-center">
                     <div>
                         <p class="text-muted text-sm mb-1">Transactions</p>
                         <div class="flex items-center">
-                            <h3 class="text-2xl font-bold text-white mb-0">{{ $transactions->count() }}</h3>
+                            <h3 class="text-2xl font-bold text-white mb-0">{{ $stats['total_transactions'] ?? 0 }}</h3>
                             <p class="text-modern-success text-sm ml-2 mb-0 font-medium">+8.3%</p>
                         </div>
                     </div>
@@ -84,7 +103,7 @@
                     <div>
                         <p class="text-muted text-sm mb-1">Pending Requests</p>
                         <div class="flex items-center">
-                            <h3 class="text-2xl font-bold text-white mb-0">{{ $transactions->where('status','Pending')->count() }}</h3>
+                            <h3 class="text-2xl font-bold text-white mb-0">{{ $stats['pending_requests'] ?? 0 }}</h3>
                             <p class="text-modern-warning text-sm ml-2 mb-0 font-medium">-2.4%</p>
                         </div>
                     </div>
@@ -402,8 +421,9 @@ async function addFunds() {
 
     try {
         showMessage('Processing...', true);
-        
-        const data = await makeRequest(`/admin/users/${currentUserId}/add-funds`, {
+
+        const baseUrl = '{{ url('/') }}';
+        const data = await makeRequest(`${baseUrl}/app/admin/users/${currentUserId}/add-funds`, {
             amount: amount,
             description: description
         });
@@ -446,8 +466,9 @@ async function deductFunds() {
 
     try {
         showMessage('Processing...', true);
-        
-        const data = await makeRequest(`/admin/users/${currentUserId}/deduct-funds`, {
+
+        const baseUrl = '{{ url('/') }}';
+        const data = await makeRequest(`${baseUrl}/app/admin/users/${currentUserId}/deduct-funds`, {
             amount: amount,
             description: description
         });
@@ -490,8 +511,9 @@ async function updatePassword() {
 
     try {
         showMessage('Processing...', true);
-        
-        const data = await makeRequest(`/admin/users/${currentUserId}/update-password`, {
+
+        const baseUrl = '{{ url('/') }}';
+        const data = await makeRequest(`${baseUrl}/app/admin/users/${currentUserId}/update-password`, {
             password: password,
             password_confirmation: confirm
         });
@@ -525,8 +547,9 @@ async function updatePin() {
 
     try {
         showMessage('Processing...', true);
-        
-        const data = await makeRequest(`/admin/users/${currentUserId}/update-pin`, {
+
+        const baseUrl = '{{ url('/') }}';
+        const data = await makeRequest(`${baseUrl}/app/admin/users/${currentUserId}/update-pin`, {
             pin: pin
         });
 
@@ -545,15 +568,16 @@ async function updatePin() {
 
 async function openUserModal(userId) {
     currentUserId = userId;
-    
+
     try {
-        const response = await fetch(`/admin/users/${userId}`);
+        const baseUrl = '{{ url('/') }}';
+        const response = await fetch(`${baseUrl}/app/admin/users/${userId}`);
         console.log('User details response status:', response.status);
-        
+
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         const data = await response.json();
         const user = data.user;
         const transactions = data.transactions;

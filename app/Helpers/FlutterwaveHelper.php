@@ -7,16 +7,21 @@ use Illuminate\Support\Facades\Log;
 
 class FlutterwaveHelper
 {
-    public static function createUserVirtualAccount($user_data)
+    /**
+     * Initialize payment for user
+     */
+    public static function initializePayment($user_data)
     {
         $user = $user_data['user'];
-        $amount = $user_data['amount'] ?? null;
+        $amount = $user_data['amount'];
+
         try {
             $service = new FlutterwaveService();
-            $response = $service->createVirtualAccount($user_data);
+            $response = $service->initializePayment($user_data);
 
-            Log::info('Flutterwave Helper Response', [
+            Log::info('Flutterwave Helper Payment Init', [
                 'user_id' => $user->id,
+                'amount' => $amount,
                 'response' => $response
             ]);
 
@@ -28,10 +33,17 @@ class FlutterwaveHelper
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            return false;
+
+            return [
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ];
         }
     }
 
+    /**
+     * Verify transaction
+     */
     public static function verifyTransaction($transactionId)
     {
         $service = new FlutterwaveService();

@@ -60,6 +60,7 @@ class AdminServiceController extends Controller
                         'name'         => $name,
                         'api_price'    => $apiPrice,
                         'client_price' => $dbProduct->client_price ?? null,
+                        'is_active'    => $dbProduct->is_active ?? true,
                         'updated_at'   => $dbProduct->updated_at ?? now(),
                     ];
                 }
@@ -104,6 +105,7 @@ class AdminServiceController extends Controller
                                             'name'         => $productName,
                                             'api_price'    => $apiPrice,
                                             'client_price' => $dbProduct->client_price ?? null,
+                                            'is_active'    => $dbProduct->is_active ?? true,
                                             'updated_at'   => $dbProduct->updated_at ?? now(),
                                         ];
                                     }
@@ -181,6 +183,7 @@ class AdminServiceController extends Controller
                                             'name'         => $productName . " (₦" . number_format($min) . " - ₦" . number_format($max) . ")",
                                             'api_price'    => 0,
                                             'client_price' => $dbProduct->client_price ?? null,
+                                            'is_active'    => $dbProduct->is_active ?? true,
                                             'updated_at'   => $dbProduct->updated_at ?? now(),
                                         ];
                                     }
@@ -217,6 +220,7 @@ class AdminServiceController extends Controller
                         'name'         => $dbProduct->name,
                         'api_price'    => $dbProduct->api_price ?? 0,
                         'client_price' => $dbProduct->client_price,
+                        'is_active'    => $dbProduct->is_active ?? true,
                         'updated_at'   => $dbProduct->updated_at,
                     ];
                 }
@@ -404,9 +408,11 @@ class AdminServiceController extends Controller
     public function destroy($id)
     {
         $product = Product::findOrFail($id);
-        $product->delete();
+        // Soft-deactivate instead of hard delete so it can be reactivated later
+        $product->is_active = false;
+        $product->save();
 
-        return redirect()->back()->with('success', 'Product deleted successfully.');
+        return redirect()->back()->with('success', 'Product deactivated successfully. You can reactivate it later.');
     }
 
     public function updateProduct(Request $request, $id)
@@ -416,6 +422,50 @@ class AdminServiceController extends Controller
             'client_price' => $request->client_price
         ]);
         return back()->with('success', 'Product price updated.');
+    }
+
+    /**
+     * Create or reactivate a single product (used when an API product is saved individually)
+     */
+    public function createProduct(Request $request, $providerId)
+    {
+        $request->validate([
+            'product_code' => 'required|string',
+            'name' => 'required|string',
+            'api_price' => 'nullable|numeric',
+            'client_price' => 'required|numeric',
+        ]);
+
+        $provider = Provider::findOrFail($providerId);
+
+        $product = Product::updateOrCreate(
+            [
+                'provider_id' => $provider->id,
+                'product_code' => $request->product_code,
+            ],
+            [
+                'name' => $request->name,
+                'category' => $request->category ?? 'UNKNOWN',
+                'api_price' => $request->api_price ?? 0,
+                'client_price' => $request->client_price,
+                'is_active' => true,
+            ]
+        );
+
+        return redirect()->back()->with('success', 'Product saved/reactivated successfully.');
+    }
+
+    /**
+     * Toggle product active status (reactivate/deactivate)
+     */
+    public function toggleActive($id)
+    {
+        $product = Product::findOrFail($id);
+        $product->is_active = !$product->is_active;
+        $product->save();
+
+        $message = $product->is_active ? 'Product reactivated successfully.' : 'Product deactivated successfully.';
+        return redirect()->back()->with('success', $message);
     }
 
     public function applyMarkup(Request $request, $providerId)
@@ -444,7 +494,7 @@ class AdminServiceController extends Controller
         $transactions = Transaction::where('type', 'esim')
             ->latest()
             ->paginate(15);
-        // dd($transactions);
+        // dd($transactions); // removed for production
         return view('admin.esim', compact('transactions'));
     }
 
@@ -552,9 +602,9 @@ public function upload(Request $request)
                 }
             }
 
-            // Merge existing and new images
+            // Merge existing and new images and store as an array (Eloquent will JSON-cast it)
             $allImages = array_merge($existingImages, $newImages);
-            $data['images'] = json_encode($allImages);
+            $data['images'] = $allImages;
         }
 
         // Update or create the eSIM upload record
@@ -564,8 +614,19 @@ public function upload(Request $request)
             $action = 'updated';
         } else {
             // Create new record
-            $esimUpload = \App\Models\EsimUpload::create($data);
+            $esimUpload = EsimUpload::create($data);
             $action = 'created';
+        }
+
+        // Mark the parent transaction as successful now that eSIM details (and files) are attached
+        try {
+            $transaction->status = 'Success';
+            $transaction->save();
+        } catch (\Exception $e) {
+            Log::error('Failed to update transaction status after eSIM upload', [
+                'transaction_id' => $transaction->id,
+                'error' => $e->getMessage()
+            ]);
         }
 
         DB::commit();

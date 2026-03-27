@@ -40,6 +40,7 @@ class EsimController extends Controller
                     'price' => $country->base_price,
                     'flag_url' => $country->flag_url,
                     'packages_count' => $country->packages_count,
+                    'local_number_available' => (bool) $country->local_number_available,
                 ];
             })
             ->toArray();
@@ -90,12 +91,13 @@ class EsimController extends Controller
             'code' => $country->country_code,
             'title' => $country->country_name,
             'flag_url' => $country->flag_url,
+            'local_number_available' => (bool) $country->local_number_available,
         ];
 
         $features = [
             'network' => '4G LTE / 5G',
             'speed'   => 'High speed (depends on local provider)',
-            'phone'   => 'No local phone number',
+            'phone'   => $country->local_number_available ? 'Local phone number available' : 'No local phone number',
             'topup'   => 'Not supported',
         ];
 

@@ -208,9 +208,10 @@ function updatePassword() {
     let password = document.getElementById('newPassword').value;
     let confirmPassword = document.getElementById('confirmPassword').value;
 
-    fetch(`/users/${currentUserId}/update-password`, {
+    const baseUrl = '{{ url('/') }}';
+    fetch(`${baseUrl}/app/admin/users/${currentUserId}/update-password`, {
         method: 'POST',
-        headers: { 
+        headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
         },
@@ -241,9 +242,10 @@ function updatePassword() {
 function updatePin() {
     let pin = document.getElementById('newPin').value;
 
-    fetch(`/users/${currentUserId}/update-pin`, {
+    const baseUrl = '{{ url('/') }}';
+    fetch(`${baseUrl}/app/admin/users/${currentUserId}/update-pin`, {
         method: 'POST',
-        headers: { 
+        headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
         },
@@ -266,13 +268,25 @@ function updatePin() {
 
     currentUserId = userId; // 👈 store the user ID globally so updatePassword/updatePin can use it
 
-    fetch(`/admin/users/${userId}`)
+    const baseUrl = '{{ url('/') }}';
+    fetch(`${baseUrl}/app/admin/users/${userId}`)
         .then(response => {
-            if (!response.ok) throw new Error("Network error: " + response.status);
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
+                }).catch(() => {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                });
+            }
             return response.json();
         })
         .then(data => {
             console.log("Fetched user data:", data); // debug
+
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to load user details');
+            }
+
             let user = data.user;
             let transactions = data.transactions;
 
@@ -318,7 +332,7 @@ function updatePin() {
         })
         .catch(error => {
             console.error("Error loading user:", error);
-            alert("Failed to load user details.");
+            alert("Failed to load user details: " + error.message);
         });
 }
 
