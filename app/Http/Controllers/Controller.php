@@ -24,7 +24,7 @@ class Controller
             ->where('product_code', 'morethanpanel')
             ->where('is_active', true)
             ->first();
-        $admin_rate = $admin_rate_product->client_price;
+        $admin_rate = $admin_rate_product ? $admin_rate_product->client_price : null;
 
         $latestTransactions = Transaction::where('user_id', $user->id)
             ->latest()
