@@ -28,7 +28,7 @@ class Wallet extends Model
     }
 
     /**
-     * Relationship: A wallet can have many transactions.
+     * Relationship: A wallet can have many transactions..
      */
    // In your Wallet model, if transactions are linked via user:
 public function transactions()
