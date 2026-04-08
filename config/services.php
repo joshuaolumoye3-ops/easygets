@@ -52,10 +52,10 @@ return [
         'api_key' => env('MORETHANPANEL_API_KEY'),
     ],
     'flutterwave' => [
-        'base_url' => env('FLW_BASE_URL', 'https://api.flutterwave.com/v3'),
-        'secret_hash' => env('FLW_SECRET_HASH'),
-        'public_key' => env('FLW_PUBLIC_KEY'),
-        'secret_key' => env('FLW_SECRET_KEY'),
+        'base_url' => trim(env('FLW_BASE_URL', 'https://api.flutterwave.com/v3')),
+        'secret_hash' => trim(env('FLW_SECRET_HASH', '')),
+        'public_key' => trim(env('FLW_PUBLIC_KEY', '')),
+        'secret_key' => trim(env('FLW_SECRET_KEY', '')),
     ]
 
 ];

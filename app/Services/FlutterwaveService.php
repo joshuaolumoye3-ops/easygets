@@ -14,12 +14,13 @@ class FlutterwaveService
     public function __construct()
     {
         $this->baseUrl = config('services.flutterwave.base_url');
-        $this->secretKey = env('FLW_SECRET_KEY');
-        $this->publicKey = env('FLW_PUBLIC_KEY');
+        $this->secretKey = trim(env('FLW_SECRET_KEY', config('services.flutterwave.secret_key')));
+        $this->publicKey = trim(env('FLW_PUBLIC_KEY', config('services.flutterwave.public_key')));
 
         Log::info('Flutterwave Service Initialized', [
             'base_url' => $this->baseUrl,
             'has_secret_key' => !empty($this->secretKey),
+            'secret_key_length' => strlen($this->secretKey),
             'has_public_key' => !empty($this->publicKey)
         ]);
     }
@@ -32,6 +33,16 @@ class FlutterwaveService
         $user = $user_data['user'];
         $amount = $user_data['amount'];
         $txRef = $user_data['tx_ref'];
+
+        if (!$this->secretKey) {
+            Log::error('Flutterwave Secret Key is empty', [
+                'user_id' => $user->id
+            ]);
+            return [
+                'status' => 'error',
+                'message' => 'Server configuration error: Missing Flutterwave secret key'
+            ];
+        }
 
         $payload = [
             'tx_ref' => $txRef,
@@ -61,8 +72,16 @@ class FlutterwaveService
         ]);
 
         try {
+            $authHeader = 'Bearer ' . $this->secretKey;
+            
+            Log::info('Flutterwave Auth Header Debug', [
+                'header_length' => strlen($authHeader),
+                'starts_with_bearer' => strpos($authHeader, 'Bearer ') === 0,
+                'secret_key_length' => strlen($this->secretKey)
+            ]);
+
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->secretKey,
+                'Authorization' => $authHeader,
                 'Content-Type' => 'application/json'
             ])->timeout(30)->post("{$this->baseUrl}/payments", $payload);
 
