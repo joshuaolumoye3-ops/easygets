@@ -7,7 +7,7 @@
 
     <title>@yield('title', config('app.name', 'Laravel'))</title>
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Alpine.js -->
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -17,6 +17,29 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="shortcut icon" href="{{ asset('easygets-fav-black.png') }}" />
 
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'inter': ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'brand-green': {
+                            'DEFAULT': '#03624C',
+                            'light': '#E6F5F1',
+                            'medium': '#157A61',
+                        },
+                        'brand-gray': {
+                            'light': '#F9FAFB',
+                            'medium': '#E0E0E0',
+                            'dark': '#4F4F4F'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         body {
             font-family: 'Inter', 'sans-serif';
