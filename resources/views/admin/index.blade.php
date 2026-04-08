@@ -5,44 +5,46 @@
 @section('content')
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background-color: #f8fafc; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background-color: #0f172a; }
     
-    .dashboard-container { padding-top: 70px; min-height: 100vh; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); }
+    .dashboard-container { padding-top: 70px; min-height: 100vh; background: linear-gradient(135deg, #0f172a 0%, #1a202c 100%); }
     .main-content { padding: 40px 30px; max-width: 1400px; margin: 0 auto; }
     
     /* Top Header Bar */
     .header-bar {
-        background: white;
+        background: #1e293b;
         border-radius: 16px;
         padding: 24px 28px;
         margin-bottom: 32px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.2);
         display: flex;
         justify-content: space-between;
         align-items: center;
         flex-wrap: wrap;
         gap: 20px;
+        border: 1px solid #334155;
     }
     
-    .header-left h1 { font-size: 28px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
-    .header-left p { font-size: 14px; color: #64748b; font-weight: 500; }
+    .header-left h1 { font-size: 28px; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
+    .header-left p { font-size: 14px; color: #cbd5e1; font-weight: 500; }
     
     .header-right { display: flex; align-items: center; gap: 16px; }
     .search-box { position: relative; width: 300px; }
     .search-box input {
         width: 100%;
         padding: 10px 16px 10px 38px;
-        border: 2px solid #e2e8f0;
+        border: 2px solid #475569;
         border-radius: 10px;
         font-size: 14px;
-        background-color: #f8fafc;
+        background-color: #334155;
         transition: all 0.3s ease;
-        color: #1e293b;
+        color: #f1f5f9;
     }
-    .search-box input:focus { outline: none; border-color: #3b82f6; background-color: white; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+    .search-box input::placeholder { color: #94a3b8; }
+    .search-box input:focus { outline: none; border-color: #3b82f6; background-color: #475569; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
     .search-box svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #94a3b8; }
     
-    .avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 18px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+    .avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 18px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
     
     /* Stats Grid */
     .stats-grid {
@@ -52,20 +54,20 @@
         margin-bottom: 32px;
     }
     
-    .stat-card {
-        background: white;
+    .stat-card {#1e293b;
         border-radius: 16px;
         padding: 24px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
-        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.2);
+        border: 1px solid #334155;
         transition: all 0.3s ease;
         position: relative;
         overflow: hidden;
     }
     
     .stat-card:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.12), 0 8px 24px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2), 0 8px 24px rgba(0,0,0,0.3);
         transform: translateY(-2px);
+        border-color: #475569;
     }
     
     .stat-card::before {
@@ -80,64 +82,65 @@
     
     .stat-content { display: flex; justify-content: space-between; align-items: flex-start; }
     .stat-info { flex: 1; }
-    .stat-label { font-size: 13px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
-    .stat-value { font-size: 32px; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
+    .stat-label { font-size: 13px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .stat-value { font-size: 32px; font-weight: 700; color: #f1f5f9; margin-bottom: 8px; }
     .stat-badge {
         display: inline-flex;
         align-items: center;
         gap: 4px;
         padding: 4px 10px;
-        background-color: #dcfce7;
-        color: #166534;
+        background-color: #10b98155;
+        color: #86efac;
         border-radius: 20px;
         font-size: 12px;
         font-weight: 600;
     }
     
     .stat-icon { width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 28px; }
-    .stat-icon.blue { background-color: #dbeafe; color: #1e40af; }
-    .stat-icon.green { background-color: #dcfce7; color: #166534; }
-    .stat-icon.purple { background-color: #e9d5ff; color: #6b21a8; }
+    .stat-icon.blue { background-color: #1e3a8a22; color: #60a5fa; }
+    .stat-icon.green { background-color: #15803d22; color: #86efac; }
+    .stat-icon.purple { background-color: #6b21a822; color: #d8b4fe; }
+    .stat-icon.orange { background-color: #92400e22; color: #fdba74; }
     .stat-icon.orange { background-color: #fed7aa; color: #92400e; }
     
     /* Tables */
-    .table-card {
-        background: white;
+    .table-card {#1e293b;
         border-radius: 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.2);
         overflow: hidden;
         margin-bottom: 32px;
+        border: 1px solid #334155;
     }
     
-    .table-header { padding: 24px 28px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
-    .table-header h3 { font-size: 18px; font-weight: 700; color: #1e293b; }
-    .table-badge { padding: 4px 12px; background-color: #dbeafe; color: #1e40af; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .table-header { padding: 24px 28px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+    .table-header h3 { font-size: 18px; font-weight: 700; color: #f1f5f9; }
+    .table-badge { padding: 4px 12px; background-color: #1e3a8a; color: #93c5fd; border-radius: 20px; font-size: 12px; font-weight: 600; }
     
     .table-wrapper { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; }
-    thead tr { background-color: #f8fafc; }
+    thead tr { background-color: #0f172a; }
     th {
         padding: 16px 20px;
         text-align: left;
         font-size: 12px;
         font-weight: 700;
-        color: #64748b;
+        color: #94a3b8;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        border-bottom: 2px solid #e2e8f0;
+        border-bottom: 2px solid #334155;
     }
     td {
         padding: 16px 20px;
-        border-bottom: 1px solid #f1f5f9;
+        border-bottom: 1px solid #334155;
         font-size: 14px;
-        color: #1e293b;
+        color: #f1f5f9;
     }
     tbody tr { transition: background-color 0.2s ease; }
+    tbody tr:hover { background-color: #3341552s ease; }
     tbody tr:hover { background-color: #f8fafc; }
     
     .user-cell { display: flex; align-items: center; gap: 12px; }
-    .user-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px; }
-    .user-name { font-weight: 600; color: #1e293b; }
+    .user-avatar { width: 40px; height: 40pf1f5f9; }
     
     .status-badge {
         display: inline-flex;
@@ -149,15 +152,15 @@
         font-weight: 600;
         width: fit-content;
     }
-    .status-success { background-color: #dcfce7; color: #166534; }
-    .status-pending { background-color: #fef3c7; color: #92400e; }
-    .status-failed { background-color: #fee2e2; color: #991b1b; }
+    .status-success { background-color: #15803d44; color: #86efac; }
+    .status-pending { background-color: #92400e44; color: #fcd34d; }
+    .status-failed { background-color: #7f1d1d44; color: #fca5a5; }
     
     .action-btn {
         padding: 8px 14px;
-        background-color: #dbeafe;
-        color: #1e40af;
-        border: none;
+        background-color: #1e3a8a;
+        color: #93c5fd;
+        border: 1px solid #3b82f6;
         border-radius: 8px;
         font-size: 12px;
         font-weight: 600;
@@ -167,20 +170,21 @@
         align-items: center;
         gap: 6px;
     }
+    .action-btn:hover { background-color: #1e40af; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3
     .action-btn:hover { background-color: #bfdbfe; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2); }
     
-    /* Modal */
-    .modal { display: none; position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+    /* Modal */7); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
     .modal.active { display: flex; }
     .modal-content {
-        background: white;
+        background: #1e293b;
         border-radius: 20px;
         width: 100%;
         max-width: 900px;
         max-height: 90vh;
         overflow-y: auto;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
         animation: slideUp 0.3s ease;
+        border: 1px solid #334155;
     }
     @keyframes slideUp {
         from { transform: translateY(20px); opacity: 0; }
@@ -189,22 +193,23 @@
     
     .modal-header {
         padding: 24px 28px;
-        border-bottom: 1px solid #e2e8f0;
+        border-bottom: 1px solid #334155;
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
-    .modal-header h2 { font-size: 20px; font-weight: 700; color: #1e293b; }
+    .modal-header h2 { font-size: 20px; font-weight: 700; color: #f1f5f9; }
     .close-btn { background: none; border: none; font-size: 24px; color: #94a3b8; cursor: pointer; transition: color 0.2s; }
-    .close-btn:hover { color: #64748b; }
+    .close-btn:hover { color: #cbd5e1; }
     
     .modal-body { padding: 28px; }
     .section { margin-bottom: 28px; }
-    .section-title { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 16px; }
+    .section-title { font-size: 16px; font-weight: 700; color: #f1f5f9; margin-bottom: 16px; }
     
     .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px; }
-    .info-item { padding: 16px; background-color: #f8fafc; border-radius: 12px; }
-    .info-label { font-size: 12px; color: #64748b; font-weight: 600; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .info-item { padding: 16px; background-color: #334155; border-radius: 12px; border: 1px solid #475569; }
+    .info-label { font-size: 12px; color: #94a3b8; font-weight: 600; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .info-value { font-size: 16px; color: #f1f5f9; font-weight: 600; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
     .info-value { font-size: 16px; color: #1e293b; font-weight: 600; }
     
     .action-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
@@ -221,40 +226,41 @@
         justify-content: center;
         gap: 8px;
     }
-    .btn-primary { background-color: #3b82f6; color: white; }
-    .btn-primary:hover { background-color: #2563eb; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+    .btn-primary { background-color: #3b82f6; color: white; }4); }
     
     .btn-purple { background-color: #8b5cf6; color: white; }
-    .btn-purple:hover { background-color: #7c3aed; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3); }
+    .btn-purple:hover { background-color: #7c3aed; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4); }
     
     .btn-green { background-color: #10b981; color: white; }
-    .btn-green:hover { background-color: #059669; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+    .btn-green:hover { background-color: #059669; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4); }
     
     .btn-red { background-color: #ef4444; color: white; }
-    .btn-red:hover { background-color: #dc2626; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
+    .btn-red:hover { background-color: #dc2626; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4); }
     
     .form-group { margin-bottom: 16px; }
-    .form-label { display: block; font-size: 14px; font-weight: 600; color: #1e293b; margin-bottom: 8px; }
+    .form-label { display: block; font-size: 14px; font-weight: 600; color: #f1f5f9; margin-bottom: 8px; }
     .form-input, .form-textarea {
         width: 100%;
         padding: 12px 14px;
-        border: 2px solid #e2e8f0;
+        border: 2px solid #475569;
         border-radius: 10px;
         font-size: 14px;
         font-family: inherit;
-        color: #1e293b;
-        background-color: white;
+        color: #f1f5f9;
+        background-color: #334155;
         transition: all 0.3s ease;
     }
+    .form-input::placeholder, .form-textarea::placeholder { color: #94a3b8; }
     .form-input:focus, .form-textarea:focus {
         outline: none;
         border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
     }
     .form-textarea { resize: vertical; min-height: 80px; }
     
-    .hidden-form { display: none; padding: 16px; background-color: #f8fafc; border-radius: 12px; border-left: 4px solid #3b82f6; }
+    .hidden-form { display: none; padding: 16px; background-color: #334155; border-radius: 12px; border-left: 4px solid #3b82f6; }
     .hidden-form.active { display: block; }
+    .hidden-form h5 { color: #f1f5f9; }
     
     .message {
         padding: 12px 16px;
@@ -263,7 +269,8 @@
         font-weight: 500;
         margin-bottom: 16px;
     }
-    .message-success { background-color: #dcfce7; color: #166534; border-left: 4px solid #10b981; }
+    .message-success { background-color: #15803d44; color: #86efac; border-left: 4px solid #10b981; }
+    .message-error { background-color: #7f1d1d44; color: #fca5a534; border-left: 4px solid #10b981; }
     .message-error { background-color: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
     
     .transactions-section {
@@ -396,7 +403,7 @@
                             </td>
                             <td>{{ $user->email }}</td>
                             <td>{{ $user->phone_number }}</td>
-                            <td><span style="color: #10b981; font-weight: 600;">₦{{ number_format(optional($user->wallet)->balance ?? 0, 2) }}</span></td>
+                            <td><span style="color: #86efac; font-weight: 600;">₦{{ number_format(optional($user->wallet)->balance ?? 0, 2) }}</span></td>
                             <td><button class="action-btn" onclick="openUserModal({{ $user->id }})">👁️ View</button></td>
                         </tr>
                         @endforeach
@@ -431,7 +438,7 @@
                                     <div class="user-name">{{ $tx->user->username ?? 'N/A' }}</div>
                                 </div>
                             </td>
-                            <td><span style="background-color: #f1f5f9; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;">{{ $tx->type }}</span></td>
+                            <td><span style="background-color: #475569; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; color: #cbd5e1;">{{ $tx->type }}</span></td>
                             <td style="font-weight: 600;">₦{{ number_format($tx->amount, 2) }}</td>
                             <td>
                                 @if($tx->status == 'success' || $tx->status == 'completed')
@@ -441,10 +448,10 @@
                                 @elseif($tx->status == 'failed')
                                     <span class="status-badge status-failed">✗ Failed</span>
                                 @else
-                                    <span class="status-badge" style="background-color: #f1f5f9; color: #475569;">{{ $tx->status }}</span>
+                                    <span class="status-badge" style="background-color: #475569; color: #cbd5e1;">{{ $tx->status }}</span>
                                 @endif
                             </td>
-                            <td style="color: #64748b;">{{ $tx->created_at->format('M d, Y H:i') }}</td>
+                            <td style="color: #94a3b8;">{{ $tx->created_at->format('M d, Y H:i') }}</td>
                         </tr>
                         @endforeach
                     </tbody>
@@ -483,7 +490,7 @@
                 
                 <!-- Password Form -->
                 <div id="passwordForm" class="hidden-form">
-                    <h4 style="margin-bottom: 16px; font-weight: 600;">Change Password</h4>
+                    <h4 style="margin-bottom: 16px; font-weight: 600; color: #f1f5f9;">Change Password</h4>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
                         <div class="form-group">
                             <label class="form-label">New Password</label>
@@ -499,7 +506,7 @@
                 
                 <!-- PIN Form -->
                 <div id="pinForm" class="hidden-form">
-                    <h4 style="margin-bottom: 16px; font-weight: 600;">Change PIN</h4>
+                    <h4 style="margin-bottom: 16px; font-weight: 600; color: #f1f5f9;">Change PIN</h4>
                     <div class="form-group">
                         <label class="form-label">New 4-digit PIN</label>
                         <input type="password" id="newPin" class="form-input" placeholder="Enter 4-digit PIN" maxlength="4">
@@ -509,11 +516,11 @@
                 
                 <!-- Funds Form -->
                 <div id="fundsForm" class="hidden-form">
-                    <h4 style="margin-bottom: 16px; font-weight: 600;">Wallet Management</h4>
+                    <h4 style="margin-bottom: 16px; font-weight: 600; color: #f1f5f9;">Wallet Management</h4>
                     
                     <!-- Add Funds -->
-                    <div style="margin-bottom: 20px; padding: 16px; background-color: #dcfce7; border-radius: 12px; border-left: 4px solid #10b981;">
-                        <h5 style="margin-bottom: 12px; font-weight: 600; color: #166534;">Add Funds</h5>
+                    <div style="margin-bottom: 20px; padding: 16px; background-color: #15803d44; border-radius: 12px; border-left: 4px solid #10b981;">
+                        <h5 style="margin-bottom: 12px; font-weight: 600; color: #86efac;">Add Funds</h5>
                         <div style="display: grid; gap: 12px;">
                             <div class="form-group">
                                 <label class="form-label">Amount</label>
@@ -528,8 +535,8 @@
                     </div>
                     
                     <!-- Deduct Funds -->
-                    <div style="padding: 16px; background-color: #fee2e2; border-radius: 12px; border-left: 4px solid #ef4444;">
-                        <h5 style="margin-bottom: 12px; font-weight: 600; color: #991b1b;">Deduct Funds</h5>
+                    <div style="padding: 16px; background-color: #7f1d1d44; border-radius: 12px; border-left: 4px solid #ef4444;">
+                        <h5 style="margin-bottom: 12px; font-weight: 600; color: #fca5a5;">Deduct Funds</h5>
                         <div style="display: grid; gap: 12px;">
                             <div class="form-group">
                                 <label class="form-label">Amount</label>
