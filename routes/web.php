@@ -288,6 +288,7 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
         Route::patch('/{id}', [AdminEsimController::class, 'updatePrice'])->name('admin.esim.update');
         Route::get('/{id}/packages', [AdminEsimController::class, 'getPackages'])->name('admin.esim.getPackages');
         Route::post('/{id}/packages', [AdminEsimController::class, 'storePackage'])->name('admin.esim.storePackage');
+        Route::patch('/package/{id}', [AdminEsimController::class, 'updatePackage'])->name('admin.esim.updatePackage');
         Route::delete('/package/{id}', [AdminEsimController::class, 'deletePackage'])->name('admin.esim.destroyPackage');
     });
 

@@ -304,6 +304,55 @@ class AdminEsimController extends Controller
     }
 
     /**
+     * Update a package via AJAX
+     */
+    public function updatePackage(Request $request, $id)
+    {
+        try {
+            $validated = $request->validate([
+                'plan' => 'required|string|max:100',
+                'validity_days' => 'required|integer|min:1|max:365',
+                'price' => 'required|numeric|min:0'
+            ]);
+
+            $package = EsimPackage::findOrFail($id);
+            $package->update([
+                'plan' => $validated['plan'],
+                'validity_days' => $validated['validity_days'],
+                'price' => $validated['price'],
+            ]);
+
+            Log::info('Package updated via AJAX', [
+                'package_id' => $package->id,
+                'plan' => $package->plan,
+                'validity_days' => $package->validity_days,
+                'price' => $package->price
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Package updated successfully',
+                'package' => $package
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => implode(', ', array_merge(...array_values($e->errors())))
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error updating package via AJAX', [
+                'package_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update package: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Toggle country active status
      */
     public function toggleCountryStatus($id)
@@ -476,7 +525,7 @@ public function showTransaction($id)
             'hasExistingUpload' => $hasExistingUpload,
         ]);
     } catch (\Exception $e) {
-        \Log::error('Error fetching eSIM transaction details', [
+        Log::error('Error fetching eSIM transaction details', [
             'transaction_id' => $id,
             'error' => $e->getMessage(),
             'trace' => $e->getTraceAsString()
