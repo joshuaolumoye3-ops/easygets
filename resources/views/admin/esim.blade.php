@@ -246,6 +246,8 @@ function openTxnModal(id){
     fetch(`/app/admin/esim/transaction/${id}`)
     .then(res=>res.json())
     .then(data=>{
+        console.log('Transaction Data Received:', data);
+        
         const txn = data.transaction;
         const esim = data.esim;
         
@@ -259,16 +261,19 @@ function openTxnModal(id){
         
         // Populate form with existing upload data if available
         if (esim) {
+            console.log('eSIM Upload Data:', esim);
             document.getElementById('uploadNumbers').value = esim.number || '';
             document.getElementById('uploadDetails').value = esim.details || '';
             
             // Show existing images
             if (esim.images && esim.images.length > 0) {
+                console.log('Images Found:', esim.images);
                 document.getElementById('imagePreview').style.display = 'flex';
                 const previewGrid = document.getElementById('previewGrid');
                 previewGrid.innerHTML = '';
                 
-                esim.images.forEach(imgUrl => {
+                esim.images.forEach((imgUrl, index) => {
+                    console.log(`Loading image ${index}:`, imgUrl);
                     const previewItem = document.createElement('div');
                     previewItem.style.cssText = `
                         position: relative;
@@ -281,6 +286,13 @@ function openTxnModal(id){
                     
                     const img = document.createElement('img');
                     img.src = imgUrl;
+                    img.onerror = function() {
+                        console.error('Failed to load image:', imgUrl);
+                        this.style.display = 'none';
+                    };
+                    img.onload = function() {
+                        console.log('Image loaded successfully:', imgUrl);
+                    };
                     img.style.cssText = `
                         width: 100%;
                         height: 100%;
@@ -291,10 +303,12 @@ function openTxnModal(id){
                     previewGrid.appendChild(previewItem);
                 });
             } else {
+                console.log('No images found in eSIM data');
                 document.getElementById('imagePreview').style.display = 'none';
                 document.getElementById('previewGrid').innerHTML = '';
             }
         } else {
+            console.log('No eSIM upload data found');
             document.getElementById('uploadNumbers').value = '';
             document.getElementById('uploadDetails').value = '';
             document.getElementById('imagePreview').style.display = 'none';

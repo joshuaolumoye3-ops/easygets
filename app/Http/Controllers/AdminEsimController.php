@@ -493,13 +493,38 @@ public function showTransaction($id)
                 $images = json_decode($images, true) ?? [];
             }
             
+            // Debug logging
+            Log::info('eSIM Upload Images Debug', [
+                'transaction_id' => $transaction->id,
+                'raw_images' => $esim->images,
+                'parsed_images' => $images,
+                'is_array' => is_array($images),
+                'image_count' => is_array($images) ? count($images) : 0,
+            ]);
+            
+            // Convert image paths to full URLs
+            $imageUrls = [];
+            if (is_array($images) && count($images) > 0) {
+                foreach ($images as $img) {
+                    if (!empty($img)) {
+                        // Ensure path doesn't have double slashes and is a full URL
+                        $fullUrl = url('/' . ltrim($img, '/'));
+                        $imageUrls[] = $fullUrl;
+                        
+                        Log::info('Image URL Generated', [
+                            'original_path' => $img,
+                            'full_url' => $fullUrl,
+                            'file_exists' => file_exists(public_path($img)),
+                        ]);
+                    }
+                }
+            }
+            
             $esimData = [
                 'id'      => $esim->id,
                 'number'  => $esim->number ?? '',
                 'details' => $esim->details ?? '',
-                'images'  => collect($images)
-                    ->map(fn($img) => asset($img))
-                    ->toArray(),
+                'images'  => $imageUrls,
                 'created' => optional($esim->created_at)->format('d M Y, h:i A'),
                 'updated' => optional($esim->updated_at)->format('d M Y, h:i A'),
             ];
