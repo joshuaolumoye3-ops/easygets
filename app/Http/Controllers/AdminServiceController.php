@@ -587,17 +587,28 @@ public function upload(Request $request)
                     $path = $directory . '/' . $filename;
 
                     // Move file to public directory
-                    $image->move(public_path($directory), $filename);
-
-                    $newImages[] = $path;
+                    $result = $image->move(public_path($directory), $filename);
                     
-                    Log::info('Image uploaded successfully', [
-                        'filename' => $filename,
-                        'path' => $path
-                    ]);
+                    if ($result) {
+                        $newImages[] = $path;
+                        
+                        Log::info('Image uploaded successfully', [
+                            'filename' => $filename,
+                            'path' => $path,
+                            'full_public_path' => public_path($path),
+                            'file_exists' => file_exists(public_path($path))
+                        ]);
+                    } else {
+                        Log::error('File move failed', [
+                            'filename' => $filename,
+                            'source' => $image->getRealPath(),
+                            'destination' => public_path($directory) . '/' . $filename
+                        ]);
+                    }
                 } catch (\Exception $e) {
                     Log::error('Error uploading image', [
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
                     ]);
                 }
             }
@@ -605,6 +616,13 @@ public function upload(Request $request)
             // Merge existing and new images and store as an array (Eloquent will JSON-cast it)
             $allImages = array_merge($existingImages, $newImages);
             $data['images'] = $allImages;
+            
+            Log::info('Images merge complete', [
+                'existing_count' => count($existingImages),
+                'new_count' => count($newImages),
+                'total_count' => count($allImages),
+                'all_images' => $allImages
+            ]);
         }
 
         // Update or create the eSIM upload record

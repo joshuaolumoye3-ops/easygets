@@ -507,15 +507,26 @@ public function showTransaction($id)
             if (is_array($images) && count($images) > 0) {
                 foreach ($images as $img) {
                     if (!empty($img)) {
-                        // Ensure path doesn't have double slashes and is a full URL
-                        $fullUrl = url('/' . ltrim($img, '/'));
-                        $imageUrls[] = $fullUrl;
-                        
-                        Log::info('Image URL Generated', [
-                            'original_path' => $img,
-                            'full_url' => $fullUrl,
-                            'file_exists' => file_exists(public_path($img)),
-                        ]);
+                        // Check if file actually exists
+                        $publicPath = public_path($img);
+                        if (file_exists($publicPath)) {
+                            // Ensure path doesn't have double slashes and is a full URL
+                            $fullUrl = url('/' . ltrim($img, '/'));
+                            $imageUrls[] = $fullUrl;
+                            
+                            Log::info('Image URL Valid', [
+                                'original_path' => $img,
+                                'public_path' => $publicPath,
+                                'full_url' => $fullUrl,
+                                'exists' => true,
+                            ]);
+                        } else {
+                            Log::warning('Image File Not Found', [
+                                'original_path' => $img,
+                                'public_path' => $publicPath,
+                                'exists' => false,
+                            ]);
+                        }
                     }
                 }
             }
