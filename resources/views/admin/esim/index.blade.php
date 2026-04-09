@@ -262,101 +262,107 @@ function closeModal(){
     currentCountryId = null;
 }
 
-function loadPackages(countryId){
-    fetch(`/app/admin/esim/${countryId}/packages`)
-        .then(r => r.json())
-        .then(data => {
-            const list = document.getElementById('packagesList');
-            const noPackages = document.getElementById('noPackages');
-            list.innerHTML = '';
+async function loadPackages(countryId){
+    try {
+        const response = await fetch(`/app/admin/esim/${countryId}/packages`);
+        const data = await response.json();
+        const list = document.getElementById('packagesList');
+        const noPackages = document.getElementById('noPackages');
+        list.innerHTML = '';
 
-            if(data.length === 0){
-                noPackages.style.display = 'block';
-                return;
-            }
+        let packages = [];
+        if (Array.isArray(data)) {
+            packages = data;
+        } else if (data && data.packages) {
+            packages = data.packages;
+        }
 
-            noPackages.style.display = 'none';
+        if (!packages.length) {
+            noPackages.style.display = 'block';
+            return;
+        }
 
-            data.forEach(pkg => {
-                const div = document.createElement('div');
-                div.style.cssText = 'background:#1a1d23; padding:14px; border-radius:8px; margin-bottom:10px; border:1px solid rgba(255,255,255,0.05); transition:0.2s;';
-                div.className = 'package-item';
-                div.setAttribute('data-pkg-id', pkg.id);
-                
-                const displayView = document.createElement('div');
-                displayView.className = 'display-view';
-                displayView.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
-                        <div style="flex:1;">
-                            <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;">
-                                <strong style="font-size:15px; color:#fff;">${pkg.plan}</strong>
-                                <span style="background:#2563eb; padding:3px 8px; border-radius:4px; font-size:11px; color:#fff; font-weight:600;">${pkg.validity_days}d</span>
-                            </div>
-                            <div style="display:flex; gap:16px; font-size:13px;">
-                                <span style="color:#9ca3af;">Price: <strong style="color:#10b981; font-weight:600;">₦${parseFloat(pkg.price).toLocaleString('en-NG', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong></span>
-                                <span style="color:#9ca3af;">ID: <strong style="color:#8b5cf6;">#${pkg.id}</strong></span>
-                            </div>
+        noPackages.style.display = 'none';
+
+        packages.forEach(pkg => {
+            const div = document.createElement('div');
+            div.style.cssText = 'background:#1a1d23; padding:14px; border-radius:8px; margin-bottom:10px; border:1px solid rgba(255,255,255,0.05); transition:0.2s;';
+            div.className = 'package-item';
+            div.setAttribute('data-pkg-id', pkg.id);
+            
+            const displayView = document.createElement('div');
+            displayView.className = 'display-view';
+            displayView.innerHTML = `
+                <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px;">
+                    <div style="flex:1; min-width:220px;">
+                        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:6px;">
+                            <strong style="font-size:15px; color:#fff;">${pkg.plan}</strong>
+                            <span style="background:#2563eb; padding:3px 8px; border-radius:4px; font-size:11px; color:#fff; font-weight:600;">${pkg.validity_days}d</span>
                         </div>
-                        <div style="display:flex; gap:6px;">
-                            <button onclick="editPackageStart(${pkg.id})" style="background:#3b82f6; border:none; padding:8px 12px; border-radius:6px; color:white; cursor:pointer; font-size:12px; font-weight:600; transition:0.2s;"
-                                onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-                                ✎ Edit
-                            </button>
-                            <button onclick="deletePackage(${pkg.id})" style="background:#ef4444; border:none; padding:8px 12px; border-radius:6px; color:white; cursor:pointer; font-size:12px; font-weight:600; transition:0.2s;"
-                                onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-                                🗑 Delete
-                            </button>
+                        <div style="display:flex; flex-wrap:wrap; gap:16px; font-size:13px;">
+                            <span style="color:#9ca3af;">Price: <strong style="color:#10b981; font-weight:600;">₦${parseFloat(pkg.price).toLocaleString('en-NG', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong></span>
+                            <span style="color:#9ca3af;">ID: <strong style="color:#8b5cf6;">#${pkg.id}</strong></span>
                         </div>
                     </div>
-                `;
-                
-                const editView = document.createElement('div');
-                editView.className = 'edit-view';
-                editView.style.display = 'none';
-                editView.innerHTML = `
-                    <div style="background:#0d1017; padding:12px; border-radius:8px; margin-bottom:10px;">
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
-                            <div>
-                                <label style="display:block; font-size:11px; color:#9ca3af; margin-bottom:4px; font-weight:500;">Plan Name</label>
-                                <input type="text" class="edit-plan" value="${pkg.plan}" placeholder="Plan name"
-                                    style="width:100%; padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:#121417; color:#fff; font-size:13px; transition:0.2s;"
-                                    onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
-                            </div>
-                            <div>
-                                <label style="display:block; font-size:11px; color:#9ca3af; margin-bottom:4px; font-weight:500;">Validity (days)</label>
-                                <input type="number" class="edit-validity" value="${pkg.validity_days}" placeholder="30"
-                                    style="width:100%; padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:#121417; color:#fff; font-size:13px; transition:0.2s;"
-                                    onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
-                            </div>
-                        </div>
-                        <div style="margin-bottom:12px;">
-                            <label style="display:block; font-size:11px; color:#9ca3af; margin-bottom:4px; font-weight:500;">Price (₦)</label>
-                            <input type="number" class="edit-price" value="${pkg.price}" step="0.01" placeholder="5000"
+                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                        <button onclick="editPackageStart(${pkg.id})" style="background:#3b82f6; border:none; padding:8px 12px; border-radius:6px; color:white; cursor:pointer; font-size:12px; font-weight:600; transition:0.2s;"
+                            onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                            ✎ Edit
+                        </button>
+                        <button onclick="deletePackage(${pkg.id})" style="background:#ef4444; border:none; padding:8px 12px; border-radius:6px; color:white; cursor:pointer; font-size:12px; font-weight:600; transition:0.2s;"
+                            onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                            🗑 Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            const editView = document.createElement('div');
+            editView.className = 'edit-view';
+            editView.style.display = 'none';
+            editView.innerHTML = `
+                <div style="background:#0d1017; padding:12px; border-radius:8px; margin-top:10px;">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                        <div>
+                            <label style="display:block; font-size:11px; color:#9ca3af; margin-bottom:4px; font-weight:500;">Plan Name</label>
+                            <input type="text" class="edit-plan" value="${pkg.plan}" placeholder="Plan name"
                                 style="width:100%; padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:#121417; color:#fff; font-size:13px; transition:0.2s;"
                                 onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
                         </div>
-                        <div style="display:flex; gap:8px;">
-                            <button onclick="updatePackage(${pkg.id})" style="flex:1; background:#16a34a; border:none; padding:8px; border-radius:6px; color:white; cursor:pointer; font-size:12px; font-weight:600; transition:0.2s;"
-                                onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-                                ✓ Save
-                            </button>
-                            <button onclick="cancelEdit(${pkg.id})" style="flex:1; background:#6b7280; border:none; padding:8px; border-radius:6px; color:white; cursor:pointer; font-size:12px; font-weight:600; transition:0.2s;"
-                                onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-                                ✕ Cancel
-                            </button>
+                        <div>
+                            <label style="display:block; font-size:11px; color:#9ca3af; margin-bottom:4px; font-weight:500;">Validity (days)</label>
+                            <input type="number" class="edit-validity" value="${pkg.validity_days}" placeholder="30"
+                                style="width:100%; padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:#121417; color:#fff; font-size:13px; transition:0.2s;"
+                                onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
                         </div>
                     </div>
-                `;
-                
-                div.appendChild(displayView);
-                div.appendChild(editView);
-                list.appendChild(div);
-            });
-        })
-        .catch(err => {
-            console.error(err);
-            showNotification('Error loading packages', 'error');
+                    <div style="margin-bottom:12px;">
+                        <label style="display:block; font-size:11px; color:#9ca3af; margin-bottom:4px; font-weight:500;">Price (₦)</label>
+                        <input type="number" class="edit-price" value="${pkg.price}" step="0.01" placeholder="5000"
+                            style="width:100%; padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:#121417; color:#fff; font-size:13px; transition:0.2s;"
+                            onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                        <button onclick="updatePackage(${pkg.id})" style="flex:1; min-width:120px; background:#16a34a; border:none; padding:8px; border-radius:6px; color:white; cursor:pointer; font-size:12px; font-weight:600; transition:0.2s;"
+                            onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                            ✓ Save
+                        </button>
+                        <button onclick="cancelEdit(${pkg.id})" style="flex:1; min-width:120px; background:#6b7280; border:none; padding:8px; border-radius:6px; color:white; cursor:pointer; font-size:12px; font-weight:600; transition:0.2s;"
+                            onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                            ✕ Cancel
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            div.appendChild(displayView);
+            div.appendChild(editView);
+            list.appendChild(div);
         });
+    } catch (err) {
+        console.error(err);
+        showNotification('Error loading packages', 'error');
+    }
 }
 
 function deletePackage(packageId){
@@ -465,12 +471,14 @@ document.getElementById('addPackageForm')?.addEventListener('submit', async func
             })
         });
 
-        if(response.ok){
+        const data = await response.json();
+
+        if(response.ok && data.success){
             showNotification('Package saved!', 'success');
             this.reset();
             loadPackages(currentCountryId);
         } else {
-            showNotification('Error saving package', 'error');
+            showNotification(data.message || 'Error saving package', 'error');
         }
     } catch(err){
         console.error(err);
@@ -479,16 +487,67 @@ document.getElementById('addPackageForm')?.addEventListener('submit', async func
 });
 
 // ==================== STUB FUNCTIONS ====================
-function seedCountries(){
-    alert('Implement seed countries');
+async function seedCountries(){
+    try {
+        const response = await fetch('/app/admin/esim/seed-countries', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': token }
+        });
+        const data = await response.json();
+        if(response.ok && data.success){
+            showNotification(data.message || 'Sample countries seeded', 'success');
+            window.location.reload();
+        } else {
+            showNotification(data.message || 'Failed to seed countries', 'error');
+        }
+    } catch(err){
+        console.error(err);
+        showNotification('Failed to seed countries', 'error');
+    }
 }
 
-function refreshCountries(){
-    alert('Implement refresh countries');
+async function refreshCountries(){
+    try {
+        const response = await fetch('/app/admin/esim/refresh-countries', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': token }
+        });
+        const data = await response.json();
+        if(response.ok && data.success){
+            showNotification(data.message || 'Countries refreshed', 'success');
+            window.location.reload();
+        } else {
+            showNotification(data.message || 'Failed to refresh countries', 'error');
+        }
+    } catch(err){
+        console.error(err);
+        showNotification('Failed to refresh countries', 'error');
+    }
 }
 
-function toggleLocalNumber(id, btn){
-    alert('Implement toggle local numbers');
+async function toggleLocalNumber(id, btn){
+    try {
+        const response = await fetch(`/app/admin/esim/${id}/toggle-local-number`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': token,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if(response.ok && data.success){
+            btn.textContent = data.local_number_available ? '✓ Local Numbers Enabled' : '◯ Local Numbers Disabled';
+            btn.style.background = data.local_number_available ? '#10b981' : '#6b7280';
+            showNotification(data.message || 'Local number setting updated', 'success');
+        } else {
+            showNotification(data.message || 'Failed to update local number', 'error');
+        }
+    } catch(err){
+        console.error(err);
+        showNotification('Failed to update local number', 'error');
+    }
 }
 
 // ==================== NOTIFICATION ====================

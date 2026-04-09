@@ -277,7 +277,6 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
         Route::post('/refresh-countries', [AdminEsimController::class, 'refreshCountries'])->name('admin.esim.refresh');
         Route::post('/seed-countries', [AdminEsimController::class, 'seedSampleCountries'])->name('admin.esim.seed');
         Route::post('/{id}/update-price', [AdminEsimController::class, 'updatePrice'])->name('admin.esim.updatePrice');
-        Route::get('/{countryId}/packages', [AdminEsimController::class, 'packages'])->name('admin.esim.packages');
         Route::post('/{countryId}/packages/save', [AdminEsimController::class, 'savePackage'])->name('admin.esim.savePackage');
         Route::delete('/packages/{id}', [AdminEsimController::class, 'deletePackage'])->name('admin.esim.deletePackage');
         Route::post('/{id}/toggle-status', [AdminEsimController::class, 'toggleCountryStatus'])->name('admin.esim.toggleStatus');
