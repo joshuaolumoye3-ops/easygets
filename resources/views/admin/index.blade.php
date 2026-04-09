@@ -170,22 +170,33 @@
         align-items: center;
         gap: 6px;
     }
-    .action-btn:hover { background-color: #1e40af; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3
-    .action-btn:hover { background-color: #bfdbfe; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2); }
+    .action-btn:hover { background-color: #1e40af; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3); }
     
     /* Modal */
-    .modal { display: none; position: fixed; inset: 0; background-color: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
-    .modal.active { display: flex; }
+    #userModal {
+        display: none !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        background-color: rgba(0,0,0,0.7) !important;
+        z-index: 1000 !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 20px !important;
+    }
+    #userModal.active { display: flex !important; }
     .modal-content {
-        background: #1e293b;
-        border-radius: 20px;
-        width: 100%;
-        max-width: 900px;
-        max-height: 90vh;
-        overflow-y: auto;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-        animation: slideUp 0.3s ease;
-        border: 1px solid #334155;
+        background: #1e293b !important;
+        border-radius: 20px !important;
+        width: 100% !important;
+        max-width: 900px !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5) !important;
+        animation: slideUp 0.3s ease !important;
+        border: 1px solid #334155 !important;
     }
     @keyframes slideUp {
         from { transform: translateY(20px); opacity: 0; }
@@ -210,8 +221,7 @@
     .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px; }
     .info-item { padding: 16px; background-color: #334155; border-radius: 12px; border: 1px solid #475569; }
     .info-label { font-size: 12px; color: #94a3b8; font-weight: 600; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .info-value { font-size: 16px; color: #f1f5f9; font-weight: 600; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .info-value { font-size: 16px; color: #1e293b; font-weight: 600; }
+    .info-value { font-size: 16px; color: #f1f5f9; font-weight: 600; }
     
     .action-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
     .btn {
@@ -464,7 +474,7 @@
 </div>
 
 <!-- User Modal -->
-<div id="userModal" class="modal">
+<div id="userModal" class="modal" style="display: none !important;">
     <div class="modal-content">
         <div class="modal-header">
             <h2>User Management</h2>
@@ -749,6 +759,7 @@ async function openUserModal(userId) {
         
         document.getElementById('userTransactions').innerHTML = txHtml;
         document.getElementById('userModal').classList.add('active');
+        document.getElementById('userModal').style.display = 'flex';
         hideAllForms();
         document.getElementById('actionMessage').innerHTML = '';
     } catch (error) {
@@ -757,11 +768,23 @@ async function openUserModal(userId) {
 }
 
 function closeUserModal() {
-    document.getElementById('userModal').classList.remove('active');
+    const modal = document.getElementById('userModal');
+    modal.classList.remove('active');
+    modal.style.display = 'none';
 }
 
 document.getElementById('userModal').addEventListener('click', function(e) {
     if (e.target === this) closeUserModal();
+});
+
+// Ensure modal is hidden on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('userModal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+        console.log('Modal hidden on page load');
+    }
 });
 </script>
 
