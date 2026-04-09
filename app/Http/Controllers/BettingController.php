@@ -192,11 +192,11 @@ class BettingController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Something went wrong. Please try again later.',
-                // 'debug' => config('app.debug') ? [ // removed for production
-                    'error' => $e->getMessage(),
-                    'line' => $e->getLine(),
-                    'file' => basename($e->getFile()),
-                ] : null,
+                // 'debug' => config('app.debug') ? [
+                //     'error' => $e->getMessage(),
+                //     'line' => $e->getLine(),
+                //     'file' => basename($e->getFile()),
+                // ] : null,
             ], 500);
         }
     }
