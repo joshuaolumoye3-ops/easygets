@@ -200,13 +200,20 @@
                         <label style="font-size:13px; color:#e5e7eb; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Attach Images/Files</label>
                         <div style="padding:16px; border:2px dashed rgba(34,197,94,0.3); border-radius:10px; background:rgba(34,197,94,0.05); text-align:center;">
                             <input type="file" name="images[]" id="fileInput" multiple
-                                style="display:none;">
+                                style="display:none;"
+                                onchange="previewImages(event)">
                             <button type="button" onclick="document.getElementById('fileInput').click()"
                                 style="background:none; border:none; color:#22c55e; cursor:pointer; font-weight:600; font-size:14px;">
                                 📎 Click to upload or drag files
                             </button>
                             <p style="font-size:12px; color:#9ca3af; margin:8px 0 0 0;">PNG, JPG, PDF up to 10MB each</p>
                         </div>
+                    </div>
+
+                    <!-- Image Preview -->
+                    <div id="imagePreview" style="display:none; flex-direction:column; gap:12px;">
+                        <p style="font-size:12px; color:#9ca3af; margin:0; text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Preview</p>
+                        <div id="previewGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:12px;"></div>
                     </div>
 
                     <!-- Buttons -->
@@ -266,6 +273,87 @@ function clearForm(){
     document.getElementById('uploadNumbers').value = '';
     document.getElementById('uploadDetails').value = '';
     document.getElementById('fileInput').value = '';
+    document.getElementById('imagePreview').style.display = 'none';
+    document.getElementById('previewGrid').innerHTML = '';
+}
+
+function previewImages(event){
+    const files = event.target.files;
+    const previewContainer = document.getElementById('imagePreview');
+    const previewGrid = document.getElementById('previewGrid');
+    
+    // Clear previous previews
+    previewGrid.innerHTML = '';
+    
+    if (files.length === 0) {
+        previewContainer.style.display = 'none';
+        return;
+    }
+    
+    previewContainer.style.display = 'flex';
+    
+    Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const previewItem = document.createElement('div');
+            previewItem.style.cssText = `
+                position: relative;
+                border-radius: 10px;
+                overflow: hidden;
+                border: 1px solid rgba(34,197,94,0.3);
+                aspect-ratio: 1;
+                background: rgba(255,255,255,0.05);
+            `;
+            
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.style.cssText = `
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            `;
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.innerHTML = '×';
+            removeBtn.type = 'button';
+            removeBtn.style.cssText = `
+                position: absolute;
+                top: 4px;
+                right: 4px;
+                width: 28px;
+                height: 28px;
+                border-radius: 6px;
+                border: none;
+                background: rgba(239,68,68,0.9);
+                color: white;
+                cursor: pointer;
+                font-size: 18px;
+                font-weight: bold;
+                transition: all 0.2s;
+            `;
+            
+            removeBtn.onmouseover = function() {
+                this.style.background = 'rgba(239,68,68,1)';
+            };
+            removeBtn.onmouseout = function() {
+                this.style.background = 'rgba(239,68,68,0.9)';
+            };
+            
+            removeBtn.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                // Remove from FileList is not possible, so we'll just hide this preview
+                previewItem.style.display = 'none';
+            };
+            
+            previewItem.appendChild(img);
+            previewItem.appendChild(removeBtn);
+            previewGrid.appendChild(previewItem);
+        };
+        
+        reader.readAsDataURL(file);
+    });
 }
 </script>
 @endsection
