@@ -353,7 +353,7 @@
                 </div>
             </div>
             
-            <div class="stat-card">
+            {{-- <div class="stat-card">
                 <div class="stat-content">
                     <div class="stat-info">
                         <div class="stat-label">Net Profit</div>
@@ -367,7 +367,7 @@
                     </div>
                     <div class="stat-icon purple">📊</div>
                 </div>
-            </div>
+            </div> --}}
             
             <div class="stat-card">
                 <div class="stat-content">
