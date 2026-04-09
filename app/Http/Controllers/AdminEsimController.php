@@ -488,4 +488,86 @@ public function showTransaction($id)
         ], 500);
     }
 }
+
+    /**
+     * Get packages for AJAX requests (returns array only)
+     */
+    public function getPackages($id)
+    {
+        try {
+            $country = EsimCountry::findOrFail($id);
+            $packages = $country->packages()
+                ->where('is_active', true)
+                ->orderBy('validity_days')
+                ->orderBy('price')
+                ->get()
+                ->toArray();
+
+            return response()->json($packages);
+        } catch (\Exception $e) {
+            Log::error('Error fetching packages for AJAX', [
+                'country_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([], 404);
+        }
+    }
+
+    /**
+     * Store package from AJAX JSON request
+     */
+    public function storePackage(Request $request, $id)
+    {
+        try {
+            $validated = $request->validate([
+                'plan' => 'required|string|max:100',
+                'validity_days' => 'required|integer|min:1|max:365',
+                'price' => 'required|numeric|min:0'
+            ]);
+
+            $country = EsimCountry::findOrFail($id);
+
+            $package = EsimPackage::create([
+                'esim_country_id' => $country->id,
+                'plan' => $validated['plan'],
+                'validity_days' => $validated['validity_days'],
+                'price' => $validated['price'],
+                'is_active' => true,
+            ]);
+
+            Log::info("Package created via AJAX", [
+                'country_id' => $id,
+                'package_id' => $package->id,
+                'plan' => $package->plan
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Package saved successfully',
+                'package' => $package
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::warning('Validation error creating package', [
+                'country_id' => $id,
+                'errors' => $e->errors()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed: ' . implode(', ', array_merge(...array_values($e->errors())))
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error storing package via AJAX', [
+                'country_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to save package: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+}
 }
