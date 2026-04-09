@@ -283,6 +283,12 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
         Route::post('/{id}/toggle-status', [AdminEsimController::class, 'toggleCountryStatus'])->name('admin.esim.toggleStatus');
         Route::post('/{id}/toggle-local-number', [AdminEsimController::class, 'toggleLocalNumber'])->name('admin.esim.toggleLocalNumber');
         Route::get('/transaction/{id}', [AdminEsimController::class, 'showTransaction'])->name('admin.esim.transaction.show');
+        
+        // AJAX Routes for eSIM management
+        Route::patch('/{id}', [AdminEsimController::class, 'updatePrice'])->name('admin.esim.update');
+        Route::get('/{id}/packages', [AdminEsimController::class, 'getPackages'])->name('admin.esim.getPackages');
+        Route::post('/{id}/packages', [AdminEsimController::class, 'storePackage'])->name('admin.esim.storePackage');
+        Route::delete('/package/{id}', [AdminEsimController::class, 'deletePackage'])->name('admin.esim.destroyPackage');
     });
 
     Route::prefix('social')->group(function () {
