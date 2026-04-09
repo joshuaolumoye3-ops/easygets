@@ -247,6 +247,8 @@ function openTxnModal(id){
     .then(res=>res.json())
     .then(data=>{
         const txn = data.transaction;
+        const esim = data.esim;
+        
         document.getElementById('txnId').value = txn.id;
         
         // Populate transaction details
@@ -254,6 +256,53 @@ function openTxnModal(id){
         document.getElementById('txnAmount').textContent = '₦' + (txn.amount ? Number(txn.amount).toLocaleString('en-NG', {minimumFractionDigits: 2}) : '0.00');
         document.getElementById('txnStatus').textContent = txn.status || 'Pending';
         document.getElementById('txnReference').textContent = txn.reference || 'N/A';
+        
+        // Populate form with existing upload data if available
+        if (esim) {
+            document.getElementById('uploadNumbers').value = esim.number || '';
+            document.getElementById('uploadDetails').value = esim.details || '';
+            
+            // Show existing images
+            if (esim.images && esim.images.length > 0) {
+                document.getElementById('imagePreview').style.display = 'flex';
+                const previewGrid = document.getElementById('previewGrid');
+                previewGrid.innerHTML = '';
+                
+                esim.images.forEach(imgUrl => {
+                    const previewItem = document.createElement('div');
+                    previewItem.style.cssText = `
+                        position: relative;
+                        border-radius: 10px;
+                        overflow: hidden;
+                        border: 1px solid rgba(34,197,94,0.3);
+                        aspect-ratio: 1;
+                        background: rgba(255,255,255,0.05);
+                    `;
+                    
+                    const img = document.createElement('img');
+                    img.src = imgUrl;
+                    img.style.cssText = `
+                        width: 100%;
+                        height: 100%;
+                        object-fit: cover;
+                    `;
+                    
+                    previewItem.appendChild(img);
+                    previewGrid.appendChild(previewItem);
+                });
+            } else {
+                document.getElementById('imagePreview').style.display = 'none';
+                document.getElementById('previewGrid').innerHTML = '';
+            }
+        } else {
+            document.getElementById('uploadNumbers').value = '';
+            document.getElementById('uploadDetails').value = '';
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('previewGrid').innerHTML = '';
+        }
+        
+        // Clear file input
+        document.getElementById('fileInput').value = '';
         
         // Show modal
         document.getElementById('txnModal').style.display = 'flex';
