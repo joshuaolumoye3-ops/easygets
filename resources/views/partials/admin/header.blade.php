@@ -22,8 +22,6 @@
         border-bottom: 1px solid #2c2e33;
     }
     
-    .sidebar-header img { max-width: 90%; height: 56px; }
-    
     .sidebar-profile {
         padding: 1rem 1.17rem;
         display: flex;
@@ -37,412 +35,139 @@
         height: 36px;
         border-radius: 50%;
         background: #e5e7eb;
-        flex-shrink: 0;
     }
-    
-    .profile-info h5 {
-        margin: 0 0 4px 0;
-        color: white;
-        font-size: 14px;
-        font-weight: 500;
-    }
-    
-    .profile-info span {
-        color: #a7afb7;
-        font-size: 12px;
-    }
-    
-    .nav-category {
-        padding: 1rem 1.25rem 0.5rem;
-        color: #a7afb7;
-        font-size: 13px;
-        font-weight: 500;
-    }
-    
-    .menu-item {
-        padding-right: 1.25rem;
-        margin-bottom: 2px;
-    }
-    
-    .nav-link {
-        display: flex;
-        align-items: center;
-        padding: 0.8rem 1.188rem;
-        color: #a7afb7;
-        text-decoration: none;
-        transition: all 0.3s;
-        border-radius: 0 50px 50px 0;
-        margin-left: 12px;
-    }
-    
-    .nav-link:hover, .nav-link.active {
-        background: black;
-        color: white;
-    }
-    
-    .nav-icon {
-        width: 32px;
-        height: 32px;
-        min-width: 32px;
-        border-radius: 50%;
-        background: rgba(167, 175, 183, 0.25);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 0.5rem;
-    }
-    
-    .nav-icon svg { width: 20px; height: 20px; }
-    
-    .menu-arrow {
-        margin-left: auto;
-        width: 0;
-        height: 0;
-        border-left: 5px solid transparent;
-        border-right: 5px solid transparent;
-        border-top: 5px solid currentColor;
-        transition: transform 0.3s;
-    }
-    
-    .menu-arrow.open { transform: rotate(180deg); }
-    
-    .submenu {
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.3s ease;
-        padding-left: 3.25rem;
-        list-style: none;
-    }
-    
-    .submenu.open { max-height: 500px; }
-    
-    .submenu-item {
-        padding: 0.5rem 1.25rem 0.5rem 0;
-    }
-    
-    .submenu-item a {
-        color: #a7afb7;
-        text-decoration: none;
-        font-size: 14px;
-        transition: color 0.2s;
-    }
-    
-    .submenu-item a:hover { color: white; }
-    
-    .main-content-wrapper {
-        margin-left: 244px;
-        transition: margin-left 0.3s ease;
-        min-height: 100vh;
-    }
-    
-    .main-content-wrapper.expanded { margin-left: 0; }
-    
-    .top-navbar {
-        background: #191c24;
-        height: 70px;
-        position: fixed;
-        top: 0;
-        left: 244px;
-        right: 0;
-        display: flex;
-        align-items: center;
-        padding: 0 1rem;
-        z-index: 50;
-        transition: left 0.3s ease;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    }
-    
-    .top-navbar.expanded { left: 0; }
-    
-    .toggle-btn {
-        background: none;
-        border: none;
-        color: #a7afb7;
-        cursor: pointer;
-        padding: 0.5rem;
-        margin-right: 1rem;
-    }
-    
-    .toggle-btn:hover { color: white; }
-    
-    .toggle-btn svg { width: 24px; height: 24px; stroke: currentColor; }
-    
-    .navbar-actions {
-        margin-left: auto;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-    
+
     .nav-btn {
-        background: #10b981;
+        background: linear-gradient(135deg, #10b981, #059669);
         color: white;
         border: none;
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
+        padding: 8px 16px;
+        border-radius: 10px;
         cursor: pointer;
         font-size: 14px;
-        transition: background 0.3s;
+        font-weight: 600;
+        transition: all 0.25s ease;
+        box-shadow: 0 4px 12px rgba(16,185,129,0.3);
     }
     
-    .nav-btn:hover { background: #059669; }
-    
-    .icon-btn {
-        background: none;
-        border: none;
-        color: #a7afb7;
-        cursor: pointer;
-        padding: 0.5rem;
-        position: relative;
+    .nav-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(16,185,129,0.4);
     }
-    
-    .icon-btn:hover { color: white; }
-    
-    .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; }
-    
-    .badge {
-        position: absolute;
-        top: 6px;
-        right: 6px;
-        width: 8px;
-        height: 8px;
-        background: #10b981;
-        border-radius: 50%;
-        border: 2px solid #191c24;
+
+    /* ===== MODAL STYLING ===== */
+    @keyframes modalFade {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
     }
-    
-    .badge.danger { background: #ef4444; }
-    
-    .content-area {
-        padding-top: 70px;
+
+    .modal-animate {
+        animation: modalFade 0.2s ease-out;
     }
-    
-    @media (max-width: 1024px) {
-        .sidebar { transform: translateX(-244px); }
-        .sidebar.open { transform: translateX(0); }
-        .main-content-wrapper { margin-left: 0; }
-        .top-navbar { left: 0; }
-        .sidebar-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 35;
-            display: none;
-        }
-        .sidebar-overlay.show { display: block; }
-        .nav-btn { display: none; }
+
+    .modal-input {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: #0f1117;
+        border: 1px solid #2c2e33;
+        color: white;
+        outline: none;
+        transition: 0.2s;
+    }
+
+    .modal-input:focus {
+        border-color: #10b981;
+        box-shadow: 0 0 0 2px rgba(16,185,129,0.2);
+    }
+
+    .btn-submit {
+        background: linear-gradient(135deg, #10b981, #059669);
+        padding: 8px 16px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+    }
+
+    .btn-cancel {
+        background: #374151;
+        padding: 8px 16px;
+        border-radius: 8px;
+        color: white;
     }
 </style>
-
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-<!-- Sidebar -->
-<nav class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-        <img src="{{ asset('easygets_logo.jpg') }}" alt="EasyGets Logo">
-    </div>
-    
-    <div class="sidebar-profile">
-        <svg class="profile-avatar" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-            <circle cx="32" cy="32" r="32" fill="#e5e7eb"/>
-            <circle cx="32" cy="24" r="12" fill="#9ca3af"/>
-            <path d="M16 54c0-9 7-16 16-16s16 7 16 16" fill="#9ca3af"/>
-        </svg>
-        <div class="profile-info">
-            @auth('admins')
-                <h5>{{ Auth::guard('admins')->user()->name }}</h5>
-                <span>{{ ucfirst(Auth::guard('admins')->user()->role) }}</span>
-            @else
-                <h5>Guest</h5>
-                <span>Visitor</span>
-            @endauth
-        </div>
-    </div>
-    
-    <ul style="list-style: none; margin: 0; padding: 0;">
-        <li class="nav-category">Navigation</li>
-        
-        <li class="menu-item">
-            <a class="nav-link {{ request()->is('app/admin') || request()->is('app/admin/') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}">
-                <span class="nav-icon" style="color: #3b82f6;">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="12" y1="2" x2="12" y2="22"/>
-                        <line x1="2" y1="12" x2="22" y2="12"/>
-                        <path d="M12 12 L12 2 A10 10 0 0 1 22 12 Z" fill="currentColor" opacity="0.15"/>
-                    </svg>
-                </span>
-                <span>Dashboard</span>
-            </a>
-        </li>
-
-        <li class="menu-item">
-            <a class="nav-link {{ request()->is('app/admin/list*') ? 'active' : '' }}" href="{{ route('admin.list') }}">
-                <span class="nav-icon" style="color: #f59e0b;">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                        <circle cx="9" cy="7" r="4"/>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                    </svg>
-                </span>
-                <span>Admin List</span>
-            </a>
-        </li>
-        
-        {{-- <li class="menu-item">
-            <a class="nav-link {{ request()->is('admin/services*') ? 'active' : '' }}" href="{{ route('admin.services') }}" data-submenu="services">
-                <span class="nav-icon" style="color: #10b981;">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="2" y="3" width="20" height="14" rx="2"/>
-                        <line x1="8" y1="21" x2="16" y2="21"/>
-                        <line x1="12" y1="17" x2="12" y2="21"/>
-                    </svg>
-                </span>
-                <span>Service Settings</span>
-                <i class="menu-arrow"></i>
-            </a>
-            <ul class="submenu" id="submenu-services">
-                <li class="submenu-item"><a href="{{ route('admin.services') }}">Dashboard Settings</a></li>
-                <li class="submenu-item"><a href="#">API Configuration</a></li>
-                <li class="submenu-item"><a href="#">Payment Methods</a></li>
-            </ul>
-        </li> --}}
-
-        <li class="menu-item">
-            <a class="nav-link {{ request()->is('app/admin/services*') ? 'active' : '' }}" href="{{ route('admin.services') }}">
-                <span class="nav-icon" style="color: #3b82f6;">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="2" y="3" width="20" height="14" rx="2"/>
-                        <line x1="8" y1="21" x2="16" y2="21"/>
-                        <line x1="12" y1="17" x2="12" y2="21"/>
-                    </svg>
-                </span>
-                <span>Service Settings</span>
-            </a>
-        </li>
-
-        <li class="menu-item">
-            <a class="nav-link {{ request()->is('app/admin/esim-transaction*') ? 'active' : '' }}" href="{{ route('admin.esim.transaction') }}">
-                <span class="nav-icon" style="color: #3b82f6;">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="1" x2="12" y2="23"/>
-                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                    </svg>
-                </span>
-                <span>eSIM Transactions</span>
-            </a>
-        </li>
-
-        <li class="menu-item">
-            <a class="nav-link {{ request()->is('app/admin/esim') || request()->is('app/admin/esim/*') ? 'active' : '' }}" href="{{ route('admin.esim.index') }}">
-                <span class="nav-icon" style="color: #8b5cf6;">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
-                        <line x1="12" y1="18" x2="12.01" y2="18"/>
-                    </svg>
-                </span>
-                <span>eSIM Countries</span>
-            </a>
-        </li>
-
-        <li class="menu-item">
-            <a class="nav-link {{ request()->is('app/admin/social/services*') ? 'active' : '' }}" href="{{ route('admin.social.services') }}">
-                <span class="nav-icon" style="color: #10b981;">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/>
-                        <path d="M9 10h6M9 14h6M9 18h6"/>
-                    </svg>
-                </span>
-                <span>Social Services</span>
-            </a>
-        </li>
-    </ul>
-</nav>
 
 <!-- Top Navbar -->
 <nav class="top-navbar" id="topNavbar">
     <button class="toggle-btn" id="sidebarToggle">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-        </svg>
+        ☰
     </button>
     
     <div class="navbar-actions">
         @auth('admins')
             @if(Auth::guard('admins')->user()->role === 'super_admin')
-                <button class="nav-btn" onclick="document.getElementById('addAdminModal').classList.remove('hidden')">
+                <button class="nav-btn" onclick="openAdminModal()">
                     + Add New Admin
                 </button>
             @endif
         @endauth
         
+        <!--
+        MESSAGE ICON (COMMENTED)
         <button class="icon-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-            </svg>
-            <span class="badge"></span>
+            ...
         </button>
-        
+
+        NOTIFICATION ICON (COMMENTED)
         <button class="icon-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-            </svg>
-            <span class="badge danger"></span>
+            ...
         </button>
-        
+        -->
+
         <button class="icon-btn">
-            <svg class="profile-avatar" style="width: 32px; height: 32px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+            <svg class="profile-avatar" style="width: 32px; height: 32px;" viewBox="0 0 64 64">
                 <circle cx="32" cy="32" r="32" fill="#e5e7eb"/>
-                <circle cx="32" cy="24" r="12" fill="#9ca3af"/>
-                <path d="M16 54c0-9 7-16 16-16s16 7 16 16" fill="#9ca3af"/>
             </svg>
         </button>
     </div>
 </nav>
 
-<!-- Main Content Wrapper -->
+<!-- MAIN CONTENT -->
 <div class="main-content-wrapper" id="mainContentWrapper">
     <div class="content-area">
         @yield('content')
     </div>
 </div>
 
-<!-- Add Admin Modal -->
-<div id="addAdminModal" class="hidden fixed inset-0 flex items-center justify-center bg-black/50 z-50" style="z-index: 9999;">
-    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-        <h3 class="text-lg font-semibold mb-4 text-black">Register New Admin</h3>
-        <form method="POST" action="{{ route('admin.create') }}">
+<!-- ===== MODAL ===== -->
+<div id="addAdminModal" class="fixed inset-0 hidden items-center justify-center bg-black/70 backdrop-blur-sm z-50">
+    
+    <div class="bg-[#191c24] text-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-gray-700 modal-animate">
+
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">Register New Admin</h3>
+            <button onclick="closeAdminModal()">✕</button>
+        </div>
+
+        <form method="POST" action="{{ route('admin.create') }}" class="space-y-4">
             @csrf
-            <div class="mb-3">
-                <label class="block text-sm font-medium mb-1 text-black">Name</label>
-                <input type="text" name="name" required class="w-full border rounded-md p-2 text-black" style="border: 1px solid #ccc;">
-            </div>
-            <div class="mb-3">
-                <label class="block text-sm font-medium mb-1 text-black">Email</label>
-                <input type="email" name="email" required class="w-full border rounded-md p-2 text-black" style="border: 1px solid #ccc;">
-            </div>
-            <div class="mb-3">
-                <label class="block text-sm font-medium mb-1 text-black">Phone</label>
-                <input type="text" name="phone" class="w-full border rounded-md p-2 text-black" style="border: 1px solid #ccc;">
-            </div>
-            <div class="mb-3">
-                <label class="block text-sm font-medium mb-1 text-black">Password</label>
-                <input type="password" name="password" required class="w-full border rounded-md p-2 text-black" style="border: 1px solid #ccc;">
-            </div>
-            <div class="mb-3">
-                <label class="block text-sm font-medium mb-1 text-black">Role</label>
-                <select name="role" required class="w-full border rounded-md p-2 text-black" style="border: 1px solid #ccc;">
-                    <option value="admin">Admin</option>
-                    <option value="super_admin">Super Admin</option>
-                </select>
-            </div>
+
+            <input type="text" name="name" placeholder="Name" required class="modal-input">
+            <input type="email" name="email" placeholder="Email" required class="modal-input">
+            <input type="text" name="phone" placeholder="Phone" class="modal-input">
+            <input type="password" name="password" placeholder="Password" required class="modal-input">
+
+            <select name="role" required class="modal-input">
+                <option value="admin">Admin</option>
+                <option value="super_admin">Super Admin</option>
+            </select>
+
             <div class="flex justify-end gap-2">
-                <button type="button" onclick="document.getElementById('addAdminModal').classList.add('hidden')" class="px-4 py-2 bg-gray-300 rounded-md hover:bg-gray-400 text-black">
+                <button type="button" onclick="closeAdminModal()" class="btn-cancel">
                     Cancel
                 </button>
-                <button type="submit" class="px-4 py-2 bg-green text-white rounded-md" style="background: #10b981;">
-                    Create
+                <button type="submit" class="btn-submit">
+                    Create Admin
                 </button>
             </div>
         </form>
@@ -450,55 +175,26 @@
 </div>
 
 <script>
-(function() {
-    const sidebar = document.getElementById('sidebar');
-    const mainContentWrapper = document.getElementById('mainContentWrapper');
-    const topNavbar = document.getElementById('topNavbar');
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    const sidebarOverlay = document.getElementById('sidebarOverlay');
-    const isMobile = () => window.innerWidth <= 1024;
-    
-    // Toggle sidebar
-    sidebarToggle.addEventListener('click', function() {
-        if (isMobile()) {
-            sidebar.classList.toggle('open');
-            sidebarOverlay.classList.toggle('show');
-        } else {
-            sidebar.classList.toggle('collapsed');
-            mainContentWrapper.classList.toggle('expanded');
-            topNavbar.classList.toggle('expanded');
-        }
-    });
-    
-    // Close sidebar on overlay click
-    sidebarOverlay.addEventListener('click', function() {
-        sidebar.classList.remove('open');
-        sidebarOverlay.classList.remove('show');
-    });
-    
-    // Handle submenu toggles
-    document.querySelectorAll('[data-submenu]').forEach(function(link) {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const submenuId = 'submenu-' + this.dataset.submenu;
-            const submenu = document.getElementById(submenuId);
-            const arrow = this.querySelector('.menu-arrow');
-            
-            submenu.classList.toggle('open');
-            arrow.classList.toggle('open');
-        });
-    });
-    
-    // Close mobile sidebar when clicking menu items (except submenu triggers)
-    if (isMobile()) {
-        document.querySelectorAll('.nav-link').forEach(function(link) {
-            link.addEventListener('click', function() {
-                if (!this.dataset.submenu) {
-                    sidebar.classList.remove('open');
-                    sidebarOverlay.classList.remove('show');
-                }
-            });
-        });
-    }
-})();
+/* ===== MODAL CONTROL ===== */
+function openAdminModal() {
+    const modal = document.getElementById('addAdminModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeAdminModal() {
+    const modal = document.getElementById('addAdminModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+/* CLOSE ON OUTSIDE CLICK */
+document.getElementById('addAdminModal').addEventListener('click', function(e) {
+    if (e.target === this) closeAdminModal();
+});
+
+/* CLOSE ON ESC */
+document.addEventListener('keydown', function(e) {
+    if (e.key === "Escape") closeAdminModal();
+});
 </script>
