@@ -570,4 +570,3 @@ public function showTransaction($id)
         }
     }
 }
-}
