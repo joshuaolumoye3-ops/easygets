@@ -173,7 +173,8 @@
     .action-btn:hover { background-color: #1e40af; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3
     .action-btn:hover { background-color: #bfdbfe; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2); }
     
-    /* Modal */7); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+    /* Modal */
+    .modal { display: none; position: fixed; inset: 0; background-color: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
     .modal.active { display: flex; }
     .modal-content {
         background: #1e293b;
