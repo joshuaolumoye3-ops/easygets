@@ -657,6 +657,19 @@ public function upload(Request $request)
             'image_count' => $request->hasFile('images') ? count($request->file('images')) : 0
         ]);
 
+        // Return response based on request type
+        if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            return response()->json([
+                'success' => true,
+                'message' => "eSIM details {$action} successfully!",
+                'data' => [
+                    'id' => $esimUpload->id,
+                    'transaction_id' => $esimUpload->transaction_id,
+                    'action' => $action
+                ]
+            ]);
+        }
+
         return redirect()->back()->with('success', "eSIM details {$action} successfully!");
 
     } catch (\Exception $e) {
@@ -667,6 +680,14 @@ public function upload(Request $request)
             'error' => $e->getMessage(),
             'trace' => $e->getTraceAsString()
         ]);
+
+        // Return error response based on request type
+        if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to save eSIM details: ' . $e->getMessage()
+            ], 422);
+        }
 
         return redirect()->back()->with('error', 'Failed to save eSIM details: ' . $e->getMessage());
     }

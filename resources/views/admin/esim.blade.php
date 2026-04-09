@@ -340,6 +340,54 @@ function clearForm(){
     document.getElementById('previewGrid').innerHTML = '';
 }
 
+// Handle form submission
+document.getElementById('uploadForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const form = this;
+    const formData = new FormData(form);
+    const txnId = document.getElementById('txnId').value;
+    const uploadUrl = form.action; // Use form's action attribute which has the route URL
+    
+    console.log('Submitting eSIM upload form for transaction:', txnId);
+    console.log('Upload URL:', uploadUrl);
+    console.log('Form data:', {
+        transaction_id: formData.get('transaction_id'),
+        numbers: formData.get('numbers'),
+        details: formData.get('details'),
+        has_files: formData.getAll('images[]').length > 0,
+        file_count: formData.getAll('images[]').length
+    });
+    
+    fetch(uploadUrl, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(res => {
+        console.log('Response status:', res.status);
+        return res.json().then(data => ({status: res.status, data}));
+    })
+    .then(({status, data}) => {
+        console.log('Upload response:', status, data);
+        
+        if (data.success) {
+            alert('eSIM details uploaded successfully!');
+            closeTxnModal();
+            // Reload the page to refresh the transaction list
+            window.location.reload();
+        } else {
+            alert('Failed to upload: ' + data.message);
+        }
+    })
+    .catch(err => {
+        console.error('Upload error:', err);
+        alert('Error uploading eSIM details: ' + err.message);
+    });
+});
+
 function previewImages(event){
     const files = event.target.files;
     const previewContainer = document.getElementById('imagePreview');
