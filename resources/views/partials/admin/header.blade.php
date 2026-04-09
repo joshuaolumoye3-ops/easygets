@@ -371,7 +371,7 @@
     <div class="navbar-actions">
         @auth('admins')
             @if(Auth::guard('admins')->user()->role === 'super_admin')
-                <button class="nav-btn" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; font-weight: 600; padding: 0.6rem 1.2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(59, 130, 246, 0.6)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.4)'" onclick="document.getElementById('addAdminModal').classList.remove('hidden')">
+                <button class="nav-btn" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; font-weight: 600; padding: 0.6rem 1.2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(59, 130, 246, 0.6)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.4)'" onclick="document.getElementById('addAdminModal').style.display='flex'">
                     + Create Admin
                 </button>
             @endif
@@ -409,13 +409,13 @@
 </div>
 
 <!-- Add Admin Modal -->
-<div id="addAdminModal" class="hidden fixed inset-0 flex items-center justify-center bg-black/70 z-50 backdrop-blur-sm" style="z-index: 9999;">
-    <div style="background: linear-gradient(135deg, #1a1d23 0%, #222630 100%); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); width: 100%; max-width: 450px; overflow: hidden;">
+<div id="addAdminModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: linear-gradient(135deg, #1a1d23 0%, #222630 100%); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); width: 100%; max-width: 450px; overflow: hidden; margin: 20px;">
         <!-- Header -->
         <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 24px; position: relative;">
             <h3 style="color: white; font-size: 24px; font-weight: 700; margin: 0; letter-spacing: 0.5px;">Create Admin Account</h3>
             <p style="color: rgba(255,255,255,0.8); font-size: 14px; margin: 8px 0 0 0;">Register a new admin user</p>
-            <button type="button" onclick="document.getElementById('addAdminModal').classList.add('hidden')" style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.2); border: none; color: white; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">×</button>
+            <button type="button" onclick="document.getElementById('addAdminModal').style.display='none'" style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.2); border: none; color: white; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">×</button>
         </div>
         
         <!-- Form -->
@@ -452,7 +452,7 @@
             
             <!-- Buttons -->
             <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                <button type="button" onclick="document.getElementById('addAdminModal').classList.add('hidden')" style="padding: 12px 24px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #e5e7eb; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.color='white'" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#e5e7eb'">
+                <button type="button" onclick="document.getElementById('addAdminModal').style.display='none'" style="padding: 12px 24px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #e5e7eb; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.color='white'" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#e5e7eb'">
                     Cancel
                 </button>
                 <button type="submit" style="padding: 12px 32px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border: none; color: white; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(59, 130, 246, 0.6)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.4)'">
