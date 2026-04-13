@@ -866,5 +866,3 @@ public function upload(Request $request)
         return $rate;
     }
 }
-
-}
