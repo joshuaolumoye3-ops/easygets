@@ -157,7 +157,7 @@ class HistoryController extends Controller
                 'message' => 'Activation expired and refunded'
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error expiring activation', [
+            Log::error('Error expiring activation', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);

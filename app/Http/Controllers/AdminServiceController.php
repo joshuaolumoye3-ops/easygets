@@ -12,6 +12,7 @@ use App\Models\Transaction;
 use App\Models\EsimUpload;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class AdminServiceController extends Controller
 {
@@ -210,6 +211,67 @@ class AdminServiceController extends Controller
                         'response' => substr($responseBody, 0, 500)
                     ]);
                 }
+            } elseif ($provider->api_identifier === 'smsbus') {
+                $token = env('SMSBUS_TOKEN');
+                $response = Http::timeout(30)->get("https://sms-bus.com/api/control/list/projects", [
+                    'token' => $token,
+                ]);
+                if ($response->ok()) {
+                    $apiServices = $response->json();
+                    $exchangeRate = $this->getExchangeRate();
+                    foreach ($apiServices as $service) {
+                        $productCode = (string)$service['id'];
+                        $apiPrice = (float)$service['price'];
+                        $name = $service['name'];
+                        $dbProduct = $dbProducts->get($productCode);
+                        $calculatedClientPrice = $apiPrice * $exchangeRate;
+                        $products[] = (object)[
+                            'id'           => $dbProduct->id ?? null,
+                            'product_code' => $productCode,
+                            'category'     => 'OTP',
+                            'name'         => $name,
+                            'api_price'    => $apiPrice,
+                            'client_price' => $dbProduct->client_price ?? $calculatedClientPrice,
+                            'is_active'    => $dbProduct->is_active ?? true,
+                            'updated_at'   => $dbProduct->updated_at ?? now(),
+                        ];
+                    }
+                }
+            } elseif ($provider->api_identifier === '5sim') {
+                $response = Http::get('https://5sim.net/v1/guest/products');
+                if ($response->ok()) {
+                    $apiProducts = $response->json();
+                    $exchangeRate = $this->get5simExchangeRate();
+                    foreach ($apiProducts as $productCode => $productData) {
+                        $name = $productData['name'] ?? $productCode;
+                        $minPrice = null;
+                        if (isset($productData['countries'])) {
+                            foreach ($productData['countries'] as $country => $countryData) {
+                                if (isset($countryData['price'])) {
+                                    $price = (float)$countryData['price'];
+                                    if ($minPrice === null || $price < $minPrice) {
+                                        $minPrice = $price;
+                                    }
+                                }
+                            }
+                        }
+                        if ($minPrice !== null) {
+                            $apiPrice = $minPrice;
+                            $dbProduct = $dbProducts->get($productCode);
+                            $calculatedClientPrice = $apiPrice * $exchangeRate;
+                            $products[] = (object)[
+                                'id'           => $dbProduct->id ?? null,
+                                'product_code' => $productCode,
+                                'category'     => 'OTP',
+                                'name'         => $name,
+                                'api_price'    => $apiPrice,
+                                'client_price' => $dbProduct->client_price ?? $calculatedClientPrice,
+                                'is_active'    => $dbProduct->is_active ?? true,
+                                'updated_at'   => $dbProduct->updated_at ?? now(),
+                            ];
+                        }
+                    }
+                }
             } else {
                 // Fallback: show only DB products
                 foreach ($provider->products as $dbProduct) {
@@ -391,6 +453,73 @@ class AdminServiceController extends Controller
                     'client_price' => $clientPrice,
                 ]
             );
+        } elseif ($provider->api_identifier === 'smsbus') {
+            $token = env('SMSBUS_TOKEN');
+            $response = Http::timeout(30)->get("https://sms-bus.com/api/control/list/projects", [
+                'token' => $token,
+            ]);
+            if ($response->ok()) {
+                $apiServices = $response->json();
+                $exchangeRate = $this->getExchangeRate();
+                $clientPrices = $request->input('client_price', []);
+                foreach ($apiServices as $service) {
+                    $productCode = (string)$service['id'];
+                    $apiPrice = (float)$service['price'];
+                    $name = $service['name'];
+                    $calculatedClientPrice = $apiPrice * $exchangeRate;
+                    $clientPrice = $clientPrices[$productCode] ?? $calculatedClientPrice;
+                    Product::updateOrCreate(
+                        [
+                            'provider_id' => $provider->id,
+                            'product_code' => $productCode,
+                        ],
+                        [
+                            'name' => $name,
+                            'category' => 'OTP',
+                            'api_price' => $apiPrice,
+                            'client_price' => $clientPrice,
+                        ]
+                    );
+                }
+            }
+        } elseif ($provider->api_identifier === '5sim') {
+            $response = Http::get('https://5sim.net/v1/guest/products');
+            if ($response->ok()) {
+                $apiProducts = $response->json();
+                $exchangeRate = $this->get5simExchangeRate();
+                $clientPrices = $request->input('client_price', []);
+                foreach ($apiProducts as $productCode => $productData) {
+                    $name = $productData['name'] ?? $productCode;
+                    $minPrice = null;
+                    if (isset($productData['countries'])) {
+                        foreach ($productData['countries'] as $country => $countryData) {
+                            if (isset($countryData['price'])) {
+                                $price = (float)$countryData['price'];
+                                if ($minPrice === null || $price < $minPrice) {
+                                    $minPrice = $price;
+                                }
+                            }
+                        }
+                    }
+                    if ($minPrice !== null) {
+                        $apiPrice = $minPrice;
+                        $calculatedClientPrice = $apiPrice * $exchangeRate;
+                        $clientPrice = $clientPrices[$productCode] ?? $calculatedClientPrice;
+                        Product::updateOrCreate(
+                            [
+                                'provider_id' => $provider->id,
+                                'product_code' => $productCode,
+                            ],
+                            [
+                                'name' => $name,
+                                'category' => 'OTP',
+                                'api_price' => $apiPrice,
+                                'client_price' => $clientPrice,
+                            ]
+                        );
+                    }
+                }
+            }
         }
 
         return redirect()->back()->with('success', 'All plans saved successfully.');
@@ -690,6 +819,51 @@ public function upload(Request $request)
         }
 
         return redirect()->back()->with('error', 'Failed to save eSIM details: ' . $e->getMessage());
+    }
+}
+
+    private function getExchangeRate(): float
+    {
+        $cacheKey = 'usd_to_ngn_rate';
+        $rate = Cache::get($cacheKey);
+        if (!$rate) {
+            try {
+                $response = Http::timeout(10)->get('https://api.exchangerate-api.com/v4/latest/USD');
+                if ($response->ok()) {
+                    $data = $response->json();
+                    $rate = $data['rates']['NGN'] ?? 1600.0;
+                    Cache::put($cacheKey, $rate, now()->addMinutes(60));
+                } else {
+                    $rate = 1600.0;
+                }
+            } catch (\Exception $e) {
+                Log::error('Exchange rate fetch failed', ['error' => $e->getMessage()]);
+                $rate = 1600.0;
+            }
+        }
+        return $rate;
+    }
+
+    private function get5simExchangeRate(): float
+    {
+        $cacheKey = 'rub_to_ngn_rate';
+        $rate = Cache::get($cacheKey);
+        if (!$rate) {
+            try {
+                $response = Http::timeout(10)->get('https://api.exchangerate-api.com/v4/latest/RUB');
+                if ($response->ok()) {
+                    $data = $response->json();
+                    $rate = $data['rates']['NGN'] ?? 20.0;
+                    Cache::put($cacheKey, $rate, now()->addMinutes(60));
+                } else {
+                    $rate = 20.0;
+                }
+            } catch (\Exception $e) {
+                Log::error('RUB Exchange rate fetch failed', ['error' => $e->getMessage()]);
+                $rate = 20.0;
+            }
+        }
+        return $rate;
     }
 }
 
