@@ -236,6 +236,20 @@ class AdminServiceController extends Controller
                             'updated_at'   => $dbProduct->updated_at ?? now(),
                         ];
                     }
+                } else {
+                    // Fallback to DB products if API fails
+                    foreach ($provider->products as $dbProduct) {
+                        $products[] = (object)[
+                            'id'           => $dbProduct->id,
+                            'product_code' => $dbProduct->product_code,
+                            'category'     => $dbProduct->category ?? 'OTP',
+                            'name'         => $dbProduct->name,
+                            'api_price'    => $dbProduct->api_price ?? 0,
+                            'client_price' => $dbProduct->client_price,
+                            'is_active'    => $dbProduct->is_active ?? true,
+                            'updated_at'   => $dbProduct->updated_at,
+                        ];
+                    }
                 }
             } elseif ($provider->api_identifier === '5sim') {
                 $response = Http::get('https://5sim.net/v1/guest/products');
@@ -270,6 +284,20 @@ class AdminServiceController extends Controller
                                 'updated_at'   => $dbProduct->updated_at ?? now(),
                             ];
                         }
+                    }
+                } else {
+                    // Fallback to DB products if API fails
+                    foreach ($provider->products as $dbProduct) {
+                        $products[] = (object)[
+                            'id'           => $dbProduct->id,
+                            'product_code' => $dbProduct->product_code,
+                            'category'     => $dbProduct->category ?? 'OTP',
+                            'name'         => $dbProduct->name,
+                            'api_price'    => $dbProduct->api_price ?? 0,
+                            'client_price' => $dbProduct->client_price,
+                            'is_active'    => $dbProduct->is_active ?? true,
+                            'updated_at'   => $dbProduct->updated_at,
+                        ];
                     }
                 }
             } else {
@@ -454,6 +482,14 @@ class AdminServiceController extends Controller
                 ]
             );
         } elseif ($provider->api_identifier === 'smsbus') {
+            $clientPrices = $request->input('client_price', []);
+            // First, update existing products with provided client prices
+            foreach ($clientPrices as $productCode => $clientPrice) {
+                Product::where('provider_id', $provider->id)
+                    ->where('product_code', $productCode)
+                    ->update(['client_price' => $clientPrice]);
+            }
+            // Then, fetch from API and create/update products
             $token = env('SMSBUS_TOKEN');
             $response = Http::timeout(30)->get("https://sms-bus.com/api/control/list/projects", [
                 'token' => $token,
@@ -461,7 +497,6 @@ class AdminServiceController extends Controller
             if ($response->ok()) {
                 $apiServices = $response->json();
                 $exchangeRate = $this->getExchangeRate();
-                $clientPrices = $request->input('client_price', []);
                 foreach ($apiServices as $service) {
                     $productCode = (string)$service['id'];
                     $apiPrice = (float)$service['price'];
@@ -483,11 +518,18 @@ class AdminServiceController extends Controller
                 }
             }
         } elseif ($provider->api_identifier === '5sim') {
+            $clientPrices = $request->input('client_price', []);
+            // First, update existing products with provided client prices
+            foreach ($clientPrices as $productCode => $clientPrice) {
+                Product::where('provider_id', $provider->id)
+                    ->where('product_code', $productCode)
+                    ->update(['client_price' => $clientPrice]);
+            }
+            // Then, fetch from API and create/update products
             $response = Http::get('https://5sim.net/v1/guest/products');
             if ($response->ok()) {
                 $apiProducts = $response->json();
                 $exchangeRate = $this->get5simExchangeRate();
-                $clientPrices = $request->input('client_price', []);
                 foreach ($apiProducts as $productCode => $productData) {
                     $name = $productData['name'] ?? $productCode;
                     $minPrice = null;
