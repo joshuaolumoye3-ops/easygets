@@ -537,26 +537,13 @@ private function normalize5simServiceCode($serviceCode)
                 'service_code' => $normalizedCode
             ]);
             
-            return view('users.operators-5sim', [
-                'operators' => collect([]),
-                'serviceCode' => $serviceCode,
-                'country' => $country,
-                'exchangeRate' => $exchangeRate
-            ])->withErrors('Unable to fetch operators. Please try again.');
+            // Don't return, fall back to DB products
         }
 
-        $data = $response->json();
+        $data = $response->successful() ? $response->json() : null;
         $operators = [];
         
-        Log::info('Provider1 operators data structure', [
-            'has_country' => isset($data[$country]),
-            'has_service' => isset($data[$country][$normalizedCode]),
-            'keys' => array_keys($data),
-            'country_data' => isset($data[$country]) ? array_keys($data[$country]) : []
-        ]);
-        
-        // Navigate the nested structure
-        if (isset($data[$country][$normalizedCode])) {
+        if ($data && isset($data[$country][$normalizedCode])) {
             foreach ($data[$country][$normalizedCode] as $operatorName => $details) {
                 $costUSD = $details['cost'] ?? 0;
                 
@@ -579,11 +566,28 @@ private function normalize5simServiceCode($serviceCode)
             
             Log::info('Provider1 operators found', ['count' => count($operators)]);
         } else {
-            Log::warning('Provider1 no operators in response structure', [
+            Log::warning('Provider1 no operators in response structure or API failed', [
                 'country' => $country,
                 'service' => $normalizedCode,
-                'available_services' => isset($data[$country]) ? array_keys($data[$country]) : []
+                'api_successful' => $response->successful(),
+                'available_services' => $data && isset($data[$country]) ? array_keys($data[$country]) : []
             ]);
+        }
+        
+        // Fallback to DB products if no operators from API
+        if (empty($operators)) {
+            foreach ($fivesimProvider->products ?? [] as $dbProduct) {
+                $operators[] = [
+                    'name' => $dbProduct->product_code,
+                    'display_name' => $dbProduct->name,
+                    'cost_usd' => $dbProduct->api_price ?? 0,
+                    'cost_ngn' => $dbProduct->client_price,
+                    'count' => 0,
+                    'rate' => 0,
+                    'rate24' => null,
+                    'rate72' => null,
+                ];
+            }
         }
         
         // Sort by count (descending)
@@ -714,6 +718,11 @@ private function normalize5simServiceCode($serviceCode)
     $fivesimProvider = Provider::where('api_identifier', self::PROVIDER_5SIM)->first();
     $productCode = $operator . '_' . $country;
     $product = $fivesimProvider ? Product::where('provider_id', $fivesimProvider->id)->where('product_code', $productCode)->first() : null;
+    if (!$product) {
+        // Try without country suffix for DB products
+        $productCode = $operator;
+        $product = $fivesimProvider ? Product::where('provider_id', $fivesimProvider->id)->where('product_code', $productCode)->first() : null;
+    }
     $costNGN = $product && $product->client_price ? $product->client_price : round($priceData['cost'] * $exchangeRate, 2);
 
     $purchase = [
