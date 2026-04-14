@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\Wallet;
 use Illuminate\Support\Str;
+use App\Models\Product;
+use App\Models\Provider;
 
 class CountryController extends Controller
 {
@@ -510,6 +512,9 @@ private function normalize5simServiceCode($serviceCode)
         // Get exchange rate for 5sim
         $exchangeRate = $this->get5simExchangeRate();
         
+        // Get 5sim provider
+        $fivesimProvider = Provider::where('api_identifier', self::PROVIDER_5SIM)->first();
+        
         $url = "https://5sim.net/v1/guest/prices";
         
         $response = Http::timeout(30)
@@ -554,7 +559,11 @@ private function normalize5simServiceCode($serviceCode)
         if (isset($data[$country][$normalizedCode])) {
             foreach ($data[$country][$normalizedCode] as $operatorName => $details) {
                 $costUSD = $details['cost'] ?? 0;
-                $costNGN = round($costUSD * $exchangeRate, 2);
+                
+                // Get admin-set client_price if available
+                $productCode = $operatorName . '_' . $country;
+                $product = $fivesimProvider ? Product::where('provider_id', $fivesimProvider->id)->where('product_code', $productCode)->first() : null;
+                $costNGN = $product && $product->client_price ? $product->client_price : round($costUSD * $exchangeRate, 2);
                 
                 $operators[] = [
                     'name' => $operatorName,
@@ -701,6 +710,12 @@ private function normalize5simServiceCode($serviceCode)
     // Get 5sim exchange rate (from Otp-others)
     $exchangeRate = $this->get5simExchangeRate();
 
+    // Get admin-set price if available
+    $fivesimProvider = Provider::where('api_identifier', self::PROVIDER_5SIM)->first();
+    $productCode = $operator . '_' . $country;
+    $product = $fivesimProvider ? Product::where('provider_id', $fivesimProvider->id)->where('product_code', $productCode)->first() : null;
+    $costNGN = $product && $product->client_price ? $product->client_price : round($priceData['cost'] * $exchangeRate, 2);
+
     $purchase = [
         'provider' => self::PROVIDER_5SIM,
         'country' => $country,
@@ -711,7 +726,7 @@ private function normalize5simServiceCode($serviceCode)
         'country_name' => $countryDetails['name'],
         'country_code' => $countryDetails['code'],
         'operator_name' => $this->formatOperatorName($operator),
-        'cost' => round($priceData['cost'] * $exchangeRate, 2),
+        'cost' => $costNGN,
         'original_cost_usd' => $priceData['cost'],
         'exchange_rate' => $exchangeRate,
         'total_count' => $priceData['count'] ?? 0,
@@ -1289,6 +1304,10 @@ private function normalize5simServiceCode($serviceCode)
         // Get exchange rate
         $exchangeRate = $this->getExchangeRate();
         
+        // Get SMS-Bus provider and product
+        $smsbusProvider = Provider::where('api_identifier', self::PROVIDER_SMSBUS)->first();
+        $product = $smsbusProvider ? Product::where('provider_id', $smsbusProvider->id)->where('product_code', $serviceId)->first() : null;
+        
         // Fetch countries with prices from the API
         $countries = Cache::remember($cacheKey, 300, function () use ($token, $serviceId) {
             Log::info('Fetching Provider2 countries with prices', ['serviceId' => $serviceId]);
@@ -1370,13 +1389,24 @@ private function normalize5simServiceCode($serviceCode)
             return $countries;
         });
 
-        // Convert prices to NGN
-        $countries = $countries->map(function ($country) use ($exchangeRate) {
-            $country['cost'] = round($country['cost_usd'] * $exchangeRate, 2);
-            $country['ws_cost'] = round($country['ws_cost_usd'] * $exchangeRate, 2);
-            $country['exchange_rate'] = $exchangeRate;
-            return $country;
-        });
+        // Convert prices to NGN using admin-set client_price if available
+        if ($product && $product->client_price) {
+            $clientPrice = $product->client_price;
+            $countries = $countries->map(function ($country) use ($clientPrice) {
+                $country['cost'] = $clientPrice;
+                $country['ws_cost'] = $clientPrice;
+                $country['exchange_rate'] = null; // Not applicable
+                return $country;
+            });
+        } else {
+            // Fallback to API prices
+            $countries = $countries->map(function ($country) use ($exchangeRate) {
+                $country['cost'] = round($country['cost_usd'] * $exchangeRate, 2);
+                $country['ws_cost'] = round($country['ws_cost_usd'] * $exchangeRate, 2);
+                $country['exchange_rate'] = $exchangeRate;
+                return $country;
+            });
+        }
 
         // Handle search
         $search = request()->get('search', '');
@@ -1706,6 +1736,11 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
         // ✅ Get the exchange rate
         $exchangeRate = $this->getExchangeRate();
 
+        // ✅ Get admin-set price if available
+        $smsbusProvider = Provider::where('api_identifier', self::PROVIDER_SMSBUS)->first();
+        $product = $smsbusProvider ? Product::where('provider_id', $smsbusProvider->id)->where('product_code', $serviceId)->first() : null;
+        $costNGN = $product && $product->client_price ? $product->client_price : round($priceData['cost'] * $exchangeRate, 2);
+
         // ✅ Get service details
         $serviceDetails = $this->getServiceDetails($serviceId, false);
         
@@ -1735,7 +1770,7 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
             'service'         => $priceData['project_id'],
             'service_name'    => $serviceDetails['name'],
             'service_logo'    => $serviceDetails['logo'] ?? null,
-            'cost'            => round($priceData['cost'] * $exchangeRate, 2),
+            'cost'            => $costNGN,
             'original_cost_usd' => $priceData['cost'],
             'exchange_rate'   => $exchangeRate,
             'total_count'     => $priceData['total_count'] ?? 0,
