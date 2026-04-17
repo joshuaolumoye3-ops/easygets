@@ -40,10 +40,26 @@
                 if ($txn->esimUpload) {
                     $imagesRaw = $txn->esimUpload->images;
                     if (is_array($imagesRaw)) {
-                        $imageUrls = array_map(function($i) { return asset($i); }, $imagesRaw);
+                        $imageUrls = array_map(function($i) { 
+                            // Handle storage paths: storage/esim/filename.jpg
+                            if (strpos($i, 'storage/') === 0) {
+                                $actualPath = str_replace('storage/', '', $i);
+                                return \Illuminate\Support\Facades\Storage::disk('public')->url($actualPath);
+                            }
+                            // Fallback for old public paths
+                            return asset($i); 
+                        }, $imagesRaw);
                     } elseif (is_string($imagesRaw)) {
                         $decoded = json_decode($imagesRaw, true) ?? [];
-                        $imageUrls = array_map(function($i) { return asset($i); }, $decoded);
+                        $imageUrls = array_map(function($i) { 
+                            // Handle storage paths: storage/esim/filename.jpg
+                            if (strpos($i, 'storage/') === 0) {
+                                $actualPath = str_replace('storage/', '', $i);
+                                return \Illuminate\Support\Facades\Storage::disk('public')->url($actualPath);
+                            }
+                            // Fallback for old public paths
+                            return asset($i); 
+                        }, $decoded);
                     } else {
                         $imageUrls = [];
                     }

@@ -507,25 +507,32 @@ public function showTransaction($id)
             if (is_array($images) && count($images) > 0) {
                 foreach ($images as $img) {
                     if (!empty($img)) {
-                        // Check if file actually exists
-                        $publicPath = public_path($img);
-                        if (file_exists($publicPath)) {
-                            // Ensure path doesn't have double slashes and is a full URL
-                            $fullUrl = url('/' . ltrim($img, '/'));
+                        // Handle storage paths: storage/esim/filename.jpg
+                        if (strpos($img, 'storage/') === 0) {
+                            // Remove 'storage/' prefix to get the actual storage path
+                            $actualPath = str_replace('storage/', '', $img);
+                            $fullUrl = \Illuminate\Support\Facades\Storage::disk('public')->url($actualPath);
                             $imageUrls[] = $fullUrl;
                             
-                            Log::info('Image URL Valid', [
+                            Log::info('Storage Image URL Generated', [
                                 'original_path' => $img,
-                                'public_path' => $publicPath,
+                                'actual_path' => $actualPath,
                                 'full_url' => $fullUrl,
-                                'exists' => true,
                             ]);
                         } else {
-                            Log::warning('Image File Not Found', [
-                                'original_path' => $img,
-                                'public_path' => $publicPath,
-                                'exists' => false,
-                            ]);
+                            // Fallback for old public paths (for backwards compatibility)
+                            $publicPath = public_path($img);
+                            if (file_exists($publicPath)) {
+                                $fullUrl = url('/' . ltrim($img, '/'));
+                                $imageUrls[] = $fullUrl;
+                                
+                                Log::info('Public Image URL Valid', [
+                                    'original_path' => $img,
+                                    'public_path' => $publicPath,
+                                    'full_url' => $fullUrl,
+                                    'exists' => true,
+                                ]);
+                            }
                         }
                     }
                 }
