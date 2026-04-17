@@ -846,158 +846,158 @@ public function upload(Request $request)
     /**
  * Upload or Update eSIM details for a transaction
  */
-public function upload(Request $request)
-{
-    $request->validate([
-        'transaction_id' => 'required|exists:transactions,id',
-        'esim_upload_id' => 'nullable|exists:esim_uploads,id',
-        'numbers' => 'nullable|string',
-        'details' => 'nullable|string',
-        'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max per image
-    ]);
+// public function upload(Request $request)
+// {
+//     $request->validate([
+//         'transaction_id' => 'required|exists:transactions,id',
+//         'esim_upload_id' => 'nullable|exists:esim_uploads,id',
+//         'numbers' => 'nullable|string',
+//         'details' => 'nullable|string',
+//         'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max per image
+//     ]);
 
-    try {
-        DB::beginTransaction();
+//     try {
+//         DB::beginTransaction();
 
-        $transaction = \App\Models\Transaction::findOrFail($request->transaction_id);
+//         $transaction = \App\Models\Transaction::findOrFail($request->transaction_id);
         
-        // Check if we're updating or creating
-        $esimUpload = null;
-        if ($request->esim_upload_id) {
-            $esimUpload = \App\Models\EsimUpload::findOrFail($request->esim_upload_id);
-        } else {
-            $esimUpload = \App\Models\EsimUpload::where('transaction_id', $transaction->id)->first();
-        }
+//         // Check if we're updating or creating
+//         $esimUpload = null;
+//         if ($request->esim_upload_id) {
+//             $esimUpload = \App\Models\EsimUpload::findOrFail($request->esim_upload_id);
+//         } else {
+//             $esimUpload = \App\Models\EsimUpload::where('transaction_id', $transaction->id)->first();
+//         }
 
-        // Prepare data for update/create
-        $data = [
-            'user_id' => $transaction->user_id,
-            'transaction_id' => $transaction->id,
-        ];
+//         // Prepare data for update/create
+//         $data = [
+//             'user_id' => $transaction->user_id,
+//             'transaction_id' => $transaction->id,
+//         ];
 
-        // Only update fields that were provided
-        if ($request->filled('numbers')) {
-            $data['number'] = $request->numbers;
-        }
+//         // Only update fields that were provided
+//         if ($request->filled('numbers')) {
+//             $data['number'] = $request->numbers;
+//         }
 
-        if ($request->filled('details')) {
-            $data['details'] = $request->details;
-        }
+//         if ($request->filled('details')) {
+//             $data['details'] = $request->details;
+//         }
 
-        // Handle image uploads
-        $existingImages = [];
-        if ($esimUpload && $esimUpload->images) {
-            // Get existing images
-            $existingImages = is_array($esimUpload->images) 
-                ? $esimUpload->images 
-                : json_decode($esimUpload->images, true) ?? [];
-        }
+//         // Handle image uploads
+//         $existingImages = [];
+//         if ($esimUpload && $esimUpload->images) {
+//             // Get existing images
+//             $existingImages = is_array($esimUpload->images) 
+//                 ? $esimUpload->images 
+//                 : json_decode($esimUpload->images, true) ?? [];
+//         }
 
-        if ($request->hasFile('images')) {
-            $newImages = [];
+//         if ($request->hasFile('images')) {
+//             $newImages = [];
             
-            foreach ($request->file('images') as $image) {
-                try {
-                    // Generate unique filename
-                    $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+//             foreach ($request->file('images') as $image) {
+//                 try {
+//                     // Generate unique filename
+//                     $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
                     
-                    // Store in storage/app/public/esim/ using the public disk
-                    $storedPath = Storage::disk('public')->putFileAs('esim', $image, $filename);
+//                     // Store in storage/app/public/esim/ using the public disk
+//                     $storedPath = Storage::disk('public')->putFileAs('esim', $image, $filename);
                     
-                    // Store path as: storage/esim/filename.jpg for retrieval via getImageUrlsAttribute
-                    $newImages[] = 'storage/esim/' . $filename;
+//                     // Store path as: storage/esim/filename.jpg for retrieval via getImageUrlsAttribute
+//                     $newImages[] = 'storage/esim/' . $filename;
                     
-                    Log::info('eSIM Image uploaded successfully', [
-                        'filename' => $filename,
-                        'stored_path' => $storedPath,
-                        'display_path' => 'storage/esim/' . $filename
-                    ]);
-                } catch (\Exception $e) {
-                    Log::error('Error uploading eSIM image', [
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
-                    ]);
-                }
-            }
+//                     Log::info('eSIM Image uploaded successfully', [
+//                         'filename' => $filename,
+//                         'stored_path' => $storedPath,
+//                         'display_path' => 'storage/esim/' . $filename
+//                     ]);
+//                 } catch (\Exception $e) {
+//                     Log::error('Error uploading eSIM image', [
+//                         'error' => $e->getMessage(),
+//                         'trace' => $e->getTraceAsString()
+//                     ]);
+//                 }
+//             }
 
-            // Merge existing and new images
-            $allImages = array_merge($existingImages, $newImages);
-            $data['images'] = $allImages;
+//             // Merge existing and new images
+//             $allImages = array_merge($existingImages, $newImages);
+//             $data['images'] = $allImages;
             
-            Log::info('eSIM Images stored', [
-                'existing_count' => count($existingImages),
-                'new_count' => count($newImages),
-                'total_count' => count($allImages)
-            ]);
-        }
+//             Log::info('eSIM Images stored', [
+//                 'existing_count' => count($existingImages),
+//                 'new_count' => count($newImages),
+//                 'total_count' => count($allImages)
+//             ]);
+//         }
 
-        // Update or create the eSIM upload record
-        if ($esimUpload) {
-            // Update existing record (only update provided fields)
-            $esimUpload->update($data);
-            $action = 'updated';
-        } else {
-            // Create new record
-            $esimUpload = EsimUpload::create($data);
-            $action = 'created';
-        }
+//         // Update or create the eSIM upload record
+//         if ($esimUpload) {
+//             // Update existing record (only update provided fields)
+//             $esimUpload->update($data);
+//             $action = 'updated';
+//         } else {
+//             // Create new record
+//             $esimUpload = EsimUpload::create($data);
+//             $action = 'created';
+//         }
 
-        // Mark the parent transaction as successful now that eSIM details (and files) are attached
-        try {
-            $transaction->status = 'Success';
-            $transaction->save();
-        } catch (\Exception $e) {
-            Log::error('Failed to update transaction status after eSIM upload', [
-                'transaction_id' => $transaction->id,
-                'error' => $e->getMessage()
-            ]);
-        }
+//         // Mark the parent transaction as successful now that eSIM details (and files) are attached
+//         try {
+//             $transaction->status = 'Success';
+//             $transaction->save();
+//         } catch (\Exception $e) {
+//             Log::error('Failed to update transaction status after eSIM upload', [
+//                 'transaction_id' => $transaction->id,
+//                 'error' => $e->getMessage()
+//             ]);
+//         }
 
-        DB::commit();
+//         DB::commit();
 
-        Log::info("eSIM details {$action}", [
-            'esim_upload_id' => $esimUpload->id,
-            'transaction_id' => $transaction->id,
-            'user_id' => $transaction->user_id,
-            'has_images' => $request->hasFile('images'),
-            'image_count' => $request->hasFile('images') ? count($request->file('images')) : 0
-        ]);
+//         Log::info("eSIM details {$action}", [
+//             'esim_upload_id' => $esimUpload->id,
+//             'transaction_id' => $transaction->id,
+//             'user_id' => $transaction->user_id,
+//             'has_images' => $request->hasFile('images'),
+//             'image_count' => $request->hasFile('images') ? count($request->file('images')) : 0
+//         ]);
 
-        // Return response based on request type
-        if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
-            return response()->json([
-                'success' => true,
-                'message' => "eSIM details {$action} successfully!",
-                'data' => [
-                    'id' => $esimUpload->id,
-                    'transaction_id' => $esimUpload->transaction_id,
-                    'action' => $action
-                ]
-            ]);
-        }
+//         // Return response based on request type
+//         if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+//             return response()->json([
+//                 'success' => true,
+//                 'message' => "eSIM details {$action} successfully!",
+//                 'data' => [
+//                     'id' => $esimUpload->id,
+//                     'transaction_id' => $esimUpload->transaction_id,
+//                     'action' => $action
+//                 ]
+//             ]);
+//         }
 
-        return redirect()->back()->with('success', "eSIM details {$action} successfully!");
+//         return redirect()->back()->with('success', "eSIM details {$action} successfully!");
 
-    } catch (\Exception $e) {
-        DB::rollBack();
+//     } catch (\Exception $e) {
+//         DB::rollBack();
         
-        Log::error('Error uploading eSIM details', [
-            'transaction_id' => $request->transaction_id,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
+//         Log::error('Error uploading eSIM details', [
+//             'transaction_id' => $request->transaction_id,
+//             'error' => $e->getMessage(),
+//             'trace' => $e->getTraceAsString()
+//         ]);
 
-        // Return error response based on request type
-        if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to save eSIM details: ' . $e->getMessage()
-            ], 422);
-        }
+//         // Return error response based on request type
+//         if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+//             return response()->json([
+//                 'success' => false,
+//                 'message' => 'Failed to save eSIM details: ' . $e->getMessage()
+//             ], 422);
+//         }
 
-        return redirect()->back()->with('error', 'Failed to save eSIM details: ' . $e->getMessage());
-    }
-}
+//         return redirect()->back()->with('error', 'Failed to save eSIM details: ' . $e->getMessage());
+//     }
+// }
 
     private function getExchangeRate(): float
     {
