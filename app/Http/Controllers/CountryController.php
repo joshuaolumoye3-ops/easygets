@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\PinHelper;
+use App\Helpers\PricingHelper;
 use App\Models\EsimCountry;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
@@ -410,7 +411,8 @@ private function getExchangeRate(): float
         
         foreach ($data as $countryName => $details) {
             $priceUSD = $details['Price'] ?? 0;
-            $priceNGN = round($priceUSD * $exchangeRate, 2);
+            // Apply client price multiplier for 5sim
+            $priceNGN = PricingHelper::calculateFinalPrice($priceUSD, self::PROVIDER_5SIM, $exchangeRate);
             
             $countries[] = [
                 'name' => $countryName,
@@ -547,10 +549,8 @@ private function normalize5simServiceCode($serviceCode)
             foreach ($data[$country][$normalizedCode] as $operatorName => $details) {
                 $costUSD = $details['cost'] ?? 0;
                 
-                // Get admin-set client_price if available
-                $productCode = $operatorName . '_' . $country;
-                $product = $fivesimProvider ? Product::where('provider_id', $fivesimProvider->id)->where('product_code', $productCode)->first() : null;
-                $costNGN = $product && $product->client_price ? $product->client_price : round($costUSD * $exchangeRate, 2);
+                // Apply client price multiplier for 5sim
+                $costNGN = PricingHelper::calculateFinalPrice($costUSD, self::PROVIDER_5SIM, $exchangeRate);
                 
                 $operators[] = [
                     'name' => $operatorName,
@@ -714,16 +714,8 @@ private function normalize5simServiceCode($serviceCode)
     // Get 5sim exchange rate (from Otp-others)
     $exchangeRate = $this->get5simExchangeRate();
 
-    // Get admin-set price if available
-    $fivesimProvider = Provider::where('api_identifier', self::PROVIDER_5SIM)->first();
-    $productCode = $operator . '_' . $country;
-    $product = $fivesimProvider ? Product::where('provider_id', $fivesimProvider->id)->where('product_code', $productCode)->first() : null;
-    if (!$product) {
-        // Try without country suffix for DB products
-        $productCode = $operator;
-        $product = $fivesimProvider ? Product::where('provider_id', $fivesimProvider->id)->where('product_code', $productCode)->first() : null;
-    }
-    $costNGN = $product && $product->client_price ? $product->client_price : round($priceData['cost'] * $exchangeRate, 2);
+    // Apply client price multiplier for 5sim
+    $costNGN = PricingHelper::calculateFinalPrice($priceData['cost'], self::PROVIDER_5SIM, $exchangeRate);
 
     $purchase = [
         'provider' => self::PROVIDER_5SIM,
@@ -1398,24 +1390,13 @@ private function normalize5simServiceCode($serviceCode)
             return $countries;
         });
 
-        // Convert prices to NGN using admin-set client_price if available
-        if ($product && $product->client_price) {
-            $clientPrice = $product->client_price;
-            $countries = $countries->map(function ($country) use ($clientPrice) {
-                $country['cost'] = $clientPrice;
-                $country['ws_cost'] = $clientPrice;
-                $country['exchange_rate'] = null; // Not applicable
-                return $country;
-            });
-        } else {
-            // Fallback to API prices
-            $countries = $countries->map(function ($country) use ($exchangeRate) {
-                $country['cost'] = round($country['cost_usd'] * $exchangeRate, 2);
-                $country['ws_cost'] = round($country['ws_cost_usd'] * $exchangeRate, 2);
-                $country['exchange_rate'] = $exchangeRate;
-                return $country;
-            });
-        }
+        // Apply client price multiplier for smsbus
+        $countries = $countries->map(function ($country) use ($exchangeRate) {
+            $country['cost'] = PricingHelper::calculateFinalPrice($country['cost_usd'], self::PROVIDER_SMSBUS, $exchangeRate);
+            $country['ws_cost'] = PricingHelper::calculateFinalPrice($country['ws_cost_usd'], self::PROVIDER_SMSBUS, $exchangeRate);
+            $country['exchange_rate'] = $exchangeRate;
+            return $country;
+        });
 
         // Handle search
         $search = request()->get('search', '');
@@ -1522,15 +1503,22 @@ private function normalize5simServiceCode($serviceCode)
             ], 500);
         }
 
+        $exchangeRate = $this->getExchangeRate();
+
         $prices = collect($data['data'])
             ->filter(function ($item) use ($serviceId) {
                 return (int) $item['project_id'] === (int) $serviceId;
             })
-            ->map(function ($item) {
+            ->map(function ($item) use ($exchangeRate) {
+                $costUSD = $item['cost'] ?? 0;
+                // Apply client price multiplier for smsbus
+                $costNGN = PricingHelper::calculateFinalPrice($costUSD, self::PROVIDER_SMSBUS, $exchangeRate);
+                
                 return [
                     'project_id' => $item['project_id'],
                     'name'       => ucfirst($item['project_code']),
-                    'cost'       => $item['cost'],
+                    'cost'       => $costNGN,
+                    'cost_usd'   => $costUSD,
                     'count'      => $item['total_count'],
                     'country_id' => $item['country_id'],
                     'country_name' => $item['country_name'] ?? 'Unknown',
@@ -1742,13 +1730,8 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
             return back()->withErrors('No pricing available for this service.');
         }
 
-        // ✅ Get the exchange rate
-        $exchangeRate = $this->getExchangeRate();
-
-        // ✅ Get admin-set price if available
-        $smsbusProvider = Provider::where('api_identifier', self::PROVIDER_SMSBUS)->first();
-        $product = $smsbusProvider ? Product::where('provider_id', $smsbusProvider->id)->where('product_code', $serviceId)->first() : null;
-        $costNGN = $product && $product->client_price ? $product->client_price : round($priceData['cost'] * $exchangeRate, 2);
+        // Apply client price multiplier for smsbus
+        $costNGN = PricingHelper::calculateFinalPrice($priceData['cost'], self::PROVIDER_SMSBUS, $exchangeRate);
 
         // ✅ Get service details
         $serviceDetails = $this->getServiceDetails($serviceId, false);
