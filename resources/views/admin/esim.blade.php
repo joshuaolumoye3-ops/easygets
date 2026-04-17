@@ -243,7 +243,7 @@
 
 <script>
 function openTxnModal(id){
-    fetch(`/app/admin/esim/transaction/${id}`)
+    fetch(`{{ route('admin.esim.transaction.show', '') }}/${id}`)
     .then(res=>res.json())
     .then(data=>{
         console.log('Transaction Data Received:', data);

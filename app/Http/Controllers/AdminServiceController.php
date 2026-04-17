@@ -13,6 +13,7 @@ use App\Models\EsimUpload;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 class AdminServiceController extends Controller
 {
@@ -674,7 +675,16 @@ class AdminServiceController extends Controller
      */
     public function show($id)
     {
-        $txn = Transaction::with('user')->findOrFail($id);
+        $txn = Transaction::with('user', 'esimUpload')->findOrFail($id);
+        
+        // Get eSIM upload if exists
+        $esimData = null;
+        $imageUrls = [];
+        if ($txn->esimUpload) {
+            $esimData = $txn->esimUpload;
+            // Get proper image URLs using the model accessor
+            $imageUrls = $esimData->getImageUrlsAttribute() ?? [];
+        }
 
         return response()->json([
             'id'         => $txn->id,
@@ -686,6 +696,12 @@ class AdminServiceController extends Controller
             'amount'     => $txn->amount,
             'status'     => $txn->status,
             'created_at' => $txn->created_at->format('d M Y h:i A'),
+            'esim_upload' => $esimData ? [
+                'id' => $esimData->id,
+                'number' => $esimData->number,
+                'details' => $esimData->details,
+                'images' => $imageUrls,
+            ] : null,
         ]);
     }
 
@@ -750,23 +766,16 @@ public function upload(Request $request)
                     // Generate unique filename
                     $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
                     
-                    // Store directly in public/uploads/esim/
-                    $directory = 'uploads/esim';
-                    if (!file_exists(public_path($directory))) {
-                        mkdir(public_path($directory), 0755, true);
-                    }
-
-                    // Move file to public directory
-                    $image->move(public_path($directory), $filename);
+                    // Store in storage/app/public/esim/ using the public disk
+                    $storedPath = Storage::disk('public')->putFileAs('esim', $image, $filename);
                     
-                    // Store path without leading slash: uploads/esim/filename.jpg
-                    $path = $directory . '/' . $filename;
-                    $newImages[] = $path;
+                    // Store path as: storage/esim/filename.jpg for retrieval via getImageUrlsAttribute
+                    $newImages[] = 'storage/esim/' . $filename;
                     
                     Log::info('eSIM Image uploaded successfully', [
                         'filename' => $filename,
-                        'path' => $path,
-                        'file_exists' => file_exists(public_path($path))
+                        'stored_path' => $storedPath,
+                        'display_path' => 'storage/esim/' . $filename
                     ]);
                 } catch (\Exception $e) {
                     Log::error('Error uploading eSIM image', [
