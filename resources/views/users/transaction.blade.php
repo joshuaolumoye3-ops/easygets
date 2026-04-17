@@ -35,33 +35,36 @@
                 ];
                 $statusColor = $statusColors[strtolower($txn->status)] ?? 'bg-gray-100 text-gray-700';
 
-                // Prepare image URLs (normalize stored formats) to avoid complex inline closures
+                // Prepare image URLs (normalize stored formats)
                 $imageUrls = null;
                 if ($txn->esimUpload) {
                     $imagesRaw = $txn->esimUpload->images;
+                    $images = [];
+                    
+                    // Ensure we have an array
                     if (is_array($imagesRaw)) {
-                        $imageUrls = array_map(function($i) { 
-                            // Handle storage paths: storage/esim/filename.jpg
-                            if (strpos($i, 'storage/') === 0) {
-                                $actualPath = str_replace('storage/', '', $i);
-                                return \Illuminate\Support\Facades\Storage::disk('public')->url($actualPath);
-                            }
-                            // Fallback for old public paths
-                            return asset($i); 
-                        }, $imagesRaw);
+                        $images = $imagesRaw;
                     } elseif (is_string($imagesRaw)) {
-                        $decoded = json_decode($imagesRaw, true) ?? [];
-                        $imageUrls = array_map(function($i) { 
-                            // Handle storage paths: storage/esim/filename.jpg
-                            if (strpos($i, 'storage/') === 0) {
-                                $actualPath = str_replace('storage/', '', $i);
-                                return \Illuminate\Support\Facades\Storage::disk('public')->url($actualPath);
+                        $images = json_decode($imagesRaw, true) ?? [];
+                    }
+                    
+                    // Convert paths to full URLs
+                    $imageUrls = [];
+                    foreach ($images as $img) {
+                        if (!empty($img)) {
+                            // Normalize: remove escaped slashes
+                            $img = str_replace('\\/', '/', $img);
+                            $img = ltrim($img, '/');
+                            
+                            // Handle storage paths
+                            if (strpos($img, 'storage/') === 0) {
+                                $actualPath = str_replace('storage/', '', $img);
+                                $imageUrls[] = \Illuminate\Support\Facades\Storage::disk('public')->url($actualPath);
+                            } else if (strpos($img, 'uploads/') === 0) {
+                                // Public folder paths
+                                $imageUrls[] = url('/' . $img);
                             }
-                            // Fallback for old public paths
-                            return asset($i); 
-                        }, $decoded);
-                    } else {
-                        $imageUrls = [];
+                        }
                     }
                 }
             @endphp

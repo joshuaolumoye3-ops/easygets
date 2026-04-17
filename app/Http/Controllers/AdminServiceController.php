@@ -744,37 +744,30 @@ public function upload(Request $request)
 
         if ($request->hasFile('images')) {
             $newImages = [];
-            $disk = \Illuminate\Support\Facades\Storage::disk('public');
             
             foreach ($request->file('images') as $image) {
                 try {
                     // Generate unique filename
                     $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
                     
-                    // Store in storage/app/public/esim/ directory
-                    $storagePath = $disk->putFileAs(
-                        'esim',
-                        $image,
-                        $filename,
-                        'public' // Make file publicly readable
-                    );
-                    
-                    if ($storagePath) {
-                        // Store relative path for consistency
-                        $newImages[] = 'storage/' . $storagePath;
-                        
-                        Log::info('eSIM Image uploaded successfully', [
-                            'filename' => $filename,
-                            'storage_path' => $storagePath,
-                            'stored_path' => 'storage/' . $storagePath,
-                            'full_url' => \Illuminate\Support\Facades\Storage::disk('public')->url($storagePath)
-                        ]);
-                    } else {
-                        Log::error('eSIM File storage failed', [
-                            'filename' => $filename,
-                            'source' => $image->getRealPath(),
-                        ]);
+                    // Store directly in public/uploads/esim/
+                    $directory = 'uploads/esim';
+                    if (!file_exists(public_path($directory))) {
+                        mkdir(public_path($directory), 0755, true);
                     }
+
+                    // Move file to public directory
+                    $image->move(public_path($directory), $filename);
+                    
+                    // Store path without leading slash: uploads/esim/filename.jpg
+                    $path = $directory . '/' . $filename;
+                    $newImages[] = $path;
+                    
+                    Log::info('eSIM Image uploaded successfully', [
+                        'filename' => $filename,
+                        'path' => $path,
+                        'file_exists' => file_exists(public_path($path))
+                    ]);
                 } catch (\Exception $e) {
                     Log::error('Error uploading eSIM image', [
                         'error' => $e->getMessage(),
@@ -783,15 +776,14 @@ public function upload(Request $request)
                 }
             }
 
-            // Merge existing and new images and store as an array (Eloquent will JSON-cast it)
+            // Merge existing and new images
             $allImages = array_merge($existingImages, $newImages);
             $data['images'] = $allImages;
             
-            Log::info('eSIM Images merge complete', [
+            Log::info('eSIM Images stored', [
                 'existing_count' => count($existingImages),
                 'new_count' => count($newImages),
-                'total_count' => count($allImages),
-                'all_images' => $allImages
+                'total_count' => count($allImages)
             ]);
         }
 

@@ -487,56 +487,44 @@ public function showTransaction($id)
             $esim = $transaction->esimUpload;
             $hasExistingUpload = true;
 
-            // Handle images - they could be JSON string or already decoded array
-            $images = $esim->images;
-            if (is_string($images)) {
-                $images = json_decode($images, true) ?? [];
+            // Handle images - properly decode from JSON
+            $images = [];
+            if (!empty($esim->images)) {
+                if (is_array($esim->images)) {
+                    $images = $esim->images;
+                } elseif (is_string($esim->images)) {
+                    $images = json_decode($esim->images, true) ?? [];
+                }
             }
-            
-            // Debug logging
-            Log::info('eSIM Upload Images Debug', [
-                'transaction_id' => $transaction->id,
-                'raw_images' => $esim->images,
-                'parsed_images' => $images,
-                'is_array' => is_array($images),
-                'image_count' => is_array($images) ? count($images) : 0,
-            ]);
             
             // Convert image paths to full URLs
             $imageUrls = [];
             if (is_array($images) && count($images) > 0) {
                 foreach ($images as $img) {
                     if (!empty($img)) {
+                        // Normalize path: remove any accidental escapes
+                        $img = str_replace('\\/', '/', $img);
+                        $img = ltrim($img, '/');
+                        
                         // Handle storage paths: storage/esim/filename.jpg
                         if (strpos($img, 'storage/') === 0) {
-                            // Remove 'storage/' prefix to get the actual storage path
                             $actualPath = str_replace('storage/', '', $img);
                             $fullUrl = \Illuminate\Support\Facades\Storage::disk('public')->url($actualPath);
                             $imageUrls[] = $fullUrl;
-                            
-                            Log::info('Storage Image URL Generated', [
-                                'original_path' => $img,
-                                'actual_path' => $actualPath,
-                                'full_url' => $fullUrl,
-                            ]);
-                        } else {
-                            // Fallback for old public paths (for backwards compatibility)
-                            $publicPath = public_path($img);
-                            if (file_exists($publicPath)) {
-                                $fullUrl = url('/' . ltrim($img, '/'));
-                                $imageUrls[] = $fullUrl;
-                                
-                                Log::info('Public Image URL Valid', [
-                                    'original_path' => $img,
-                                    'public_path' => $publicPath,
-                                    'full_url' => $fullUrl,
-                                    'exists' => true,
-                                ]);
-                            }
+                        } else if (strpos($img, 'uploads/') === 0) {
+                            // Path format: uploads/esim/filename.jpg
+                            $fullUrl = url('/' . $img);
+                            $imageUrls[] = $fullUrl;
                         }
                     }
                 }
             }
+            
+            Log::info('eSIM Upload Images Processed', [
+                'transaction_id' => $transaction->id,
+                'raw_images_count' => count($images),
+                'generated_urls_count' => count($imageUrls),
+            ]);
             
             $esimData = [
                 'id'      => $esim->id,

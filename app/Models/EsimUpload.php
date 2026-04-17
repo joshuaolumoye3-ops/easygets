@@ -35,7 +35,7 @@ class EsimUpload extends Model
     }
 
     /**
-     * Get full URLs for images with proper storage path handling
+     * Get full URLs for images with proper path handling
      */
     public function getImageUrlsAttribute()
     {
@@ -44,13 +44,20 @@ class EsimUpload extends Model
         }
 
         return collect($this->images)->map(function ($image) {
-            // Handle storage paths: storage/esim/filename.jpg
+            // Normalize: remove escaped slashes
+            $image = str_replace('\\/', '/', $image);
+            $image = ltrim($image, '/');
+            
+            // Handle storage paths
             if (strpos($image, 'storage/') === 0) {
                 $actualPath = str_replace('storage/', '', $image);
                 return \Illuminate\Support\Facades\Storage::disk('public')->url($actualPath);
+            } else if (strpos($image, 'uploads/') === 0) {
+                // Public folder paths
+                return url('/' . $image);
             }
-            // Fallback for old public paths
-            return asset($image);
+            
+            return asset($image); // Fallback
         })->toArray();
     }
 }
