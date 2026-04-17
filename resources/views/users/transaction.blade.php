@@ -35,52 +35,68 @@
                 ];
                 $statusColor = $statusColors[strtolower($txn->status)] ?? 'bg-gray-100 text-gray-700';
 
-                // Prepare image URLs (normalize stored formats)
-                $imageUrls = null;
+                // Build clean full image URLs
+                $imageUrls = [];
                 if ($txn->esimUpload) {
-                    $imagesRaw = $txn->esimUpload->images;
-                    $images = [];
-                    
-                    // Ensure we have an array
-                    if (is_array($imagesRaw)) {
-                        $images = $imagesRaw;
-                    } elseif (is_string($imagesRaw)) {
-                        $images = json_decode($imagesRaw, true) ?? [];
+                    $rawImages = $txn->esimUpload->images;
+
+                    if (is_string($rawImages)) {
+                        $rawImages = json_decode($rawImages, true) ?? [];
                     }
-                    
-                    // Convert paths to full URLs
-                    $imageUrls = [];
-                    foreach ($images as $img) {
-                        if (!empty($img)) {
-                            // Normalize: remove escaped slashes
-                            $img = str_replace('\\/', '/', $img);
-                            $img = ltrim($img, '/');
-                            
-                            // Handle storage paths
-                            if (strpos($img, 'storage/') === 0) {
-                                $actualPath = str_replace('storage/', '', $img);
-                                $imageUrls[] = \Illuminate\Support\Facades\Storage::disk('public')->url($actualPath);
-                            } else if (strpos($img, 'uploads/') === 0) {
-                                // Public folder paths
-                                $imageUrls[] = url('/' . $img);
-                            }
+                    $rawImages = is_array($rawImages) ? $rawImages : [];
+
+                    foreach ($rawImages as $img) {
+                        if (empty($img)) continue;
+
+                        // Fix any escaped slashes from old JSON storage
+                        $img = str_replace(['\\/', '\\'], '/', $img);
+                        $img = ltrim($img, '/');
+
+                        if (str_starts_with($img, 'storage/')) {
+                            // "storage/esim/filename.png" → strip "storage/" → Storage::disk('public')->url(...)
+                            $relativePath = substr($img, strlen('storage/'));
+                            $imageUrls[] = \Illuminate\Support\Facades\Storage::disk('public')->url($relativePath);
+                        } elseif (str_starts_with($img, 'uploads/')) {
+                            // Legacy path in public folder
+                            $imageUrls[] = asset($img);
+                        } else {
+                            // Fallback: assume it's a public disk relative path
+                            $imageUrls[] = \Illuminate\Support\Facades\Storage::disk('public')->url($img);
                         }
                     }
                 }
+
+                $esimPayload = null;
+                if ($txn->esimUpload) {
+                    $esimPayload = [
+                        'number'  => $txn->esimUpload->number,
+                        'details' => $txn->esimUpload->details,
+                        'images'  => $imageUrls,   // always full URLs, ready to use in <img src>
+                    ];
+                }
+
+                $txnData = [
+                    'id'          => $txn->id,
+                    'type'        => $txn->type,
+                    'title'       => $txn->title ?? ucfirst($txn->type),
+                    'reference'   => $txn->reference,
+                    'amount'      => $txn->amount,
+                    'status'      => $txn->status,
+                    'channel'     => $txn->channel,
+                    'provider'    => $txn->provider,
+                    'phone'       => $txn->phone,
+                    'recipient'   => $txn->recipient,
+                    'created_at'  => $txn->created_at->toISOString(),
+                    'esim_upload' => $esimPayload,
+                ];
             @endphp
 
-            <div 
+            <div
                 class="flex items-center justify-between p-5 border-b cursor-pointer hover:bg-gray-50 txn-row"
-                data-transaction='@json(array_merge($txn->toArray(), [
-                    "esim_upload" => $txn->esimUpload ? array_merge($txn->esimUpload->toArray(), [
-                        'image_urls' => $imageUrls
-                    ]) : null
-                ]))'
+                data-transaction="{{ json_encode($txnData) }}"
             >
                 <div class="flex items-center space-x-4">
-                    <div class="text-green-800 text-xl">
-                        {{ $icon }}
-                    </div>
+                    <div class="text-green-800 text-xl">{{ $icon }}</div>
                     <div>
                         <p class="text-sm font-medium">{{ $txn->title ?? ucfirst($txn->type) }}</p>
                         <p class="text-xs text-gray-500">{{ $txn->created_at->format('h:i A') }}</p>
@@ -102,13 +118,13 @@
     @endforelse
 </div>
 
-<!-- Image Full Screen Modal -->
+<!-- Full-screen image viewer -->
 <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center z-[60]">
     <button id="closeImageModal" class="absolute top-5 right-5 text-white hover:text-gray-300 text-4xl font-bold">&times;</button>
-    <img id="fullScreenImage" src="" alt="Full Screen" class="max-w-[90%] max-h-[90%] object-contain">
+    <img id="fullScreenImage" src="" alt="" class="max-w-[90%] max-h-[90%] object-contain rounded-lg">
 </div>
 
-<!-- Transaction Details Modal -->
+<!-- Transaction detail modal -->
 <div id="txnModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-2xl shadow-xl w-11/12 max-w-md p-6 relative animate-fadeIn">
         <button id="closeModal" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
@@ -117,14 +133,14 @@
             <div id="txnIcon" class="text-3xl"></div>
             <div>
                 <h2 id="txnTitle" class="text-lg font-bold text-gray-800"></h2>
-                <p id="txnDate" class="text-sm text-gray-500"></p>
+                <p id="txnDate"  class="text-sm text-gray-500"></p>
             </div>
         </div>
 
         <div class="space-y-3 text-sm">
             <div class="flex justify-between">
                 <span class="font-medium">Reference</span>
-                <span id="txnReference" class="text-gray-600"></span>
+                <span id="txnReference" class="text-gray-600 text-right break-all max-w-[60%]"></span>
             </div>
             <div class="flex justify-between">
                 <span class="font-medium">Amount</span>
@@ -134,10 +150,6 @@
                 <span class="font-medium">Status</span>
                 <span id="txnStatus" class="px-2 py-1 rounded-full text-xs"></span>
             </div>
-            {{-- <div class="flex justify-between">
-                <span class="font-medium">Channel</span>
-                <span id="txnChannel" class="text-gray-600"></span>
-            </div> --}}
             <div class="flex justify-between">
                 <span class="font-medium">Provider</span>
                 <span id="txnProvider" class="text-gray-600"></span>
@@ -150,158 +162,120 @@
                 <span class="font-medium">Recipient</span>
                 <span id="txnRecipient" class="text-gray-600"></span>
             </div>
-            <div id="esimDetails" class="space-y-2 mt-4 hidden">
-                <div class="font-semibold text-green-700">eSIM Details</div>
-                <div><span class="font-medium">Number:</span> <span id="esimNumber"></span></div>
-                <div><span class="font-medium">Details:</span> <span id="esimUploadDetails"></span></div>
-                <div id="esimImages" class="flex flex-wrap gap-2"></div>
+
+            <!-- eSIM details (shown only for esim type with upload) -->
+            <div id="esimDetails" class="space-y-3 mt-4 hidden">
+                <hr class="border-gray-100">
+                <p class="font-semibold text-green-700 text-sm">eSIM Details</p>
+                <div class="flex justify-between">
+                    <span class="font-medium">ICCID / Number</span>
+                    <span id="esimNumber" class="text-gray-600 text-right break-all max-w-[60%]"></span>
+                </div>
+                <div>
+                    <span class="font-medium block mb-1">Instructions</span>
+                    <p id="esimUploadDetails" class="text-gray-600 text-sm leading-relaxed whitespace-pre-line"></p>
+                </div>
+                <div id="esimImagesWrap" class="hidden">
+                    <span class="font-medium block mb-2">Images</span>
+                    <div id="esimImages" class="flex flex-wrap gap-2"></div>
+                </div>
             </div>
         </div>
 
         <div class="mt-6 text-right">
-            <button id="closeFooter" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Close</button>
+            <button id="closeFooter" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">Close</button>
         </div>
     </div>
 </div>
 
 <style>
-    .animate-fadeIn {
-        animation: fadeIn 0.3s ease-in-out;
-    }
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
+.animate-fadeIn { animation: fadeIn .3s ease-in-out; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
 </style>
 
 <script>
-    const modal = document.getElementById('txnModal');
-    const closeModal = document.getElementById('closeModal');
-    const closeFooter = document.getElementById('closeFooter');
-    const rows = document.querySelectorAll('.txn-row');
+const modal       = document.getElementById('txnModal');
+const imageModal  = document.getElementById('imageModal');
 
-    const txnIcon = document.getElementById('txnIcon');
-    const txnTitle = document.getElementById('txnTitle');
-    const txnDate = document.getElementById('txnDate');
-    const txnReference = document.getElementById('txnReference');
-    const txnAmount = document.getElementById('txnAmount');
-    const txnStatus = document.getElementById('txnStatus');
-    //const txnChannel = document.getElementById('txnChannel');
-    const txnProvider = document.getElementById('txnProvider');
-    const txnPhone = document.getElementById('txnPhone');
-    const txnRecipient = document.getElementById('txnRecipient');
+// ── open transaction detail ──────────────────────────────────
+document.querySelectorAll('.txn-row').forEach(row => {
+    row.addEventListener('click', () => {
+        const txn = JSON.parse(row.dataset.transaction);
 
-    rows.forEach(row => {
-        row.addEventListener('click', () => {
-            const txn = JSON.parse(row.dataset.transaction);
+        const icons    = { airtime:'🌐', data:'🌐', electricity:'💡', betting:'⚽', esim:'📱', payment:'💰' };
+        const statuses = { success:'bg-green-100 text-green-700', pending:'bg-yellow-100 text-yellow-700', failed:'bg-red-100 text-red-700' };
 
-            const icons = {
-                airtime: '🌐',
-                data: '🌐',
-                electricity: '💡',
-                betting: '⚽',
-                esim: '📱',
-                payment: '💰'
-            };
+        document.getElementById('txnIcon').textContent      = icons[txn.type] || '🌐';
+        document.getElementById('txnTitle').textContent     = txn.title || txn.type;
+        document.getElementById('txnDate').textContent      = new Date(txn.created_at).toLocaleString();
+        document.getElementById('txnReference').textContent = txn.reference || '-';
+        document.getElementById('txnAmount').textContent    = '₦' + parseFloat(txn.amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 });
+        document.getElementById('txnProvider').textContent  = txn.provider  || '-';
+        document.getElementById('txnPhone').textContent     = txn.phone     || '-';
+        document.getElementById('txnRecipient').textContent = txn.recipient || '-';
 
-            const statuses = {
-                success: 'bg-green-100 text-green-700',
-                pending: 'bg-yellow-100 text-yellow-700',
-                failed: 'bg-red-100 text-red-700'
-            };
+        const statusEl = document.getElementById('txnStatus');
+        statusEl.textContent = txn.status;
+        statusEl.className   = 'px-2 py-1 rounded-full text-xs ' + (statuses[(txn.status || '').toLowerCase()] || 'bg-gray-100 text-gray-700');
 
-            txnIcon.textContent = icons[txn.type] || '🌐';
-            txnTitle.textContent = txn.title ?? txn.type;
-            txnDate.textContent = new Date(txn.created_at).toLocaleString();
-            txnReference.textContent = txn.reference;
-            txnAmount.textContent = `₦${parseFloat(txn.amount).toFixed(2)}`;
+        // eSIM details block
+        const esimBlock    = document.getElementById('esimDetails');
+        const imagesWrap   = document.getElementById('esimImagesWrap');
+        const imagesDiv    = document.getElementById('esimImages');
 
-            txnStatus.textContent = txn.status;
-            txnStatus.className = `px-2 py-1 rounded-full text-xs ${statuses[txn.status.toLowerCase()] || 'bg-gray-100 text-gray-700'}`;
+        if (txn.type && txn.type.toLowerCase() === 'esim' && txn.esim_upload) {
+            const eu = txn.esim_upload;
+            esimBlock.classList.remove('hidden');
+            document.getElementById('esimNumber').textContent        = eu.number  || '-';
+            document.getElementById('esimUploadDetails').textContent = eu.details || '-';
 
-            //txnChannel.textContent = txn.channel ?? '-';
-            txnProvider.textContent = txn.provider ?? '-';
-            txnPhone.textContent = txn.phone ?? '-';
-            txnRecipient.textContent = txn.recipient ?? '-';
+            imagesDiv.innerHTML = '';
+            const imgs = Array.isArray(eu.images) ? eu.images : [];
 
-            // eSIM details logic
-            const esimDetailsDiv = document.getElementById('esimDetails');
-            if (txn.type.toLowerCase() === 'esim' && txn.esim_upload) {
-                esimDetailsDiv.classList.remove('hidden');
-                document.getElementById('esimNumber').textContent = txn.esim_upload.number ?? '-';
-                document.getElementById('esimUploadDetails').textContent = txn.esim_upload.details ?? '-';
-
-                // Images with full-screen functionality
-                const imagesDiv = document.getElementById('esimImages');
-                imagesDiv.innerHTML = '';
-
-                // Prefer full URLs if available (image_urls), otherwise handle images field (string or array)
-                let imgs = txn.esim_upload.image_urls ?? txn.esim_upload.images ?? [];
-
-                if (typeof imgs === 'string') {
-                    try {
-                        imgs = JSON.parse(imgs);
-                    } catch (e) {
-                        imgs = [imgs];
-                    }
-                }
-
-                if (Array.isArray(imgs)) {
-                    imgs.forEach(img => {
-                        const imageElem = document.createElement('img');
-                        const src = (typeof img === 'string' && (img.startsWith('http://') || img.startsWith('https://')))
-                            ? img
-                            : ('/' + img.replace(/^\//, ''));
-
-                        imageElem.src = src;
-                        imageElem.style.width = '60px';
-                        imageElem.style.borderRadius = '6px';
-                        imageElem.style.cursor = 'pointer';
-                        imageElem.addEventListener('click', () => {
-                            document.getElementById('fullScreenImage').src = imageElem.src;
-                            document.getElementById('imageModal').classList.remove('hidden');
-                            document.getElementById('imageModal').classList.add('flex');
-                        });
-                        imagesDiv.appendChild(imageElem);
+            if (imgs.length > 0) {
+                imagesWrap.classList.remove('hidden');
+                imgs.forEach(url => {
+                    if (!url) return;
+                    const img = document.createElement('img');
+                    img.src   = url;
+                    img.style.cssText = 'width:64px; height:64px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid #e5e7eb;';
+                    img.addEventListener('click', () => {
+                        document.getElementById('fullScreenImage').src = url;
+                        imageModal.classList.remove('hidden');
+                        imageModal.classList.add('flex');
                     });
-                }
+                    img.onerror = () => img.style.display = 'none';
+                    imagesDiv.appendChild(img);
+                });
             } else {
-                esimDetailsDiv.classList.add('hidden');
+                imagesWrap.classList.add('hidden');
             }
-
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        });
-    });
-
-    [closeModal, closeFooter].forEach(el => {
-        el.addEventListener('click', () => {
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        });
-    });
-
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
+        } else {
+            esimBlock.classList.add('hidden');
+            imagesWrap.classList.add('hidden');
         }
-    });
 
-    // Image modal handlers
-    const imageModal = document.getElementById('imageModal');
-    const closeImageModal = document.getElementById('closeImageModal');
-
-    closeImageModal.addEventListener('click', () => {
-        imageModal.classList.add('hidden');
-        imageModal.classList.remove('flex');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
     });
+});
 
-    imageModal.addEventListener('click', (e) => {
-        if (e.target === imageModal) {
-            imageModal.classList.add('hidden');
-            imageModal.classList.remove('flex');
-        }
-    });
+// ── close handlers ───────────────────────────────────────────
+['closeModal', 'closeFooter'].forEach(id => {
+    document.getElementById(id).addEventListener('click', closeModal);
+});
+modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+function closeModal() {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+document.getElementById('closeImageModal').addEventListener('click', closeImgModal);
+imageModal.addEventListener('click', e => { if (e.target === imageModal) closeImgModal(); });
+function closeImgModal() {
+    imageModal.classList.add('hidden');
+    imageModal.classList.remove('flex');
+    document.getElementById('fullScreenImage').src = '';
+}
 </script>
 @endsection

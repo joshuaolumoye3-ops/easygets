@@ -676,34 +676,169 @@ class AdminServiceController extends Controller
     public function show($id)
     {
         $txn = Transaction::with('user', 'esimUpload')->findOrFail($id);
-        
-        // Get eSIM upload if exists
+    
         $esimData = null;
-        $imageUrls = [];
+    
         if ($txn->esimUpload) {
-            $esimData = $txn->esimUpload;
-            // Get proper image URLs using the model accessor
-            $imageUrls = $esimData->getImageUrlsAttribute() ?? [];
+            $upload = $txn->esimUpload;
+    
+            // Normalise the images array into full public URLs
+            $rawImages = $upload->images;
+            if (is_string($rawImages)) {
+                $rawImages = json_decode($rawImages, true) ?? [];
+            }
+            $rawImages = is_array($rawImages) ? $rawImages : [];
+    
+            $imageUrls = [];
+            foreach ($rawImages as $img) {
+                if (empty($img)) continue;
+    
+                // Normalise slashes (DB may have stored with escaped \/)
+                $img = str_replace(['\\/', '\\'], ['/', '/'], $img);
+                $img = ltrim($img, '/');
+    
+                if (str_starts_with($img, 'storage/')) {
+                    // "storage/esim/filename.png"  →  strip "storage/" prefix
+                    $relativePath = substr($img, strlen('storage/'));
+                    $imageUrls[] = Storage::disk('public')->url($relativePath);
+                } elseif (str_starts_with($img, 'uploads/')) {
+                    // legacy "uploads/esim/filename.png"  →  public URL via asset()
+                    $imageUrls[] = asset($img);
+                } else {
+                    // fallback: treat as a storage-disk relative path
+                    $imageUrls[] = Storage::disk('public')->url($img);
+                }
+            }
+    
+            $esimData = [
+                'id'       => $upload->id,
+                'number'   => $upload->number,
+                'details'  => $upload->details,
+                'images'   => $imageUrls,   // always full URLs
+            ];
         }
-
+    
         return response()->json([
-            'id'         => $txn->id,
-            'user'       => [
-                'name'  => $txn->user->name ?? 'N/A',
-                'email' => $txn->user->email ?? 'N/A',
+            'transaction' => [
+                'id'        => $txn->id,
+                'username'  => $txn->user->username ?? ($txn->user->name ?? 'N/A'),
+                'email'     => $txn->user->email ?? 'N/A',
+                'amount'    => $txn->amount,
+                'status'    => $txn->status,
+                'reference' => $txn->reference,
+                'recipient' => $txn->recipient,
             ],
-            'plan_name'  => $txn->plan_name ?? 'N/A',
-            'amount'     => $txn->amount,
-            'status'     => $txn->status,
-            'created_at' => $txn->created_at->format('d M Y h:i A'),
-            'esim_upload' => $esimData ? [
-                'id' => $esimData->id,
-                'number' => $esimData->number,
-                'details' => $esimData->details,
-                'images' => $imageUrls,
-            ] : null,
+            'esim' => $esimData,
         ]);
     }
+ 
+// ---------------------------------------------------------------
+// upload() — stores images to storage/app/public/esim only
+// ---------------------------------------------------------------
+public function upload(Request $request)
+{
+    $request->validate([
+        'transaction_id' => 'required|exists:transactions,id',
+        'esim_upload_id' => 'nullable|exists:esim_uploads,id',
+        'numbers'        => 'nullable|string',
+        'details'        => 'nullable|string',
+        'images.*'       => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+    ]);
+ 
+    try {
+        DB::beginTransaction();
+ 
+        $transaction = Transaction::findOrFail($request->transaction_id);
+ 
+        // Find existing upload record
+        $esimUpload = null;
+        if ($request->esim_upload_id) {
+            $esimUpload = EsimUpload::findOrFail($request->esim_upload_id);
+        } else {
+            $esimUpload = EsimUpload::where('transaction_id', $transaction->id)->first();
+        }
+ 
+        $data = [
+            'user_id'        => $transaction->user_id,
+            'transaction_id' => $transaction->id,
+        ];
+ 
+        if ($request->filled('numbers')) {
+            $data['number'] = $request->numbers;
+        }
+        if ($request->filled('details')) {
+            $data['details'] = $request->details;
+        }
+ 
+        // Merge with any existing images already in DB
+        $existingImages = [];
+        if ($esimUpload && !empty($esimUpload->images)) {
+            $existingImages = is_array($esimUpload->images)
+                ? $esimUpload->images
+                : (json_decode($esimUpload->images, true) ?? []);
+        }
+ 
+        if ($request->hasFile('images')) {
+            $newImages = [];
+ 
+            foreach ($request->file('images') as $image) {
+                $filename   = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+                // Store under storage/app/public/esim/
+                Storage::disk('public')->putFileAs('esim', $image, $filename);
+                // Save as "storage/esim/filename" — a normalised, storage-relative key
+                $newImages[] = 'storage/esim/' . $filename;
+            }
+ 
+            $data['images'] = array_merge($existingImages, $newImages);
+ 
+            Log::info('eSIM images saved', [
+                'new'   => count($newImages),
+                'total' => count($data['images']),
+            ]);
+        }
+ 
+        if ($esimUpload) {
+            $esimUpload->update($data);
+            $action = 'updated';
+        } else {
+            $esimUpload = EsimUpload::create($data);
+            $action     = 'created';
+        }
+ 
+        // Mark transaction successful
+        $transaction->status = 'Success';
+        $transaction->save();
+ 
+        DB::commit();
+ 
+        if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            return response()->json([
+                'success' => true,
+                'message' => "eSIM details {$action} successfully!",
+                'data'    => ['id' => $esimUpload->id, 'action' => $action],
+            ]);
+        }
+ 
+        return redirect()->back()->with('success', "eSIM details {$action} successfully!");
+ 
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('eSIM upload error', [
+            'transaction_id' => $request->transaction_id,
+            'error'          => $e->getMessage(),
+            'trace'          => $e->getTraceAsString(),
+        ]);
+ 
+        if ($request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to save eSIM details: ' . $e->getMessage(),
+            ], 422);
+        }
+ 
+        return redirect()->back()->with('error', 'Failed to save eSIM details: ' . $e->getMessage());
+    }
+}
 
     /**
      * Handle admin upload (numbers, details, images).
