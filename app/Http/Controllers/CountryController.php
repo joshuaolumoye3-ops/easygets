@@ -1027,7 +1027,7 @@ private function normalize5simServiceCode($serviceCode)
                 'user_id' => auth()->id(),
                 'type' => 'activation',
                 'channel' => '5sim',
-                'provider' => $purchase['service_name'],
+                'provider' => 'Provider 1',
                 'service_id' => $purchase['service'],
                 'service_name' => $purchase['service_name'],
                 'service_logo' => null, // 5sim doesn't provide logos
@@ -1042,7 +1042,7 @@ private function normalize5simServiceCode($serviceCode)
                 'status' => 'pending',
                 'expires_at' => now()->addMinutes(20),
                 'response' => json_encode($data),
-                'description' => "Provider1 activation for {$purchase['service_name']} - {$purchase['country_name']}",
+                'description' => "Provider 1 activation for {$purchase['service_name']} - {$purchase['country_name']}",
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -1730,6 +1730,9 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
             return back()->withErrors('No pricing available for this service.');
         }
 
+        // Get exchange rate for fallback (if needed)
+        $exchangeRate = $this->getExchangeRate();
+
         // Apply client price multiplier for smsbus
         $costNGN = PricingHelper::calculateFinalPrice($priceData['cost'], self::PROVIDER_SMSBUS, $exchangeRate);
 
@@ -1863,6 +1866,7 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
         // Create activation record in transactions table
         $activationId = DB::table('transactions')->insertGetId([
             'user_id' => auth()->id(),
+            'reference' => 'ACT_' . strtoupper(Str::random(10)),
             'request_id' => $data['data']['request_id'],
             'phone' => $data['data']['number'],
             'service_id' => $purchase['service'],
@@ -1874,11 +1878,13 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
             'amount' => $purchase['cost'],
             'original_cost_usd' => $purchase['original_cost_usd'] ?? null,
             'status' => 'pending',
-            'provider' => 'smsbus',
+            'type' => 'activation',
+            'channel' => 'smsbus',
+            'provider' => 'Provider 2',
             'sms_code' => null,
             'expires_at' => now()->addMinutes(20),
-            'type' => 'activation',
             'response' => json_encode($data),
+            'description' => "Provider 2 activation for {$purchase['service_name']} - {$purchase['country_name']}",
             'created_at' => now(),
             'updated_at' => now(),
         ]);
