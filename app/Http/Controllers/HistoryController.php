@@ -398,6 +398,14 @@ class HistoryController extends Controller
     {
         $token = env('SMSBUS_TOKEN');
 
+        if (!$token) {
+            Log::error('Provider2 token not configured');
+            return response()->json([
+                'success' => false,
+                'message' => 'Service token not configured'
+            ], 500);
+        }
+
         try {
             $response = Http::timeout(15)
                 ->withOptions(['verify' => false])
@@ -406,10 +414,43 @@ class HistoryController extends Controller
                     'request_id' => $activation->request_id
                 ]);
 
+            Log::info('Provider2 SMS check', [
+                'request_id' => $activation->request_id,
+                'response_status' => $response->status(),
+                'response_successful' => $response->successful()
+            ]);
+
+            // Check if HTTP request failed
+            if ($response->failed()) {
+                Log::error('Provider2 SMS fetch HTTP failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                    'request_id' => $activation->request_id
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'status' => 'pending',
+                    'message' => 'Service temporarily unavailable'
+                ], 500);
+            }
+
             $data = $response->json();
 
-            if (isset($data['code']) && $data['code'] === 200 && isset($data['data'])) {
+            Log::info('Provider2 API response', [
+                'request_id' => $activation->request_id,
+                'code' => $data['code'] ?? null,
+                'has_data' => isset($data['data']) && !empty($data['data'])
+            ]);
+
+            // Success: SMS received
+            if (isset($data['code']) && $data['code'] === 200 && isset($data['data']) && !empty($data['data'])) {
                 $smsCode = $data['data'];
+
+                Log::info("Provider2 SMS received for activation {$activation->id}", [
+                    'code' => $smsCode,
+                    'request_id' => $activation->request_id
+                ]);
                 
                 DB::table('transactions')
                     ->where('id', $activation->id)
@@ -424,13 +465,26 @@ class HistoryController extends Controller
                     'sms_code' => $smsCode,
                     'status' => 'completed'
                 ]);
-            } elseif (isset($data['code']) && $data['code'] === 50101) {
+            }
+
+            // Error: Not received yet
+            if (isset($data['code']) && $data['code'] === 50101) {
+                Log::info("Provider2 SMS not received yet for {$activation->request_id}");
+                
                 return response()->json([
                     'success' => false,
                     'status' => 'pending',
                     'message' => 'Waiting for SMS'
                 ]);
-            } elseif (isset($data['code']) && $data['code'] === 50102) {
+            }
+
+            // Error: Number expired or released
+            if (isset($data['code']) && $data['code'] === 50102) {
+                Log::warning('Provider2 number expired/released', [
+                    'request_id' => $activation->request_id,
+                    'message' => $data['message'] ?? 'Unknown'
+                ]);
+
                 DB::table('transactions')
                     ->where('id', $activation->id)
                     ->update([
@@ -445,15 +499,23 @@ class HistoryController extends Controller
                 ]);
             }
 
+            // Unexpected response
+            Log::warning('Provider2 unexpected response code', [
+                'code' => $data['code'] ?? null,
+                'message' => $data['message'] ?? null,
+                'request_id' => $activation->request_id
+            ]);
+
             return response()->json([
                 'success' => false,
                 'status' => 'pending',
-                'message' => 'SMS not received yet'
+                'message' => $data['message'] ?? 'SMS not received yet'
             ]);
 
         } catch (\Exception $e) {
             Log::error('Provider2 SMS fetch error', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'request_id' => $activation->request_id
             ]);
 
@@ -626,18 +688,74 @@ class HistoryController extends Controller
     {
         $token = env('SMSBUS_TOKEN');
 
+        if (!$token) {
+            Log::error('Provider2 token not configured');
+            return ['success' => false, 'message' => 'Service token not configured'];
+        }
+
         try {
-            $response = Http::timeout(15)->withOptions(['verify' => false])
-                ->get('https://sms-bus.com/api/control/cancel', ['token' => $token, 'request_id' => $activation->request_id]);
+            Log::info('Provider2 cancellation attempt', [
+                'request_id' => $activation->request_id,
+                'activation_id' => $activation->id
+            ]);
+
+            $response = Http::timeout(15)
+                ->withOptions(['verify' => false])
+                ->get('https://sms-bus.com/api/control/cancel', [
+                    'token' => $token,
+                    'request_id' => $activation->request_id
+                ]);
+
+            Log::info('Provider2 cancel response', [
+                'status' => $response->status(),
+                'successful' => $response->successful()
+            ]);
+
+            // Check if HTTP request failed
+            if ($response->failed()) {
+                Log::error('Provider2 cancel HTTP failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                    'request_id' => $activation->request_id
+                ]);
+                return ['success' => false, 'message' => 'Failed to cancel (service error)'];
+            }
+
             $data = $response->json();
 
+            // Success: cancellation completed
             if (isset($data['code']) && $data['code'] === 200) {
+                Log::info('Provider2 cancellation successful', [
+                    'request_id' => $activation->request_id,
+                    'activation_id' => $activation->id
+                ]);
                 return ['success' => true];
             }
 
+            // Error: already closed
+            if (isset($data['code']) && $data['code'] === 50103) {
+                Log::info('Provider2 request already closed', [
+                    'request_id' => $activation->request_id,
+                    'message' => $data['message'] ?? 'Already closed'
+                ]);
+                return ['success' => false, 'message' => 'Request already closed'];
+            }
+
+            // Other errors
+            Log::warning('Provider2 cancel unexpected response', [
+                'code' => $data['code'] ?? null,
+                'message' => $data['message'] ?? null,
+                'request_id' => $activation->request_id
+            ]);
+
             return ['success' => false, 'message' => $data['message'] ?? 'Failed to cancel activation'];
+
         } catch (\Exception $e) {
-            Log::error('Provider2 cancel error', ['error' => $e->getMessage(), 'request_id' => $activation->request_id]);
+            Log::error('Provider2 cancel error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request_id' => $activation->request_id
+            ]);
             return ['success' => false, 'message' => 'Error cancelling request'];
         }
     }

@@ -1284,6 +1284,102 @@ private function normalize5simServiceCode($serviceCode)
         }
     }
 
+    private function cancelSmsBus($activation)
+    {
+        $token = env('SMSBUS_TOKEN');
+
+        if (!$token) {
+            Log::error('Provider2 token not configured for cancellation');
+            return [
+                'success' => false,
+                'message' => 'Service token not configured'
+            ];
+        }
+
+        try {
+            Log::info('Provider2 cancellation request', [
+                'request_id' => $activation->request_id,
+                'activation_id' => $activation->id
+            ]);
+
+            $response = Http::timeout(15)
+                ->withOptions(['verify' => false])
+                ->get('https://sms-bus.com/api/control/cancel', [
+                    'token' => $token,
+                    'request_id' => $activation->request_id
+                ]);
+
+            Log::info('Provider2 cancel response received', [
+                'status' => $response->status(),
+                'successful' => $response->successful()
+            ]);
+
+            // Check if HTTP request failed
+            if ($response->failed()) {
+                Log::error('Provider2 cancel HTTP failed', [
+                    'http_status' => $response->status(),
+                    'body' => $response->body(),
+                    'request_id' => $activation->request_id
+                ]);
+
+                return [
+                    'success' => false,
+                    'message' => 'Service temporarily unavailable'
+                ];
+            }
+
+            $data = $response->json();
+
+            // Success: cancellation completed
+            if (isset($data['code']) && $data['code'] === 200) {
+                Log::info('Provider2 cancellation successful', [
+                    'request_id' => $activation->request_id,
+                    'activation_id' => $activation->id
+                ]);
+
+                return ['success' => true];
+            }
+
+            // Error: already closed
+            if (isset($data['code']) && $data['code'] === 50103) {
+                Log::info('Provider2 request already closed', [
+                    'request_id' => $activation->request_id,
+                    'message' => $data['message'] ?? 'Already closed'
+                ]);
+
+                return [
+                    'success' => false,
+                    'message' => 'Request already closed - cannot cancel'
+                ];
+            }
+
+            // Other API errors
+            Log::warning('Provider2 cancel unexpected response', [
+                'code' => $data['code'] ?? null,
+                'message' => $data['message'] ?? null,
+                'request_id' => $activation->request_id,
+                'full_response' => $data
+            ]);
+
+            return [
+                'success' => false,
+                'message' => $data['message'] ?? 'Failed to cancel activation'
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Provider2 cancel exception', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request_id' => $activation->request_id
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Error cancelling request'
+            ];
+        }
+    }
+
     // ==================== SMS-BUS METHODS (UNCHANGED) ====================
 
     public function showCountries($serviceId)
