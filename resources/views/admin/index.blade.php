@@ -570,17 +570,17 @@
                             <td><span class="type-tag">{{ $tx->type ?? '—' }}</span></td>
                             <td><span class="amt">₦{{ number_format($tx->amount ?? 0, 2) }}</span></td>
                             <td>
-                                transactions.forEach(tx => {
-                                    const s   = (tx.status || '').toLowerCase().trim();
-                                    const cls = ['success', 'completed', 'successful'].includes(s) ? 'ok'
-                                            : s.includes('pending') ? 'pnd'
-                                            : ['failed', 'fail', 'error', 'cancelled', 'canceled', 'expired'].includes(s) || s.includes('fail') ? 'no'
-                                            : 'ot';
-                                    const lbl = ['success', 'completed', 'successful'].includes(s) ? '✓ Success'
-                                            : s.includes('pending') ? '⏳ Pending'
-                                            : s.includes('fail') || ['cancelled','canceled','expired'].includes(s) ? '✗ Failed'
-                                            : '◆ ' + (tx.status || 'Unknown');
-                                });
+                                @php
+                                    $s = strtolower(trim($tx->status ?? ''));
+                                    $badgeClass = in_array($s, ['success','completed','successful']) ? 'ok'
+                                                : (str_contains($s, 'pending') ? 'pnd'
+                                                : (in_array($s, ['failed','fail','error','cancelled','canceled','expired']) || str_contains($s, 'fail') ? 'no'
+                                                : 'ot'));
+                                    $badgeLabel = in_array($s, ['success','completed','successful']) ? '✓ Success'
+                                                : (str_contains($s, 'pending') ? '⏳ Pending'
+                                                : (str_contains($s, 'fail') || in_array($s, ['cancelled','canceled','expired']) ? '✗ Failed'
+                                                : '◆ ' . ucfirst($tx->status ?? 'Unknown')));
+                                @endphp
                                 <span class="badge {{ $badgeClass }}">
                                     <span class="bd"></span>{{ $badgeLabel }}
                                 </span>
