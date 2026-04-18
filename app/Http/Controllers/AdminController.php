@@ -23,10 +23,12 @@ class AdminController extends Controller
     public function dashboard()
     {
         // Get paginated users with wallet relationship
-        $users = User::with('wallet')->latest()->paginate(15);
+        $usersPaginated = User::with('wallet')->latest()->paginate(15);
+        $users = $usersPaginated;
         
         // Get paginated transactions for display
-        $transactions = Transaction::with('user')->latest()->paginate(15);
+        $transactionsPaginated = Transaction::with('user')->latest()->paginate(15);
+        $transactions = $transactionsPaginated;
         
         // Get ALL transactions for stats calculations (not paginated)
         $allTransactions = Transaction::with('user')->latest()->get();
