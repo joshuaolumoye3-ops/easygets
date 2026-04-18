@@ -559,6 +559,12 @@
                 </thead>
                 <tbody>
                     @foreach($transactions as $tx)
+                    <tr>
+                        <td>{{ $tx->status }}</td>
+                        <td>{{ strtolower(trim($tx->status ?? '')) }}</td>
+                    </tr>
+                    @endforeach
+                    @foreach($transactions as $tx)
                     @php
                         $uname = $tx->user->username ?? 'N/A';
                         $ini   = strtoupper(substr($uname, 0, 1));
