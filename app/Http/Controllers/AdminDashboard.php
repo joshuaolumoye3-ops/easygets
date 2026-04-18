@@ -18,7 +18,7 @@ use App\Models\AdminTransaction;
 use App\Helpers\MoreThanPanelHelper;
 use Illuminate\Support\Facades\Auth;
 
-class AdminController extends Controller
+class AdminDashboard extends Controller
 {
     /**
      * Admin Dashboard — renamed from dashboard() to avoid conflict
