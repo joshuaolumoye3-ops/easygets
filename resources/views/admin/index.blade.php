@@ -521,7 +521,7 @@
         <div class="tc-head">
             <div class="tc-title">
                 <h3>Recent Transactions</h3>
-                <span class="pill">{{ $transactions->total() }}</span>
+                <span class="pill">{{ $transactions?->total() ?? 0 }}</span>
             </div>
             <div class="tc-ctrl">
                 <form class="filter-form" method="GET" action="{{ url()->current() }}">
@@ -547,7 +547,7 @@
         </div>
 
         <div class="t-scroll">
-            @if($transactions->count())
+            @if($transactions && count($transactions) > 0)
             <table>
                 <thead>
                     <tr>
@@ -560,56 +560,46 @@
                 </thead>
                 <tbody>
                     @foreach($transactions as $tx)
-                    @php
-                        // Safe user access
-                        $user = $tx->user;
-                        $uname = $user ? ($user->username ?? 'N/A') : 'N/A';
-                        $ini   = strtoupper(substr($uname, 0, 1));
-                        
-                        // Status normalization
-                        $rawStatus = trim($tx->status ?? '');
-                        $statusLower = strtolower($rawStatus);
-                        
-                        // Determine badge class and label
-                        if (in_array($statusLower, ['success', 'completed'])) {
-                            $cls = 'ok';
-                            $lbl = '✓ Success';
-                        } elseif (str_contains($statusLower, 'pending')) {
-                            $cls = 'pnd';
-                            $lbl = '⏳ Pending';
-                        } elseif (str_contains($statusLower, 'fail')) {
-                            $cls = 'no';
-                            $lbl = '✗ Failed';
-                        } else {
-                            $cls = 'ot';
-                            $lbl = '◆ ' . ucfirst($rawStatus);
-                        }
-                    @endphp
-                    <tr>
-                        <td>
-                            <div class="u-cell">
-                                <div class="u-av">{{ $ini }}</div>
-                                <div class="u-name">{{ $uname }}</div>
-                            </div>
-                        </td>
-                        <td><span class="type-tag">{{ $tx->type ?? '—' }}</span></td>
-                        <td><span class="amt">₦{{ number_format($tx->amount ?? 0, 2) }}</span></td>
-                        <td>
-                            <span class="badge {{ $cls }}">
-                                <span class="bd"></span>{{ $lbl }}
-                            </span>
-                        </td>
-                        <td style="color:var(--t3);font-size:12px;">
-                            {{ $tx->created_at ? $tx->created_at->format('d M Y') : '—' }}
-                        </td>
-                    </tr>
+                        <tr>
+                            <td>
+                                <div class="u-cell">
+                                    <div class="u-av">{{ strtoupper(substr($tx->user?->username ?? 'N', 0, 1)) }}</div>
+                                    <div class="u-name">{{ $tx->user?->username ?? 'N/A' }}</div>
+                                </div>
+                            </td>
+                            <td><span class="type-tag">{{ $tx->type ?? '—' }}</span></td>
+                            <td><span class="amt">₦{{ number_format($tx->amount ?? 0, 2) }}</span></td>
+                            <td>
+                                @php
+                                    $status = strtolower(trim($tx->status ?? ''));
+                                    $badgeClass = match(true) {
+                                        in_array($status, ['success', 'completed']) => 'ok',
+                                        str_contains($status, 'pending') => 'pnd',
+                                        str_contains($status, 'fail') => 'no',
+                                        default => 'ot'
+                                    };
+                                    $badgeLabel = match(true) {
+                                        in_array($status, ['success', 'completed']) => '✓ Success',
+                                        str_contains($status, 'pending') => '⏳ Pending',
+                                        str_contains($status, 'fail') => '✗ Failed',
+                                        default => '◆ ' . ucfirst($tx->status ?? 'Unknown')
+                                    };
+                                @endphp
+                                <span class="badge {{ $badgeClass }}">
+                                    <span class="bd"></span>{{ $badgeLabel }}
+                                </span>
+                            </td>
+                            <td style="color:var(--t3);font-size:12px;">
+                                {{ $tx->created_at?->format('d M Y') ?? '—' }}
+                            </td>
+                        </tr>
                     @endforeach
                 </tbody>
             </table>
             @else
             <div class="empty-st">
                 <div class="ei">🔍</div>
-                <p>No transactions match your search.</p>
+                <p>No transactions to display.</p>
             </div>
             @endif
         </div>
