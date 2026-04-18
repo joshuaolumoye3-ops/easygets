@@ -606,7 +606,7 @@
                 Showing <b>{{ $transactions->firstItem() }}–{{ $transactions->lastItem() }}</b> of <b>{{ $transactions->total() }}</b>
             </div>
             <div>
-                {{ $transactions->appends(request()->only(['u_search','u_pp','tx_search','tx_pp']))->links('vendor.pagination.custom') }}
+                {{ $transactions->appends(request()->only(['u_search','u_pp','tx_search','tx_pp']))->links('partials.admin.custom') }}
             </div>
         </div>
         @endif
