@@ -290,54 +290,117 @@
         margin-top: 20px;
     }
     
-    /* Pagination Styles */
+    /* Pagination Styles - Premium Design */
     .pagination {
         display: flex;
-        gap: 6px;
+        gap: 8px;
         align-items: center;
         justify-content: center;
         flex-wrap: wrap;
+        padding: 8px;
+    }
+    
+    .pagination li {
+        list-style: none;
     }
     
     .pagination a, .pagination span {
-        padding: 8px 12px;
-        border: 1px solid #475569;
-        border-radius: 8px;
+        padding: 10px 14px;
+        border: 1.5px solid #475569;
+        border-radius: 10px;
         font-size: 13px;
         font-weight: 600;
         color: #cbd5e1;
-        background-color: #334155;
-        transition: all 0.3s ease;
+        background: linear-gradient(135deg, #334155 0%, #3a4556 100%);
+        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
         cursor: pointer;
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        min-width: 40px;
+        height: 40px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .pagination a::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        transition: left 0.5s ease;
+    }
+    
+    .pagination a:hover::before {
+        left: 100%;
     }
     
     .pagination a:hover {
-        background-color: #3b82f6;
-        border-color: #3b82f6;
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        border-color: #2563eb;
         color: white;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4), 0 1px 3px rgba(0,0,0,0.3);
     }
     
     .pagination .active span {
-        background-color: #3b82f6;
-        border-color: #3b82f6;
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        border-color: #2563eb;
         color: white;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4), inset 0 1px 2px rgba(255,255,255,0.2);
+        transform: scale(1.05);
     }
     
     .pagination .disabled span {
-        opacity: 0.5;
+        opacity: 0.4;
         cursor: not-allowed;
         color: #64748b;
+        background: linear-gradient(135deg, #1e293b 0%, #2a3542 100%);
+        border-color: #3a4556;
     }
     
     .pagination .disabled span:hover {
-        background-color: #334155;
-        border-color: #475569;
+        background: linear-gradient(135deg, #1e293b 0%, #2a3542 100%);
+        border-color: #3a4556;
         transform: none;
+        box-shadow: none;
+    }
+    
+    /* Arrow styling */
+    .pagination a[rel="prev"]::before,
+    .pagination a[rel="next"]::before {
+        content: '';
+    }
+    
+    .pagination a[rel="prev"]::after {
+        content: '←';
+        margin-right: 4px;
+    }
+    
+    .pagination a[rel="next"]::after {
+        content: '→';
+        margin-left: 4px;
+    }
+    
+    /* Pagination container */
+    .pagination-wrapper {
+        padding: 24px 28px;
+        border-top: 1px solid #334155;
+        background: linear-gradient(180deg, rgba(15,23,42,0.5) 0%, rgba(20,29,48,0.3) 100%);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    /* Info text */
+    .pagination ~ .pagination-info {
+        font-size: 12px;
+        color: #94a3b8;
+        text-align: center;
+        padding-top: 12px;
     }
     
     @media (max-width: 768px) {
@@ -472,7 +535,7 @@
                 </table>
             </div>
             <!-- Users Pagination -->
-            <div style="padding: 20px 28px; border-top: 1px solid #334155; display: flex; justify-content: center;">
+            <div class="pagination-wrapper">
                 {{ $users->links('pagination::tailwind') }}
             </div>
         </div>
@@ -523,7 +586,7 @@
                 </table>
             </div>
             <!-- Transactions Pagination -->
-            <div style="padding: 20px 28px; border-top: 1px solid #334155; display: flex; justify-content: center;">
+            <div class="pagination-wrapper">
                 {{ $transactions->links('pagination::tailwind') }}
             </div>
         </div>
