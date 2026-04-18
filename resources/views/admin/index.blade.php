@@ -333,6 +333,7 @@
     .s-btn.rd { background: var(--red);    color: #fff; } .s-btn.rd:hover { background: #dc2626; }
 
     .m-txns { overflow-x: auto; }
+    .m-txns table { table-layout: auto; }  /* override the global fixed layout */
     .m-txns table th { background: var(--bg-base); }
     .m-txns table td, .m-txns table th { padding: 9px 13px; font-size: 12px; }
 
@@ -550,20 +551,20 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width:200px;">User</th>
-                        <th>Type</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                        <th>Date</th>
+                        <th style="width:180px;">User</th>
+                        <th style="width:140px;">Type</th>
+                        <th style="width:130px;">Amount</th>
+                        <th style="width:130px;">Status</th>
+                        <th style="width:110px;">Date</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($transactions as $tx)
+                    {{-- @foreach($transactions as $tx)
                     <tr>
                         <td>{{ $tx->status }}</td>
                         <td>{{ strtolower(trim($tx->status ?? '')) }}</td>
                     </tr>
-                    @endforeach
+                    @endforeach --}}
                     @foreach($transactions as $tx)
                     @php
                         $uname = $tx->user->username ?? 'N/A';
