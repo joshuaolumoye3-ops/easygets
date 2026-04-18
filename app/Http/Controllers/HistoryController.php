@@ -51,7 +51,7 @@ class HistoryController extends Controller
                     'raw_status' => $activation->status ?? '',
                     'sms_code' => $activation->sms_code ?? '',
                     'date' => $createdAt->format('M d, Y h:i A'),
-                    'provider' => strtolower($activation->channel ?? 'smsbus'),
+                    'provider' => $this->normalizeProvider(strtolower($activation->channel ?? 'provider2')),
                     'expires_at' => $activation->expires_at ?? null,
                     'operator_name' => $activation->operator_name ?? '',
                 ];
@@ -369,10 +369,17 @@ class HistoryController extends Controller
             }
 
             // Fetch SMS based on provider (channel field)
-            $provider = strtolower($activation->channel ?? 'smsbus');
+            $provider = strtolower($activation->channel ?? 'provider2');
+            // Normalize old provider names for backwards compatibility
             if ($provider === 'sms-bus' || $provider === 'smsbus') {
-                return $this->fetchSmsBus($activation);
+                $provider = 'provider2';
             } elseif ($provider === '5sim') {
+                $provider = 'provider1';
+            }
+            
+            if ($provider === 'provider2') {
+                return $this->fetchSmsBus($activation);
+            } elseif ($provider === 'provider1') {
                 return $this->fetchSms5sim($activation);
             }
 
@@ -580,7 +587,7 @@ class HistoryController extends Controller
             $status = $data['status'] ?? 'PENDING';
             
             if ($status === 'FINISHED' || $status === 'RECEIVED') {
-                // Try to get code again even if status is RECEIVED
+                // Try to get code only if SMS data exists
                 if (isset($data['sms']) && is_array($data['sms']) && count($data['sms']) > 0) {
                     if (isset($data['sms'][0]['code'])) {
                         $code = $data['sms'][0]['code'];
@@ -590,8 +597,8 @@ class HistoryController extends Controller
                         return response()->json(['success' => true, 'sms_code' => $code, 'status' => 'completed']);
                     }
                 }
-                DB::table('transactions')->where('id', $activation->id)->update(['status' => 'completed', 'updated_at' => now()]);
-                return response()->json(['success' => false, 'status' => 'completed', 'message' => 'Activation finished']);
+                // If status is FINISHED/RECEIVED but no SMS code, still waiting
+                return response()->json(['success' => false, 'status' => 'pending', 'message' => 'Activation received, waiting for SMS']);
             } elseif ($status === 'CANCELED' || $status === 'TIMEOUT') {
                 DB::table('transactions')->where('id', $activation->id)->update(['status' => 'expired', 'updated_at' => now()]);
                 return response()->json(['success' => false, 'status' => 'expired', 'message' => 'Activation expired']);
@@ -636,10 +643,17 @@ class HistoryController extends Controller
                 ], 400);
             }
 
-            $provider = strtolower($activation->channel ?? 'smsbus');
+            $provider = strtolower($activation->channel ?? 'provider2');
+            // Normalize old provider names for backwards compatibility
             if ($provider === 'sms-bus' || $provider === 'smsbus') {
-                $result = $this->cancelSmsBus($activation);
+                $provider = 'provider2';
             } elseif ($provider === '5sim') {
+                $provider = 'provider1';
+            }
+            
+            if ($provider === 'provider2') {
+                $result = $this->cancelSmsBus($activation);
+            } elseif ($provider === 'provider1') {
                 $result = $this->cancel5sim($activation);
             } else {
                 return response()->json(['success' => false, 'message' => 'Unknown provider'], 400);
@@ -844,5 +858,19 @@ class HistoryController extends Controller
         ];
 
         return $labels[$status] ?? ucfirst($status);
+    }
+
+    private function normalizeProvider($provider)
+    {
+        // Map old provider names to new ones for backwards compatibility
+        $provider = strtolower($provider ?? 'provider2');
+        
+        if ($provider === 'sms-bus' || $provider === 'smsbus') {
+            return 'provider2';
+        } elseif ($provider === '5sim') {
+            return 'provider1';
+        }
+        
+        return $provider;
     }
 }

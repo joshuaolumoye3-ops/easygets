@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Countries - 5sim')
+@section('title', 'Countries - Provider 1')
 
 @section('content')
 <div class="bg-gray-50 min-h-screen font-[Inter]">
@@ -60,7 +60,7 @@
             <h2 class="text-xl font-bold text-gray-800 mb-4">Available Countries</h2>
             <div id="countryList" class="space-y-3">
                 @forelse ($countries as $country)
-                    <a href="{{ route('operators.5sim', ['serviceCode' => $serviceCode, 'country' => $country['name']]) }}" 
+                    <a href="{{ route('operators.provider1', ['serviceCode' => $serviceCode, 'country' => $country['name']]) }}" 
                        class="block group country-item" data-country-name="{{ strtolower($country['name']) }}">
                         <div class="flex items-center justify-between p-4 bg-white border-2 border-gray-100 rounded-xl hover:border-blue-500 hover:bg-blue-50/50 transition-all duration-200 group-hover:shadow-md">
                             <div class="flex items-center space-x-4 flex-1">

@@ -64,8 +64,8 @@
                 <p class="text-lg font-semibold text-gray-900">{{ $purchase['country_name'] ?? 'Unknown Country' }}</p>
             </div>
             
-            <!-- Provider Info (if 5sim) -->
-            @if(isset($purchase['provider']) && $purchase['provider'] === '5sim')
+            <!-- Provider Info (if provider1) -->
+            @if(isset($purchase['provider']) && ($purchase['provider'] === 'provider1' || $purchase['provider'] === '5sim'))
                 @if(isset($purchase['operator_name']))
                     <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-4">
                         <p class="text-xs text-green-700 font-medium uppercase tracking-wide mb-1">Operator</p>
@@ -94,7 +94,11 @@
                 
                 @if(isset($purchase['provider']))
                     <span class="text-xs text-green-700 font-medium uppercase tracking-wide">
-                        {{ $purchase['provider'] === '5sim' ? 'Provider 1' : 'Provider 2' }}
+                        @if(in_array($purchase['provider'], ['provider1', '5sim']))
+                            Provider 1
+                        @else
+                            Provider 2
+                        @endif
                     </span>
                 @endif
             </div>

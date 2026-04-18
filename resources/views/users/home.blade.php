@@ -234,7 +234,7 @@
 
                 <div class="p-6 space-y-4">
                     {{-- Provider 1: 5sim.net --}}
-                    <button onclick="selectProvider('5sim')"
+                    <button onclick="selectProvider('provider1')"
                             class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-200">
                         <div class="flex items-center space-x-4">
                             <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:shadow-lg transition">
@@ -254,7 +254,7 @@
                     </button>
 
                     {{-- Provider 2: SMS-Bus --}}
-                    <button onclick="selectProvider('smsbus')"
+                    <button onclick="selectProvider('provider2')"
                             class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all duration-200">
                         <div class="flex items-center space-x-4">
                             <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md group-hover:shadow-lg transition">
@@ -491,10 +491,10 @@ function closeProviderModal() {
 }
 
 function selectProvider(provider) {
-    if (provider === '5sim') {
-        window.location.href = `/app/services/${selectedServiceCode}/5sim/countries`;
+    if (provider === 'provider1') {
+        window.location.href = `/app/services/${selectedServiceCode}/provider1/countries`;
     } else {
-        window.location.href = `/app/services/${selectedServiceId}/countries`;
+        window.location.href = `/app/services/${selectedServiceId}/countries-provider2`;
     }
 }
 

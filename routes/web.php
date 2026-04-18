@@ -142,39 +142,39 @@ Route::middleware('auth')->group(function () {
     // Services list
     Route::get('/services', [CountryController::class, 'showServices'])->name('services.list');
 
-    // ==================== 5SIM PROVIDER ROUTES ====================
+    // ==================== PROVIDER1 (5sim) PROVIDER ROUTES ====================
     // Step 1: Show countries for a service
-    Route::get('/services/{serviceCode}/5sim/countries', [CountryController::class, 'showCountries5sim'])
-        ->name('services.5sim.countries');
+    Route::get('/services/{serviceCode}/provider1/countries', [CountryController::class, 'showCountries5sim'])
+        ->name('services.provider1.countries');
 
-    Route::get('/services/{serviceCode}/countries-5sim', [CountryController::class, 'showCountries5sim'])->name('countries.5sim');
-    Route::get('/services/{serviceCode}/countries-5sim/{country}/operators', [CountryController::class, 'showOperators5sim'])->name('operators.5sim');
-    Route::post('/prepare-purchase-5sim', [CountryController::class, 'preparePurchase5sim'])->name('prepare.purchase.5sim');
+    Route::get('/services/{serviceCode}/countries-provider1', [CountryController::class, 'showCountries5sim'])->name('countries.provider1');
+    Route::get('/services/{serviceCode}/countries-provider1/{country}/operators', [CountryController::class, 'showOperators5sim'])->name('operators.provider1');
+    Route::post('/prepare-purchase-provider1', [CountryController::class, 'preparePurchase5sim'])->name('prepare.purchase.provider1');
 
     // Step 2: Show operators for a country
-    Route::get('/services/{serviceCode}/5sim/{country}/operators', [CountryController::class, 'showOperators5sim'])
-        ->name('services.5sim.operators');
+    Route::get('/services/{serviceCode}/provider1/{country}/operators', [CountryController::class, 'showOperators5sim'])
+        ->name('services.provider1.operators');
 
     // Step 3: Prepare purchase (creates session)
-    Route::post('/prepare-purchase/5sim', [CountryController::class, 'preparePurchase5sim'])
-        ->name('prepare.purchase.5sim')
+    Route::post('/prepare-purchase/provider1', [CountryController::class, 'preparePurchase5sim'])
+        ->name('prepare.purchase.provider1')
         ->middleware('auth');
 
-    // ==================== SMS-BUS PROVIDER ROUTES ====================
+    // ==================== PROVIDER2 (SMS-BUS) PROVIDER ROUTES ====================
     // Step 1: Show countries for a service
-    Route::get('/services/{serviceId}/countries', [CountryController::class, 'showCountries'])
-        ->name('services.countries');
+    Route::get('/services/{serviceId}/countries-provider2', [CountryController::class, 'showCountries'])
+        ->name('services.provider2.countries');
 
     // For AJAX loading (optional)
-    Route::get('/services/{serviceId}/countries/load', [CountryController::class, 'showCountries']);
+    Route::get('/services/{serviceId}/countries-provider2/load', [CountryController::class, 'showCountries']);
 
     // Step 2: Get prices for a country
-    Route::get('/services/{serviceId}/countries/{countryId}/prices', [CountryController::class, 'getPrices'])
-        ->name('countries.prices');
+    Route::get('/services/{serviceId}/countries-provider2/{countryId}/prices', [CountryController::class, 'getPrices'])
+        ->name('countries.provider2.prices');
 
     // Step 3: Prepare purchase (creates session)
-    Route::post('/prepare-purchase', [CountryController::class, 'preparePurchase'])
-        ->name('prepare.purchase')
+    Route::post('/prepare-purchase-provider2', [CountryController::class, 'preparePurchase'])
+        ->name('prepare.purchase.provider2')
         ->middleware('auth');
 
     // ==================== COMMON ROUTES (BOTH PROVIDERS) ====================

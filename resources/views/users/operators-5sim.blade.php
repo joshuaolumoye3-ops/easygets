@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Select Operator - 5sim')
+@section('title', 'Select Operator - Provider 1')
 
 @section('content')
 <div class="bg-gray-50 min-h-screen font-[Inter]">
@@ -8,7 +8,7 @@
 
         <!-- Header -->
         <div class="relative flex items-center justify-center mb-6">
-            <a href="{{ route('countries.5sim', ['serviceCode' => $serviceCode]) }}" 
+            <a href="{{ route('countries.provider1', ['serviceCode' => $serviceCode]) }}" 
                class="absolute left-0 text-gray-500 hover:text-gray-700">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
@@ -108,7 +108,7 @@
                     </svg>
                     <p class="text-gray-500 font-medium mb-2">No operators available</p>
                     <p class="text-sm text-gray-400 mb-4">Please try another country or service</p>
-                    <a href="{{ route('countries.5sim', ['serviceCode' => $serviceCode]) }}" 
+                    <a href="{{ route('countries.provider1', ['serviceCode' => $serviceCode]) }}" 
                        class="inline-block px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition">
                         ← Back to countries
                     </a>
@@ -176,7 +176,7 @@
 </div>
 
 <!-- Hidden Form -->
-<form id="purchaseForm" action="{{ route('prepare.purchase.5sim') }}" method="POST" style="display: none;">
+<form id="purchaseForm" action="{{ route('prepare.purchase.provider1') }}" method="POST" style="display: none;">
     @csrf
     <input type="hidden" name="service" value="{{ $serviceCode }}">
     <input type="hidden" name="country" value="{{ $country }}">
