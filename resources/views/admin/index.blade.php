@@ -92,12 +92,13 @@
     .sc-ico.bl { background: var(--accent-d); } .sc-ico.gr { background: var(--green-d); } .sc-ico.am { background: var(--amber-d); }
 
     /* ─── Table Card ─────────────────────────── */
-    .tc { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; margin-bottom: 22px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: all .3s ease; }
+    .tc { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; margin-bottom: 22px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: all .3s ease; min-height: 200px; display: flex; flex-direction: column; }
     .tc:hover { border-color: var(--border-hi); box-shadow: 0 4px 16px rgba(59,130,246,0.1); }
     .tc-head {
         padding: 20px 22px; border-bottom: 1.5px solid var(--border);
         display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
         background: linear-gradient(135deg, rgba(59,130,246,0.05) 0%, rgba(139,92,246,0.02) 100%);
+        flex-shrink: 0;
     }
     .tc-title { display: flex; align-items: center; gap: 12px; }
     .tc-title h3 { font-size: 16px; font-weight: 700; color: var(--t1); letter-spacing: -0.3px; }
@@ -122,13 +123,58 @@
     .pp-sel:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-d); }
 
     /* Table */
-    .t-scroll { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; }
+    .t-scroll { 
+        overflow-x: auto; 
+        position: relative; 
+        flex: 1;
+        display: block;
+        width: 100%;
+        min-height: 200px;
+    }
+    table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        table-layout: auto;
+        margin: 0;
+        padding: 0;
+    }
     thead tr { background: var(--bg-surface); }
-    th { padding: 11px 16px; text-align: left; font-size: 10px; font-weight: 700; color: var(--t3); text-transform: uppercase; letter-spacing: .8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-    td { padding: 14px 16px; border-bottom: 1px solid rgba(80,130,220,0.06); font-size: 13px; color: var(--t1); vertical-align: middle; }
-    tbody tr { transition: all .15s ease; background: transparent; }
-    tbody tr:hover { background: linear-gradient(90deg, var(--accent-d) 0%, transparent 100%); border-left: 3px solid var(--accent); }
+    th { 
+        padding: 11px 16px; 
+        text-align: left; 
+        font-size: 10px; 
+        font-weight: 700; 
+        color: var(--t3); 
+        text-transform: uppercase; 
+        letter-spacing: .8px; 
+        border-bottom: 1px solid var(--border); 
+        white-space: nowrap; 
+        position: relative; 
+        z-index: 1; 
+    }
+    td { 
+        padding: 14px 16px; 
+        border-bottom: 1px solid rgba(80,130,220,0.06); 
+        font-size: 13px; 
+        color: var(--t1); 
+        vertical-align: middle; 
+        position: relative;
+        word-wrap: break-word;
+    }
+    tbody { 
+        display: table-row-group;
+        visibility: visible;
+        opacity: 1;
+    }
+    tbody tr { 
+        transition: all .15s ease; 
+        background: transparent;
+        display: table-row;
+    }
+    tbody tr:hover { 
+        background: linear-gradient(90deg, var(--accent-d) 0%, transparent 100%); 
+        border-left: 3px solid var(--accent); 
+    }
     tbody tr:last-child td { border-bottom: none; }
 
     .u-cell { display: flex; align-items: center; gap: 10px; }
@@ -370,7 +416,7 @@
             <div class="sc-row">
                 <div>
                     <div class="sc-lbl">Total Users</div>
-                    <div class="sc-val">{{ $users->count() }}</div>
+                    <div class="sc-val">{{ $stats['total_users'] ?? $users->total() }}</div>
                     <span class="sc-chip">↑ 3.5%</span>
                 </div>
                 <div class="sc-ico bl">👥</div>
@@ -536,8 +582,10 @@ const TXS   = @json($transactions->getCollection()?->toArray() ?? []);
 const BASE  = "{{ url('/') }}";
 
 console.log('📊 Dashboard Data Loaded:', {users: USERS.length, transactions: TXS.length});
-</script>
-</script>
+
+// Store table instances globally to prevent garbage collection
+window.tableInstances = {};
+
 
 <script>
 /* ══════════════════════════════════════════════
@@ -545,8 +593,11 @@ console.log('📊 Dashboard Data Loaded:', {users: USERS.length, transactions: T
 ══════════════════════════════════════════════ */
 class Table {
     constructor(cfg) {
-        this.all   = cfg.data;
-        this.shown = cfg.data;
+        // Store data as copies to prevent reference issues
+        this.all   = [...(cfg.data || [])];
+        this.shown = [...this.all];
+        this.original = cfg.data; // Keep original reference
+        
         this.p     = 1;
         this.pp    = cfg.perPage || 10;
         this.tbody = document.getElementById(cfg.tbody);
@@ -556,30 +607,67 @@ class Table {
         this.empty = document.getElementById(cfg.empty);
         this.pill  = document.getElementById(cfg.pill);
         this.row   = cfg.row;
+        
+        // Validate elements exist
+        if (!this.tbody || !this.table || !this.info || !this.btns) {
+            console.error('❌ Missing DOM elements for table:', cfg);
+            return;
+        }
 
-        document.getElementById(cfg.ppSel).addEventListener('change', e => {
-            this.pp = +e.target.value; this.p = 1; this._render();
-        });
-        document.getElementById(cfg.filter).addEventListener('input', e => {
-            const q = e.target.value.toLowerCase().trim();
-            this.shown = q ? this.all.filter(r => JSON.stringify(r).toLowerCase().includes(q)) : this.all;
-            if (this.pill) this.pill.textContent = this.shown.length;
-            this.p = 1; this._render();
-        });
+        // Bind event listeners
+        const ppSel = document.getElementById(cfg.ppSel);
+        const filter = document.getElementById(cfg.filter);
+        
+        if (ppSel) {
+            ppSel.addEventListener('change', e => {
+                this.pp = +e.target.value; 
+                this.p = 1; 
+                this._render();
+            });
+        }
+        
+        if (filter) {
+            filter.addEventListener('input', e => {
+                const q = e.target.value.toLowerCase().trim();
+                // Use fresh copy from original
+                this.shown = q 
+                    ? this.original.filter(r => JSON.stringify(r).toLowerCase().includes(q)) 
+                    : [...this.original];
+                    
+                if (this.pill) this.pill.textContent = this.shown.length;
+                this.p = 1; 
+                this._render();
+            });
+        }
+        
+        // Initial render
+        console.log('📋 Table initialized:', {rows: this.all.length, pp: this.pp});
         this._render();
     }
 
     _render() {
+        if (!this.tbody) return;
+        
         const tot  = this.shown.length;
         const pgs  = Math.max(1, Math.ceil(tot / this.pp));
+        
         if (this.p > pgs) this.p = pgs;
+        if (this.p < 1) this.p = 1;
+        
         const s    = (this.p - 1) * this.pp;
         const rows = this.shown.slice(s, s + this.pp);
 
         const empty = tot === 0;
         this.table.style.display = empty ? 'none' : '';
         this.empty.style.display = empty ? '' : 'none';
-        this.tbody.innerHTML = rows.map(r => this.row(r)).join('');
+        
+        // Render rows safely
+        try {
+            this.tbody.innerHTML = rows.map(r => this.row(r)).join('');
+        } catch(e) {
+            console.error('❌ Error rendering rows:', e);
+            this.tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:red;">Error rendering data</td></tr>';
+        }
 
         this.info.innerHTML = empty ? ''
             : `Showing <b>${s+1}–${Math.min(s+this.pp,tot)}</b> of <b>${tot}</b>`;
@@ -588,35 +676,71 @@ class Table {
     }
 
     _pgs(total) {
+        if (!this.btns) return;
+        
         this.btns.innerHTML = '';
-        this._btn('‹', this.p === 1, () => { this.p--; this._render(); });
+        this._btn('‹', this.p === 1, () => { 
+            this.p--; 
+            this._render(); 
+        });
+        
         const p = this.p;
         let ns = [];
-        if (total <= 7) ns = Array.from({length:total},(_,i)=>i+1);
-        else {
+        
+        if (total <= 7) {
+            ns = Array.from({length:total},(_,i)=>i+1);
+        } else {
             ns = [1];
             if (p > 3) ns.push('…');
             for (let i = Math.max(2,p-1); i <= Math.min(total-1,p+1); i++) ns.push(i);
             if (p < total-2) ns.push('…');
             ns.push(total);
         }
+        
         ns.forEach(n => {
-            if (n==='…') { const d=document.createElement('span'); d.className='pg-dots'; d.textContent='…'; this.btns.appendChild(d); return; }
+            if (n==='…') { 
+                const d=document.createElement('span'); 
+                d.className='pg-dots'; 
+                d.textContent='…'; 
+                this.btns.appendChild(d); 
+                return; 
+            }
             const b=document.createElement('button');
             b.className='pg-btn'+(n===p?' on':'');
             b.textContent=n;
-            if (n!==p) b.addEventListener('click',()=>{ this.p=n; this._render(); });
+            if (n!==p) {
+                b.addEventListener('click',()=>{ 
+                    this.p=n; 
+                    this._render(); 
+                });
+            }
             this.btns.appendChild(b);
         });
-        this._btn('›', this.p === total, () => { this.p++; this._render(); });
+        
+        this._btn('›', this.p === total, () => { 
+            this.p++; 
+            this._render(); 
+        });
     }
 
     _btn(lbl, disabled, cb) {
         const b = document.createElement('button');
         b.className = 'pg-btn' + (disabled ? ' off' : '');
         b.innerHTML = lbl;
-        if (!disabled) b.addEventListener('click', cb);
+        if (!disabled) {
+            b.addEventListener('click', cb);
+        }
         this.btns.appendChild(b);
+    }
+    
+    // Public method to refresh data
+    refresh(newData) {
+        this.all = [...newData];
+        this.original = newData;
+        this.shown = [...this.all];
+        this.p = 1;
+        this._render();
+        console.log('🔄 Table refreshed with', newData.length, 'rows');
     }
 }
 
@@ -654,8 +778,54 @@ function txRow(tx) {
 }
 
 /* ── init ─────────────────────────────────── */
-new Table({ data:USERS, table:'uTable',  tbody:'uBody',  info:'uInfo',  btns:'uBtns',  empty:'uEmpty',  pill:'uPill',  ppSel:'uPP',  filter:'uFilter',  row:uRow,  perPage:10 });
-new Table({ data:TXS,   table:'txTable', tbody:'txBody', info:'txInfo', btns:'txBtns', empty:'txEmpty', pill:'txPill', ppSel:'txPP', filter:'txFilter', row:txRow, perPage:10 });
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        if (!USERS || !TXS) {
+            console.error('❌ Data not loaded properly');
+            return;
+        }
+        
+        window.tableInstances.users = new Table({ 
+            data:USERS, 
+            table:'uTable',  
+            tbody:'uBody',  
+            info:'uInfo',  
+            btns:'uBtns',  
+            empty:'uEmpty',  
+            pill:'uPill',  
+            ppSel:'uPP',  
+            filter:'uFilter',  
+            row:uRow,  
+            perPage:15
+        });
+        
+        window.tableInstances.transactions = new Table({ 
+            data:TXS,   
+            table:'txTable', 
+            tbody:'txBody', 
+            info:'txInfo', 
+            btns:'txBtns', 
+            empty:'txEmpty', 
+            pill:'txPill', 
+            ppSel:'txPP', 
+            filter:'txFilter', 
+            row:txRow, 
+            perPage:15
+        });
+        
+        console.log('✅ Tables initialized successfully:', window.tableInstances);
+    } catch(e) {
+        console.error('❌ Table initialization error:', e);
+    }
+});
+
+// Page visibility handler - refresh data when user returns to tab
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && window.tableInstances.users) {
+        console.log('👁 Page visible again, data persisted');
+        // Tables maintain data in memory, so they'll still be there
+    }
+});
 
 /* ══════════════════════════════════════════════
    Modal
