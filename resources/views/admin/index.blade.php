@@ -534,23 +534,10 @@
 (function () {
     'use strict';
 
-    /* ════════════════════════════════════════════════════════════════
-       DATA — read from inert <script type="application/json"> tags.
-
-       WHY NOT `const USERS = @json(...)`?
-       When Blade writes @json directly into a JS const inside a <script>
-       block, the browser parses the entire script as JS during HTML parse.
-       Large payloads (many users/transactions) cause the parser to schedule
-       a style-recalculation mid-block. On Blink/WebKit this style-recalc
-       runs BEFORE the subsequent DOM writes (tbody.innerHTML) are committed
-       to the render tree, so those writes are lost and the tbody appears
-       blank after any scroll or touch event.
-
-       Storing JSON in <script type="application/json"> tags is inert —
-       the browser treats them as opaque text nodes, never parses them as
-       JS, and never schedules a style-recalc from them. We read them once
-       with JSON.parse(el.textContent) and the data is safely in memory.
-    ════════════════════════════════════════════════════════════════ */
+    /* Data is read from inert script[type="application/json"] tags injected
+       above. This avoids Blade writing large JSON payloads directly into a
+       JS const, which can trigger a Blink/WebKit style-recalculation that
+       discards pending tbody writes before paint commit. */
     const USERS = Object.freeze(
         JSON.parse(document.getElementById('_users_json').textContent)
     );
@@ -823,14 +810,14 @@
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             const { user, transactions } = await r.json();
 
-            document.getElementById('mTitle').textContent = `@${user.username || 'User'}`;
+            document.getElementById('mTitle').textContent = '\u0040' + (user.username || 'User');
 
             /* Info tiles — build as DOM nodes */
             const infoGrid = document.getElementById('mInfo');
             const igFrag   = document.createDocumentFragment();
             const tiles = [
                 ['Full Name',      (user.first_name || '') + ' ' + (user.last_name || ''), null],
-                ['Username',       '@' + (user.username || ''),                            null],
+                ['Username',       '\u0040' + (user.username || ''),                       null],
                 ['Email',          user.email || '—',                                      null],
                 ['Phone',          user.phone_number || '—',                               null],
                 ['Wallet Balance', '₦' + ngn(user.wallet?.balance),                        'g'],
