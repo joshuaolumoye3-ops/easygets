@@ -22,6 +22,7 @@ use App\Http\Controllers\FlutterwaveWebhookController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\SocialBoostController;
 use App\Http\Controllers\VirtualAccountController;
+use App\Http\Controllers\AdminDashboard;
 use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\OtpController;
 
@@ -253,7 +254,7 @@ Route::post('/admin/login', [AdminAuthController::class, 'login'])->name('admin.
 Route::post('/admin/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
 
 Route::middleware(['admin'])->prefix('admin')->group(function () {
-    Route::get('/', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/', [AdminDashboard::class, 'index'])->name('admin.dashboard');
     Route::get('/users/{id}', [AdminController::class, 'getUserDetails']);
     Route::post('/users/{id}/update-password', [AdminController::class, 'updateUserPassword'])->name('admin.users.updatePassword');
     Route::post('/users/{id}/update-pin', [AdminController::class, 'updateUserPin'])->name('admin.users.updatePin');
