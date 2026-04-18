@@ -290,6 +290,56 @@
         margin-top: 20px;
     }
     
+    /* Pagination Styles */
+    .pagination {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .pagination a, .pagination span {
+        padding: 8px 12px;
+        border: 1px solid #475569;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #cbd5e1;
+        background-color: #334155;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .pagination a:hover {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+    
+    .pagination .active span {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+        color: white;
+    }
+    
+    .pagination .disabled span {
+        opacity: 0.5;
+        cursor: not-allowed;
+        color: #64748b;
+    }
+    
+    .pagination .disabled span:hover {
+        background-color: #334155;
+        border-color: #475569;
+        transform: none;
+    }
+    
     @media (max-width: 768px) {
         .header-bar { flex-direction: column; align-items: flex-start; }
         .search-box { width: 100%; }
@@ -390,7 +440,7 @@
         <div class="table-card">
             <div class="table-header">
                 <h3>Recent Users</h3>
-                <span class="table-badge">{{ $users->count() }} total</span>
+                <span class="table-badge">{{ $users->total() }} total</span>
             </div>
             <div class="table-wrapper">
                 <table>
@@ -404,7 +454,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($users->take(10) as $user)
+                        @foreach($users as $user)
                         <tr>
                             <td>
                                 <div class="user-cell">
@@ -421,13 +471,17 @@
                     </tbody>
                 </table>
             </div>
+            <!-- Users Pagination -->
+            <div style="padding: 20px 28px; border-top: 1px solid #334155; display: flex; justify-content: center;">
+                {{ $users->links('pagination::tailwind') }}
+            </div>
         </div>
         
         <!-- Transactions Table -->
         <div class="table-card">
             <div class="table-header">
                 <h3>Recent Transactions</h3>
-                <span class="table-badge">{{ $transactions->count() }} total</span>
+                <span class="table-badge">{{ $stats['total_transactions'] ?? 0 }} total</span>
             </div>
             <div class="table-wrapper">
                 <table>
@@ -441,7 +495,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($transactions->take(10) as $tx)
+                        @foreach($transactions as $tx)
                         <tr>
                             <td>
                                 <div class="user-cell">
@@ -467,6 +521,10 @@
                         @endforeach
                     </tbody>
                 </table>
+            </div>
+            <!-- Transactions Pagination -->
+            <div style="padding: 20px 28px; border-top: 1px solid #334155; display: flex; justify-content: center;">
+                {{ $transactions->links('pagination::tailwind') }}
             </div>
         </div>
         

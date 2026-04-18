@@ -23,20 +23,23 @@ class AdminController extends Controller
     public function dashboard()
     {
         // Get paginated users with wallet relationship
-        $users = User::with('wallet')->latest()->paginate(10);
+        $users = User::with('wallet')->latest()->paginate(15);
         
-        // Get all transactions for calculations (not just 10)
-        $transactions = Transaction::with('user')->latest()->get();
+        // Get paginated transactions for display
+        $transactions = Transaction::with('user')->latest()->paginate(15);
+        
+        // Get ALL transactions for stats calculations (not paginated)
+        $allTransactions = Transaction::with('user')->latest()->get();
         
         // Define success statuses (case-insensitive) and filter collection
         $successfulStatuses = ['success', 'completed'];
-        $successfulTx = $transactions->filter(function ($t) use ($successfulStatuses) {
+        $successfulTx = $allTransactions->filter(function ($t) use ($successfulStatuses) {
             return in_array(strtolower($t->status ?? ''), $successfulStatuses);
         });
 
         // Exclude failed, expired, refunded, cancelled from turnover
         $excludeStatuses = ['failed', 'expired', 'refunded', 'cancelled'];
-        $turnoverTx = $transactions->filter(function ($t) use ($excludeStatuses, $successfulStatuses) {
+        $turnoverTx = $allTransactions->filter(function ($t) use ($excludeStatuses, $successfulStatuses) {
             $status = strtolower($t->status ?? '');
             return in_array($status, $successfulStatuses) && !in_array($status, $excludeStatuses);
         });
@@ -67,11 +70,11 @@ class AdminController extends Controller
 
         // Additional stats for the dashboard
         $stats = [
-            'total_users' => $users->total(),
+            'total_users' => User::count(),
             // Only include amounts from successful transactions and exclude failed/expired/refunded/cancelled
             'total_revenue' => $turnoverTx->sum('amount'),
             'total_transactions' => $turnoverTx->count(),
-            'pending_requests' => $transactions->filter(fn($t) => strtolower($t->status ?? '') === 'pending')->count(),
+            'pending_requests' => $allTransactions->filter(fn($t) => strtolower($t->status ?? '') === 'pending')->count(),
             'successful_transactions' => $successfulTx->count(),
             'active_users_30_days' => User::where('created_at', '>=', Carbon::now()->subDays(30))->count(),
             'latest_user' => User::latest()->first(),
