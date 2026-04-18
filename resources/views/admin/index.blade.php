@@ -559,12 +559,12 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {{-- @foreach($transactions as $tx)
+                    @foreach($transactions as $tx)
                     <tr>
                         <td>{{ $tx->status }}</td>
                         <td>{{ strtolower(trim($tx->status ?? '')) }}</td>
                     </tr>
-                    @endforeach --}}
+                    @endforeach
                     @foreach($transactions as $tx)
                     @php
                         $uname = $tx->user->username ?? 'N/A';
