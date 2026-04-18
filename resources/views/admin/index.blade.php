@@ -560,24 +560,30 @@
                 </thead>
                 <tbody>
                     @foreach($transactions as $tx)
-                    <tr>
-                        <td>{{ $tx->status }}</td>
-                        <td>{{ strtolower(trim($tx->status ?? '')) }}</td>
-                    </tr>
-                    @endforeach
-                    @foreach($transactions as $tx)
                     @php
-                        $uname = $tx->user->username ?? 'N/A';
+                        // Safe user access
+                        $user = $tx->user;
+                        $uname = $user ? ($user->username ?? 'N/A') : 'N/A';
                         $ini   = strtoupper(substr($uname, 0, 1));
-                        $rawStatus = $tx->status ?? '';
-                        $s         = strtolower(trim($rawStatus));
-                        $cls       = in_array($s, ['success','completed']) ? 'ok'
-                                : (str_contains($s, 'pending') ? 'pnd'
-                                : (str_contains($s, 'fail')    ? 'no'  : 'ot'));
-                        $lbl       = in_array($s, ['success','completed']) ? '✓ Success'
-                                : (str_contains($s, 'pending') ? '⏳ Pending'
-                                : (str_contains($s, 'fail')    ? '✗ Failed'
-                                : '◆ ' . ucfirst($rawStatus)));
+                        
+                        // Status normalization
+                        $rawStatus = trim($tx->status ?? '');
+                        $statusLower = strtolower($rawStatus);
+                        
+                        // Determine badge class and label
+                        if (in_array($statusLower, ['success', 'completed'])) {
+                            $cls = 'ok';
+                            $lbl = '✓ Success';
+                        } elseif (str_contains($statusLower, 'pending')) {
+                            $cls = 'pnd';
+                            $lbl = '⏳ Pending';
+                        } elseif (str_contains($statusLower, 'fail')) {
+                            $cls = 'no';
+                            $lbl = '✗ Failed';
+                        } else {
+                            $cls = 'ot';
+                            $lbl = '◆ ' . ucfirst($rawStatus);
+                        }
                     @endphp
                     <tr>
                         <td>
@@ -591,7 +597,6 @@
                         <td>
                             <span class="badge {{ $cls }}">
                                 <span class="bd"></span>{{ $lbl }}
-                                {{-- debug: remove after confirming → {{ $rawStatus }} --}}
                             </span>
                         </td>
                         <td style="color:var(--t3);font-size:12px;">
