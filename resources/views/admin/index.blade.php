@@ -570,21 +570,17 @@
                             <td><span class="type-tag">{{ $tx->type ?? '—' }}</span></td>
                             <td><span class="amt">₦{{ number_format($tx->amount ?? 0, 2) }}</span></td>
                             <td>
-                                @php
-                                    $status = strtolower(trim($tx->status ?? ''));
-                                    $badgeClass = match(true) {
-                                        in_array($status, ['success', 'completed']) => 'ok',
-                                        str_contains($status, 'pending') => 'pnd',
-                                        str_contains($status, 'fail') => 'no',
-                                        default => 'ot'
-                                    };
-                                    $badgeLabel = match(true) {
-                                        in_array($status, ['success', 'completed']) => '✓ Success',
-                                        str_contains($status, 'pending') => '⏳ Pending',
-                                        str_contains($status, 'fail') => '✗ Failed',
-                                        default => '◆ ' . ucfirst($tx->status ?? 'Unknown')
-                                    };
-                                @endphp
+                                transactions.forEach(tx => {
+                                    const s   = (tx.status || '').toLowerCase().trim();
+                                    const cls = ['success', 'completed', 'successful'].includes(s) ? 'ok'
+                                            : s.includes('pending') ? 'pnd'
+                                            : ['failed', 'fail', 'error', 'cancelled', 'canceled', 'expired'].includes(s) || s.includes('fail') ? 'no'
+                                            : 'ot';
+                                    const lbl = ['success', 'completed', 'successful'].includes(s) ? '✓ Success'
+                                            : s.includes('pending') ? '⏳ Pending'
+                                            : s.includes('fail') || ['cancelled','canceled','expired'].includes(s) ? '✗ Failed'
+                                            : '◆ ' + (tx.status || 'Unknown');
+                                });
                                 <span class="badge {{ $badgeClass }}">
                                     <span class="bd"></span>{{ $badgeLabel }}
                                 </span>
@@ -767,13 +763,13 @@
                 const tfrag = document.createDocumentFragment();
                 transactions.forEach(tx => {
                     const s   = (tx.status || '').toLowerCase().trim();
-                    const cls = ['success','completed'].includes(s) ? 'ok'
+                    const cls = ['success', 'completed', 'successful'].includes(s) ? 'ok'
                             : s.includes('pending') ? 'pnd'
-                            : s.includes('fail')    ? 'no'
+                            : ['failed', 'fail', 'error', 'cancelled', 'canceled', 'expired'].includes(s) || s.includes('fail') ? 'no'
                             : 'ot';
-                    const lbl = ['success','completed'].includes(s) ? '✓ Success'
+                    const lbl = ['success', 'completed', 'successful'].includes(s) ? '✓ Success'
                             : s.includes('pending') ? '⏳ Pending'
-                            : s.includes('fail')    ? '✗ Failed'
+                            : s.includes('fail') || ['cancelled','canceled','expired'].includes(s) ? '✗ Failed'
                             : '◆ ' + (tx.status || 'Unknown');
                     const tr = document.createElement('tr');
                     tr.innerHTML =
