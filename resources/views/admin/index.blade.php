@@ -46,13 +46,13 @@
         flex-wrap: wrap; gap: 14px;
         background: var(--bg-card); border: 1px solid var(--border);
         border-radius: var(--r-lg); padding: 20px 26px; margin-bottom: 26px;
+        position: relative;
     }
     .top-bar::after {
         content: ''; position: absolute; inset: 0; border-radius: var(--r-lg);
         background: linear-gradient(135deg, rgba(59,130,246,0.04) 0%, transparent 60%);
         pointer-events: none;
     }
-    .top-bar { position: relative; }
     .tb-l h1 { font-size: 21px; font-weight: 700; color: var(--t1); letter-spacing: -0.3px; }
     .tb-l p  { font-size: 12px; color: var(--t3); margin-top: 3px; font-weight: 500; }
     .tb-r { display: flex; align-items: center; gap: 12px; }
@@ -92,7 +92,7 @@
     .sc-ico.bl { background: var(--accent-d); } .sc-ico.gr { background: var(--green-d); } .sc-ico.am { background: var(--amber-d); }
 
     /* ─── Table Card ─────────────────────────── */
-    .tc { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; margin-bottom: 22px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: all .3s ease; min-height: 200px; display: flex; flex-direction: column; }
+    .tc { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; margin-bottom: 22px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: all .3s ease; display: flex; flex-direction: column; }
     .tc:hover { border-color: var(--border-hi); box-shadow: 0 4px 16px rgba(59,130,246,0.1); }
     .tc-head {
         padding: 20px 22px; border-bottom: 1.5px solid var(--border);
@@ -123,58 +123,20 @@
     .pp-sel:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-d); }
 
     /* Table */
-    .t-scroll { 
-        overflow-x: auto; 
-        position: relative; 
-        flex: 1;
-        display: block;
-        width: 100%;
-        min-height: 200px;
-    }
-    table { 
-        width: 100%; 
-        border-collapse: collapse; 
-        table-layout: auto;
-        margin: 0;
-        padding: 0;
-    }
+    .t-scroll { overflow-x: auto; width: 100%; }
+    table { width: 100%; border-collapse: collapse; table-layout: auto; }
     thead tr { background: var(--bg-surface); }
-    th { 
-        padding: 11px 16px; 
-        text-align: left; 
-        font-size: 10px; 
-        font-weight: 700; 
-        color: var(--t3); 
-        text-transform: uppercase; 
-        letter-spacing: .8px; 
-        border-bottom: 1px solid var(--border); 
-        white-space: nowrap; 
-        position: relative; 
-        z-index: 1; 
+    th {
+        padding: 11px 16px; text-align: left; font-size: 10px; font-weight: 700;
+        color: var(--t3); text-transform: uppercase; letter-spacing: .8px;
+        border-bottom: 1px solid var(--border); white-space: nowrap;
     }
-    td { 
-        padding: 14px 16px; 
-        border-bottom: 1px solid rgba(80,130,220,0.06); 
-        font-size: 13px; 
-        color: var(--t1); 
-        vertical-align: middle; 
-        position: relative;
-        word-wrap: break-word;
+    td {
+        padding: 14px 16px; border-bottom: 1px solid rgba(80,130,220,0.06);
+        font-size: 13px; color: var(--t1); vertical-align: middle; word-wrap: break-word;
     }
-    tbody { 
-        display: table-row-group;
-        visibility: visible;
-        opacity: 1;
-    }
-    tbody tr { 
-        transition: all .15s ease; 
-        background: transparent;
-        display: table-row;
-    }
-    tbody tr:hover { 
-        background: linear-gradient(90deg, var(--accent-d) 0%, transparent 100%); 
-        border-left: 3px solid var(--accent); 
-    }
+    tbody tr { transition: all .15s ease; }
+    tbody tr:hover { background: linear-gradient(90deg, var(--accent-d) 0%, transparent 100%); }
     tbody tr:last-child td { border-bottom: none; }
 
     .u-cell { display: flex; align-items: center; gap: 10px; }
@@ -190,95 +152,51 @@
     .bal { color: #34d399; font-weight: 700; font-family: var(--mono); font-size: 14px; }
     .amt { font-weight: 700; font-family: var(--mono); font-size: 14px; color: #fcd34d; }
     .badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 6px; font-size: 12px; font-weight: 700; }
-    .bd { width: 6px; height: 6px; border-radius: 50%; }
-    .badge.ok  { background: linear-gradient(135deg, #10b98122 0%, #059669 20%); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); box-shadow: 0 0 8px rgba(16,185,129,0.2); } .badge.ok  .bd { background: #6ee7b7; }
-    .badge.pnd { background: linear-gradient(135deg, #f5940b22 0%, #d97706 20%); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); box-shadow: 0 0 8px rgba(245,158,11,0.2); } .badge.pnd .bd { background: #fbbf24; }
-    .badge.no  { background: linear-gradient(135deg, #ef444422 0%, #dc2626 20%); color: #f87171; border: 1px solid rgba(239,68,68,0.3); box-shadow: 0 0 8px rgba(239,68,68,0.2); } .badge.no  .bd { background: #f87171; }
-    .badge.ot  { background: linear-gradient(135deg, rgba(80,130,220,0.1) 0%, #3b82f6 20%); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); } .badge.ot .bd { background: #93c5fd; }
+    .bd { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .badge.ok  { background: rgba(16,185,129,0.13); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+    .badge.ok  .bd { background: #6ee7b7; }
+    .badge.pnd { background: rgba(245,158,11,0.13); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+    .badge.pnd .bd { background: #fbbf24; }
+    .badge.no  { background: rgba(239,68,68,0.13); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+    .badge.no  .bd { background: #f87171; }
+    .badge.ot  { background: rgba(59,130,246,0.1); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+    .badge.ot  .bd { background: #93c5fd; }
     .view-btn {
-        padding: 6px 13px; background: linear-gradient(135deg, var(--accent-d), rgba(59,130,246,0.1)); 
-        color: #93c5fd;
-        border: 1.5px solid rgba(59,130,246,0.35); border-radius: 7px;
+        padding: 6px 13px; background: linear-gradient(135deg, var(--accent-d), rgba(59,130,246,0.1));
+        color: #93c5fd; border: 1.5px solid rgba(59,130,246,0.35); border-radius: 7px;
         font-size: 12px; font-weight: 700; cursor: pointer;
         display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-        transition: all .2s ease; font-family: var(--font); position: relative; overflow: hidden;
+        transition: all .2s ease; font-family: var(--font); white-space: nowrap;
     }
-    .view-btn::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
-        transition: left 0.4s ease;
-    }
-    .view-btn:hover::before {
-        left: 100%;
-    }
-    .view-btn:hover { 
-        background: linear-gradient(135deg, var(--accent), rgba(59,130,246,0.3)); 
-        color: #fff; 
-        border-color: var(--accent);
-        transform: translateY(-2px);
-        box-shadow: 0 6px 18px rgba(59,130,246,0.35);
+    .view-btn:hover {
+        background: linear-gradient(135deg, var(--accent), rgba(59,130,246,0.3));
+        color: #fff; border-color: var(--accent);
+        transform: translateY(-2px); box-shadow: 0 6px 18px rgba(59,130,246,0.35);
     }
 
     /* ─── Pagination ─────────────────────────── */
     .pg-bar {
         display: flex; justify-content: space-between; align-items: center;
         padding: 16px 22px; border-top: 1px solid var(--border);
-        background: linear-gradient(180deg, rgba(11,21,37,0.8) 0%, rgba(6,13,26,0.5) 100%); 
         flex-wrap: wrap; gap: 14px;
     }
     .pg-info { font-size: 13px; color: var(--t3); font-weight: 500; }
     .pg-info b { color: #93c5fd; font-weight: 700; }
-    .pg-btns { display: flex; align-items: center; gap: 6px; }
+    .pg-btns { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .pg-btn {
         min-width: 38px; height: 38px; padding: 0 10px;
         display: inline-flex; align-items: center; justify-content: center;
-        background: linear-gradient(135deg, #1a2a4a 0%, #0f1e35 100%); 
-        border: 1.5px solid #3b5998;
+        background: #1a2a4a; border: 1.5px solid #3b5998;
         border-radius: var(--r-md); color: #93c5fd; font-size: 12px; font-weight: 700;
-        cursor: pointer; transition: all .2s ease; font-family: var(--font); 
-        user-select: none; line-height: 1; position: relative; overflow: hidden;
+        cursor: pointer; transition: all .2s ease; font-family: var(--font); user-select: none;
     }
-    .pg-btn::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-        transition: left 0.5s ease;
-    }
-    .pg-btn:hover:not(.on):not(.off)::before {
-        left: 100%;
-    }
-    .pg-btn:hover:not(.on):not(.off) { 
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); 
-        border-color: #2563eb; 
-        color: #fff; 
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(59,130,246,0.35);
-    }
-    .pg-btn.on  { 
-        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); 
-        border-color: #3b82f6;
-        color: #fff; 
-        box-shadow: 0 0 0 3px rgba(59,130,246,0.2), 0 6px 20px rgba(59,130,246,0.4);
-        transform: scale(1.08);
-    }
-    .pg-btn.off { 
-        opacity: .35; 
-        cursor: not-allowed; 
-        background: linear-gradient(135deg, #0f172a 0%, #0b1525 100%);
-        border-color: #1e3a8a;
-    }
-    .pg-dots { color: var(--t3); font-size: 13px; padding: 0 2px; line-height: 38px; font-weight: 700; }
-    .empty-st { padding: 48px 24px; text-align: center; background: linear-gradient(135deg, rgba(59,130,246,0.05) 0%, rgba(139,92,246,0.03) 100%); }
-    .empty-st .ei { font-size: 48px; opacity: .2; margin-bottom: 14px; }
+    .pg-btn:hover:not(.on):not(.off) { background: #3b82f6; border-color: #2563eb; color: #fff; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(59,130,246,0.35); }
+    .pg-btn.on { background: linear-gradient(135deg,#3b82f6,#1d4ed8); border-color: #3b82f6; color: #fff; box-shadow: 0 0 0 3px rgba(59,130,246,0.2); transform: scale(1.06); }
+    .pg-btn.off { opacity: .35; cursor: not-allowed; }
+    .pg-dots { color: var(--t3); font-size: 13px; padding: 0 4px; line-height: 38px; font-weight: 700; }
+
+    .empty-st { padding: 48px 24px; text-align: center; }
+    .empty-st .ei { font-size: 40px; opacity: .25; margin-bottom: 12px; }
     .empty-st p { color: var(--t3); font-size: 14px; font-weight: 500; }
 
     /* ─── Modal ──────────────────────────────── */
@@ -575,187 +493,32 @@
     </div>
 </div>
 
-{{-- Seed data from Laravel --}}
+{{-- ══════════════════════════════════════════
+     ALL JavaScript — ONE single script block
+     (the original had two <script> opening tags
+     with no closing tag on the first, which
+     broke ALL JS on the page)
+══════════════════════════════════════════ --}}
 <script>
+/* ── Seed data from Laravel ─────────────────── */
 const USERS = @json($users->getCollection()?->toArray() ?? []);
 const TXS   = @json($transactions->getCollection()?->toArray() ?? []);
 const BASE  = "{{ url('/') }}";
 
-console.log('📊 Dashboard Data Loaded:', {users: USERS.length, transactions: TXS.length});
+/* ── Helpers ────────────────────────────────── */
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const ngn = n => Number(n ?? 0).toLocaleString('en-NG', { minimumFractionDigits:2, maximumFractionDigits:2 });
 
-// Store table instances globally to prevent garbage collection
-window.tableInstances = {};
-
-
-<script>
-/* ══════════════════════════════════════════════
-   Paginator — fully independent per table
-══════════════════════════════════════════════ */
-class Table {
-    constructor(cfg) {
-        // Store data as copies to prevent reference issues
-        this.all   = [...(cfg.data || [])];
-        this.shown = [...this.all];
-        this.original = cfg.data; // Keep original reference
-        
-        this.p     = 1;
-        this.pp    = cfg.perPage || 10;
-        this.tbody = document.getElementById(cfg.tbody);
-        this.table = document.getElementById(cfg.table);
-        this.info  = document.getElementById(cfg.info);
-        this.btns  = document.getElementById(cfg.btns);
-        this.empty = document.getElementById(cfg.empty);
-        this.pill  = document.getElementById(cfg.pill);
-        this.row   = cfg.row;
-        
-        // Validate elements exist
-        if (!this.tbody || !this.table || !this.info || !this.btns) {
-            console.error('❌ Missing DOM elements for table:', cfg);
-            return;
-        }
-
-        // Bind event listeners
-        const ppSel = document.getElementById(cfg.ppSel);
-        const filter = document.getElementById(cfg.filter);
-        
-        if (ppSel) {
-            ppSel.addEventListener('change', e => {
-                this.pp = +e.target.value; 
-                this.p = 1; 
-                this._render();
-            });
-        }
-        
-        if (filter) {
-            filter.addEventListener('input', e => {
-                const q = e.target.value.toLowerCase().trim();
-                // Use fresh copy from original
-                this.shown = q 
-                    ? this.original.filter(r => JSON.stringify(r).toLowerCase().includes(q)) 
-                    : [...this.original];
-                    
-                if (this.pill) this.pill.textContent = this.shown.length;
-                this.p = 1; 
-                this._render();
-            });
-        }
-        
-        // Initial render
-        console.log('📋 Table initialized:', {rows: this.all.length, pp: this.pp});
-        this._render();
-    }
-
-    _render() {
-        if (!this.tbody) return;
-        
-        const tot  = this.shown.length;
-        const pgs  = Math.max(1, Math.ceil(tot / this.pp));
-        
-        if (this.p > pgs) this.p = pgs;
-        if (this.p < 1) this.p = 1;
-        
-        const s    = (this.p - 1) * this.pp;
-        const rows = this.shown.slice(s, s + this.pp);
-
-        const empty = tot === 0;
-        this.table.style.display = empty ? 'none' : '';
-        this.empty.style.display = empty ? '' : 'none';
-        
-        // Render rows safely
-        try {
-            this.tbody.innerHTML = rows.map(r => this.row(r)).join('');
-        } catch(e) {
-            console.error('❌ Error rendering rows:', e);
-            this.tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:red;">Error rendering data</td></tr>';
-        }
-
-        this.info.innerHTML = empty ? ''
-            : `Showing <b>${s+1}–${Math.min(s+this.pp,tot)}</b> of <b>${tot}</b>`;
-
-        this._pgs(pgs);
-    }
-
-    _pgs(total) {
-        if (!this.btns) return;
-        
-        this.btns.innerHTML = '';
-        this._btn('‹', this.p === 1, () => { 
-            this.p--; 
-            this._render(); 
-        });
-        
-        const p = this.p;
-        let ns = [];
-        
-        if (total <= 7) {
-            ns = Array.from({length:total},(_,i)=>i+1);
-        } else {
-            ns = [1];
-            if (p > 3) ns.push('…');
-            for (let i = Math.max(2,p-1); i <= Math.min(total-1,p+1); i++) ns.push(i);
-            if (p < total-2) ns.push('…');
-            ns.push(total);
-        }
-        
-        ns.forEach(n => {
-            if (n==='…') { 
-                const d=document.createElement('span'); 
-                d.className='pg-dots'; 
-                d.textContent='…'; 
-                this.btns.appendChild(d); 
-                return; 
-            }
-            const b=document.createElement('button');
-            b.className='pg-btn'+(n===p?' on':'');
-            b.textContent=n;
-            if (n!==p) {
-                b.addEventListener('click',()=>{ 
-                    this.p=n; 
-                    this._render(); 
-                });
-            }
-            this.btns.appendChild(b);
-        });
-        
-        this._btn('›', this.p === total, () => { 
-            this.p++; 
-            this._render(); 
-        });
-    }
-
-    _btn(lbl, disabled, cb) {
-        const b = document.createElement('button');
-        b.className = 'pg-btn' + (disabled ? ' off' : '');
-        b.innerHTML = lbl;
-        if (!disabled) {
-            b.addEventListener('click', cb);
-        }
-        this.btns.appendChild(b);
-    }
-    
-    // Public method to refresh data
-    refresh(newData) {
-        this.all = [...newData];
-        this.original = newData;
-        this.shown = [...this.all];
-        this.p = 1;
-        this._render();
-        console.log('🔄 Table refreshed with', newData.length, 'rows');
-    }
-}
-
-/* ── helpers ──────────────────────────────── */
-const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const ngn = n => Number(n??0).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2});
-
-/* ── row renderers ────────────────────────── */
+/* ── Row renderers ──────────────────────────── */
 function uRow(u) {
-    const ini = (u.username||'U').charAt(0).toUpperCase();
-    const bal = u.wallet ? Number(u.wallet.balance || 0).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2}) : '0.00';
+    const ini = (u.username || 'U').charAt(0).toUpperCase();
+    const bal = u.wallet
+        ? Number(u.wallet.balance || 0).toLocaleString('en-NG', { minimumFractionDigits:2, maximumFractionDigits:2 })
+        : '0.00';
     return `<tr>
-        <td><div class="u-cell"><div class="u-av">${ini}</div><div class="u-name">${esc(u.username||'User')}</div></div></td>
-        <td style="color:var(--t2);">${esc(u.email||'—')}</td>
-        <td style="color:var(--t2);">${esc(u.phone_number||'—')}</td>
+        <td><div class="u-cell"><div class="u-av">${ini}</div><div class="u-name">${esc(u.username || 'User')}</div></div></td>
+        <td style="color:var(--t2);">${esc(u.email || '—')}</td>
+        <td style="color:var(--t2);">${esc(u.phone_number || '—')}</td>
         <td><span class="bal">₦${bal}</span></td>
         <td><button class="view-btn" onclick="openModal(${u.id})">👁 View</button></td>
     </tr>`;
@@ -764,67 +527,158 @@ function uRow(u) {
 function txRow(tx) {
     const uname = tx.user?.username ?? 'N/A';
     const ini   = uname.charAt(0).toUpperCase();
-    const date  = tx.created_at ? new Date(tx.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
-    const s = (tx.status||'').toLowerCase();
-    const cls = (s==='success'||s==='completed') ? 'ok' : s==='pending' ? 'pnd' : s==='failed' ? 'no' : 'ot';
-    const label = (s==='success'||s==='completed') ? '✓ Success' : s==='pending' ? '⏳ Pending' : s==='failed' ? '✗ Failed' : '◆ '+((tx.status||'Unknown').charAt(0).toUpperCase()+(tx.status||'Unknown').slice(1));
+    const date  = tx.created_at
+        ? new Date(tx.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+        : '—';
+    const s   = (tx.status || '').toLowerCase();
+    const cls = (s === 'success' || s === 'completed') ? 'ok' : s === 'pending' ? 'pnd' : s === 'failed' ? 'no' : 'ot';
+    const lbl = (s === 'success' || s === 'completed') ? '✓ Success'
+              : s === 'pending' ? '⏳ Pending'
+              : s === 'failed'  ? '✗ Failed'
+              : '◆ ' + ((tx.status || 'Unknown').charAt(0).toUpperCase() + (tx.status || 'Unknown').slice(1));
     return `<tr>
         <td><div class="u-cell"><div class="u-av">${ini}</div><div class="u-name">${esc(uname)}</div></div></td>
-        <td><span class="type-tag">${esc(tx.type||'—')}</span></td>
+        <td><span class="type-tag">${esc(tx.type || '—')}</span></td>
         <td><span class="amt">₦${ngn(tx.amount)}</span></td>
-        <td><span class="badge ${cls}"><span class="bd"></span>${label}</span></td>
+        <td><span class="badge ${cls}"><span class="bd"></span>${lbl}</span></td>
         <td style="color:var(--t3);font-size:12px;">${date}</td>
     </tr>`;
 }
 
-/* ── init ─────────────────────────────────── */
-document.addEventListener('DOMContentLoaded', function() {
-    try {
-        if (!USERS || !TXS) {
-            console.error('❌ Data not loaded properly');
+/* ══════════════════════════════════════════════
+   Table — paginator + filter + per-page selector
+══════════════════════════════════════════════ */
+class Table {
+    constructor(cfg) {
+        this.original = cfg.data || [];
+        this.shown    = [...this.original];
+        this.p        = 1;
+        this.pp       = cfg.perPage || 10;
+        this.row      = cfg.row;
+
+        /* DOM refs — fail loudly if missing */
+        this.tbody = document.getElementById(cfg.tbody);
+        this.table = document.getElementById(cfg.table);
+        this.info  = document.getElementById(cfg.info);
+        this.btns  = document.getElementById(cfg.btns);
+        this.empty = document.getElementById(cfg.empty);
+        this.pill  = document.getElementById(cfg.pill);
+
+        if (!this.tbody || !this.table || !this.info || !this.btns || !this.empty) {
+            console.error('Table: missing DOM element(s) for config', cfg);
             return;
         }
-        
-        window.tableInstances.users = new Table({ 
-            data:USERS, 
-            table:'uTable',  
-            tbody:'uBody',  
-            info:'uInfo',  
-            btns:'uBtns',  
-            empty:'uEmpty',  
-            pill:'uPill',  
-            ppSel:'uPP',  
-            filter:'uFilter',  
-            row:uRow,  
-            perPage:15
-        });
-        
-        window.tableInstances.transactions = new Table({ 
-            data:TXS,   
-            table:'txTable', 
-            tbody:'txBody', 
-            info:'txInfo', 
-            btns:'txBtns', 
-            empty:'txEmpty', 
-            pill:'txPill', 
-            ppSel:'txPP', 
-            filter:'txFilter', 
-            row:txRow, 
-            perPage:15
-        });
-        
-        console.log('✅ Tables initialized successfully:', window.tableInstances);
-    } catch(e) {
-        console.error('❌ Table initialization error:', e);
-    }
-});
 
-// Page visibility handler - refresh data when user returns to tab
-document.addEventListener('visibilitychange', function() {
-    if (!document.hidden && window.tableInstances.users) {
-        console.log('👁 Page visible again, data persisted');
-        // Tables maintain data in memory, so they'll still be there
+        /* Per-page selector */
+        const ppEl = document.getElementById(cfg.ppSel);
+        if (ppEl) {
+            ppEl.value = String(this.pp);
+            ppEl.addEventListener('change', e => { this.pp = +e.target.value; this.p = 1; this._render(); });
+        }
+
+        /* Search filter */
+        const fEl = document.getElementById(cfg.filter);
+        if (fEl) {
+            fEl.addEventListener('input', e => {
+                const q = e.target.value.toLowerCase().trim();
+                this.shown = q
+                    ? this.original.filter(r => JSON.stringify(r).toLowerCase().includes(q))
+                    : [...this.original];
+                if (this.pill) this.pill.textContent = this.shown.length;
+                this.p = 1;
+                this._render();
+            });
+        }
+
+        this._render();
     }
+
+    _render() {
+        const tot  = this.shown.length;
+        const pgs  = Math.max(1, Math.ceil(tot / this.pp));
+        this.p     = Math.min(Math.max(1, this.p), pgs);
+
+        const s    = (this.p - 1) * this.pp;
+        const rows = this.shown.slice(s, s + this.pp);
+        const empty = tot === 0;
+
+        /* Show/hide table vs empty state */
+        this.table.style.display = empty ? 'none' : '';
+        this.empty.style.display = empty ? ''     : 'none';
+
+        if (!empty) {
+            try {
+                this.tbody.innerHTML = rows.map(r => this.row(r)).join('');
+            } catch (err) {
+                console.error('Table row render error:', err);
+                this.tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#f87171;">Error rendering rows</td></tr>';
+            }
+        }
+
+        this.info.innerHTML = empty
+            ? ''
+            : `Showing <b>${s + 1}–${Math.min(s + this.pp, tot)}</b> of <b>${tot}</b>`;
+
+        this._buildPager(pgs);
+    }
+
+    _buildPager(total) {
+        this.btns.innerHTML = '';
+        this._pgBtn('‹', this.p === 1, () => { this.p--; this._render(); });
+
+        let nums = [];
+        if (total <= 7) {
+            nums = Array.from({ length: total }, (_, i) => i + 1);
+        } else {
+            nums = [1];
+            if (this.p > 3)          nums.push('…');
+            for (let i = Math.max(2, this.p - 1); i <= Math.min(total - 1, this.p + 1); i++) nums.push(i);
+            if (this.p < total - 2)  nums.push('…');
+            nums.push(total);
+        }
+
+        nums.forEach(n => {
+            if (n === '…') {
+                const d = document.createElement('span');
+                d.className = 'pg-dots';
+                d.textContent = '…';
+                this.btns.appendChild(d);
+                return;
+            }
+            const b = document.createElement('button');
+            b.className = 'pg-btn' + (n === this.p ? ' on' : '');
+            b.textContent = n;
+            if (n !== this.p) b.addEventListener('click', () => { this.p = n; this._render(); });
+            this.btns.appendChild(b);
+        });
+
+        this._pgBtn('›', this.p === total, () => { this.p++; this._render(); });
+    }
+
+    _pgBtn(label, disabled, cb) {
+        const b = document.createElement('button');
+        b.className = 'pg-btn' + (disabled ? ' off' : '');
+        b.textContent = label;
+        if (!disabled) b.addEventListener('click', cb);
+        this.btns.appendChild(b);
+    }
+}
+
+/* ── Init tables once DOM is ready ──────────── */
+document.addEventListener('DOMContentLoaded', function () {
+    window._uTable = new Table({
+        data: USERS, table: 'uTable', tbody: 'uBody',
+        info: 'uInfo', btns: 'uBtns', empty: 'uEmpty',
+        pill: 'uPill', ppSel: 'uPP', filter: 'uFilter',
+        row: uRow, perPage: 10
+    });
+
+    window._txTable = new Table({
+        data: TXS, table: 'txTable', tbody: 'txBody',
+        info: 'txInfo', btns: 'txBtns', empty: 'txEmpty',
+        pill: 'txPill', ppSel: 'txPP', filter: 'txFilter',
+        row: txRow, perPage: 10
+    });
 });
 
 /* ══════════════════════════════════════════════
@@ -834,77 +688,133 @@ let uid = null;
 
 async function openModal(userId) {
     uid = userId;
-    closeAll(); flash('','');
+    closeAll();
+    flash('', '');
     try {
         const r = await fetch(`${BASE}/app/admin/users/${userId}`);
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const { user, transactions } = await r.json();
-        document.getElementById('mTitle').textContent = `@${user.username||'User'}`;
+
+        document.getElementById('mTitle').textContent = `@${user.username || 'User'}`;
         document.getElementById('mInfo').innerHTML = `
-            <div class="info-tile"><div class="lbl">Full Name</div><div class="val">${esc((user.first_name||'')+' '+(user.last_name||''))}</div></div>
+            <div class="info-tile"><div class="lbl">Full Name</div><div class="val">${esc((user.first_name || '') + ' ' + (user.last_name || ''))}</div></div>
             <div class="info-tile"><div class="lbl">Username</div><div class="val">@${esc(user.username)}</div></div>
             <div class="info-tile"><div class="lbl">Email</div><div class="val">${esc(user.email)}</div></div>
-            <div class="info-tile"><div class="lbl">Phone</div><div class="val">${esc(user.phone_number||'—')}</div></div>
+            <div class="info-tile"><div class="lbl">Phone</div><div class="val">${esc(user.phone_number || '—')}</div></div>
             <div class="info-tile"><div class="lbl">Wallet Balance</div><div class="val g">₦${ngn(user.wallet?.balance)}</div></div>
-            <div class="info-tile"><div class="lbl">Joined</div><div class="val">${new Date(user.created_at).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}</div></div>`;
-        const txRows = (transactions||[]).map(tx => {
-            const s=(tx.status||'').toLowerCase();
-            const cls=(s==='success'||s==='completed')?'ok':s==='pending'?'pnd':s==='failed'?'no':'ot';
+            <div class="info-tile"><div class="lbl">Joined</div><div class="val">${new Date(user.created_at).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' })}</div></div>`;
+
+        const txRows = (transactions || []).map(tx => {
+            const s   = (tx.status || '').toLowerCase();
+            const cls = (s === 'success' || s === 'completed') ? 'ok' : s === 'pending' ? 'pnd' : s === 'failed' ? 'no' : 'ot';
             return `<tr>
-                <td>${esc(tx.type||'—')}</td>
+                <td>${esc(tx.type || '—')}</td>
                 <td style="font-family:var(--mono);font-weight:600;">₦${ngn(tx.amount)}</td>
-                <td><span class="badge ${cls}"><span class="bd"></span>${tx.status}</span></td>
+                <td><span class="badge ${cls}"><span class="bd"></span>${esc(tx.status)}</span></td>
                 <td style="color:var(--t3);">${new Date(tx.created_at).toLocaleDateString()}</td>
             </tr>`;
         }).join('');
+
         document.getElementById('mTxns').innerHTML = txRows
             ? `<table><thead><tr><th>Type</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead><tbody>${txRows}</tbody></table>`
             : '<p style="color:var(--t3);text-align:center;padding:20px 0;font-size:13px;">No transactions found.</p>';
+
         document.getElementById('userModal').classList.add('open');
-    } catch(e) { alert('Failed to load user: '+e.message); }
+    } catch (e) {
+        alert('Failed to load user: ' + e.message);
+    }
 }
 
-function closeModal() { document.getElementById('userModal').classList.remove('open'); }
-document.getElementById('userModal').addEventListener('click', e => { if (e.target===e.currentTarget) closeModal(); });
+function closeModal() {
+    document.getElementById('userModal').classList.remove('open');
+}
+
+document.getElementById('userModal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeModal();
+});
 
 function togForm(id) {
-    const el=document.getElementById(id), was=el.classList.contains('open');
-    closeAll(); if (!was) el.classList.add('open');
+    const el  = document.getElementById(id);
+    const was = el.classList.contains('open');
+    closeAll();
+    if (!was) el.classList.add('open');
 }
-function closeAll() { document.querySelectorAll('.sub-form').forEach(f=>f.classList.remove('open')); }
+
+function closeAll() {
+    document.querySelectorAll('.sub-form').forEach(f => f.classList.remove('open'));
+}
 
 function flash(msg, type) {
-    const el=document.getElementById('fMsg');
-    if (!msg) { el.className='flash'; el.textContent=''; return; }
-    el.textContent=msg; el.className='flash '+type;
+    const el = document.getElementById('fMsg');
+    if (!msg) { el.className = 'flash'; el.textContent = ''; return; }
+    el.textContent = msg;
+    el.className   = 'flash ' + type;
 }
 
 async function post(url, data) {
-    const token=document.querySelector('meta[name="csrf-token"]')?.content||'';
-    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':token,'Accept':'application/json'},body:JSON.stringify(data)});
+    const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
+        body: JSON.stringify(data)
+    });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return r.json();
 }
 
 async function doPw() {
-    const p=document.getElementById('nPw').value, c=document.getElementById('cPw').value;
-    if (!p||p!==c) { flash('Passwords do not match.','err'); return; }
-    try { flash('Saving…','ok'); const d=await post(`${BASE}/app/admin/users/${uid}/update-password`,{password:p,password_confirmation:c}); flash(d.message||(d.success?'Done.':'Failed.'),d.success?'ok':'err'); if(d.success){document.getElementById('nPw').value='';document.getElementById('cPw').value='';} } catch(e){flash('Error: '+e.message,'err');}
+    const p = document.getElementById('nPw').value;
+    const c = document.getElementById('cPw').value;
+    if (!p || p !== c) { flash('Passwords do not match.', 'err'); return; }
+    try {
+        flash('Saving…', 'ok');
+        const d = await post(`${BASE}/app/admin/users/${uid}/update-password`, { password: p, password_confirmation: c });
+        flash(d.message || (d.success ? 'Done.' : 'Failed.'), d.success ? 'ok' : 'err');
+        if (d.success) { document.getElementById('nPw').value = ''; document.getElementById('cPw').value = ''; }
+    } catch (e) { flash('Error: ' + e.message, 'err'); }
 }
+
 async function doPin() {
-    const p=document.getElementById('nPin').value;
-    if (!p||p.length!==4) { flash('PIN must be exactly 4 digits.','err'); return; }
-    try { flash('Saving…','ok'); const d=await post(`${BASE}/app/admin/users/${uid}/update-pin`,{pin:p}); flash(d.message||(d.success?'Done.':'Failed.'),d.success?'ok':'err'); if(d.success) document.getElementById('nPin').value=''; } catch(e){flash('Error: '+e.message,'err');}
+    const p = document.getElementById('nPin').value;
+    if (!p || p.length !== 4) { flash('PIN must be exactly 4 digits.', 'err'); return; }
+    try {
+        flash('Saving…', 'ok');
+        const d = await post(`${BASE}/app/admin/users/${uid}/update-pin`, { pin: p });
+        flash(d.message || (d.success ? 'Done.' : 'Failed.'), d.success ? 'ok' : 'err');
+        if (d.success) document.getElementById('nPin').value = '';
+    } catch (e) { flash('Error: ' + e.message, 'err'); }
 }
+
 async function doAdd() {
-    const a=parseFloat(document.getElementById('aAmt').value), desc=document.getElementById('aDesc').value.trim();
-    if (!a||a<=0||!desc) { flash('Please fill in amount and reason.','err'); return; }
-    try { flash('Processing…','ok'); const d=await post(`${BASE}/app/admin/users/${uid}/add-funds`,{amount:a,description:desc}); flash(d.message||(d.success?'Done.':'Failed.'),d.success?'ok':'err'); if(d.success){document.getElementById('aAmt').value='';document.getElementById('aDesc').value='';setTimeout(()=>openModal(uid),900);} } catch(e){flash('Error: '+e.message,'err');}
+    const a    = parseFloat(document.getElementById('aAmt').value);
+    const desc = document.getElementById('aDesc').value.trim();
+    if (!a || a <= 0 || !desc) { flash('Please fill in amount and reason.', 'err'); return; }
+    try {
+        flash('Processing…', 'ok');
+        const d = await post(`${BASE}/app/admin/users/${uid}/add-funds`, { amount: a, description: desc });
+        flash(d.message || (d.success ? 'Done.' : 'Failed.'), d.success ? 'ok' : 'err');
+        if (d.success) {
+            document.getElementById('aAmt').value  = '';
+            document.getElementById('aDesc').value = '';
+            setTimeout(() => openModal(uid), 900);
+        }
+    } catch (e) { flash('Error: ' + e.message, 'err'); }
 }
+
 async function doDed() {
-    const a=parseFloat(document.getElementById('dAmt').value), desc=document.getElementById('dDesc').value.trim();
-    if (!a||a<=0||!desc) { flash('Please fill in amount and reason.','err'); return; }
-    try { flash('Processing…','ok'); const d=await post(`${BASE}/app/admin/users/${uid}/deduct-funds`,{amount:a,description:desc}); flash(d.message||(d.success?'Done.':'Failed.'),d.success?'ok':'err'); if(d.success){document.getElementById('dAmt').value='';document.getElementById('dDesc').value='';setTimeout(()=>openModal(uid),900);} } catch(e){flash('Error: '+e.message,'err');}
+    const a    = parseFloat(document.getElementById('dAmt').value);
+    const desc = document.getElementById('dDesc').value.trim();
+    if (!a || a <= 0 || !desc) { flash('Please fill in amount and reason.', 'err'); return; }
+    try {
+        flash('Processing…', 'ok');
+        const d = await post(`${BASE}/app/admin/users/${uid}/deduct-funds`, { amount: a, description: desc });
+        flash(d.message || (d.success ? 'Done.' : 'Failed.'), d.success ? 'ok' : 'err');
+        if (d.success) {
+            document.getElementById('dAmt').value  = '';
+            document.getElementById('dDesc').value = '';
+            setTimeout(() => openModal(uid), 900);
+        }
+    } catch (e) { flash('Error: ' + e.message, 'err'); }
 }
 </script>
 
