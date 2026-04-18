@@ -562,14 +562,15 @@
                     @php
                         $uname = $tx->user->username ?? 'N/A';
                         $ini   = strtoupper(substr($uname, 0, 1));
-                        $s     = strtolower($tx->status ?? '');
-                        $cls   = in_array($s, ['success','completed']) ? 'ok'
-                               : ($s === 'pending' ? 'pnd'
-                               : ($s === 'failed'  ? 'no'  : 'ot'));
-                        $lbl   = in_array($s, ['success','completed']) ? '✓ Success'
-                               : ($s === 'pending' ? '⏳ Pending'
-                               : ($s === 'failed'  ? '✗ Failed'
-                               : '◆ ' . ucfirst($tx->status ?? 'Unknown')));
+                        $rawStatus = $tx->status ?? '';
+                        $s         = strtolower(trim($rawStatus));
+                        $cls       = in_array($s, ['success','completed']) ? 'ok'
+                                : (str_contains($s, 'pending') ? 'pnd'
+                                : (str_contains($s, 'fail')    ? 'no'  : 'ot'));
+                        $lbl       = in_array($s, ['success','completed']) ? '✓ Success'
+                                : (str_contains($s, 'pending') ? '⏳ Pending'
+                                : (str_contains($s, 'fail')    ? '✗ Failed'
+                                : '◆ ' . ucfirst($rawStatus)));
                     @endphp
                     <tr>
                         <td>
@@ -583,6 +584,7 @@
                         <td>
                             <span class="badge {{ $cls }}">
                                 <span class="bd"></span>{{ $lbl }}
+                                {{-- debug: remove after confirming → {{ $rawStatus }} --}}
                             </span>
                         </td>
                         <td style="color:var(--t3);font-size:12px;">
@@ -762,13 +764,20 @@
                 const tbody = document.createElement('tbody');
                 const tfrag = document.createDocumentFragment();
                 transactions.forEach(tx => {
-                    const s = (tx.status || '').toLowerCase();
-                    const cls = ['success','completed'].includes(s) ? 'ok' : s === 'pending' ? 'pnd' : s === 'failed' ? 'no' : 'ot';
+                    const s   = (tx.status || '').toLowerCase().trim();
+                    const cls = ['success','completed'].includes(s) ? 'ok'
+                            : s.includes('pending') ? 'pnd'
+                            : s.includes('fail')    ? 'no'
+                            : 'ot';
+                    const lbl = ['success','completed'].includes(s) ? '✓ Success'
+                            : s.includes('pending') ? '⏳ Pending'
+                            : s.includes('fail')    ? '✗ Failed'
+                            : '◆ ' + (tx.status || 'Unknown');
                     const tr = document.createElement('tr');
                     tr.innerHTML =
                         `<td>${esc(tx.type || '—')}</td>` +
                         `<td style="font-family:var(--mono);font-weight:600;">₦${ngn(tx.amount)}</td>` +
-                        `<td><span class="badge ${cls}"><span class="bd"></span>${esc(tx.status)}</span></td>` +
+                        `<td><span class="badge ${cls}"><span class="bd"></span>${lbl}</span></td>` +
                         `<td style="color:var(--t3);">${new Date(tx.created_at).toLocaleDateString()}</td>`;
                     tfrag.appendChild(tr);
                 });
