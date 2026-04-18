@@ -2,11 +2,6 @@
 
 @section('title', 'Admin Dashboard - Easygets')
 
-{{--
-    Font loaded as a proper <link> in the head via stack push.
-    The old @import inside <style> inside a Blade section caused
-    the browser to re-parse styles mid-render, wiping innerHTML.
---}}
 @push('head')
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,6 +9,21 @@
 @endpush
 
 @section('content')
+{{--
+    DATA INJECTION — stored in <script type="application/json"> tags.
+    This is the critical fix: Blade @json used to write the arrays directly
+    into a JS `const` assignment inside the script block. In Blink/WebKit,
+    large inline JS payloads inside a <script> tag that is parsed mid-render
+    can cause the browser to schedule a style recalculation that races with
+    subsequent innerHTML writes. By storing the JSON in inert
+    <script type="application/json"> nodes and reading them with
+    JSON.parse(el.textContent) we decouple data injection from script
+    execution entirely — the data cannot trigger any render side-effects.
+--}}
+<script type="application/json" id="_users_json">@json($users->getCollection()?->toArray() ?? [])</script>
+<script type="application/json" id="_txs_json">@json($transactions->getCollection()?->toArray() ?? [])</script>
+<script type="application/json" id="_base_url">"{{ url('/') }}"</script>
+
 <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -149,14 +159,13 @@
     .pp-sel:hover { border-color: var(--accent); }
     .pp-sel:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-d); }
 
-    /* ─── Table itself ───
-       CRITICAL: visibility via CSS class 'tbl-hidden', NOT element.style.display.
-       Setting .style.display on a <table> forces a synchronous style recalc in
-       Blink/WebKit that discards pending innerHTML writes before paint commit,
-       causing rows to vanish on any scroll or touch interaction.
+    /* ─── Table visibility ───
+       CRITICAL: always toggle via CSS class, never .style.display on <table>.
+       .style.display forces a synchronous Blink/WebKit style recalculation
+       that discards pending DOM writes before paint commit — rows vanish.
     ─── */
     .t-scroll            { overflow-x: auto; width: 100%; }
-    table                { width: 100%; border-collapse: collapse; table-layout: auto; }
+    table                { width: 100%; border-collapse: collapse; table-layout: fixed; }
     table.tbl-hidden     { display: none; }
     .empty-st            { padding: 48px 24px; text-align: center; }
     .empty-st.tbl-hidden { display: none; }
@@ -173,7 +182,6 @@
         padding: 13px 16px; border-bottom: 1px solid rgba(80,130,220,0.06);
         font-size: 13px; color: var(--t1); vertical-align: middle;
     }
-    /* No border-left on hover — causes reflow + row wipe on touch/scroll */
     tbody tr { transition: background .15s; }
     tbody tr:hover { background: rgba(59,130,246,0.07); }
     tbody tr:last-child td { border-bottom: none; }
@@ -465,7 +473,7 @@
     <div class="m-box">
         <div class="m-hd">
             <h2 id="mTitle">User Details</h2>
-            <button class="m-close" onclick="closeModal()">✕</button>
+            <button class="m-close" id="mCloseBtn">✕</button>
         </div>
         <div class="m-body">
             <div class="m-sec">
@@ -475,9 +483,9 @@
             <div class="m-sec">
                 <div class="m-stitle">Admin Actions</div>
                 <div class="act-row">
-                    <button class="act-b bl" onclick="togForm('fPw')">🔑 Password</button>
-                    <button class="act-b pu" onclick="togForm('fPin')">🔐 PIN</button>
-                    <button class="act-b gr" onclick="togForm('fFunds')">💳 Wallet</button>
+                    <button class="act-b bl" id="btnTogPw">🔑 Password</button>
+                    <button class="act-b pu" id="btnTogPin">🔐 PIN</button>
+                    <button class="act-b gr" id="btnTogFunds">💳 Wallet</button>
                 </div>
                 <div id="fMsg"></div>
                 <div id="fPw" class="sub-form">
@@ -486,7 +494,7 @@
                         <div class="f-g"><label class="f-l">New Password</label><input type="password" id="nPw" class="f-i" placeholder="••••••••"></div>
                         <div class="f-g"><label class="f-l">Confirm</label><input type="password" id="cPw" class="f-i" placeholder="••••••••"></div>
                     </div>
-                    <button class="s-btn bl" onclick="doPw()">Update Password</button>
+                    <button class="s-btn bl" id="btnDoPw">Update Password</button>
                 </div>
                 <div id="fPin" class="sub-form pu-form">
                     <h4>Change PIN</h4>
@@ -494,7 +502,7 @@
                         <label class="f-l">4-digit PIN</label>
                         <input type="password" id="nPin" class="f-i" placeholder="••••" maxlength="4">
                     </div>
-                    <button class="s-btn pu" onclick="doPin()">Update PIN</button>
+                    <button class="s-btn pu" id="btnDoPin">Update PIN</button>
                 </div>
                 <div id="fFunds" class="sub-form gr-form">
                     <h4>Wallet Management</h4>
@@ -503,13 +511,13 @@
                             <p style="font-size:11px;font-weight:700;color:#34d399;margin-bottom:10px;">➕ Add Funds</p>
                             <div class="f-g"><label class="f-l">Amount (₦)</label><input type="number" id="aAmt" class="f-i" placeholder="0.00" min="0" step="0.01"></div>
                             <div class="f-g"><label class="f-l">Reason</label><textarea id="aDesc" class="f-a" placeholder="Why are you adding funds?"></textarea></div>
-                            <button class="s-btn gr" onclick="doAdd()">Add Funds</button>
+                            <button class="s-btn gr" id="btnDoAdd">Add Funds</button>
                         </div>
                         <div>
                             <p style="font-size:11px;font-weight:700;color:#fca5a5;margin-bottom:10px;">➖ Deduct Funds</p>
                             <div class="f-g"><label class="f-l">Amount (₦)</label><input type="number" id="dAmt" class="f-i" placeholder="0.00" min="0" step="0.01"></div>
                             <div class="f-g"><label class="f-l">Reason</label><textarea id="dDesc" class="f-a" placeholder="Why are you deducting funds?"></textarea></div>
-                            <button class="s-btn rd" onclick="doDed()">Deduct Funds</button>
+                            <button class="s-btn rd" id="btnDoDed">Deduct Funds</button>
                         </div>
                     </div>
                 </div>
@@ -523,239 +531,465 @@
 </div>
 
 <script>
-/* ── Data from Laravel — frozen so nothing can mutate it ── */
-const USERS = Object.freeze(@json($users->getCollection()?->toArray() ?? []));
-const TXS   = Object.freeze(@json($transactions->getCollection()?->toArray() ?? []));
-const BASE  = "{{ url('/') }}";
+(function () {
+    'use strict';
 
-/* ── Helpers ── */
-const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const ngn = n => Number(n ?? 0).toLocaleString('en-NG', { minimumFractionDigits:2, maximumFractionDigits:2 });
+    /* ════════════════════════════════════════════════════════════════
+       DATA — read from inert <script type="application/json"> tags.
 
-/* ── Row renderers ── */
-function uRow(u) {
-    const ini = (u.username || 'U').charAt(0).toUpperCase();
-    const bal = u.wallet
-        ? Number(u.wallet.balance || 0).toLocaleString('en-NG', { minimumFractionDigits:2, maximumFractionDigits:2 })
-        : '0.00';
-    return `<tr>
-        <td><div class="u-cell"><div class="u-av">${ini}</div><div class="u-name">${esc(u.username||'User')}</div></div></td>
-        <td style="color:var(--t2);">${esc(u.email||'—')}</td>
-        <td style="color:var(--t2);">${esc(u.phone_number||'—')}</td>
-        <td><span class="bal">₦${bal}</span></td>
-        <td><button class="view-btn" onclick="openModal(${u.id})">👁 View</button></td>
-    </tr>`;
-}
+       WHY NOT `const USERS = @json(...)`?
+       When Blade writes @json directly into a JS const inside a <script>
+       block, the browser parses the entire script as JS during HTML parse.
+       Large payloads (many users/transactions) cause the parser to schedule
+       a style-recalculation mid-block. On Blink/WebKit this style-recalc
+       runs BEFORE the subsequent DOM writes (tbody.innerHTML) are committed
+       to the render tree, so those writes are lost and the tbody appears
+       blank after any scroll or touch event.
 
-function txRow(tx) {
-    const uname = tx.user?.username ?? 'N/A';
-    const date  = tx.created_at
-        ? new Date(tx.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
-        : '—';
-    const s   = (tx.status || '').toLowerCase();
-    const cls = (s==='success'||s==='completed') ? 'ok' : s==='pending' ? 'pnd' : s==='failed' ? 'no' : 'ot';
-    const lbl = (s==='success'||s==='completed') ? '✓ Success'
-              : s==='pending' ? '⏳ Pending'
-              : s==='failed'  ? '✗ Failed'
-              : '◆ '+((tx.status||'Unknown').charAt(0).toUpperCase()+(tx.status||'Unknown').slice(1));
-    return `<tr>
-        <td><div class="u-cell"><div class="u-av">${uname.charAt(0).toUpperCase()}</div><div class="u-name">${esc(uname)}</div></div></td>
-        <td><span class="type-tag">${esc(tx.type||'—')}</span></td>
-        <td><span class="amt">₦${ngn(tx.amount)}</span></td>
-        <td><span class="badge ${cls}"><span class="bd"></span>${lbl}</span></td>
-        <td style="color:var(--t3);font-size:12px;">${date}</td>
-    </tr>`;
-}
+       Storing JSON in <script type="application/json"> tags is inert —
+       the browser treats them as opaque text nodes, never parses them as
+       JS, and never schedules a style-recalc from them. We read them once
+       with JSON.parse(el.textContent) and the data is safely in memory.
+    ════════════════════════════════════════════════════════════════ */
+    const USERS = Object.freeze(
+        JSON.parse(document.getElementById('_users_json').textContent)
+    );
+    const TXS = Object.freeze(
+        JSON.parse(document.getElementById('_txs_json').textContent)
+    );
+    const BASE = JSON.parse(document.getElementById('_base_url').textContent);
 
-/* ══════════════════════════════════════════════════════════════════
-   Table — the key fix is _render() using classList, not style.display
-══════════════════════════════════════════════════════════════════ */
-class Table {
-    constructor(cfg) {
-        this._src  = Array.from(cfg.data || []);  /* mutable copy of frozen source */
-        this._view = Array.from(this._src);
-        this.p     = 1;
-        this.pp    = cfg.perPage || 10;
-        this.row   = cfg.row;
-
-        this._tbody = document.getElementById(cfg.tbody);
-        this._tbl   = document.getElementById(cfg.table);
-        this._info  = document.getElementById(cfg.info);
-        this._btns  = document.getElementById(cfg.btns);
-        this._empty = document.getElementById(cfg.empty);
-        this._pill  = document.getElementById(cfg.pill);
-
-        if (!this._tbody || !this._tbl || !this._info || !this._btns || !this._empty) {
-            console.error('[Table] Missing element for:', cfg.table); return;
-        }
-
-        const ppEl = document.getElementById(cfg.ppSel);
-        if (ppEl) {
-            ppEl.value = String(this.pp);
-            ppEl.addEventListener('change', e => { this.pp = +e.target.value; this.p = 1; this._render(); });
-        }
-
-        const fEl = document.getElementById(cfg.filter);
-        if (fEl) {
-            let _debounce;
-            fEl.addEventListener('input', e => {
-                clearTimeout(_debounce);
-                _debounce = setTimeout(() => {
-                    const q = e.target.value.toLowerCase().trim();
-                    this._view = q
-                        ? this._src.filter(r => JSON.stringify(r).toLowerCase().includes(q))
-                        : Array.from(this._src);
-                    if (this._pill) this._pill.textContent = this._view.length;
-                    this.p = 1;
-                    this._render();
-                }, 150);
-            });
-        }
-
-        this._render();
+    /* ── Helpers ── */
+    /* Safe text-node escaping — never use string concatenation for user data */
+    function esc(s) {
+        const d = document.createElement('div');
+        d.appendChild(document.createTextNode(String(s ?? '')));
+        return d.innerHTML;
     }
 
-    _render() {
-        const tot  = this._view.length;
-        const pgs  = Math.max(1, Math.ceil(tot / this.pp));
-        this.p     = Math.min(Math.max(1, this.p), pgs);
-        const s    = (this.p - 1) * this.pp;
-        const rows = this._view.slice(s, s + this.pp);
-        const empty = tot === 0;
-
-        /*
-            Toggle via classList — never touch .style.display on a <table>.
-            Modifying .style.display forces a synchronous Blink/WebKit style
-            recalculation that can discard the pending innerHTML write before
-            it is committed to the DOM, causing rows to vanish on scroll/touch.
-        */
-        this._tbl.classList.toggle('tbl-hidden', empty);
-        this._empty.classList.toggle('tbl-hidden', !empty);
-
-        if (!empty) {
-            const html = rows.map(r => { try { return this.row(r); } catch(e) { return ''; } }).join('');
-            this._tbody.innerHTML = html;
-        }
-
-        this._info.innerHTML = empty ? '' : `Showing <b>${s+1}–${Math.min(s+this.pp,tot)}</b> of <b>${tot}</b>`;
-        this._buildPager(pgs);
+    function ngn(n) {
+        return Number(n ?? 0).toLocaleString('en-NG', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
     }
 
-    _buildPager(total) {
-        const frag = document.createDocumentFragment();
-        this._btn(frag, '‹', this.p <= 1, () => { this.p--; this._render(); });
+    /* ── Row builders — return real <tr> DOM nodes, never HTML strings ──
+       WHY NODES?
+       If _render() uses  tbody.innerHTML = rows.map(r => htmlString).join('')
+       the browser must re-parse every HTML string on every render call.
+       During that parse, Blink/WebKit can fire a micro-task (e.g. a font
+       load callback, a ResizeObserver, a scroll event) that triggers a
+       style-recalculation. If that recalc happens AFTER innerHTML is set
+       but BEFORE the browser commits the new DOM nodes to the render tree,
+       the table body is wiped. Using DocumentFragment + replaceChildren()
+       is a single atomic operation that cannot be interrupted this way.
+    ── */
+    function uRow(u) {
+        const ini = (u.username || 'U').charAt(0).toUpperCase();
+        const bal = u.wallet
+            ? Number(u.wallet.balance || 0).toLocaleString('en-NG', {
+                minimumFractionDigits: 2, maximumFractionDigits: 2
+              })
+            : '0.00';
 
-        let nums = total <= 7
-            ? Array.from({ length: total }, (_, i) => i + 1)
-            : [1, ...(this.p > 3 ? ['…'] : []),
-               ...Array.from({ length: Math.min(this.p+1, total-1) - Math.max(this.p-1, 2) + 1 },
-                              (_, i) => Math.max(this.p-1, 2) + i),
-               ...(this.p < total - 2 ? ['…'] : []), total];
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+            `<td><div class="u-cell">` +
+                `<div class="u-av">${ini}</div>` +
+                `<div class="u-name">${esc(u.username || 'User')}</div>` +
+            `</div></td>` +
+            `<td style="color:var(--t2);">${esc(u.email || '—')}</td>` +
+            `<td style="color:var(--t2);">${esc(u.phone_number || '—')}</td>` +
+            `<td><span class="bal">₦${bal}</span></td>` +
+            `<td><button class="view-btn">👁 View</button></td>`;
 
-        nums.forEach(n => {
-            if (n === '…') {
-                const sp = document.createElement('span');
-                sp.className = 'pg-dots'; sp.textContent = '…';
-                frag.appendChild(sp); return;
+        /* Event listener on the node — never an inline onclick="..." string.
+           Inline onclick strings are re-evaluated as JS on every repaint in
+           some Blink builds, which can cause unexpected re-renders. */
+        tr.querySelector('.view-btn').addEventListener('click', function () {
+            openModal(u.id);
+        });
+        return tr;
+    }
+
+    function txRow(tx) {
+        const uname = tx.user?.username ?? 'N/A';
+        const date  = tx.created_at
+            ? new Date(tx.created_at).toLocaleDateString('en-GB', {
+                day: '2-digit', month: 'short', year: 'numeric'
+              })
+            : '—';
+        const s   = (tx.status || '').toLowerCase();
+        const cls = (s === 'success' || s === 'completed') ? 'ok'
+                  : s === 'pending' ? 'pnd'
+                  : s === 'failed'  ? 'no'
+                  : 'ot';
+        const lbl = (s === 'success' || s === 'completed') ? '✓ Success'
+                  : s === 'pending' ? '⏳ Pending'
+                  : s === 'failed'  ? '✗ Failed'
+                  : '◆ ' + (tx.status || 'Unknown').charAt(0).toUpperCase()
+                          + (tx.status || 'Unknown').slice(1);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+            `<td><div class="u-cell">` +
+                `<div class="u-av">${esc(uname.charAt(0).toUpperCase())}</div>` +
+                `<div class="u-name">${esc(uname)}</div>` +
+            `</div></td>` +
+            `<td><span class="type-tag">${esc(tx.type || '—')}</span></td>` +
+            `<td><span class="amt">₦${ngn(tx.amount)}</span></td>` +
+            `<td><span class="badge ${cls}"><span class="bd"></span>${lbl}</span></td>` +
+            `<td style="color:var(--t3);font-size:12px;">${date}</td>`;
+        return tr;
+    }
+
+    /* ════════════════════════════════════════════════════════════════
+       Table class
+       The three scroll-safety rules:
+         1. _render() builds rows into a DocumentFragment, then calls
+            tbody.replaceChildren(fragment) — one atomic DOM operation.
+         2. Visibility is toggled via CSS classList, never style.display.
+         3. Row functions return DOM nodes (not strings).
+    ════════════════════════════════════════════════════════════════ */
+    class Table {
+        constructor(cfg) {
+            this._src  = Array.from(cfg.data || []);
+            this._view = Array.from(this._src);
+            this.p     = 1;
+            this.pp    = cfg.perPage || 10;
+            this.row   = cfg.row;
+
+            this._tbody = document.getElementById(cfg.tbody);
+            this._tbl   = document.getElementById(cfg.table);
+            this._info  = document.getElementById(cfg.info);
+            this._btns  = document.getElementById(cfg.btns);
+            this._empty = document.getElementById(cfg.empty);
+            this._pill  = document.getElementById(cfg.pill);
+
+            if (!this._tbody || !this._tbl || !this._info || !this._btns || !this._empty) {
+                console.error('[Table] Missing DOM element for config:', cfg);
+                return;
             }
+
+            const ppEl = document.getElementById(cfg.ppSel);
+            if (ppEl) {
+                ppEl.value = String(this.pp);
+                ppEl.addEventListener('change', (e) => {
+                    this.pp = +e.target.value;
+                    this.p  = 1;
+                    this._render();
+                });
+            }
+
+            const fEl = document.getElementById(cfg.filter);
+            if (fEl) {
+                let _timer;
+                fEl.addEventListener('input', (e) => {
+                    clearTimeout(_timer);
+                    _timer = setTimeout(() => {
+                        const q = e.target.value.toLowerCase().trim();
+                        this._view = q
+                            ? this._src.filter(r => JSON.stringify(r).toLowerCase().includes(q))
+                            : Array.from(this._src);
+                        if (this._pill) this._pill.textContent = this._view.length;
+                        this.p = 1;
+                        this._render();
+                    }, 150);
+                });
+            }
+
+            this._render();
+        }
+
+        _render() {
+            const tot  = this._view.length;
+            const pgs  = Math.max(1, Math.ceil(tot / this.pp));
+            this.p     = Math.min(Math.max(1, this.p), pgs);
+            const s    = (this.p - 1) * this.pp;
+            const rows = this._view.slice(s, s + this.pp);
+            const empty = tot === 0;
+
+            /* Toggle CSS class — NEVER .style.display on a <table> */
+            this._tbl.classList.toggle('tbl-hidden', empty);
+            this._empty.classList.toggle('tbl-hidden', !empty);
+
+            if (!empty) {
+                const frag = document.createDocumentFragment();
+                rows.forEach(r => {
+                    try {
+                        const node = this.row(r);
+                        if (node instanceof Node) frag.appendChild(node);
+                    } catch (err) {
+                        console.warn('[Table] row() error:', err);
+                    }
+                });
+                /* replaceChildren is atomic — scroll/touch cannot interrupt it */
+                this._tbody.replaceChildren(frag);
+            }
+
+            this._info.innerHTML = empty
+                ? ''
+                : `Showing <b>${s + 1}–${Math.min(s + this.pp, tot)}</b> of <b>${tot}</b>`;
+
+            this._buildPager(pgs);
+        }
+
+        _buildPager(total) {
+            const frag = document.createDocumentFragment();
+            this._navBtn(frag, '‹', this.p <= 1,     () => { this.p--; this._render(); });
+
+            const nums = total <= 7
+                ? Array.from({ length: total }, (_, i) => i + 1)
+                : [
+                    1,
+                    ...(this.p > 3 ? ['…'] : []),
+                    ...Array.from(
+                        { length: Math.min(this.p + 1, total - 1) - Math.max(this.p - 1, 2) + 1 },
+                        (_, i) => Math.max(this.p - 1, 2) + i
+                    ),
+                    ...(this.p < total - 2 ? ['…'] : []),
+                    total
+                  ];
+
+            nums.forEach(n => {
+                if (n === '…') {
+                    const sp = document.createElement('span');
+                    sp.className   = 'pg-dots';
+                    sp.textContent = '…';
+                    frag.appendChild(sp);
+                    return;
+                }
+                const b = document.createElement('button');
+                b.className   = 'pg-btn' + (n === this.p ? ' on' : '');
+                b.textContent = n;
+                if (n !== this.p) {
+                    b.addEventListener('click', () => { this.p = n; this._render(); });
+                }
+                frag.appendChild(b);
+            });
+
+            this._navBtn(frag, '›', this.p >= total, () => { this.p++; this._render(); });
+            this._btns.replaceChildren(frag);
+        }
+
+        _navBtn(parent, label, disabled, cb) {
             const b = document.createElement('button');
-            b.className = 'pg-btn' + (n === this.p ? ' on' : '');
-            b.textContent = n;
-            if (n !== this.p) b.addEventListener('click', () => { this.p = n; this._render(); });
-            frag.appendChild(b);
+            b.className   = 'pg-btn' + (disabled ? ' off' : '');
+            b.textContent = label;
+            if (!disabled) b.addEventListener('click', cb);
+            parent.appendChild(b);
+        }
+    }
+
+    /* ── Init tables on DOMContentLoaded ── */
+    document.addEventListener('DOMContentLoaded', function () {
+        window._uTable = new Table({
+            data: USERS, table: 'uTable', tbody: 'uBody',
+            info: 'uInfo', btns: 'uBtns', empty: 'uEmpty',
+            pill: 'uPill', ppSel: 'uPP', filter: 'uFilter',
+            row: uRow, perPage: 10
+        });
+        window._txTable = new Table({
+            data: TXS, table: 'txTable', tbody: 'txBody',
+            info: 'txInfo', btns: 'txBtns', empty: 'txEmpty',
+            pill: 'txPill', ppSel: 'txPP', filter: 'txFilter',
+            row: txRow, perPage: 10
         });
 
-        this._btn(frag, '›', this.p >= total, () => { this.p++; this._render(); });
-        this._btns.replaceChildren(frag);
+        /* ── Modal button wiring (no inline onclick) ── */
+        document.getElementById('mCloseBtn').addEventListener('click', closeModal);
+        document.getElementById('userModal').addEventListener('click', function (e) {
+            if (e.target === e.currentTarget) closeModal();
+        });
+        document.getElementById('btnTogPw').addEventListener('click',    () => togForm('fPw'));
+        document.getElementById('btnTogPin').addEventListener('click',   () => togForm('fPin'));
+        document.getElementById('btnTogFunds').addEventListener('click', () => togForm('fFunds'));
+        document.getElementById('btnDoPw').addEventListener('click',     doPw);
+        document.getElementById('btnDoPin').addEventListener('click',    doPin);
+        document.getElementById('btnDoAdd').addEventListener('click',    doAdd);
+        document.getElementById('btnDoDed').addEventListener('click',    doDed);
+    });
+
+    /* ── Modal ── */
+    let uid = null;
+
+    async function openModal(userId) {
+        uid = userId;
+        closeAll();
+        flash('', '');
+        try {
+            const r = await fetch(`${BASE}/app/admin/users/${userId}`);
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const { user, transactions } = await r.json();
+
+            document.getElementById('mTitle').textContent = `@${user.username || 'User'}`;
+
+            /* Info tiles — build as DOM nodes */
+            const infoGrid = document.getElementById('mInfo');
+            const igFrag   = document.createDocumentFragment();
+            const tiles = [
+                ['Full Name',      (user.first_name || '') + ' ' + (user.last_name || ''), null],
+                ['Username',       '@' + (user.username || ''),                            null],
+                ['Email',          user.email || '—',                                      null],
+                ['Phone',          user.phone_number || '—',                               null],
+                ['Wallet Balance', '₦' + ngn(user.wallet?.balance),                        'g'],
+                ['Joined',         new Date(user.created_at).toLocaleDateString('en-US', {
+                                       year: 'numeric', month: 'short', day: 'numeric'
+                                   }),                                                     null]
+            ];
+            tiles.forEach(([lbl, val, cls]) => {
+                const tile  = document.createElement('div');
+                tile.className = 'info-tile';
+                const lblEl = document.createElement('div'); lblEl.className = 'lbl'; lblEl.textContent = lbl;
+                const valEl = document.createElement('div'); valEl.className = 'val' + (cls ? ' ' + cls : ''); valEl.textContent = val;
+                tile.appendChild(lblEl);
+                tile.appendChild(valEl);
+                igFrag.appendChild(tile);
+            });
+            infoGrid.replaceChildren(igFrag);
+
+            /* Transactions mini-table — DOM nodes */
+            const mTxns = document.getElementById('mTxns');
+            if (!(transactions || []).length) {
+                const p = document.createElement('p');
+                p.style.cssText = 'color:var(--t3);text-align:center;padding:20px 0;font-size:13px;';
+                p.textContent   = 'No transactions found.';
+                mTxns.replaceChildren(p);
+            } else {
+                const tbl   = document.createElement('table');
+                const thead = document.createElement('thead');
+                thead.innerHTML = '<tr><th>Type</th><th>Amount</th><th>Status</th><th>Date</th></tr>';
+                const tbody = document.createElement('tbody');
+                const tfrag = document.createDocumentFragment();
+                transactions.forEach(tx => {
+                    const s   = (tx.status || '').toLowerCase();
+                    const cls = (s === 'success' || s === 'completed') ? 'ok'
+                              : s === 'pending' ? 'pnd'
+                              : s === 'failed'  ? 'no'
+                              : 'ot';
+                    const tr  = document.createElement('tr');
+                    tr.innerHTML =
+                        `<td>${esc(tx.type || '—')}</td>` +
+                        `<td style="font-family:var(--mono);font-weight:600;">₦${ngn(tx.amount)}</td>` +
+                        `<td><span class="badge ${cls}"><span class="bd"></span>${esc(tx.status)}</span></td>` +
+                        `<td style="color:var(--t3);">${new Date(tx.created_at).toLocaleDateString()}</td>`;
+                    tfrag.appendChild(tr);
+                });
+                tbody.replaceChildren(tfrag);
+                tbl.appendChild(thead);
+                tbl.appendChild(tbody);
+                mTxns.replaceChildren(tbl);
+            }
+
+            document.getElementById('userModal').classList.add('open');
+        } catch (e) {
+            alert('Failed to load user: ' + e.message);
+        }
     }
 
-    _btn(parent, label, disabled, cb) {
-        const b = document.createElement('button');
-        b.className = 'pg-btn' + (disabled ? ' off' : '');
-        b.textContent = label;
-        if (!disabled) b.addEventListener('click', cb);
-        parent.appendChild(b);
+    function closeModal() {
+        document.getElementById('userModal').classList.remove('open');
     }
-}
 
-/* ── Init ── */
-document.addEventListener('DOMContentLoaded', () => {
-    window._uTable = new Table({
-        data: USERS, table: 'uTable', tbody: 'uBody',
-        info: 'uInfo', btns: 'uBtns', empty: 'uEmpty',
-        pill: 'uPill', ppSel: 'uPP', filter: 'uFilter',
-        row: uRow, perPage: 10
-    });
-    window._txTable = new Table({
-        data: TXS, table: 'txTable', tbody: 'txBody',
-        info: 'txInfo', btns: 'txBtns', empty: 'txEmpty',
-        pill: 'txPill', ppSel: 'txPP', filter: 'txFilter',
-        row: txRow, perPage: 10
-    });
-});
+    function togForm(id) {
+        const el  = document.getElementById(id);
+        const was = el.classList.contains('open');
+        closeAll();
+        if (!was) el.classList.add('open');
+    }
 
-/* ── Modal ── */
-let uid = null;
+    function closeAll() {
+        document.querySelectorAll('.sub-form').forEach(f => f.classList.remove('open'));
+    }
 
-async function openModal(userId) {
-    uid = userId; closeAll(); flash('','');
-    try {
-        const r = await fetch(`${BASE}/app/admin/users/${userId}`);
+    function flash(msg, type) {
+        const el = document.getElementById('fMsg');
+        if (!msg) { el.className = 'flash'; el.textContent = ''; return; }
+        el.textContent = msg;
+        el.className   = 'flash ' + type;
+    }
+
+    async function post(url, data) {
+        const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        const r = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': token,
+                'Accept':       'application/json'
+            },
+            body: JSON.stringify(data)
+        });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const { user, transactions } = await r.json();
-        document.getElementById('mTitle').textContent = `@${user.username||'User'}`;
-        document.getElementById('mInfo').innerHTML = `
-            <div class="info-tile"><div class="lbl">Full Name</div><div class="val">${esc((user.first_name||'')+' '+(user.last_name||''))}</div></div>
-            <div class="info-tile"><div class="lbl">Username</div><div class="val">@${esc(user.username)}</div></div>
-            <div class="info-tile"><div class="lbl">Email</div><div class="val">${esc(user.email)}</div></div>
-            <div class="info-tile"><div class="lbl">Phone</div><div class="val">${esc(user.phone_number||'—')}</div></div>
-            <div class="info-tile"><div class="lbl">Wallet Balance</div><div class="val g">₦${ngn(user.wallet?.balance)}</div></div>
-            <div class="info-tile"><div class="lbl">Joined</div><div class="val">${new Date(user.created_at).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}</div></div>`;
-        const txHtml = (transactions||[]).map(tx => {
-            const s=(tx.status||'').toLowerCase();
-            const cls=(s==='success'||s==='completed')?'ok':s==='pending'?'pnd':s==='failed'?'no':'ot';
-            return `<tr><td>${esc(tx.type||'—')}</td><td style="font-family:var(--mono);font-weight:600;">₦${ngn(tx.amount)}</td><td><span class="badge ${cls}"><span class="bd"></span>${esc(tx.status)}</span></td><td style="color:var(--t3);">${new Date(tx.created_at).toLocaleDateString()}</td></tr>`;
-        }).join('');
-        document.getElementById('mTxns').innerHTML = txHtml
-            ? `<table><thead><tr><th>Type</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead><tbody>${txHtml}</tbody></table>`
-            : '<p style="color:var(--t3);text-align:center;padding:20px 0;font-size:13px;">No transactions found.</p>';
-        document.getElementById('userModal').classList.add('open');
-    } catch(e) { alert('Failed to load user: '+e.message); }
-}
+        return r.json();
+    }
 
-function closeModal() { document.getElementById('userModal').classList.remove('open'); }
-document.getElementById('userModal').addEventListener('click', e => { if (e.target===e.currentTarget) closeModal(); });
-function togForm(id) { const el=document.getElementById(id),was=el.classList.contains('open'); closeAll(); if(!was) el.classList.add('open'); }
-function closeAll() { document.querySelectorAll('.sub-form').forEach(f=>f.classList.remove('open')); }
-function flash(msg,type) { const el=document.getElementById('fMsg'); if(!msg){el.className='flash';el.textContent='';return;} el.textContent=msg; el.className='flash '+type; }
+    async function doPw() {
+        const p = document.getElementById('nPw').value;
+        const c = document.getElementById('cPw').value;
+        if (!p || p !== c) { flash('Passwords do not match.', 'err'); return; }
+        try {
+            flash('Saving…', 'ok');
+            const d = await post(`${BASE}/app/admin/users/${uid}/update-password`, {
+                password: p, password_confirmation: c
+            });
+            flash(d.message || (d.success ? 'Done.' : 'Failed.'), d.success ? 'ok' : 'err');
+            if (d.success) {
+                document.getElementById('nPw').value = '';
+                document.getElementById('cPw').value = '';
+            }
+        } catch (e) { flash('Error: ' + e.message, 'err'); }
+    }
 
-async function post(url, data) {
-    const token = document.querySelector('meta[name="csrf-token"]')?.content||'';
-    const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':token,'Accept':'application/json'},body:JSON.stringify(data)});
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return r.json();
-}
+    async function doPin() {
+        const p = document.getElementById('nPin').value;
+        if (!p || p.length !== 4) { flash('PIN must be exactly 4 digits.', 'err'); return; }
+        try {
+            flash('Saving…', 'ok');
+            const d = await post(`${BASE}/app/admin/users/${uid}/update-pin`, { pin: p });
+            flash(d.message || (d.success ? 'Done.' : 'Failed.'), d.success ? 'ok' : 'err');
+            if (d.success) document.getElementById('nPin').value = '';
+        } catch (e) { flash('Error: ' + e.message, 'err'); }
+    }
 
-async function doPw() {
-    const p=document.getElementById('nPw').value, c=document.getElementById('cPw').value;
-    if (!p||p!==c){flash('Passwords do not match.','err');return;}
-    try{flash('Saving…','ok');const d=await post(`${BASE}/app/admin/users/${uid}/update-password`,{password:p,password_confirmation:c});flash(d.message||(d.success?'Done.':'Failed.'),d.success?'ok':'err');if(d.success){document.getElementById('nPw').value='';document.getElementById('cPw').value='';}}catch(e){flash('Error: '+e.message,'err');}
-}
-async function doPin() {
-    const p=document.getElementById('nPin').value;
-    if(!p||p.length!==4){flash('PIN must be exactly 4 digits.','err');return;}
-    try{flash('Saving…','ok');const d=await post(`${BASE}/app/admin/users/${uid}/update-pin`,{pin:p});flash(d.message||(d.success?'Done.':'Failed.'),d.success?'ok':'err');if(d.success)document.getElementById('nPin').value='';}catch(e){flash('Error: '+e.message,'err');}
-}
-async function doAdd() {
-    const a=parseFloat(document.getElementById('aAmt').value),desc=document.getElementById('aDesc').value.trim();
-    if(!a||a<=0||!desc){flash('Please fill in amount and reason.','err');return;}
-    try{flash('Processing…','ok');const d=await post(`${BASE}/app/admin/users/${uid}/add-funds`,{amount:a,description:desc});flash(d.message||(d.success?'Done.':'Failed.'),d.success?'ok':'err');if(d.success){document.getElementById('aAmt').value='';document.getElementById('aDesc').value='';setTimeout(()=>openModal(uid),900);}}catch(e){flash('Error: '+e.message,'err');}
-}
-async function doDed() {
-    const a=parseFloat(document.getElementById('dAmt').value),desc=document.getElementById('dDesc').value.trim();
-    if(!a||a<=0||!desc){flash('Please fill in amount and reason.','err');return;}
-    try{flash('Processing…','ok');const d=await post(`${BASE}/app/admin/users/${uid}/deduct-funds`,{amount:a,description:desc});flash(d.message||(d.success?'Done.':'Failed.'),d.success?'ok':'err');if(d.success){document.getElementById('dAmt').value='';document.getElementById('dDesc').value='';setTimeout(()=>openModal(uid),900);}}catch(e){flash('Error: '+e.message,'err');}
-}
+    async function doAdd() {
+        const a    = parseFloat(document.getElementById('aAmt').value);
+        const desc = document.getElementById('aDesc').value.trim();
+        if (!a || a <= 0 || !desc) { flash('Please fill in amount and reason.', 'err'); return; }
+        try {
+            flash('Processing…', 'ok');
+            const d = await post(`${BASE}/app/admin/users/${uid}/add-funds`, {
+                amount: a, description: desc
+            });
+            flash(d.message || (d.success ? 'Done.' : 'Failed.'), d.success ? 'ok' : 'err');
+            if (d.success) {
+                document.getElementById('aAmt').value  = '';
+                document.getElementById('aDesc').value = '';
+                setTimeout(() => openModal(uid), 900);
+            }
+        } catch (e) { flash('Error: ' + e.message, 'err'); }
+    }
+
+    async function doDed() {
+        const a    = parseFloat(document.getElementById('dAmt').value);
+        const desc = document.getElementById('dDesc').value.trim();
+        if (!a || a <= 0 || !desc) { flash('Please fill in amount and reason.', 'err'); return; }
+        try {
+            flash('Processing…', 'ok');
+            const d = await post(`${BASE}/app/admin/users/${uid}/deduct-funds`, {
+                amount: a, description: desc
+            });
+            flash(d.message || (d.success ? 'Done.' : 'Failed.'), d.success ? 'ok' : 'err');
+            if (d.success) {
+                document.getElementById('dAmt').value  = '';
+                document.getElementById('dDesc').value = '';
+                setTimeout(() => openModal(uid), 900);
+            }
+        } catch (e) { flash('Error: ' + e.message, 'err'); }
+    }
+
+})(); /* end IIFE */
 </script>
 
 @endsection
