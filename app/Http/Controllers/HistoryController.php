@@ -664,19 +664,28 @@ class HistoryController extends Controller
             $cancelResult = $this->attemptProviderCancel($activation, $provider);
             
             if (isset($cancelResult['success']) && $cancelResult['success']) {
+                // Determine if it should be marked as 'cancelled' (early) or 'expired' (after 10 mins)
+                $ageInMinutes = $activation->created_at ? 
+                    Carbon::parse($activation->created_at)->diffInMinutes(now()) : 0;
+                $shouldMarkAsExpired = $ageInMinutes >= 10;
+                $autoStatus = $shouldMarkAsExpired ? 'expired' : 'cancelled';
+                
                 // Cancellation successful - refund user
-                $refundResult = $this->processCancellationRefund($activation, $provider);
+                $refundResult = $this->processCancellationRefund($activation, $provider, $autoStatus);
                 
                 if ($refundResult['success']) {
+                    $statusLabel = $shouldMarkAsExpired ? 'expired (reached timeout)' : 'cancelled';
                     Log::info('User-initiated cancellation completed', [
                         'activation_id' => $activation->id,
                         'user_id' => $userId,
-                        'refund_amount' => $activation->amount
+                        'refund_amount' => $activation->amount,
+                        'age_minutes' => $ageInMinutes,
+                        'status_set_to' => $autoStatus
                     ]);
                     
                     return response()->json([
                         'success' => true,
-                        'message' => 'Activation cancelled successfully. ₦' . number_format($activation->amount, 2) . ' has been refunded to your wallet.'
+                        'message' => 'Activation ' . $statusLabel . ' successfully. ₦' . number_format($activation->amount, 2) . ' has been refunded to your wallet.'
                     ]);
                 } else {
                     // Cancellation succeeded but refund failed - this is critical
@@ -733,17 +742,18 @@ class HistoryController extends Controller
 
     /**
      * Process refund after successful cancellation
-     * Status should be 'cancelled' for user-initiated cancellation
+     * Status will be 'cancelled' for early user-initiated cancellation (< 10 minutes)
+     * Status will be 'expired' for user-initiated cancellation after 10+ minutes
      */
-    private function processCancellationRefund($activation, $provider): array
+    private function processCancellationRefund($activation, $provider, $status = 'cancelled'): array
     {
         try {
-            return DB::transaction(function() use ($activation, $provider) {
-                // Update activation status to 'cancelled' (user-initiated)
+            return DB::transaction(function() use ($activation, $provider, $status) {
+                // Update activation status based on age
                 DB::table('transactions')
                     ->where('id', $activation->id)
                     ->update([
-                        'status' => 'cancelled',
+                        'status' => $status,
                         'updated_at' => now()
                     ]);
 
@@ -766,7 +776,11 @@ class HistoryController extends Controller
                     ->where('user_id', $activation->user_id)
                     ->increment('balance', $activation->amount);
 
-                // Create refund transaction record
+                // Create refund transaction record with descriptive message
+                $reasonDesc = $status === 'expired' 
+                    ? 'User-initiated cancellation after timeout for' 
+                    : 'User-initiated cancellation refund for';
+                
                 DB::table('transactions')->insert([
                     'reference' => 'REF_' . strtoupper(Str::random(10)),
                     'user_id' => $activation->user_id,
@@ -775,7 +789,7 @@ class HistoryController extends Controller
                     'provider' => $activation->service_name ?? $activation->provider,
                     'amount' => $activation->amount,
                     'status' => 'success',
-                    'description' => "User-initiated cancellation refund for {$provider} - {$activation->phone}",
+                    'description' => "{$reasonDesc} {$provider} - {$activation->phone}",
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -785,7 +799,8 @@ class HistoryController extends Controller
                     'user_id' => $activation->user_id,
                     'amount' => $activation->amount,
                     'provider' => $provider,
-                    'status_set_to' => 'cancelled'
+                    'status_set_to' => $status,
+                    'reason' => $reasonDesc
                 ]);
 
                 return ['success' => true];
