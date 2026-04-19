@@ -206,6 +206,109 @@ ORDER BY created_at DESC;
 SELECT * FROM wallets WHERE user_id = 456;
 ```
 
+## Enhanced Professional Refund System
+
+### Refund Processing Steps (Atomic Transaction)
+
+The system uses **database transactions** to ensure data consistency. All steps succeed or all fail:
+
+```
+1. ✓ Update Activation Status
+   └─ Set to 'expired' (marked as processed)
+
+2. ✓ Lock User Wallet
+   └─ Prevents concurrent modifications
+
+3. ✓ Increment Wallet Balance
+   └─ Add refund amount to wallet.balance
+
+4. ✓ Create Refund Transaction Record
+   └─ Log refund with reference number
+   └─ Include audit trail and timestamp
+   └─ Store wallet balance after refund
+
+5. ✓ Comprehensive Logging
+   └─ Step-by-step audit trail for compliance
+   └─ Timestamps and wallet balance snapshots
+```
+
+### Refund Validation & Safety Features
+
+✓ **Wallet Validation** - Ensures wallet exists before refunding (prevents errors)
+✓ **Amount Verification** - Confirms activation amount matches when processing
+✓ **Reference Tracking** - Each refund gets unique reference (REF_XXXXXXXXXX)
+✓ **Balance Snapshots** - Logs wallet balance before and after for audit
+✓ **Transaction Locking** - Pessimistic locking prevents race conditions
+✓ **Error Escalation** - Failed refunds logged as CRITICAL for manual investigation
+✓ **Idempotency** - Command won't double-refund (status already changed to 'expired')
+
+### Monitoring Successful Refunds
+
+#### Command Output Example
+When you run the command with verbose flag, you'll see:
+```
+Processing provider1 activation ID: 123, request_id: abc123xyz
+  → API indicates number is no longer available (expired/released)
+  ✓ REFUND SUCCESS - Reference: REF_A1B2C3D4E5 | Amount: ₦500.00
+  → Activation status: expired
+```
+
+#### Real-time Monitoring
+```bash
+# Watch refunds as they happen
+tail -f storage/logs/laravel.log | grep "REFUND SUCCESS\|REFUND FAILED\|Auto-refund"
+
+# Or search for specific refunds
+tail -f storage/logs/laravel.log | grep "REF_"
+```
+
+#### Database Verification
+```sql
+-- Check all refunds processed today
+SELECT reference, user_id, amount, description, created_at 
+FROM transactions 
+WHERE type = 'credit' 
+  AND channel = 'Refund'
+  AND DATE(created_at) = CURDATE()
+ORDER BY created_at DESC;
+
+-- Check refund success rate this hour
+SELECT 
+  COUNT(*) as total_refunds,
+  SUM(amount) as total_amount,
+  COUNT(CASE WHEN status = 'success' THEN 1 END) as successful,
+  COUNT(CASE WHEN status != 'success' THEN 1 END) as failed
+FROM transactions 
+WHERE type = 'credit'
+  AND channel = 'Refund'
+  AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR);
+```
+
+### Testing & Diagnostics
+
+Use the comprehensive test command to verify refund functionality:
+
+```bash
+# Check overall system health
+php artisan activations:test-refund
+
+# Create test activation and verify refund works
+php artisan activations:test-refund --create-test
+
+# Test refund for specific activation
+php artisan activations:test-refund --activation-id=123
+
+# Check all activations for specific user
+php artisan activations:test-refund --user-id=456
+```
+
+The test command shows:
+- Scheduler status
+- Pending activations waiting for refund
+- Recent refund records
+- Wallet balance changes
+- Detailed refund test results
+
 ## Important Notes
 
 ⚠️ **DO NOT** manually cancel existing transactions with status `expired`, `cancelled`, or `completed` - they represent final states
