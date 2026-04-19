@@ -619,12 +619,13 @@ class HistoryController extends Controller
         ]);
 
         try {
-            // Fetch activation regardless of status so we can check provider-side
+            // Fetch activation for user
             $userId = Auth::check() ? Auth::id() : null;
             $activation = DB::table('transactions')
                 ->where('id', $request->activation_id)
                 ->where('user_id', $userId)
                 ->where('type', 'activation')
+                ->lockForUpdate() // Pessimistic lock to prevent race conditions
                 ->first();
 
             if (!$activation) {
@@ -637,64 +638,165 @@ class HistoryController extends Controller
             // If SMS already present or activation already completed/expired/cancelled, don't attempt cancel
             $nonCancelableStatuses = ['completed', 'success', 'expired', 'cancelled', 'finished'];
             if (!empty($activation->sms_code) || in_array(strtolower($activation->status ?? ''), $nonCancelableStatuses)) {
+                Log::warning('Cancel rejected - non-cancelable status', [
+                    'activation_id' => $activation->id,
+                    'current_status' => $activation->status,
+                    'has_sms_code' => !empty($activation->sms_code)
+                ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'This activation cannot be cancelled (already completed or SMS received)'
                 ], 400);
             }
 
-            $provider = strtolower($activation->channel ?? 'provider2');
-            // Normalize old provider names for backwards compatibility
-            if ($provider === 'sms-bus' || $provider === 'smsbus') {
-                $provider = 'provider2';
-            } elseif ($provider === '5sim') {
-                $provider = 'provider1';
-            }
+            // Normalize provider
+            $provider = $this->normalizeProvider($activation->channel);
             
-            if ($provider === 'provider2') {
-                $result = $this->cancelSmsBus($activation);
-            } elseif ($provider === 'provider1') {
-                $result = $this->cancel5sim($activation);
-            } else {
-                return response()->json(['success' => false, 'message' => 'Unknown provider'], 400);
+            Log::info('User-initiated cancellation attempt', [
+                'activation_id' => $activation->id,
+                'user_id' => $userId,
+                'provider' => $provider,
+                'phone' => $activation->phone,
+                'amount' => $activation->amount
+            ]);
+            
+            // Attempt to cancel at provider
+            $cancelResult = $this->attemptProviderCancel($activation, $provider);
+            
+            if (isset($cancelResult['success']) && $cancelResult['success']) {
+                // Cancellation successful - refund user
+                $refundResult = $this->processCancellationRefund($activation, $provider);
+                
+                if ($refundResult['success']) {
+                    Log::info('User-initiated cancellation completed', [
+                        'activation_id' => $activation->id,
+                        'user_id' => $userId,
+                        'refund_amount' => $activation->amount
+                    ]);
+                    
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Activation cancelled successfully. ₦' . number_format($activation->amount, 2) . ' has been refunded to your wallet.'
+                    ]);
+                } else {
+                    // Cancellation succeeded but refund failed - this is critical
+                    Log::critical('Cancellation refund failed', [
+                        'activation_id' => $activation->id,
+                        'user_id' => $userId,
+                        'amount' => $activation->amount
+                    ]);
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Cancellation succeeded but refund failed. Please contact support.'
+                    ], 500);
+                }
             }
 
-            if (isset($result['success']) && $result['success']) {
-                DB::transaction(function () use ($activation) {
-                    DB::table('transactions')->where('id', $activation->id)->update(['status' => 'cancelled', 'updated_at' => now()]);
-                    $wallet = DB::table('wallets')->where('user_id', $activation->user_id)->first();
-                    if ($wallet) {
-                        DB::table('wallets')->where('user_id', $activation->user_id)->increment('balance', $activation->amount);
-                        DB::table('transactions')->insert([
-                            'reference' => 'REF_' . strtoupper(Str::random(10)),
-                            'user_id' => $activation->user_id,
-                            'type' => 'credit',
-                            'channel' => 'Refund',
-                            'provider' => $activation->service_name ?? $activation->provider,
-                            'amount' => $activation->amount,
-                            'status' => 'cancelled',
-                            'description' => 'Activation cancellation refund for ' . $activation->phone,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
-                });
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Activation cancelled successfully. ₦' . number_format($activation->amount, 2) . ' has been refunded to your wallet.'
-                ]);
-            }
-
-            // Provider returned failure
+            // Provider cancellation failed
+            Log::warning('Provider cancellation failed', [
+                'activation_id' => $activation->id,
+                'provider' => $provider,
+                'reason' => $cancelResult['reason'] ?? 'Unknown'
+            ]);
+            
             return response()->json([
                 'success' => false,
-                'message' => $result['message'] ?? 'Failed to cancel activation at provider'
+                'message' => $cancelResult['reason'] ?? 'Failed to cancel activation at provider'
             ], 400);
 
         } catch (\Exception $e) {
-            Log::error('Error cancelling activation', ['error' => $e->getMessage(), 'activation_id' => $request->activation_id]);
-            return response()->json(['success' => false, 'message' => 'An error occurred while cancelling'], 500);
+            Log::error('Error in cancelActivation', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'activation_id' => $request->activation_id
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while cancelling'
+            ], 500);
+        }
+    }
+
+    /**
+     * Attempt to cancel at provider level
+     */
+    private function attemptProviderCancel($activation, $provider): array
+    {
+        if ($provider === 'provider2') {
+            return $this->cancelSmsBus($activation);
+        } elseif ($provider === 'provider1') {
+            return $this->cancel5sim($activation);
+        }
+        
+        return ['success' => false, 'reason' => 'Unknown provider'];
+    }
+
+    /**
+     * Process refund after successful cancellation
+     * Status should be 'cancelled' for user-initiated cancellation
+     */
+    private function processCancellationRefund($activation, $provider): array
+    {
+        try {
+            return DB::transaction(function() use ($activation, $provider) {
+                // Update activation status to 'cancelled' (user-initiated)
+                DB::table('transactions')
+                    ->where('id', $activation->id)
+                    ->update([
+                        'status' => 'cancelled',
+                        'updated_at' => now()
+                    ]);
+
+                // Lock and update wallet
+                $wallet = DB::table('wallets')
+                    ->where('user_id', $activation->user_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$wallet) {
+                    Log::error('Wallet not found for refund', [
+                        'user_id' => $activation->user_id,
+                        'activation_id' => $activation->id
+                    ]);
+                    return ['success' => false, 'reason' => 'Wallet not found'];
+                }
+
+                // Increment wallet balance
+                DB::table('wallets')
+                    ->where('user_id', $activation->user_id)
+                    ->increment('balance', $activation->amount);
+
+                // Create refund transaction record
+                DB::table('transactions')->insert([
+                    'reference' => 'REF_' . strtoupper(Str::random(10)),
+                    'user_id' => $activation->user_id,
+                    'type' => 'credit',
+                    'channel' => 'Refund',
+                    'provider' => $activation->service_name ?? $activation->provider,
+                    'amount' => $activation->amount,
+                    'status' => 'success',
+                    'description' => "User-initiated cancellation refund for {$provider} - {$activation->phone}",
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                Log::info('Cancellation refund processed', [
+                    'activation_id' => $activation->id,
+                    'user_id' => $activation->user_id,
+                    'amount' => $activation->amount,
+                    'provider' => $provider,
+                    'status_set_to' => 'cancelled'
+                ]);
+
+                return ['success' => true];
+            });
+        } catch (\Exception $e) {
+            Log::error('Refund processing failed', [
+                'activation_id' => $activation->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return ['success' => false, 'reason' => 'Refund processing failed'];
         }
     }
 

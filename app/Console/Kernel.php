@@ -16,6 +16,13 @@ class Kernel extends ConsoleKernel
         $schedule->command('activations:expire-otp')->everyMinute();
         // Schedule OTP pending order status check every minute
         $schedule->command('otp:check-pending-orders')->everyMinute();
+        // Schedule auto-expiration and refund process every 3 minutes (checks for 10+ min old pending activations)
+        $schedule->command('activations:process-expired', ['--limit=50', '--timeout=10'])
+            ->everyThreeMinutes()
+            ->withoutOverlapping() // Prevent concurrent execution
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('ProcessExpiredActivations command failed');
+            });
     }
 
     /**
