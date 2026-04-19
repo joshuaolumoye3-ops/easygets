@@ -12,8 +12,8 @@ use Illuminate\Support\Str;
 
 class ProcessExpiredActivations extends Command
 {
-    protected $signature = 'activations:process-expired {--limit=50 : Maximum number of activations to process per run} {--timeout=10 : Minutes threshold for auto-expiration}';
-    protected $description = 'Auto-cancel and refund pending activations after 10 minutes without SMS received - SECURE & RATE LIMITED';
+    protected $signature = 'activations:process-expired {--limit=50 : Maximum number of activations to process per run} {--timeout=5 : Minutes threshold for auto-expiration}';
+    protected $description = 'Auto-cancel and refund pending activations after 5 minutes without SMS received - SECURE & RATE LIMITED';
 
     private $rateLimit = 5; // Processing delay in seconds between API calls
     private $maxRetriesPerActivation = 2;

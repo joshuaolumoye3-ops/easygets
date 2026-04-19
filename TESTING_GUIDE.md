@@ -5,7 +5,7 @@
 ### ✅ New Files Created
 1. **[app/Console/Commands/ProcessExpiredActivations.php](app/Console/Commands/ProcessExpiredActivations.php)**
    - 390+ lines of secure, well-documented code
-   - Handles auto-expiration with 10-minute threshold
+   - Handles auto-expiration with 5-minute threshold
    - Implements distributed and database locking
    - Rate-limited API calls (5 second delay)
    - Works for both provider1 (5sim) and provider2 (sms-bus)
@@ -87,11 +87,11 @@ Log::critical('Cancellation refund failed', [...]);
 
 #### Test 1: Run command manually
 ```bash
-php artisan activations:process-expired --limit=10 --timeout=10 -v
+php artisan activations:process-expired --limit=10 --timeout=5 -v
 ```
 **Expected Output**:
 ```
-🔄 Starting auto-expiration process (limit: 10, timeout: 10min)
+🔄 Starting auto-expiration process (limit: 10, timeout: 5min)
 Found X pending activations to process
 Processing provider1 activation ID: 123, request_id: xxx
   → API indicates number is no longer available
@@ -276,11 +276,11 @@ grep "Failed to check API status" storage/logs/laravel.log
 
 ### Database monitoring
 ```sql
--- Check for pending activations > 10 minutes old
+-- Check for pending activations > 5 minutes old
 SELECT COUNT(*) FROM transactions 
 WHERE status = 'pending' 
   AND type = 'activation'
-  AND created_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE);
+  AND created_at < DATE_SUB(NOW(), INTERVAL 5 MINUTE);
 
 -- Check refund success rate
 SELECT 

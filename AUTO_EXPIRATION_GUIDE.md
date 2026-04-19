@@ -1,7 +1,7 @@
 # Secure Auto-Expiration and Refund System
 
 ## Overview
-This document describes the secure, rate-limited automatic expiration and refund system for SMS activation numbers that haven't received an OTP within 10 minutes.
+This document describes the secure, rate-limited automatic expiration and refund system for SMS activation numbers that haven't received an OTP within 5 minutes.
 
 ## Status Definitions
 
@@ -16,7 +16,7 @@ This document describes the secure, rate-limited automatic expiration and refund
 - Provider receives cancellation request
 
 ### Status: `expired`
-- **System auto-expiration**: Triggered after 10 minutes of inactivity (no SMS code)
+- **System auto-expiration**: Triggered after 5 minutes of inactivity (no SMS code)
 - Automatic process runs every 3 minutes
 - Refund is processed automatically after provider cancellation
 - Does NOT affect existing "cancelled", "completed", or "expired" transactions
@@ -48,7 +48,7 @@ User clicks Cancel → POST /history/cancel-activation
 ```
 Scheduled command runs every 3 minutes
                   ↓
-    Find pending activations > 10 minutes old
+    Find pending activations > 5 minutes old
                   ↓
       Check current status with provider API
                   ↓
@@ -78,11 +78,11 @@ Scheduled command runs every 3 minutes
 ### Command Options
 ```bash
 # Run with custom settings
-php artisan activations:process-expired --limit=50 --timeout=10
+php artisan activations:process-expired --limit=50 --timeout=5
 
 # Options:
 --limit=50      : Max activations to process per run (default: 50)
---timeout=10    : Minutes before auto-expiring (default: 10)
+--timeout=5     : Minutes before auto-expiring (default: 5)
 ```
 
 ### Security Features

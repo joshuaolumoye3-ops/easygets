@@ -664,10 +664,10 @@ class HistoryController extends Controller
             $cancelResult = $this->attemptProviderCancel($activation, $provider);
             
             if (isset($cancelResult['success']) && $cancelResult['success']) {
-                // Determine if it should be marked as 'cancelled' (early) or 'expired' (after 10 mins)
+                // Determine if it should be marked as 'cancelled' (early) or 'expired' (after 5 mins)
                 $ageInMinutes = $activation->created_at ? 
                     Carbon::parse($activation->created_at)->diffInMinutes(now()) : 0;
-                $shouldMarkAsExpired = $ageInMinutes >= 10;
+                $shouldMarkAsExpired = $ageInMinutes >= 5;
                 $autoStatus = $shouldMarkAsExpired ? 'expired' : 'cancelled';
                 
                 // Cancellation successful - refund user
