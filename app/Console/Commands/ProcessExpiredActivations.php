@@ -373,21 +373,85 @@ class ProcessExpiredActivations extends Command
     }
 
     /**
-     * Refund activation and mark as expired
-     */
-    /**
-     * Refund activation with complete transaction safety and comprehensive logging
-     * Professional-grade refund processing with wallet validation and audit trails
+     * Refund activation with redundant safety checks and professional-grade error handling
+     * This method is designed for maximum reliability and auditability
      */
     private function refundActivation($activation, $status, $description): array
     {
+        $operationId = uniqid('OP_');
+        $refundReference = null;
+        $refunded = false;
+        
         try {
-            $refunded = false;
-            $statusUpdated = false;
-            $refundReference = null;
+            Log::info('=== REFUND OPERATION START ===', [
+                'operation_id' => $operationId,
+                'activation_id' => $activation->id,
+                'user_id' => $activation->user_id,
+                'amount' => $activation->amount,
+                'status' => $status
+            ]);
             
-            DB::transaction(function() use ($activation, $status, $description, &$refunded, &$statusUpdated, &$refundReference) {
-                // Step 1: Update activation status to mark it as processed
+            // ============================================================================
+            // REFUND OPERATION - ATOMIC, IDEMPOTENT, AUDITABLE
+            // ============================================================================
+            $result = DB::transaction(function() use ($activation, $status, $description, $operationId, &$refundReference) {
+                
+                // ────────────────────────────────────────────────────────────────────────
+                // STEP 1: CHECK IF ALREADY REFUNDED (Idempotency check)
+                // ────────────────────────────────────────────────────────────────────────
+                $existingRefund = DB::table('transactions')
+                    ->where('type', 'credit')
+                    ->where('channel', 'Refund')
+                    ->where('user_id', $activation->user_id)
+                    ->where('amount', $activation->amount)
+                    ->where('created_at', '>=', Carbon::now()->subMinutes(5)) // Within last 5 minutes
+                    ->first();
+                
+                if ($existingRefund) {
+                    Log::warning('Duplicate refund detected - skipping', [
+                        'operation_id' => $operationId,
+                        'activation_id' => $activation->id,
+                        'existing_refund_reference' => $existingRefund->reference,
+                        'existing_refund_id' => $existingRefund->id
+                    ]);
+                    return [
+                        'success' => true,
+                        'refunded' => true,
+                        'reference' => $existingRefund->reference,
+                        'duplicate' => true
+                    ];
+                }
+                
+                // ────────────────────────────────────────────────────────────────────────
+                // STEP 2: VERIFY ACTIVATION STATUS (Double-check it's still pending)
+                // ────────────────────────────────────────────────────────────────────────
+                $currentActivation = DB::table('transactions')
+                    ->where('id', $activation->id)
+                    ->lockForUpdate()
+                    ->first();
+                
+                if (!$currentActivation) {
+                    throw new \Exception("Activation ID {$activation->id} not found in database");
+                }
+                
+                if ($currentActivation->status !== 'pending') {
+                    Log::warning('Activation status changed - refund not needed', [
+                        'operation_id' => $operationId,
+                        'activation_id' => $activation->id,
+                        'current_status' => $currentActivation->status,
+                        'expected_status' => 'pending'
+                    ]);
+                    return [
+                        'success' => true,
+                        'refunded' => false,
+                        'reference' => null,
+                        'reason' => 'Status changed to ' . $currentActivation->status
+                    ];
+                }
+                
+                // ────────────────────────────────────────────────────────────────────────
+                // STEP 3: UPDATE ACTIVATION STATUS
+                // ────────────────────────────────────────────────────────────────────────
                 $statusUpdate = DB::table('transactions')
                     ->where('id', $activation->id)
                     ->update([
@@ -395,56 +459,75 @@ class ProcessExpiredActivations extends Command
                         'updated_at' => now()
                     ]);
                 
-                if (!$statusUpdate) {
-                    throw new \Exception("Failed to update activation status for ID: {$activation->id}");
+                if ($statusUpdate !== 1) {
+                    throw new \Exception("Status update failed for activation {$activation->id}");
                 }
-                $statusUpdated = true;
                 
-                Log::info('Activation status updated', [
-                    'activation_id' => $activation->id,
-                    'status_set_to' => $status
+                Log::info('Activation status updated to ' . $status, [
+                    'operation_id' => $operationId,
+                    'activation_id' => $activation->id
                 ]);
-
-                // Step 2: Validate and lock wallet for refund
+                
+                // ────────────────────────────────────────────────────────────────────────
+                // STEP 4: VALIDATE WALLET EXISTS AND LOCK IT
+                // ────────────────────────────────────────────────────────────────────────
                 $wallet = DB::table('wallets')
                     ->where('user_id', $activation->user_id)
                     ->lockForUpdate()
                     ->first();
-                    
+                
                 if (!$wallet) {
-                    Log::error('Wallet not found - cannot process refund', [
-                        'activation_id' => $activation->id,
-                        'user_id' => $activation->user_id,
-                        'amount' => $activation->amount
-                    ]);
                     throw new \Exception("Wallet not found for user_id: {$activation->user_id}");
                 }
-
-                $walletBalanceBefore = $wallet->balance;
                 
-                // Step 3: Increment wallet balance
-                $updated = DB::table('wallets')
-                    ->where('user_id', $activation->user_id)
-                    ->increment('balance', $activation->amount);
+                $walletBalanceBefore = (float)$wallet->balance;
                 
-                if (!$updated) {
-                    throw new \Exception("Failed to increment wallet balance for user_id: {$activation->user_id}");
+                Log::info('Wallet locked and validated', [
+                    'operation_id' => $operationId,
+                    'user_id' => $activation->user_id,
+                    'wallet_id' => $wallet->id,
+                    'balance_before' => $walletBalanceBefore
+                ]);
+                
+                // ────────────────────────────────────────────────────────────────────────
+                // STEP 5: INCREMENT WALLET BALANCE
+                // ────────────────────────────────────────────────────────────────────────
+                $incrementResult = DB::table('wallets')
+                    ->where('id', $wallet->id)
+                    ->update([
+                        'balance' => DB::raw('balance + ' . $activation->amount),
+                        'updated_at' => now()
+                    ]);
+                
+                if ($incrementResult !== 1) {
+                    throw new \Exception("Failed to increment wallet balance");
                 }
-
-                // Get updated wallet balance for logging
-                $walletAfter = DB::table('wallets')
-                    ->where('user_id', $activation->user_id)
+                
+                // ────────────────────────────────────────────────────────────────────────
+                // STEP 6: VERIFY BALANCE UPDATED (Safety check)
+                // ────────────────────────────────────────────────────────────────────────
+                $updatedWallet = DB::table('wallets')
+                    ->where('id', $wallet->id)
                     ->first();
-                $walletBalanceAfter = $walletAfter->balance ?? 0;
-
-                Log::info('Wallet balance incremented', [
+                
+                $walletBalanceAfter = (float)$updatedWallet->balance;
+                $expectedBalance = $walletBalanceBefore + $activation->amount;
+                
+                if (abs($walletBalanceAfter - $expectedBalance) > 0.01) {
+                    throw new \Exception("Wallet balance verification failed: expected {$expectedBalance}, got {$walletBalanceAfter}");
+                }
+                
+                Log::info('Wallet balance incremented and verified', [
+                    'operation_id' => $operationId,
                     'user_id' => $activation->user_id,
                     'balance_before' => $walletBalanceBefore,
                     'refund_amount' => $activation->amount,
                     'balance_after' => $walletBalanceAfter
                 ]);
-
-                // Step 4: Create refund transaction record with complete audit trail
+                
+                // ────────────────────────────────────────────────────────────────────────
+                // STEP 7: CREATE REFUND TRANSACTION RECORD
+                // ────────────────────────────────────────────────────────────────────────
                 $refundReference = 'REF_' . strtoupper(Str::random(10));
                 
                 $refundInserted = DB::table('transactions')->insert([
@@ -452,46 +535,128 @@ class ProcessExpiredActivations extends Command
                     'user_id' => $activation->user_id,
                     'type' => 'credit',
                     'channel' => 'Refund',
-                    'provider' => $activation->service_name ?? $activation->provider ?? 'Auto-Refund',
+                    'provider' => $activation->service_name ?? $activation->provider ?? 'System',
+                    'phone' => $activation->phone ?? null,
+                    'recipient' => null,
                     'amount' => $activation->amount,
                     'status' => 'success',
                     'description' => $description,
+                    'response' => json_encode([
+                        'operation_id' => $operationId,
+                        'original_activation_id' => $activation->id,
+                        'reason' => 'Auto-expiration refund'
+                    ]),
                     'balance_after' => $walletBalanceAfter,
                     'created_at' => now(),
-                    'updated_at' => now(),
+                    'updated_at' => now()
                 ]);
                 
                 if (!$refundInserted) {
                     throw new \Exception("Failed to create refund transaction record");
                 }
                 
-                $refunded = true;
+                Log::info('Refund transaction record created', [
+                    'operation_id' => $operationId,
+                    'refund_reference' => $refundReference,
+                    'user_id' => $activation->user_id
+                ]);
                 
-                Log::info('✓ Auto-refund completed successfully', [
+                return [
+                    'success' => true,
+                    'refunded' => true,
+                    'reference' => $refundReference
+                ];
+                
+            }, attempts: 3, timeout: 30);
+            
+            // ════════════════════════════════════════════════════════════════════════
+            // POST-TRANSACTION LOGGING
+            // ════════════════════════════════════════════════════════════════════════
+            if ($result['refunded'] ?? false) {
+                Log::info('✓✓✓ AUTO-REFUND COMPLETED SUCCESSFULLY ✓✓✓', [
+                    'operation_id' => $operationId,
                     'activation_id' => $activation->id,
                     'user_id' => $activation->user_id,
                     'amount' => $activation->amount,
-                    'refund_reference' => $refundReference,
+                    'refund_reference' => $result['reference'],
                     'status_set_to' => $status,
-                    'reason' => $description,
-                    'wallet_balance_before' => $walletBalanceBefore,
-                    'wallet_balance_after' => $walletBalanceAfter
+                    'description' => $description,
+                    'timestamp' => now()->toIso8601String()
                 ]);
-            });
-
-            return ['success' => true, 'refunded' => $refunded, 'reference' => $refundReference];
+            } elseif ($result['duplicate'] ?? false) {
+                Log::notice('Refund previously processed (idempotency)', [
+                    'operation_id' => $operationId,
+                    'activation_id' => $activation->id,
+                    'refund_reference' => $result['reference']
+                ]);
+            }
             
-        } catch (\Exception $e) {
-            Log::critical('✗ Auto-refund FAILED - requires manual investigation', [
+            return [
+                'success' => true,
+                'refunded' => $result['refunded'] ?? false,
+                'reference' => $result['reference'] ?? null
+            ];
+            
+        } catch (\Throwable $e) {
+            // ════════════════════════════════════════════════════════════════════════
+            // CRITICAL ERROR HANDLING
+            // ════════════════════════════════════════════════════════════════════════
+            Log::critical('✗✗✗ AUTO-REFUND FAILED - MANUAL INTERVENTION REQUIRED ✗✗✗', [
+                'operation_id' => $operationId,
                 'activation_id' => $activation->id,
                 'user_id' => $activation->user_id,
                 'amount' => $activation->amount,
                 'error' => $e->getMessage(),
-                'error_line' => $e->getLine(),
+                'error_code' => $e->getCode(),
                 'error_file' => $e->getFile(),
-                'trace' => $e->getTraceAsString()
+                'error_line' => $e->getLine(),
+                'timestamp' => now()->toIso8601String(),
+                'stack_trace' => $e->getTraceAsString()
             ]);
-            return ['success' => false, 'refunded' => false, 'reference' => null];
+            
+            // Alert admins if configured
+            $this->alertAdminOnRefundFailure($activation, $e, $operationId);
+            
+            return [
+                'success' => false,
+                'refunded' => false,
+                'reference' => null,
+                'error' => $e->getMessage(),
+                'operation_id' => $operationId
+            ];
+        }
+    }
+    
+    /**
+     * Alert administrators when a refund fails
+     * Can be extended to send email, Slack, PagerDuty, etc.
+     */
+    private function alertAdminOnRefundFailure($activation, \Throwable $e, $operationId)
+    {
+        try {
+            // Log to a special "alerts" channel
+            $alert = [
+                'type' => 'REFUND_FAILURE',
+                'operation_id' => $operationId,
+                'activation_id' => $activation->id,
+                'user_id' => $activation->user_id,
+                'amount' => '₦' . number_format($activation->amount, 2),
+                'error' => $e->getMessage(),
+                'severity' => 'HIGH',
+                'action_required' => 'Manual refund processing',
+                'timestamp' => now()->toIso8601String()
+            ];
+            
+            // Write to alerts log
+            Log::channel('alerts')->error('Refund Failure Alert', $alert);
+            
+            // Future: Add webhook calls, email notifications, etc.
+            // Example: Slack::send(...), Mail::send(...), etc.
+            
+        } catch (\Exception $alertError) {
+            Log::error('Failed to send admin alert', [
+                'error' => $alertError->getMessage()
+            ]);
         }
     }
 

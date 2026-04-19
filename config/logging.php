@@ -127,6 +127,15 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        // Critical alerts channel for payment/refund system failures
+        'alerts' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/alerts.log'),
+            'level' => env('LOG_ALERTS_LEVEL', 'warning'),
+            'days' => env('LOG_ALERTS_DAYS', 30),
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];
