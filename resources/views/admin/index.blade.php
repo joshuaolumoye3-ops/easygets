@@ -202,12 +202,12 @@
     .bal { color: #34d399; font-weight: 700; font-family: var(--mono); font-size: 14px; }
     .amt { color: #fcd34d; font-weight: 700; font-family: var(--mono); font-size: 14px; }
 
-    .badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 6px; font-size: 12px; font-weight: 700; }
-    .bd    { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-    .badge.ok  { background: rgba(16,185,129,0.13);  color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); } .badge.ok  .bd { background: #6ee7b7; }
-    .badge.pnd { background: rgba(245,158,11,0.13);  color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); } .badge.pnd .bd { background: #fbbf24; }
-    .badge.no  { background: rgba(239,68,68,0.13);   color: #f87171; border: 1px solid rgba(239,68,68,0.3);  } .badge.no  .bd { background: #f87171; }
-    .badge.ot  { background: rgba(59,130,246,0.10);  color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); } .badge.ot  .bd { background: #93c5fd; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .bd    { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .badge.ok  { background: rgba(16,185,129,0.15);  color: #6ee7b7; border: 1.5px solid rgba(16,185,129,0.4); } .badge.ok  .bd { background: #6ee7b7; }
+    .badge.pnd { background: rgba(245,158,11,0.15);  color: #fbbf24; border: 1.5px solid rgba(245,158,11,0.4); } .badge.pnd .bd { background: #fbbf24; }
+    .badge.no  { background: rgba(239,68,68,0.15);   color: #f87171; border: 1.5px solid rgba(239,68,68,0.4);  } .badge.no  .bd { background: #f87171; }
+    .badge.ot  { background: rgba(59,130,246,0.15);  color: #93c5fd; border: 1.5px solid rgba(59,130,246,0.4); } .badge.ot  .bd { background: #93c5fd; }
 
     .view-btn {
         padding: 6px 13px; background: rgba(59,130,246,0.1); color: #93c5fd;
@@ -338,6 +338,7 @@
     .m-txns table { table-layout: auto; }  /* override the global fixed layout */
     .m-txns table th { background: var(--bg-base); }
     .m-txns table td, .m-txns table th { padding: 9px 13px; font-size: 12px; }
+    .m-txns .badge { display: inline-flex !important; visibility: visible !important; }
 
     /* Laravel paginator override */
     .laravel-pagination { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; list-style: none; }
