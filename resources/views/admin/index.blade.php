@@ -575,17 +575,22 @@
                             <td>
                                 @php
                                     $s = strtolower(trim($tx->status ?? ''));
-                                    $badgeClass = in_array($s, ['success','completed','successful']) ? 'ok'
-                                                : (str_contains($s, 'pending') ? 'pnd'
-                                                : (in_array($s, ['failed','fail','error','cancelled','canceled','expired']) || str_contains($s, 'fail') ? 'no'
-                                                : 'ot'));
-                                    $badgeLabel = in_array($s, ['success','completed','successful']) ? '✓ Success'
-                                                : (str_contains($s, 'pending') ? '⏳ Pending'
-                                                : (str_contains($s, 'fail') || in_array($s, ['cancelled','canceled','expired']) ? '✗ Failed'
-                                                : '◆ ' . ucfirst($tx->status ?? 'Unknown')));
+                                    $bgColor = '#93c5fd';
+                                    $label = '◆ ' . ucfirst($tx->status ?? 'Unknown');
+                                    
+                                    if (in_array($s, ['success','completed','successful'])) {
+                                        $bgColor = '#6ee7b7';
+                                        $label = '✓ Success';
+                                    } elseif (str_contains($s, 'pending')) {
+                                        $bgColor = '#fbbf24';
+                                        $label = '⏳ Pending';
+                                    } elseif (in_array($s, ['failed','fail','error','cancelled','canceled','expired']) || str_contains($s, 'fail')) {
+                                        $bgColor = '#f87171';
+                                        $label = '✗ Failed';
+                                    }
                                 @endphp
-                                <span class="badge {{ $badgeClass }}">
-                                    <span class="bd"></span>{{ $badgeLabel }}
+                                <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:rgba({{ $bgColor === '#6ee7b7' ? '110,231,183' : ($bgColor === '#fbbf24' ? '251,191,36' : ($bgColor === '#f87171' ? '248,113,113' : '147,197,253')) }},0.15); color:{{ $bgColor }}; border:1.5px solid rgba({{ $bgColor === '#6ee7b7' ? '110,231,183,0.4' : ($bgColor === '#fbbf24' ? '251,191,36,0.4' : ($bgColor === '#f87171' ? '248,113,113,0.4' : '147,197,253,0.4')) }}); border-radius:6px; font-size:12px; font-weight:700; white-space:nowrap;">
+                                    <span style="width:7px; height:7px; border-radius:50%; background:{{ $bgColor }}; flex-shrink:0;"></span>{{ $label }}
                                 </span>
                             </td>
                             <td style="color:var(--t3);font-size:12px;">
