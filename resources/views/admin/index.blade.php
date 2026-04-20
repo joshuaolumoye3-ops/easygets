@@ -788,20 +788,23 @@
                 const tfrag = document.createDocumentFragment();
                 transactions.forEach(tx => {
                     const s   = (tx.status || '').toLowerCase().trim();
-                    const cls = ['success', 'completed', 'successful'].includes(s) ? 'ok'
-                            : s.includes('pending') ? 'pnd'
-                            : ['failed', 'fail', 'error', 'cancelled', 'canceled', 'expired'].includes(s) || s.includes('fail') ? 'no'
-                            : 'ot';
-                    const lbl = ['success', 'completed', 'successful'].includes(s) ? '✓ Success'
-                            : s.includes('pending') ? '⏳ Pending'
-                            : s.includes('fail') || ['cancelled','canceled','expired'].includes(s) ? '✗ Failed'
-                            : '◆ ' + (tx.status || 'Unknown');
+                    let bgColor = '#93c5fd', textColor = '#fff';
+                    let lbl = '◆ ' + (tx.status || 'Unknown');
+                    
+                    if (['success', 'completed', 'successful'].includes(s)) {
+                        bgColor = '#6ee7b7'; textColor = '#fff'; lbl = '✓ Success';
+                    } else if (s.includes('pending')) {
+                        bgColor = '#fbbf24'; textColor = '#000'; lbl = '⏳ Pending';
+                    } else if (['failed', 'fail', 'error', 'cancelled', 'canceled', 'expired'].includes(s) || s.includes('fail')) {
+                        bgColor = '#f87171'; textColor = '#fff'; lbl = '✗ Failed';
+                    }
+                    
                     const tr = document.createElement('tr');
                     tr.innerHTML =
-                        `<td>${esc(tx.type || '—')}</td>` +
-                        `<td style="font-family:var(--mono);font-weight:600;">₦${ngn(tx.amount)}</td>` +
-                        `<td><span class="badge ${cls}"><span class="bd"></span>${lbl}</span></td>` +
-                        `<td style="color:var(--t3);">${new Date(tx.created_at).toLocaleDateString()}</td>`;
+                        `<td style="padding:9px 13px; color:var(--t1);">${esc(tx.type || '—')}</td>` +
+                        `<td style="padding:9px 13px; color:var(--t1); font-family:var(--mono); font-weight:600;">₦${ngn(tx.amount)}</td>` +
+                        `<td style="padding:9px 13px;"><span style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:rgba(${bgColor === '#6ee7b7' ? '110,231,183' : bgColor === '#fbbf24' ? '251,191,36' : bgColor === '#f87171' ? '248,113,113' : '147,197,253'},0.15); color:${bgColor}; border:1.5px solid rgba(${bgColor === '#6ee7b7' ? '110,231,183,0.4' : bgColor === '#fbbf24' ? '251,191,36,0.4' : bgColor === '#f87171' ? '248,113,113,0.4' : '147,197,253,0.4'}); border-radius:6px; font-size:12px; font-weight:700; white-space:nowrap;"><span style="width:7px; height:7px; border-radius:50%; background:${bgColor}; flex-shrink:0;"></span>${lbl}</span></td>` +
+                        `<td style="padding:9px 13px; color:var(--t3); font-size:12px;">${new Date(tx.created_at).toLocaleDateString()}</td>`;
                     tfrag.appendChild(tr);
                 });
                 tbody.replaceChildren(tfrag);
