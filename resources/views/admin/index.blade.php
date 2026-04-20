@@ -276,6 +276,8 @@
     .info-tile .lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--t3); margin-bottom: 5px; }
     .info-tile .val { font-size: 14px; font-weight: 600; color: var(--t1); }
     .info-tile .val.g { color: var(--green); font-family: var(--mono); }
+    .info-tile .val.gn { color: var(--green); }
+    .info-tile .val.rd { color: var(--red); font-weight: 700; }
 
     .act-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; margin-bottom: 14px; }
     .act-b {
@@ -646,6 +648,9 @@
             <button class="act-b pu" id="btnTogPin">🔐 PIN</button>
             <button class="act-b gr" id="btnTogFunds">💳 Wallet</button>
         </div>
+        <div class="act-row">
+            <button class="act-b rd" id="btnTogBlock" style="grid-column:1;">🔒 Block User</button>
+        </div>
         <div id="fMsg"></div>
         <div id="fPw" class="sub-form">
             <h4>Change Password</h4>
@@ -679,6 +684,14 @@
                     <button class="s-btn rd" id="btnDoDed">Deduct Funds</button>
                 </div>
             </div>
+        </div>
+        <div id="fBlock" class="sub-form" style="border-left-color:#ef4444;">
+            <h4>Block/Unblock User</h4>
+            <div class="f-g">
+                <label class="f-l">Reason for blocking</label>
+                <textarea id="blockReason" class="f-a" placeholder="Enter reason for blocking this user..."></textarea>
+            </div>
+            <button class="s-btn rd" id="btnDoBlock">Block User</button>
         </div>
     </div>
     <div class="m-sec">
@@ -738,8 +751,19 @@
                 ['Email',          user.email || '—', null],
                 ['Phone',          user.phone_number || '—', null],
                 ['Wallet Balance', '₦' + ngn(user.wallet?.balance), 'g'],
-                ['Joined',         new Date(user.created_at).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' }), null]
+                ['Status',         user.is_blocked ? '🔒 BLOCKED' : '✓ Active', user.is_blocked ? 'rd' : 'gn'],
             ];
+            // Add blocked info if user is blocked
+            if (user.is_blocked) {
+                if (user.blocked_reason) {
+                    tiles.push(['Blocked Reason', user.blocked_reason, null]);
+                }
+                if (user.blocked_at) {
+                    tiles.push(['Blocked At', new Date(user.blocked_at).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }), null]);
+                }
+            }
+            tiles.push(['Joined', new Date(user.created_at).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' }), null]);
+            
             const igFrag = document.createDocumentFragment();
             tiles.forEach(([lbl, val, cls]) => {
                 const tile = document.createElement('div'); tile.className = 'info-tile';
@@ -788,10 +812,26 @@
             body.querySelector('#btnTogPw').addEventListener('click',    () => togForm('fPw', body));
             body.querySelector('#btnTogPin').addEventListener('click',   () => togForm('fPin', body));
             body.querySelector('#btnTogFunds').addEventListener('click', () => togForm('fFunds', body));
+            
+            // Update block button text based on status
+            const blockBtn = body.querySelector('#btnTogBlock');
+            const blockForm = body.querySelector('#fBlock');
+            const blockReasonInput = body.querySelector('#blockReason');
+            if (user.is_blocked) {
+                blockBtn.textContent = '🔓 Unblock User';
+                blockBtn.classList.remove('rd');
+                blockBtn.classList.add('gr');
+                blockForm.style.borderLeftColor = 'var(--green)';
+                blockReasonInput.style.display = 'none';
+                body.querySelector('#btnDoBlock').textContent = 'Unblock User';
+            }
+            blockBtn.addEventListener('click', () => togForm('fBlock', body));
+            
             body.querySelector('#btnDoPw').addEventListener('click',     () => doPw(body));
             body.querySelector('#btnDoPin').addEventListener('click',    () => doPin(body));
             body.querySelector('#btnDoAdd').addEventListener('click',    () => doAdd(body));
             body.querySelector('#btnDoDed').addEventListener('click',    () => doDed(body));
+            body.querySelector('#btnDoBlock').addEventListener('click',  () => doBlock(body, user));
 
         } catch (e) {
             body.innerHTML = `<div class="empty-st"><div class="ei">⚠️</div><p>Failed to load user: ${esc(e.message)}</p></div>`;
@@ -886,6 +926,33 @@
                 setTimeout(() => openModal(uid), 900);
             }
         } catch (e) { flash(body, 'Error: ' + e.message, 'err'); }
+    }
+
+    async function doBlock(body, user) {
+        if (user.is_blocked) {
+            // Unblock user - no reason needed
+            try {
+                flash(body, 'Processing…', 'ok');
+                const d = await post(`${BASE}/app/admin/users/${uid}/unblock`, {});
+                flash(body, d.message || (d.success ? 'User unblocked.' : 'Failed.'), d.success ? 'ok' : 'err');
+                if (d.success) {
+                    setTimeout(() => openModal(uid), 900);
+                }
+            } catch (e) { flash(body, 'Error: ' + e.message, 'err'); }
+        } else {
+            // Block user - reason required
+            const reason = body.querySelector('#blockReason').value.trim();
+            if (!reason) { flash(body, 'Please provide a reason for blocking.', 'err'); return; }
+            try {
+                flash(body, 'Processing…', 'ok');
+                const d = await post(`${BASE}/app/admin/users/${uid}/block`, { reason: reason });
+                flash(body, d.message || (d.success ? 'User blocked.' : 'Failed.'), d.success ? 'ok' : 'err');
+                if (d.success) {
+                    body.querySelector('#blockReason').value = '';
+                    setTimeout(() => openModal(uid), 900);
+                }
+            } catch (e) { flash(body, 'Error: ' + e.message, 'err'); }
+        }
     }
 
 })();
