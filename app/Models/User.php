@@ -26,6 +26,9 @@ class User extends Authenticatable
         'phone_number',
         'password',
         'pin',
+        'is_blocked',
+        'blocked_reason',
+        'blocked_at',
     ];
 
     /**
@@ -47,8 +50,58 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'blocked_at' => 'datetime',
             'password' => 'hashed',
+            'is_blocked' => 'boolean',
         ];
+    }
+
+    /**
+     * Scope to get active (non-blocked) users
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_blocked', false);
+    }
+
+    /**
+     * Scope to get blocked users
+     */
+    public function scopeBlocked($query)
+    {
+        return $query->where('is_blocked', true);
+    }
+
+    /**
+     * Check if user is blocked
+     */
+    public function isBlocked(): bool
+    {
+        return (bool) $this->is_blocked;
+    }
+
+    /**
+     * Block a user
+     */
+    public function block(string $reason = null): void
+    {
+        $this->update([
+            'is_blocked' => true,
+            'blocked_reason' => $reason,
+            'blocked_at' => now(),
+        ]);
+    }
+
+    /**
+     * Unblock a user
+     */
+    public function unblock(): void
+    {
+        $this->update([
+            'is_blocked' => false,
+            'blocked_reason' => null,
+            'blocked_at' => null,
+        ]);
     }
 
 

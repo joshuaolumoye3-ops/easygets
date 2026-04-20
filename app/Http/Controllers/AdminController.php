@@ -661,4 +661,208 @@ public function addFunds(Request $request, $userId)
 
         return response()->json($transactions);
     }
+
+    /**
+     * Block a user account
+     */
+    public function blockUser(Request $request, $userId)
+    {
+        $validator = Validator::make($request->all(), [
+            'reason' => 'required|string|min:5|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first()
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $user = User::findOrFail($userId);
+            $admin = Auth::guard('admins')->user();
+
+            if (!$admin) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Admin not logged in.'
+                ], 403);
+            }
+
+            // Check if already blocked
+            if ($user->is_blocked) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User is already blocked.'
+                ], 400);
+            }
+
+            $reason = $request->reason;
+
+            // Block the user
+            $user->block($reason);
+
+            // Log admin action
+            AdminTransaction::create([
+                'admin_id' => $admin->id,
+                'action' => 'BLOCK_USER',
+                'amount' => 0,
+                'affected_user_id' => $user->id,
+                'description' => sprintf(
+                    'Blocked user: %s (%s). Reason: %s',
+                    $user->username,
+                    $user->email,
+                    $reason
+                ),
+                'reference' => 'BLOCK_' . strtoupper(Str::random(8))
+            ]);
+
+            // Invalidate user sessions (force logout)
+            $this->invalidateUserSessions($user->id);
+
+            DB::commit();
+
+            Log::warning('User blocked by admin', [
+                'blocked_user_id' => $user->id,
+                'blocked_user_email' => $user->email,
+                'admin_id' => $admin->id,
+                'reason' => $reason,
+                'timestamp' => now()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "User {$user->username} has been successfully blocked.",
+                'is_blocked' => true
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Block user error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to block user.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Unblock a user account
+     */
+    public function unblockUser(Request $request, $userId)
+    {
+        try {
+            DB::beginTransaction();
+
+            $user = User::findOrFail($userId);
+            $admin = Auth::guard('admins')->user();
+
+            if (!$admin) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Admin not logged in.'
+                ], 403);
+            }
+
+            // Check if not blocked
+            if (!$user->is_blocked) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User is not blocked.'
+                ], 400);
+            }
+
+            $previousReason = $user->blocked_reason;
+
+            // Unblock the user
+            $user->unblock();
+
+            // Log admin action
+            AdminTransaction::create([
+                'admin_id' => $admin->id,
+                'action' => 'UNBLOCK_USER',
+                'amount' => 0,
+                'affected_user_id' => $user->id,
+                'description' => sprintf(
+                    'Unblocked user: %s (%s). Previous reason: %s',
+                    $user->username,
+                    $user->email,
+                    $previousReason ?? 'No reason provided'
+                ),
+                'reference' => 'UNBLOCK_' . strtoupper(Str::random(8))
+            ]);
+
+            DB::commit();
+
+            Log::info('User unblocked by admin', [
+                'unblocked_user_id' => $user->id,
+                'unblocked_user_email' => $user->email,
+                'admin_id' => $admin->id,
+                'timestamp' => now()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "User {$user->username} has been successfully unblocked.",
+                'is_blocked' => false
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Unblock user error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to unblock user.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get user blocking status
+     */
+    public function getUserBlockStatus($userId)
+    {
+        try {
+            $user = User::findOrFail($userId);
+
+            return response()->json([
+                'success' => true,
+                'user_id' => $user->id,
+                'username' => $user->username,
+                'email' => $user->email,
+                'is_blocked' => $user->is_blocked,
+                'blocked_reason' => $user->blocked_reason,
+                'blocked_at' => $user->blocked_at,
+                'last_login_at' => $user->last_login_at
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found'
+            ], 404);
+        }
+    }
+
+    /**
+     * Invalidate all sessions for a user
+     * This forces them to log out across all devices
+     */
+    private function invalidateUserSessions($userId): void
+    {
+        try {
+            // Delete all sessions for this user
+            DB::table('sessions')
+                ->where('user_id', $userId)
+                ->delete();
+
+            Log::info('User sessions invalidated', ['user_id' => $userId]);
+        } catch (\Exception $e) {
+            Log::error('Failed to invalidate user sessions: ' . $e->getMessage());
+        }
+    }
 }

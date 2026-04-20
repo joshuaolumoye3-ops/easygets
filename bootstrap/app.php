@@ -7,6 +7,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\CheckUserNotBlocked;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -19,7 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'auth'   => Authenticate::class,
             'guest'  => RedirectIfAuthenticated::class,
-            'admin'  => AdminMiddleware::class, 
+            'admin'  => AdminMiddleware::class,
+            'check.user.not.blocked' => CheckUserNotBlocked::class,
         ]);
 
         // Replace the default VerifyCsrfToken with our custom one

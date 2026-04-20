@@ -23,8 +23,28 @@ class LoginController extends Controller
         // Determine if the login field is email or username
         $fieldType = filter_var($credentials['login'], FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
 
+        // Check if user is blocked before attempting login
+        $user = User::where($fieldType, $credentials['login'])->first();
+        
+        if ($user && $user->isBlocked()) {
+            \Log::warning('Login attempt by blocked user', [
+                'username' => $user->username,
+                'email' => $user->email,
+                'ip' => $request->ip(),
+                'blocked_at' => $user->blocked_at,
+                'reason' => $user->blocked_reason
+            ]);
+            return back()->withErrors([
+                'login' => 'Your account has been blocked. Please contact support for assistance.',
+            ])->onlyInput('login');
+        }
+
         // Attempt authentication
         if (Auth::attempt([$fieldType => $credentials['login'], 'password' => $credentials['password']])) {
+            // Update last login timestamp
+            $user = Auth::user();
+            $user->update(['last_login_at' => now()]);
+            
             $request->session()->regenerate();
 
             return redirect()->intended(route('dashboard'))

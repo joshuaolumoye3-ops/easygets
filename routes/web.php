@@ -91,137 +91,132 @@ Route::middleware('auth')->group(function () {
     Route::post('/clear-virtual-account-session', [VirtualAccountController::class, 'clearSession'])
         ->name('virtual-account.clear-session');
 
-    Route::get('/dashboard', [Controller::class, 'dashboard'])->name('dashboard');
-    Route::get('/transactions', [Controller::class, 'transaction'])->name('transaction');
-    Route::post('/data/purchase', [DataController::class, 'purchase'])->name('data.purchase');
-    Route::post('/airtime/recharge', [AirtimeController::class, 'recharge'])->name('airtime.recharge');
-    Route::patch('/update-profile', [RegisterController::class, 'updateProfile'])->name('updateProfile.submit');
+    Route::get('/dashboard', [Controller::class, 'dashboard'])->middleware('check.user.not.blocked')->name('dashboard');
+    Route::get('/transactions', [Controller::class, 'transaction'])->middleware('check.user.not.blocked')->name('transaction');
+    Route::post('/data/purchase', [DataController::class, 'purchase'])->middleware('check.user.not.blocked')->name('data.purchase');
+    Route::post('/airtime/recharge', [AirtimeController::class, 'recharge'])->middleware('check.user.not.blocked')->name('airtime.recharge');
+    Route::patch('/update-profile', [RegisterController::class, 'updateProfile'])->middleware('check.user.not.blocked')->name('updateProfile.submit');
 
-    Route::get('/history', [HistoryController::class, 'index'])->name('history');
-    Route::post('/history/get-sms', [HistoryController::class, 'getSmsCode'])->name('history.get-sms');
-    Route::post('/history/cancel-activation', [HistoryController::class, 'cancelActivation'])->name('history.cancel-activation');
-    Route::post('/history/get-social-status', [HistoryController::class, 'getSocialStatus'])->name('history.get-social-status');
+    Route::get('/history', [HistoryController::class, 'index'])->middleware('check.user.not.blocked')->name('history');
+    Route::post('/history/get-sms', [HistoryController::class, 'getSmsCode'])->middleware('check.user.not.blocked')->name('history.get-sms');
+    Route::post('/history/cancel-activation', [HistoryController::class, 'cancelActivation'])->middleware('check.user.not.blocked')->name('history.cancel-activation');
+    Route::post('/history/get-social-status', [HistoryController::class, 'getSocialStatus'])->middleware('check.user.not.blocked')->name('history.get-social-status');
 
         // Expire activation if countdown hits zero and SMS not delivered
-        Route::post('/history/expire-activation', [HistoryController::class, 'expireActivation'])->name('history.expire-activation');
+        Route::post('/history/expire-activation', [HistoryController::class, 'expireActivation'])->middleware('check.user.not.blocked')->name('history.expire-activation');
 
-    Route::post('/purchase/prepare', [CountryController::class, 'preparePurchase'])->name('prepare.purchase');
-    Route::get('/purchase/confirm', [CountryController::class, 'showConfirm'])->name('confirm.payment');
-    Route::post('/payments/process', [CountryController::class, 'process'])->name('payments.process');
-    Route::get('/esim', [EsimController::class, 'index'])->name('esim');
-    Route::get('/countries/{code}/plan', [EsimController::class, 'plan'])->name('countries.plan');
-    Route::get('/checkout/{code}/{packageId}', [EsimController::class, 'checkout'])->name('checkout');
-    Route::post('/checkout/{country}/{package}', [EsimController::class, 'store'])->name('checkout.process');
-    Route::get('/data', [DataController::class, 'showData'])->name('data');
-    Route::get('/cabletv', [CableController::class, 'showCableTV'])->name('cabletv');
-    Route::post('/verify-smartcard', [CableController::class, 'verifySmartcard'])->name('verify.smartcard');
-    Route::post('/cabletv/purchase', [CableController::class, 'purchase'])->name('cabletv.purchase');
-    Route::post('/wallet/create-account', [WalletController::class, 'createAccount'])->name('wallets.createAccount');
-    Route::get('/profile', [Controller::class, 'profile'])->name('profile');
+    Route::post('/purchase/prepare', [CountryController::class, 'preparePurchase'])->middleware('check.user.not.blocked')->name('prepare.purchase');
+    Route::get('/purchase/confirm', [CountryController::class, 'showConfirm'])->middleware('check.user.not.blocked')->name('confirm.payment');
+    Route::post('/payments/process', [CountryController::class, 'process'])->middleware('check.user.not.blocked')->name('payments.process');
+    Route::get('/esim', [EsimController::class, 'index'])->middleware('check.user.not.blocked')->name('esim');
+    Route::get('/countries/{code}/plan', [EsimController::class, 'plan'])->middleware('check.user.not.blocked')->name('countries.plan');
+    Route::get('/checkout/{code}/{packageId}', [EsimController::class, 'checkout'])->middleware('check.user.not.blocked')->name('checkout');
+    Route::post('/checkout/{country}/{package}', [EsimController::class, 'store'])->middleware('check.user.not.blocked')->name('checkout.process');
+    Route::get('/data', [DataController::class, 'showData'])->middleware('check.user.not.blocked')->name('data');
+    Route::get('/cabletv', [CableController::class, 'showCableTV'])->middleware('check.user.not.blocked')->name('cabletv');
+    Route::post('/verify-smartcard', [CableController::class, 'verifySmartcard'])->middleware('check.user.not.blocked')->name('verify.smartcard');
+    Route::post('/cabletv/purchase', [CableController::class, 'purchase'])->middleware('check.user.not.blocked')->name('cabletv.purchase');
+    Route::post('/wallet/create-account', [WalletController::class, 'createAccount'])->middleware('check.user.not.blocked')->name('wallets.createAccount');
+    Route::get('/profile', [Controller::class, 'profile'])->middleware('check.user.not.blocked')->name('profile');
 
     // Update or create transaction PIN
-    Route::post('/profile/pin', [Controller::class, 'updatePin'])->name('updateProfile.pin');
-    Route::get('/electricity', [ElectricityController::class, 'showElectricityPlans'])->name('electricity');
-    Route::post('/electricity/render-success', [ElectricityController::class, 'renderSuccessPartial'])->name('electricity.render-success');
-    Route::post('/verify-electricity-meter', [ElectricityController::class, 'verifyElectricityMeter'])->name('verify.meter');
-    Route::post('/electricity/purchase', [ElectricityController::class, 'purchase'])->name('electricity.purchase');
+    Route::post('/profile/pin', [Controller::class, 'updatePin'])->middleware('check.user.not.blocked')->name('updateProfile.pin');
+    Route::get('/electricity', [ElectricityController::class, 'showElectricityPlans'])->middleware('check.user.not.blocked')->name('electricity');
+    Route::post('/electricity/render-success', [ElectricityController::class, 'renderSuccessPartial'])->middleware('check.user.not.blocked')->name('electricity.render-success');
+    Route::post('/verify-electricity-meter', [ElectricityController::class, 'verifyElectricityMeter'])->middleware('check.user.not.blocked')->name('verify.meter');
+    Route::post('/electricity/purchase', [ElectricityController::class, 'purchase'])->middleware('check.user.not.blocked')->name('electricity.purchase');
 
     
 
-    Route::get('/social-boost', [SocialBoostController::class, 'index'])->name('social-boost.index');
+    Route::get('/social-boost', [SocialBoostController::class, 'index'])->middleware('check.user.not.blocked')->name('social-boost.index');
 
     // Process purchase
-    Route::post('/social-boost/purchase', [SocialBoostController::class, 'purchase'])->name('social-boost.purchase');
+    Route::post('/social-boost/purchase', [SocialBoostController::class, 'purchase'])->middleware('check.user.not.blocked')->name('social-boost.purchase');
 
     // View user's orders
-    Route::get('/social-boost/orders', [SocialBoostController::class, 'orders'])->name('social-boost.orders');
+    Route::get('/social-boost/orders', [SocialBoostController::class, 'orders'])->middleware('check.user.not.blocked')->name('social-boost.orders');
 
     // Check order status
-    Route::get('/social-boost/status/{orderId}', [SocialBoostController::class, 'checkStatus'])->name('social-boost.status');
+    Route::get('/social-boost/status/{orderId}', [SocialBoostController::class, 'checkStatus'])->middleware('check.user.not.blocked')->name('social-boost.status');
 
     // Services list
-    Route::get('/services', [CountryController::class, 'showServices'])->name('services.list');
+    Route::get('/services', [CountryController::class, 'showServices'])->middleware('check.user.not.blocked')->name('services.list');
 
     // ==================== PROVIDER1 (5sim) PROVIDER ROUTES ====================
     // Step 1: Show countries for a service
     Route::get('/services/{serviceCode}/provider1/countries', [CountryController::class, 'showCountries5sim'])
-        ->name('services.provider1.countries');
+        ->middleware('check.user.not.blocked')->name('services.provider1.countries');
 
-    Route::get('/services/{serviceCode}/countries-provider1', [CountryController::class, 'showCountries5sim'])->name('countries.provider1');
-    Route::get('/services/{serviceCode}/countries-provider1/{country}/operators', [CountryController::class, 'showOperators5sim'])->name('operators.provider1');
-    Route::post('/prepare-purchase-provider1', [CountryController::class, 'preparePurchase5sim'])->name('prepare.purchase.provider1');
+    Route::get('/services/{serviceCode}/countries-provider1', [CountryController::class, 'showCountries5sim'])->middleware('check.user.not.blocked')->name('countries.provider1');
+    Route::get('/services/{serviceCode}/countries-provider1/{country}/operators', [CountryController::class, 'showOperators5sim'])->middleware('check.user.not.blocked')->name('operators.provider1');
+    Route::post('/prepare-purchase-provider1', [CountryController::class, 'preparePurchase5sim'])->middleware('check.user.not.blocked')->name('prepare.purchase.provider1');
 
     // Step 2: Show operators for a country
     Route::get('/services/{serviceCode}/provider1/{country}/operators', [CountryController::class, 'showOperators5sim'])
-        ->name('services.provider1.operators');
+        ->middleware('check.user.not.blocked')->name('services.provider1.operators');
 
     // Step 3: Prepare purchase (creates session)
     Route::post('/prepare-purchase/provider1', [CountryController::class, 'preparePurchase5sim'])
-        ->name('prepare.purchase.provider1')
-        ->middleware('auth');
+        ->middleware('auth', 'check.user.not.blocked')->name('prepare.purchase.provider1');
 
     // ==================== PROVIDER2 (SMS-BUS) PROVIDER ROUTES ====================
     // Step 1: Show countries for a service
     Route::get('/services/{serviceId}/countries-provider2', [CountryController::class, 'showCountries'])
-        ->name('services.provider2.countries');
+        ->middleware('check.user.not.blocked')->name('services.provider2.countries');
 
     // For AJAX loading (optional)
     Route::get('/services/{serviceId}/countries-provider2/load', [CountryController::class, 'showCountries']);
 
     // Step 2: Get prices for a country
     Route::get('/services/{serviceId}/countries-provider2/{countryId}/prices', [CountryController::class, 'getPrices'])
-        ->name('countries.provider2.prices');
+        ->middleware('check.user.not.blocked')->name('countries.provider2.prices');
 
     // Step 3: Prepare purchase (creates session)
     Route::post('/prepare-purchase-provider2', [CountryController::class, 'preparePurchase'])
-        ->name('prepare.purchase.provider2')
-        ->middleware('auth');
+        ->middleware('auth', 'check.user.not.blocked')->name('prepare.purchase.provider2');
 
     // ==================== COMMON ROUTES (BOTH PROVIDERS) ====================
     // Payment confirmation page
     Route::get('/confirm-payment', [CountryController::class, 'showConfirm'])
-        ->name('confirm.payment')
-        ->middleware('auth');
+        ->middleware('auth', 'check.user.not.blocked')->name('confirm.payment');
 
     // Process payment (actual purchase)
     Route::post('/process-payment', [CountryController::class, 'process'])
-        ->name('process.payment')
-        ->middleware('auth');
+        ->middleware('auth', 'check.user.not.blocked')->name('process.payment');
     // When user clicks on a product, show country selection for that product
-    Route::get('/products/{id}/countries', [CountryController::class, 'showCountries'])->name('products.countries');
-    Route::post('/jamb', [CableController::class, 'jamb'])->name('jamb');
+    Route::get('/products/{id}/countries', [CountryController::class, 'showCountries'])->middleware('check.user.not.blocked')->name('products.countries');
+    Route::post('/jamb', [CableController::class, 'jamb'])->middleware('check.user.not.blocked')->name('jamb');
 
 
 
-    Route::get('/social/services', [SocialController::class, 'services'])->name('social.services');
-    Route::post('/social/order', [SocialController::class, 'order'])->name('social.order');
+    Route::get('/social/services', [SocialController::class, 'services'])->middleware('check.user.not.blocked')->name('social.services');
+    Route::post('/social/order', [SocialController::class, 'order'])->middleware('check.user.not.blocked')->name('social.order');
 
     Route::get('/more-services', function () {
         return view('users.moreService');
-    });
+    })->middleware('check.user.not.blocked');
     Route::get('/personal-information', function () {
         return view('users.personal_info');
-    });
+    })->middleware('check.user.not.blocked');
     Route::get('/pin', function () {
         return view('users.pin');
-    });
-    Route::post('/update-pin', [Controller::class, 'updatePin'])->name('updateProfile.pin');
-    Route::get('/airtime', [AirtimeController::class, 'show'])->name('airtime.show');
+    })->middleware('check.user.not.blocked');
+    Route::post('/update-pin', [Controller::class, 'updatePin'])->middleware('check.user.not.blocked')->name('updateProfile.pin');
+    Route::get('/airtime', [AirtimeController::class, 'show'])->middleware('check.user.not.blocked')->name('airtime.show');
     // Add this to your routes/web.php file
     Route::post('/render-success-partial', [AirtimeController::class, 'renderSuccessPartial'])
-        ->name('render.success.partial')
-        ->middleware('auth'); // Add auth middleware if needed
+        ->middleware('auth', 'check.user.not.blocked')->name('render.success.partial');
 
 
-    Route::get('/jambepin', [CableController::class, 'jambshow'])->name('jamb.show');
+    Route::get('/jambepin', [CableController::class, 'jambshow'])->middleware('check.user.not.blocked')->name('jamb.show');
 
-    Route::get('/betting', [BettingController::class, 'show'])->name('bettinng.show');
+    Route::get('/betting', [BettingController::class, 'show'])->middleware('check.user.not.blocked')->name('bettinng.show');
 
-    Route::post('/fund-bet', [BettingController::class, 'fund_account'])->name('fund_bet');
+    Route::post('/fund-bet', [BettingController::class, 'fund_account'])->middleware('check.user.not.blocked')->name('fund_bet');
 
-    Route::post('/betting/verify-customer', [BettingController::class, 'verifyCustomer'])->name('betting.verify-customer');
+    Route::post('/betting/verify-customer', [BettingController::class, 'verifyCustomer'])->middleware('check.user.not.blocked')->name('betting.verify-customer');
 
-    Route::post('/clubkonnect/callback', [BettingController::class, 'handleCallback'])->name('clubkonnect.callback');
+    Route::post('/clubkonnect/callback', [BettingController::class, 'handleCallback'])->middleware('check.user.not.blocked')->name('clubkonnect.callback');
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 });
@@ -260,6 +255,12 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
     Route::post('/users/{id}/update-pin', [AdminController::class, 'updateUserPin'])->name('admin.users.updatePin');
     Route::post('/users/{user}/add-funds', [AdminController::class, 'addFunds'])->name('admin.users.add-funds');
     Route::post('/users/{user}/deduct-funds', [AdminController::class, 'deductFunds'])->name('admin.users.deduct-funds');
+    
+    // User blocking routes
+    Route::post('/users/{id}/block', [AdminController::class, 'blockUser'])->name('admin.users.block');
+    Route::post('/users/{id}/unblock', [AdminController::class, 'unblockUser'])->name('admin.users.unblock');
+    Route::get('/users/{id}/block-status', [AdminController::class, 'getUserBlockStatus'])->name('admin.users.block-status');
+    
     Route::get('/services', [AdminServiceController::class, 'index'])->name('admin.services');
     Route::get('/services/{service}/providers', [AdminServiceController::class, 'providers'])->name('admin.providers');
     Route::get('/providers/{provider}/products', [AdminServiceController::class, 'products'])->name('admin.products');

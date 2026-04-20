@@ -23,6 +23,9 @@
               method="POST">
             @csrf
 
+            <!-- Honeypot field (hidden from real users) -->
+            <input type="text" name="website_url" style="display:none;" tabindex="-1" autocomplete="off" />
+
             <!-- Step 1: Email -->
             <div class="step" data-step="0">
                 <div class="flex justify-center">
