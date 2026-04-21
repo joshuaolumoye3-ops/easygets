@@ -5,45 +5,52 @@
 @push('head')
 <style>
     .service-card {
-        background: var(--bg-card);
+        background: linear-gradient(145deg, var(--bg-card), #0f172a);
         border: 1px solid var(--border);
-        border-radius: var(--r-lg);
-        padding: 20px;
+        border-radius: 14px;
+        padding: 18px 20px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        transition: all 0.3s ease;
+        transition: all 0.25s ease;
         margin-bottom: 12px;
+        position: relative;
     }
 
     .service-card:hover {
-        border-color: var(--border-hi);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        transform: translateY(-2px);
+        border-color: var(--accent);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.35);
     }
 
     .service-info {
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 14px;
         flex: 1;
     }
 
     .service-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: var(--r-md);
+        width: 46px;
+        height: 46px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 24px;
-        background: var(--accent-d);
+        background: rgba(99,102,241,0.12);
+        color: #818cf8;
+    }
+
+    .service-icon svg {
+        width: 22px;
+        height: 22px;
     }
 
     .service-details h3 {
-        font-size: 16px;
-        font-weight: 700;
+        font-size: 15px;
+        font-weight: 600;
         color: var(--t1);
-        margin-bottom: 4px;
+        margin-bottom: 3px;
     }
 
     .service-details p {
@@ -51,93 +58,90 @@
         color: var(--t3);
     }
 
-    .toggle-switch {
-        position: relative;
-        width: 56px;
-        height: 32px;
-        background: var(--red-d);
-        border-radius: 16px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        border: 1px solid var(--red);
-        display: flex;
-        align-items: center;
-        padding: 0 4px;
-    }
-
-    .toggle-switch.active {
-        background: var(--green-d);
-        border-color: var(--green);
-    }
-
-    .toggle-thumb {
-        width: 24px;
-        height: 24px;
-        background: var(--red);
-        border-radius: 50%;
-        transition: all 0.3s ease;
-        flex-shrink: 0;
-    }
-
-    .toggle-switch.active .toggle-thumb {
-        background: var(--green);
-        margin-left: auto;
-    }
-
-    .toggle-label {
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        margin-left: 8px;
-    }
-
     .status-badge {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 700;
+        padding: 5px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
     }
 
     .status-badge.active {
-        background: rgba(16,185,129,0.15);
-        color: #6ee7b7;
-        border: 1px solid rgba(16,185,129,0.3);
+        background: rgba(16,185,129,0.12);
+        color: #34d399;
     }
 
     .status-badge.inactive {
-        background: rgba(239,68,68,0.15);
+        background: rgba(239,68,68,0.12);
         color: #f87171;
-        border: 1px solid rgba(239,68,68,0.3);
+    }
+
+    /* Modern toggle */
+    .toggle-switch {
+        position: relative;
+        width: 48px;
+        height: 26px;
+        border-radius: 999px;
+        background: #1f2937;
+        cursor: pointer;
+        transition: 0.25s;
+    }
+
+    .toggle-switch.active {
+        background: #22c55e;
+    }
+
+    .toggle-thumb {
+        position: absolute;
+        top: 3px;
+        left: 4px;
+        width: 20px;
+        height: 20px;
+        background: white;
+        border-radius: 50%;
+        transition: 0.25s;
+    }
+
+    .toggle-switch.active .toggle-thumb {
+        transform: translateX(20px);
     }
 
     .services-grid {
         display: grid;
-        gap: 8px;
+        gap: 10px;
     }
 
-    .loading {
-        opacity: 0.6;
-        pointer-events: none;
+    /* Empty state */
+    .empty-st {
+        text-align: center;
+        padding: 40px;
+        opacity: 0.7;
     }
 
+    .empty-st svg {
+        width: 40px;
+        margin-bottom: 10px;
+    }
+
+    /* Mobile */
     @media (max-width: 768px) {
         .service-card {
             flex-direction: column;
             align-items: flex-start;
+            gap: 12px;
         }
 
-        .service-info {
+        .service-actions {
             width: 100%;
-            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
         }
-
-        .toggle-switch {
-            align-self: flex-end;
-            margin-top: -36px;
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+            filter: blur(0.3px);
         }
     }
 </style>
@@ -184,21 +188,50 @@
                     <div class="service-card" data-service-id="{{ $service->id }}">
                         <div class="service-info">
                             <div class="service-icon">
-                                @php
-                                    $icons = [
-                                        'data' => '📡',
-                                        'airtime' => '📱',
-                                        'electricity' => '⚡',
-                                        'cabletv' => '📺',
-                                        'betting' => '⚽',
-                                        'esim' => '🛰️',
-                                        'otp' => '🔐',
-                                        'social' => '👥',
-                                        'boost' => '🚀',
-                                    ];
-                                    $icon = $icons[$service->slug] ?? '🔧';
-                                @endphp
-                                {{ $icon }}
+                                @switch($service->slug)
+
+                                    @case('data')
+                                    <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                        <path d="M3 10h18M3 6h18M3 14h18M3 18h18"/>
+                                    </svg>
+                                    @break
+
+                                    @case('airtime')
+                                    <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                        <path d="M7 4h10v16H7z"/>
+                                    </svg>
+                                    @break
+
+                                    @case('electricity')
+                                    <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                        <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/>
+                                    </svg>
+                                    @break
+
+                                    @case('cabletv')
+                                    <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                        <rect x="3" y="5" width="18" height="12" rx="2"/>
+                                    </svg>
+                                    @break
+
+                                    @case('betting')
+                                    <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="9"/>
+                                    </svg>
+                                    @break
+
+                                    @case('otp')
+                                    <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                        <path d="M12 15v2m6-6V9a6 6 0 10-12 0v2"/>
+                                    </svg>
+                                    @break
+
+                                    @default
+                                    <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                        <path d="M10 14l2-2 2 2m0-6l-2 2-2-2"/>
+                                    </svg>
+
+                                @endswitch
                             </div>
                             <div class="service-details">
                                 <h3>{{ $service->name }}</h3>
@@ -208,7 +241,7 @@
                             </div>
                         </div>
 
-                        <div style="display:flex; align-items:center; gap:16px;">
+                        <div class="service-actions">
                             <span class="status-badge {{ $service->is_active ? 'active' : 'inactive' }}">
                                 <span>●</span>
                                 {{ $service->is_active ? '✓ Active' : '✗ Inactive' }}
