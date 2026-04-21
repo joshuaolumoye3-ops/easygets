@@ -155,6 +155,61 @@
         transform: translateY(-1px);
         box-shadow: 0 6px 18px rgba(59,130,246,0.35);
     }
+    .manage-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 11px 18px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        color: #fff;
+
+        background: linear-gradient(135deg, #2563eb, #4f46e5);
+        border: 1px solid rgba(255,255,255,0.08);
+
+        box-shadow:
+            0 6px 20px rgba(37,99,235,0.35),
+            inset 0 1px 0 rgba(255,255,255,0.08);
+
+        transition: all 0.25s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* subtle glow */
+    .manage-btn::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(120deg, transparent, rgba(255,255,255,0.2), transparent);
+        opacity: 0;
+        transition: 0.4s;
+    }
+
+    /* hover effect */
+    .manage-btn:hover {
+        transform: translateY(-2px) scale(1.02);
+        box-shadow:
+            0 10px 30px rgba(37,99,235,0.5),
+            inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+
+    .manage-btn:hover::before {
+        opacity: 1;
+    }
+
+    /* click */
+    .manage-btn:active {
+        transform: scale(0.97);
+    }
+
+    /* icon */
+    .manage-btn svg {
+        width: 16px;
+        height: 16px;
+    }
 
     /* Mobile fix */
     @media (max-width: 768px) {
@@ -188,7 +243,7 @@
                     <p>Manage all platform services and their configurations</p>
                 </div>
 
-                <a href="{{ route('admin.manage-services') }}">
+                <a href="{{ route('admin.manage-services') }}" class="manage-btn">
                     <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
                     </svg>
