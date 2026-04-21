@@ -385,6 +385,9 @@
                     <input type="text" name="u_search" placeholder="Search users…" value="{{ request('u_search') }}">
                 </div>
             </form>
+            <a href="{{ route('admin.manage-services') }}" style="padding:8px 14px; background:var(--accent-d); color:var(--accent); border:1px solid rgba(59,130,246,0.3); border-radius:var(--r-sm); font-size:12px; font-weight:700; text-decoration:none; display:flex; align-items:center; gap:6px; transition:all .2s; white-space:nowrap;" class="toggle-switch" title="Manage Services">
+                🔧 Services
+            </a>
             <div class="av">A</div>
         </div>
     </div>

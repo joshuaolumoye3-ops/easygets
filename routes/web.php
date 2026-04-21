@@ -108,12 +108,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/purchase/prepare', [CountryController::class, 'preparePurchase'])->middleware('check.user.not.blocked')->name('prepare.purchase');
     Route::get('/purchase/confirm', [CountryController::class, 'showConfirm'])->middleware('check.user.not.blocked')->name('confirm.payment');
     Route::post('/payments/process', [CountryController::class, 'process'])->middleware('check.user.not.blocked')->name('payments.process');
-    Route::get('/esim', [EsimController::class, 'index'])->middleware('check.user.not.blocked')->name('esim');
+    Route::get('/esim', [EsimController::class, 'index'])->middleware('check.user.not.blocked', 'check.service.active:esim')->name('esim');
     Route::get('/countries/{code}/plan', [EsimController::class, 'plan'])->middleware('check.user.not.blocked')->name('countries.plan');
     Route::get('/checkout/{code}/{packageId}', [EsimController::class, 'checkout'])->middleware('check.user.not.blocked')->name('checkout');
     Route::post('/checkout/{country}/{package}', [EsimController::class, 'store'])->middleware('check.user.not.blocked')->name('checkout.process');
-    Route::get('/data', [DataController::class, 'showData'])->middleware('check.user.not.blocked')->name('data');
-    Route::get('/cabletv', [CableController::class, 'showCableTV'])->middleware('check.user.not.blocked')->name('cabletv');
+    Route::get('/data', [DataController::class, 'showData'])->middleware('check.user.not.blocked', 'check.service.active:data')->name('data');
+    Route::get('/cabletv', [CableController::class, 'showCableTV'])->middleware('check.user.not.blocked', 'check.service.active:cabletv')->name('cabletv');
     Route::post('/verify-smartcard', [CableController::class, 'verifySmartcard'])->middleware('check.user.not.blocked')->name('verify.smartcard');
     Route::post('/cabletv/purchase', [CableController::class, 'purchase'])->middleware('check.user.not.blocked')->name('cabletv.purchase');
     Route::post('/wallet/create-account', [WalletController::class, 'createAccount'])->middleware('check.user.not.blocked')->name('wallets.createAccount');
@@ -121,14 +121,14 @@ Route::middleware('auth')->group(function () {
 
     // Update or create transaction PIN
     Route::post('/profile/pin', [Controller::class, 'updatePin'])->middleware('check.user.not.blocked')->name('updateProfile.pin');
-    Route::get('/electricity', [ElectricityController::class, 'showElectricityPlans'])->middleware('check.user.not.blocked')->name('electricity');
+    Route::get('/electricity', [ElectricityController::class, 'showElectricityPlans'])->middleware('check.user.not.blocked', 'check.service.active:electricity')->name('electricity');
     Route::post('/electricity/render-success', [ElectricityController::class, 'renderSuccessPartial'])->middleware('check.user.not.blocked')->name('electricity.render-success');
     Route::post('/verify-electricity-meter', [ElectricityController::class, 'verifyElectricityMeter'])->middleware('check.user.not.blocked')->name('verify.meter');
     Route::post('/electricity/purchase', [ElectricityController::class, 'purchase'])->middleware('check.user.not.blocked')->name('electricity.purchase');
 
     
 
-    Route::get('/social-boost', [SocialBoostController::class, 'index'])->middleware('check.user.not.blocked')->name('social-boost.index');
+    Route::get('/social-boost', [SocialBoostController::class, 'index'])->middleware('check.user.not.blocked', 'check.service.active:social-boost')->name('social-boost.index');
 
     // Process purchase
     Route::post('/social-boost/purchase', [SocialBoostController::class, 'purchase'])->middleware('check.user.not.blocked')->name('social-boost.purchase');
@@ -202,7 +202,7 @@ Route::middleware('auth')->group(function () {
         return view('users.pin');
     })->middleware('check.user.not.blocked');
     Route::post('/update-pin', [Controller::class, 'updatePin'])->middleware('check.user.not.blocked')->name('updateProfile.pin');
-    Route::get('/airtime', [AirtimeController::class, 'show'])->middleware('check.user.not.blocked')->name('airtime.show');
+    Route::get('/airtime', [AirtimeController::class, 'show'])->middleware('check.user.not.blocked', 'check.service.active:airtime')->name('airtime.show');
     // Add this to your routes/web.php file
     Route::post('/render-success-partial', [AirtimeController::class, 'renderSuccessPartial'])
         ->middleware('auth', 'check.user.not.blocked')->name('render.success.partial');
@@ -260,6 +260,10 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
     Route::post('/users/{id}/block', [AdminController::class, 'blockUser'])->name('admin.users.block');
     Route::post('/users/{id}/unblock', [AdminController::class, 'unblockUser'])->name('admin.users.unblock');
     Route::get('/users/{id}/block-status', [AdminController::class, 'getUserBlockStatus'])->name('admin.users.block-status');
+    
+    // Services Management
+    Route::get('/manage-services', [AdminController::class, 'manageServices'])->name('admin.manage-services');
+    Route::post('/services/{serviceId}/toggle', [AdminController::class, 'toggleService'])->name('admin.services.toggle');
     
     Route::get('/services', [AdminServiceController::class, 'index'])->name('admin.services');
     Route::get('/services/{service}/providers', [AdminServiceController::class, 'providers'])->name('admin.providers');

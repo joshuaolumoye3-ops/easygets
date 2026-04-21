@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Transaction;
 use App\Models\Wallet;
+use App\Models\Service;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -864,6 +865,85 @@ public function addFunds(Request $request, $userId)
             Log::info('User sessions invalidated', ['user_id' => $userId]);
         } catch (\Exception $e) {
             Log::error('Failed to invalidate user sessions: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get all services management page
+     */
+    public function manageServices()
+    {
+        try {
+            $services = Service::all();
+
+            return view('admin.services', compact('services'));
+        } catch (\Exception $e) {
+            Log::error('Error loading services page: ' . $e->getMessage());
+            return back()->with('error', 'Failed to load services');
+        }
+    }
+
+    /**
+     * Toggle service active/inactive status
+     */
+    public function toggleService(Request $request, $serviceId)
+    {
+        try {
+            $service = Service::findOrFail($serviceId);
+            $admin = Auth::guard('admins')->user();
+
+            if (!$admin) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Admin not logged in.'
+                ], 403);
+            }
+
+            $oldStatus = $service->is_active;
+            $service->is_active = !$service->is_active;
+            $service->save();
+
+            $action = $service->is_active ? 'ACTIVATE_SERVICE' : 'DEACTIVATE_SERVICE';
+            $description = sprintf(
+                '%s service: %s (ID: %d). Status: %s → %s',
+                $service->is_active ? 'Activated' : 'Deactivated',
+                $service->name,
+                $service->id,
+                $oldStatus ? 'Active' : 'Inactive',
+                $service->is_active ? 'Active' : 'Inactive'
+            );
+
+            // Log admin action
+            AdminTransaction::create([
+                'admin_id' => $admin->id,
+                'action' => $action,
+                'amount' => 0,
+                'affected_user_id' => null,
+                'description' => $description,
+                'reference' => 'SVC_' . strtoupper(Str::random(8))
+            ]);
+
+            Log::info('Service status toggled', [
+                'admin_id' => $admin->id,
+                'service_id' => $serviceId,
+                'service_name' => $service->name,
+                'new_status' => $service->is_active
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => $service->is_active ? "✓ {$service->name} has been activated" : "✓ {$service->name} has been deactivated",
+                'is_active' => $service->is_active,
+                'service_id' => $service->id
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Toggle service error: ' . $e->getMessage(), ['service_id' => $serviceId]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update service status'
+            ], 500);
         }
     }
 }
