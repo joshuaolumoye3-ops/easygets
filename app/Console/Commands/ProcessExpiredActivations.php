@@ -13,86 +13,57 @@ use Illuminate\Support\Str;
 class ProcessExpiredActivations extends Command
 {
     protected $signature = 'activations:process-expired
-                            {--limit=50 : Maximum number of activations to process per run}
-                            {--timeout=3 : Minutes threshold for auto-expiration (default: 3)}';
+                            {--limit=100 : Maximum activations to process per run}
+                            {--timeout=3 : Minutes before auto-cancelling a pending activation}';
 
-    protected $description = 'Auto-cancel and refund pending activations after 3 minutes without SMS received';
+    protected $description = 'Auto-cancel and refund pending activations after 3 minutes with no SMS';
 
-    private $rateLimit      = 2;   // seconds between API calls (reduced for faster processing)
-    private $lockTimeout    = 180; // 3 minutes lock timeout
+    private $lockTimeout = 180;
 
     public function handle()
     {
         $limit          = (int) $this->option('limit');
         $timeoutMinutes = (int) $this->option('timeout');
 
-        // Prevent concurrent execution with a distributed lock
         $lockKey = 'activations:process-expired-lock';
         if (Cache::has($lockKey)) {
             $this->warn('Previous process still running. Skipping...');
-            Log::warning('ProcessExpiredActivations: Locked execution prevented');
             return 0;
         }
-
         Cache::put($lockKey, true, $this->lockTimeout);
 
         try {
-            $this->info("🔄 Starting auto-expiration (limit: {$limit}, timeout: {$timeoutMinutes}min)");
+            $threshold = Carbon::now()->subMinutes($timeoutMinutes);
 
-            $expirationThreshold = Carbon::now()->subMinutes($timeoutMinutes);
-
-            // Only process truly pending activations older than the timeout.
-            // Exclude already-refunded/completed/expired rows and non-provider channels.
-            $pendingActivations = DB::table('transactions')
+            $pending = DB::table('transactions')
                 ->where('type', 'activation')
                 ->where('status', 'pending')
                 ->whereNotNull('request_id')
-                ->where('created_at', '<', $expirationThreshold)
+                ->whereNull('sms_code')
+                ->where('created_at', '<', $threshold)
                 ->whereNotIn('channel', ['Refund', 'admin'])
                 ->take($limit)
                 ->get();
 
-            $this->info('Found ' . count($pendingActivations) . ' pending activations to process');
+            $this->info("Found " . count($pending) . " pending activations older than {$timeoutMinutes} min");
 
-            $processed = 0;
-            $refunded  = 0;
-            $failed    = 0;
+            $processed = 0; $refunded = 0; $failed = 0;
 
-            foreach ($pendingActivations as $activation) {
-                // Rate-limiting between API calls
-                usleep($this->rateLimit * 1_000_000);
-
+            foreach ($pending as $activation) {
+                usleep(500000); // 0.5s between API calls
                 try {
-                    $result = $this->processActivation($activation);
-
-                    if ($result['success']) {
-                        $processed++;
-                        if ($result['refunded']) {
-                            $refunded++;
-                        }
-                    } else {
-                        $failed++;
-                    }
+                    $result = $this->processOne($activation);
+                    if ($result['success'])  $processed++;
+                    if ($result['refunded']) $refunded++;
+                    if (!$result['success']) $failed++;
                 } catch (\Exception $e) {
                     $failed++;
-                    Log::error('Error processing activation', [
-                        'activation_id' => $activation->id,
-                        'error'         => $e->getMessage(),
-                        'trace'         => $e->getTraceAsString(),
-                    ]);
-                    $this->error("✗ Error processing activation {$activation->id}: {$e->getMessage()}");
+                    Log::error('processExpired: error', ['id' => $activation->id, 'error' => $e->getMessage()]);
+                    $this->error("✗ [ID: {$activation->id}] {$e->getMessage()}");
                 }
             }
 
-            $this->info("✓ Completed: {$processed} processed, {$refunded} refunded, {$failed} failed");
-
-            Log::info('ProcessExpiredActivations completed', [
-                'total'     => count($pendingActivations),
-                'processed' => $processed,
-                'refunded'  => $refunded,
-                'failed'    => $failed,
-            ]);
-
+            $this->info("✓ Done: {$processed} processed, {$refunded} refunded, {$failed} failed");
             return 0;
 
         } finally {
@@ -100,108 +71,71 @@ class ProcessExpiredActivations extends Command
         }
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // CORE PROCESSING LOGIC
-    // ──────────────────────────────────────────────────────────────────────────
-
-    private function processActivation($activation): array
+    private function processOne($activation): array
     {
         $provider = $this->normalizeProvider($activation->channel);
+        $this->info("[{$provider}] ID: {$activation->id} | request_id: {$activation->request_id}");
 
-        $this->info("Processing [{$provider}] activation ID: {$activation->id}, request_id: {$activation->request_id}");
+        // Check if SMS already arrived on provider side
+        $apiStatus = $this->checkStatus($activation, $provider);
 
-        // 1. Check current API status (also catches SMS that already arrived)
-        $apiStatus = $this->checkActivationStatus($activation, $provider);
-
-        // 2. If an SMS code was already received on the provider side, mark completed — no refund
-        if ($apiStatus['sms_received'] ?? false) {
-            $this->info("  → SMS already received on provider side — marking completed, no refund needed");
+        if ($apiStatus['sms_received']) {
+            $this->info("  → SMS already received — marking completed, no refund");
             DB::table('transactions')
                 ->where('id', $activation->id)
-                ->where('status', 'pending') // guard
+                ->where('status', 'pending')
                 ->update(['status' => 'completed', 'updated_at' => now()]);
             return ['success' => true, 'refunded' => false];
         }
 
-        // 3. Number already expired/cancelled on provider side — refund immediately
         if (!$apiStatus['valid']) {
-            $this->info("  → Provider reports number no longer active (expired/cancelled)");
-            return $this->refundActivation(
-                $activation,
-                'expired',
-                "Auto-expired: number no longer available from provider after {$this->option('timeout')} minutes"
-            );
+            // Already expired on provider side
+            $this->info("  → Provider says number expired");
+            $ok = $this->doRefund($activation, 'expired', "Auto-expired: no SMS after {$this->option('timeout')}min [activation #{$activation->id}]");
+            $this->line("  " . ($ok ? '✓ Refunded' : '✗ Refund FAILED'));
+            return ['success' => true, 'refunded' => $ok];
         }
 
-        // 4. Number still active — attempt to cancel at provider, then refund
-        $this->info("  → Number still active; attempting provider cancel...");
-        $cancelResult = $this->attemptCancel($activation, $provider);
+        // Still active — cancel then refund
+        $this->info("  → Cancelling at provider...");
+        $cancel = $this->cancelAt($activation, $provider);
 
-        if ($cancelResult['success']) {
-            $this->info("  → Cancellation confirmed; processing refund");
-            return $this->refundActivation(
-                $activation,
-                'expired',
-                "Auto-cancelled & refunded: no SMS received after {$this->option('timeout')} minutes"
-            );
+        if ($cancel['success']) {
+            $ok = $this->doRefund($activation, 'expired', "Auto-cancelled: no SMS after {$this->option('timeout')}min [activation #{$activation->id}]");
+            $this->line("  " . ($ok ? '✓ Cancelled + Refunded' : '✗ Cancelled but Refund FAILED'));
+            return ['success' => true, 'refunded' => $ok];
         }
 
-        // Cancel failed — do NOT refund yet; leave for next run or manual review
-        Log::warning('Failed to auto-cancel activation', [
-            'activation_id' => $activation->id,
-            'provider'      => $provider,
-            'reason'        => $cancelResult['reason'] ?? 'Unknown',
-        ]);
-        $this->warn("  ✗ Cancellation failed: " . ($cancelResult['reason'] ?? 'Unknown'));
+        $this->warn("  ✗ Cancel failed: " . ($cancel['reason'] ?? 'unknown'));
         return ['success' => false, 'refunded' => false];
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // API STATUS CHECKS
-    // ──────────────────────────────────────────────────────────────────────────
-
-    private function checkActivationStatus($activation, $provider): array
+    private function checkStatus($activation, string $provider): array
     {
         try {
             return $provider === 'provider1'
-                ? $this->checkProvider1Status($activation)
-                : $this->checkProvider2Status($activation);
+                ? $this->checkStatus5sim($activation)
+                : $this->checkStatusSmsBus($activation);
         } catch (\Exception $e) {
-            Log::error('Failed to check API status', [
-                'provider'      => $provider,
-                'activation_id' => $activation->id,
-                'error'         => $e->getMessage(),
-            ]);
-            // On API error, assume still valid to prevent false refunds
-            return ['valid' => true, 'status' => 'unknown', 'sms_received' => false];
+            Log::warning('checkStatus failed — assuming valid', ['id' => $activation->id, 'error' => $e->getMessage()]);
+            return ['valid' => true, 'sms_received' => false];
         }
     }
 
-    /** Check 5sim status */
-    private function checkProvider1Status($activation): array
+    private function checkStatus5sim($activation): array
     {
-        $token = env('FIVESIM_TOKEN');
-        if (!$token) {
-            throw new \Exception('Provider1 (5sim) token not configured');
-        }
-
+        $token    = env('FIVESIM_TOKEN');
         $response = Http::timeout(15)
             ->withHeaders(['Authorization' => "Bearer {$token}", 'Accept' => 'application/json'])
             ->withOptions(['verify' => false])
             ->get("https://5sim.net/v1/user/check/{$activation->request_id}");
 
         if (!$response->successful()) {
-            Log::warning('Provider1 status check failed', [
-                'request_id'  => $activation->request_id,
-                'status_code' => $response->status(),
-            ]);
-            return ['valid' => true, 'status' => 'unknown', 'sms_received' => false];
+            return ['valid' => true, 'sms_received' => false];
         }
 
-        $data      = $response->json();
-        $apiStatus = $data['status'] ?? 'UNKNOWN';
+        $data = $response->json();
 
-        // If SMS code already arrived, save it and flag as received
         if (!empty($data['sms']) && is_array($data['sms'])) {
             foreach ($data['sms'] as $sms) {
                 if (!empty($sms['code'])) {
@@ -209,23 +143,19 @@ class ProcessExpiredActivations extends Command
                         ->where('id', $activation->id)
                         ->where('status', 'pending')
                         ->update(['sms_code' => $sms['code'], 'status' => 'completed', 'updated_at' => now()]);
-                    return ['valid' => true, 'status' => $apiStatus, 'sms_received' => true];
+                    return ['valid' => true, 'sms_received' => true];
                 }
             }
         }
 
-        $stillValid = !in_array($apiStatus, ['CANCELED', 'TIMEOUT', 'FINISHED'], true);
-        return ['valid' => $stillValid, 'status' => $apiStatus, 'sms_received' => false];
+        $apiStatus = $data['status'] ?? 'UNKNOWN';
+        $isExpired = in_array($apiStatus, ['CANCELED', 'TIMEOUT', 'FINISHED'], true);
+        return ['valid' => !$isExpired, 'sms_received' => false];
     }
 
-    /** Check SMS-Bus status */
-    private function checkProvider2Status($activation): array
+    private function checkStatusSmsBus($activation): array
     {
-        $token = env('SMSBUS_TOKEN');
-        if (!$token) {
-            throw new \Exception('Provider2 (SMS-Bus) token not configured');
-        }
-
+        $token    = env('SMSBUS_TOKEN');
         $response = Http::timeout(15)
             ->withOptions(['verify' => false])
             ->get('https://sms-bus.com/api/control/get/sms', [
@@ -234,178 +164,88 @@ class ProcessExpiredActivations extends Command
             ]);
 
         if (!$response->successful()) {
-            Log::warning('Provider2 status check failed', [
-                'request_id'  => $activation->request_id,
-                'status_code' => $response->status(),
-            ]);
-            return ['valid' => true, 'status' => 'unknown', 'sms_received' => false];
+            return ['valid' => true, 'sms_received' => false];
         }
 
         $data = $response->json();
         $code = $data['code'] ?? null;
 
-        // SMS received
         if ($code === 200 && !empty($data['data'])) {
             DB::table('transactions')
                 ->where('id', $activation->id)
                 ->where('status', 'pending')
                 ->update(['sms_code' => $data['data'], 'status' => 'completed', 'updated_at' => now()]);
-            return ['valid' => true, 'status' => 'sms_received', 'sms_received' => true];
+            return ['valid' => true, 'sms_received' => true];
         }
 
-        // Still pending
-        if ($code === 50101) {
-            return ['valid' => true, 'status' => 'pending', 'sms_received' => false];
-        }
-
-        // Number expired/released
-        if ($code === 50102) {
-            return ['valid' => false, 'status' => 'expired', 'sms_received' => false];
-        }
-
-        return ['valid' => true, 'status' => 'unknown', 'sms_received' => false];
+        return ['valid' => $code !== 50102, 'sms_received' => false];
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // PROVIDER CANCEL
-    // ──────────────────────────────────────────────────────────────────────────
-
-    private function attemptCancel($activation, $provider): array
+    private function cancelAt($activation, string $provider): array
     {
         try {
-            return $provider === 'provider1'
-                ? $this->cancelProvider1($activation)
-                : $this->cancelProvider2($activation);
+            if ($provider === 'provider1') {
+                $token    = env('FIVESIM_TOKEN');
+                $response = Http::timeout(15)
+                    ->withHeaders(['Authorization' => "Bearer {$token}", 'Accept' => 'application/json'])
+                    ->withOptions(['verify' => false])
+                    ->get("https://5sim.net/v1/user/cancel/{$activation->request_id}");
+                return ['success' => $response->successful()];
+            }
+
+            $token    = env('SMSBUS_TOKEN');
+            $response = Http::timeout(15)
+                ->withOptions(['verify' => false])
+                ->get('https://sms-bus.com/api/control/cancel', [
+                    'token'      => $token,
+                    'request_id' => $activation->request_id,
+                ]);
+
+            if (!$response->successful()) {
+                return ['success' => false, 'reason' => "HTTP {$response->status()}"];
+            }
+
+            $code = $response->json()['code'] ?? null;
+            // 200 = cancelled, 50103 = already closed (still treat as success)
+            return ['success' => in_array($code, [200, 50103], true), 'reason' => $response->json()['message'] ?? ''];
+
         } catch (\Exception $e) {
-            Log::error('Cancel attempt exception', [
-                'provider'      => $provider,
-                'activation_id' => $activation->id,
-                'error'         => $e->getMessage(),
-            ]);
             return ['success' => false, 'reason' => $e->getMessage()];
         }
     }
 
-    private function cancelProvider1($activation): array
+    private function doRefund($activation, string $status, string $description): bool
     {
-        $token    = env('FIVESIM_TOKEN');
-        $response = Http::timeout(15)
-            ->withHeaders(['Authorization' => "Bearer {$token}", 'Accept' => 'application/json'])
-            ->withOptions(['verify' => false])
-            ->get("https://5sim.net/v1/user/cancel/{$activation->request_id}");
-
-        if ($response->successful()) {
-            Log::info('Provider1 auto-cancel successful', ['request_id' => $activation->request_id]);
-            return ['success' => true];
-        }
-
-        $data = $response->json();
-        Log::warning('Provider1 auto-cancel failed', [
-            'request_id' => $activation->request_id,
-            'response'   => $data,
-        ]);
-        return ['success' => false, 'reason' => $data['message'] ?? 'API cancel failed'];
-    }
-
-    private function cancelProvider2($activation): array
-    {
-        $token    = env('SMSBUS_TOKEN');
-        $response = Http::timeout(15)
-            ->withOptions(['verify' => false])
-            ->get('https://sms-bus.com/api/control/cancel', [
-                'token'      => $token,
-                'request_id' => $activation->request_id,
-            ]);
-
-        if (!$response->successful()) {
-            Log::warning('Provider2 auto-cancel HTTP failed', [
-                'request_id' => $activation->request_id,
-                'status'     => $response->status(),
-            ]);
-            return ['success' => false, 'reason' => "HTTP {$response->status()}"];
-        }
-
-        $data = $response->json();
-        $code = $data['code'] ?? null;
-
-        if ($code === 200) {
-            Log::info('Provider2 auto-cancel successful', ['request_id' => $activation->request_id]);
-            return ['success' => true];
-        }
-
-        // Already closed — treat as success so we still refund
-        if ($code === 50103) {
-            Log::info('Provider2 request already closed', ['request_id' => $activation->request_id]);
-            return ['success' => true];
-        }
-
-        Log::warning('Provider2 auto-cancel failed', [
-            'request_id' => $activation->request_id,
-            'code'       => $code,
-            'message'    => $data['message'] ?? null,
-        ]);
-        return ['success' => false, 'reason' => $data['message'] ?? 'API cancel failed'];
-    }
-
-    // ──────────────────────────────────────────────────────────────────────────
-    // REFUND (ATOMIC, IDEMPOTENT)
-    // ──────────────────────────────────────────────────────────────────────────
-
-    private function refundActivation($activation, $status, $description): array
-    {
-        $operationId = uniqid('OP_');
-
-        Log::info('=== REFUND OPERATION START ===', [
-            'operation_id'  => $operationId,
-            'activation_id' => $activation->id,
-            'user_id'       => $activation->user_id,
-            'amount'        => $activation->amount,
-            'status'        => $status,
-        ]);
-
         try {
-            $result = DB::transaction(function () use ($activation, $status, $description, $operationId) {
+            DB::transaction(function () use ($activation, $status, $description) {
 
-                // ── Idempotency: skip if a refund already exists for this activation ──
-                $existingRefund = DB::table('transactions')
-                    ->where('type', 'credit')
-                    ->where('channel', 'Refund')
-                    ->where('user_id', $activation->user_id)
-                    ->where('amount', $activation->amount)
-                    ->where('created_at', '>=', Carbon::now()->subMinutes(10))
-                    ->whereRaw("JSON_EXTRACT(response, '$.original_activation_id') = ?", [$activation->id])
-                    ->first();
-
-                if ($existingRefund) {
-                    Log::warning('Duplicate refund detected — skipping', [
-                        'operation_id'             => $operationId,
-                        'activation_id'            => $activation->id,
-                        'existing_refund_reference' => $existingRefund->reference,
-                    ]);
-                    return ['success' => true, 'refunded' => true, 'reference' => $existingRefund->reference, 'duplicate' => true];
-                }
-
-                // ── Re-read with row lock to prevent race conditions ──
                 $current = DB::table('transactions')
                     ->where('id', $activation->id)
                     ->lockForUpdate()
                     ->first();
 
-                if (!$current) {
-                    throw new \Exception("Activation ID {$activation->id} not found");
+                if (!$current || $current->status !== 'pending') {
+                    Log::info("doRefund skipped — status is [{$current->status}]", ['id' => $activation->id]);
+                    return;
                 }
 
-                // Guard: only refund if still pending
-                if ($current->status !== 'pending') {
-                    Log::warning('Activation status changed — refund skipped', [
-                        'operation_id'   => $operationId,
-                        'activation_id'  => $activation->id,
-                        'current_status' => $current->status,
-                    ]);
-                    return ['success' => true, 'refunded' => false, 'reference' => null, 'reason' => 'Status is ' . $current->status];
+                // Idempotency via description tag
+                $exists = DB::table('transactions')
+                    ->where('type', 'credit')
+                    ->where('channel', 'Refund')
+                    ->where('user_id', $activation->user_id)
+                    ->where('amount', $activation->amount)
+                    ->where('description', 'like', '%[activation #' . $activation->id . ']%')
+                    ->exists();
+
+                if ($exists) {
+                    DB::table('transactions')
+                        ->where('id', $activation->id)
+                        ->update(['status' => $status, 'updated_at' => now()]);
+                    return;
                 }
 
-                // Update activation status
+                // Mark expired
                 DB::table('transactions')
                     ->where('id', $activation->id)
                     ->update(['status' => $status, 'updated_at' => now()]);
@@ -416,110 +256,53 @@ class ProcessExpiredActivations extends Command
                     ->lockForUpdate()
                     ->first();
 
-                if (!$wallet) {
-                    throw new \Exception("Wallet not found for user_id: {$activation->user_id}");
-                }
+                if (!$wallet) throw new \Exception("Wallet not found for user {$activation->user_id}");
 
-                $balanceBefore = (float) $wallet->balance;
-
-                // Credit wallet
+                // Credit
                 DB::table('wallets')
-                    ->where('id', $wallet->id)
-                    ->update([
-                        'balance'    => DB::raw('balance + ' . (float) $activation->amount),
-                        'updated_at' => now(),
-                    ]);
+                    ->where('user_id', $activation->user_id)
+                    ->increment('balance', $activation->amount);
 
-                // Verify balance updated correctly
-                $balanceAfter = (float) DB::table('wallets')->where('id', $wallet->id)->value('balance');
-                $expected     = $balanceBefore + (float) $activation->amount;
+                // Build insert with only safe columns
+                $row = [
+                    'reference'   => 'REF_' . strtoupper(Str::random(10)),
+                    'user_id'     => $activation->user_id,
+                    'type'        => 'credit',
+                    'channel'     => 'Refund',
+                    'amount'      => $activation->amount,
+                    'status'      => 'success',
+                    'description' => $description,
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ];
 
-                if (abs($balanceAfter - $expected) > 0.01) {
-                    throw new \Exception("Balance verification failed: expected {$expected}, got {$balanceAfter}");
-                }
+                $cols = DB::getSchemaBuilder()->getColumnListing('transactions');
+                if (in_array('provider',      $cols)) $row['provider']      = $activation->service_name ?? $activation->provider ?? 'System';
+                if (in_array('phone',         $cols)) $row['phone']         = $activation->phone ?? null;
+                if (in_array('recipient',     $cols)) $row['recipient']     = null;
+                if (in_array('service_name',  $cols)) $row['service_name']  = $activation->service_name ?? null;
+                if (in_array('balance_after', $cols)) $row['balance_after'] = (float) DB::table('wallets')->where('user_id', $activation->user_id)->value('balance');
+                if (in_array('response',      $cols)) $row['response']      = json_encode(['original_activation_id' => $activation->id]);
 
-                // Create refund transaction record
-                $reference = 'REF_' . strtoupper(Str::random(10));
+                DB::table('transactions')->insert($row);
 
-                DB::table('transactions')->insert([
-                    'reference'    => $reference,
-                    'user_id'      => $activation->user_id,
-                    'type'         => 'credit',
-                    'channel'      => 'Refund',
-                    'provider'     => $activation->service_name ?? $activation->provider ?? 'System',
-                    'phone'        => $activation->phone ?? null,
-                    'recipient'    => null,
-                    'amount'       => $activation->amount,
-                    'status'       => 'success',
-                    'description'  => $description,
-                    'response'     => json_encode([
-                        'operation_id'          => $operationId,
-                        'original_activation_id' => $activation->id,
-                        'reason'                => 'Auto-expiration refund',
-                    ]),
-                    'balance_after' => $balanceAfter,
-                    'created_at'   => now(),
-                    'updated_at'   => now(),
+                Log::info('✓ doRefund OK', [
+                    'id'        => $activation->id,
+                    'user_id'   => $activation->user_id,
+                    'amount'    => $activation->amount,
+                    'reference' => $row['reference'],
                 ]);
+            });
 
-                Log::info('✓ AUTO-REFUND COMPLETED', [
-                    'operation_id'    => $operationId,
-                    'activation_id'   => $activation->id,
-                    'user_id'         => $activation->user_id,
-                    'amount'          => $activation->amount,
-                    'refund_reference' => $reference,
-                    'balance_before'  => $balanceBefore,
-                    'balance_after'   => $balanceAfter,
-                ]);
+            return true;
 
-                return ['success' => true, 'refunded' => true, 'reference' => $reference];
-
-            }, attempts: 3, timeout: 30);
-
-            if ($result['refunded'] ?? false) {
-                $this->info("  ✓ REFUND SUCCESS — Ref: {$result['reference']} | ₦" . number_format($activation->amount, 2));
-            }
-
-            return ['success' => true, 'refunded' => $result['refunded'] ?? false, 'reference' => $result['reference'] ?? null];
-
-        } catch (\Throwable $e) {
-            Log::critical('✗ AUTO-REFUND FAILED — MANUAL INTERVENTION REQUIRED', [
-                'operation_id'  => $operationId,
-                'activation_id' => $activation->id,
-                'user_id'       => $activation->user_id,
-                'amount'        => $activation->amount,
-                'error'         => $e->getMessage(),
-                'error_file'    => $e->getFile(),
-                'error_line'    => $e->getLine(),
-                'timestamp'     => now()->toIso8601String(),
-            ]);
-
-            $this->alertAdminOnRefundFailure($activation, $e, $operationId);
-
-            return ['success' => false, 'refunded' => false, 'reference' => null, 'error' => $e->getMessage()];
+        } catch (\Exception $e) {
+            Log::error('✗ doRefund FAILED', ['id' => $activation->id, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return false;
         }
     }
 
-    private function alertAdminOnRefundFailure($activation, \Throwable $e, string $operationId): void
-    {
-        try {
-            Log::channel('alerts')->error('Refund Failure Alert', [
-                'type'            => 'REFUND_FAILURE',
-                'operation_id'    => $operationId,
-                'activation_id'   => $activation->id,
-                'user_id'         => $activation->user_id,
-                'amount'          => '₦' . number_format($activation->amount, 2),
-                'error'           => $e->getMessage(),
-                'severity'        => 'HIGH',
-                'action_required' => 'Manual refund processing',
-                'timestamp'       => now()->toIso8601String(),
-            ]);
-        } catch (\Exception $alertError) {
-            Log::error('Failed to send admin alert', ['error' => $alertError->getMessage()]);
-        }
-    }
-
-    private function normalizeProvider($channel): string
+    private function normalizeProvider(?string $channel): string
     {
         $p = strtolower($channel ?? 'provider2');
         if (in_array($p, ['sms-bus', 'smsbus'], true)) return 'provider2';

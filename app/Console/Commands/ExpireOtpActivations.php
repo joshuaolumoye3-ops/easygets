@@ -16,51 +16,40 @@ class ExpireOtpActivations extends Command
 
     public function handle()
     {
-        $now = Carbon::now();
-
-        // Only pick up rows that have a real expiry time set and are still pending
-        // Do NOT touch rows without expires_at (those are handled by process-expired)
         $expired = DB::table('transactions')
             ->where('type', 'activation')
             ->where('status', 'pending')
             ->whereNull('sms_code')
             ->whereNotNull('expires_at')
-            ->where('expires_at', '<', $now)
+            ->where('expires_at', '<', Carbon::now())
             ->whereNotIn('channel', ['Refund', 'admin'])
             ->get();
 
-        $count    = 0;
-        $refunded = 0;
+        $count = 0; $refunded = 0;
 
         foreach ($expired as $activation) {
             $count++;
             $provider = $this->normalizeProvider($activation->channel);
 
             try {
-                // Best-effort cancel at provider (don't fail the refund if cancel fails)
-                $this->attemptCancel($activation, $provider);
-
-                // Refund inside a transaction
-                $ok = $this->refund($activation);
-                if ($ok) $refunded++;
-
+                $this->cancelAtProvider($activation, $provider);
+                $ok = $this->doRefund($activation);
+                if ($ok) {
+                    $refunded++;
+                    $this->info("✓ [ID: {$activation->id}] Refunded ₦" . number_format($activation->amount, 2));
+                } else {
+                    $this->error("✗ [ID: {$activation->id}] Refund FAILED — check laravel.log");
+                }
             } catch (\Exception $e) {
-                Log::error('ExpireOtpActivations: error processing activation', [
-                    'activation_id' => $activation->id,
-                    'error'         => $e->getMessage(),
-                    'trace'         => $e->getTraceAsString(),
-                ]);
+                Log::error('ExpireOtpActivations error', ['id' => $activation->id, 'error' => $e->getMessage()]);
                 $this->error("✗ [ID: {$activation->id}] {$e->getMessage()}");
             }
         }
 
-        $this->info("{$refunded}/{$count} OTP activations expired and refunded.");
-        Log::info('ExpireOtpActivations completed', ['total' => $count, 'refunded' => $refunded]);
+        $this->info("{$refunded}/{$count} activations expired and refunded.");
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-
-    private function attemptCancel($activation, string $provider): void
+    private function cancelAtProvider($activation, string $provider): void
     {
         try {
             if ($provider === 'provider1') {
@@ -69,8 +58,7 @@ class ExpireOtpActivations extends Command
                     ->withHeaders(['Authorization' => "Bearer {$token}", 'Accept' => 'application/json'])
                     ->withOptions(['verify' => false])
                     ->get("https://5sim.net/v1/user/cancel/{$activation->request_id}");
-
-            } elseif ($provider === 'provider2') {
+            } else {
                 $token = env('SMSBUS_TOKEN');
                 Http::timeout(10)
                     ->withOptions(['verify' => false])
@@ -80,111 +68,92 @@ class ExpireOtpActivations extends Command
                     ]);
             }
         } catch (\Exception $e) {
-            // Log but don't propagate — we still refund even if cancel fails
-            Log::warning('ExpireOtpActivations: provider cancel failed (non-fatal)', [
-                'activation_id' => $activation->id,
-                'provider'      => $provider,
-                'error'         => $e->getMessage(),
-            ]);
+            Log::warning('cancelAtProvider failed (non-fatal)', ['id' => $activation->id, 'error' => $e->getMessage()]);
         }
     }
 
-    private function refund($activation): bool
+    private function doRefund($activation): bool
     {
         try {
             DB::transaction(function () use ($activation) {
 
-                // Re-read with lock
                 $current = DB::table('transactions')
                     ->where('id', $activation->id)
                     ->lockForUpdate()
                     ->first();
 
-                // Guard: skip if already moved to a terminal state by another job
                 if (!$current || $current->status !== 'pending') {
-                    Log::info('ExpireOtpActivations: refund skipped — already ' . ($current->status ?? 'gone'), [
-                        'activation_id' => $activation->id,
-                    ]);
+                    Log::info("ExpireOtp: refund skipped — [{$current->status}]", ['id' => $activation->id]);
                     return;
                 }
 
-                // Check idempotency — no double-refund for the same activation
+                // Idempotency
                 $exists = DB::table('transactions')
                     ->where('type', 'credit')
                     ->where('channel', 'Refund')
                     ->where('user_id', $activation->user_id)
                     ->where('amount', $activation->amount)
-                    ->whereRaw("JSON_EXTRACT(response, '$.original_activation_id') = ?", [$activation->id])
+                    ->where('description', 'like', '%[activation #' . $activation->id . ']%')
                     ->exists();
 
                 if ($exists) {
-                    // Mark as expired anyway so it won't be picked up again
                     DB::table('transactions')
                         ->where('id', $activation->id)
                         ->update(['status' => 'expired', 'updated_at' => now()]);
-                    Log::info('ExpireOtpActivations: duplicate refund skipped', ['activation_id' => $activation->id]);
                     return;
                 }
 
-                // Mark activation as expired
+                // Mark expired
                 DB::table('transactions')
                     ->where('id', $activation->id)
                     ->update(['status' => 'expired', 'updated_at' => now()]);
 
-                // Credit wallet
+                // Lock + credit wallet
                 $wallet = DB::table('wallets')
                     ->where('user_id', $activation->user_id)
                     ->lockForUpdate()
                     ->first();
 
-                if (!$wallet) {
-                    throw new \Exception("Wallet not found for user_id: {$activation->user_id}");
-                }
+                if (!$wallet) throw new \Exception("Wallet not found for user {$activation->user_id}");
 
                 DB::table('wallets')
                     ->where('user_id', $activation->user_id)
                     ->increment('balance', $activation->amount);
 
-                $newBalance = (float) DB::table('wallets')->where('user_id', $activation->user_id)->value('balance');
+                $row = [
+                    'reference'   => 'REF_' . strtoupper(Str::random(10)),
+                    'user_id'     => $activation->user_id,
+                    'type'        => 'credit',
+                    'channel'     => 'Refund',
+                    'amount'      => $activation->amount,
+                    'status'      => 'success',
+                    'description' => 'Activation expired refund [activation #' . $activation->id . ']',
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ];
 
-                DB::table('transactions')->insert([
-                    'reference'    => 'REF_' . strtoupper(Str::random(10)),
-                    'user_id'      => $activation->user_id,
-                    'type'         => 'credit',
-                    'channel'      => 'Refund',
-                    'provider'     => $activation->service_name ?? $activation->provider ?? 'System',
-                    'phone'        => $activation->phone ?? null,
-                    'recipient'    => null,
-                    'amount'       => $activation->amount,
-                    'status'       => 'success',
-                    'description'  => 'Activation expired refund for ' . ($activation->phone ?? $activation->request_id),
-                    'response'     => json_encode([
-                        'original_activation_id' => $activation->id,
-                        'reason'                 => 'expires_at passed',
-                    ]),
-                    'balance_after' => $newBalance,
-                    'created_at'   => now(),
-                    'updated_at'   => now(),
+                $cols = DB::getSchemaBuilder()->getColumnListing('transactions');
+                if (in_array('provider',      $cols)) $row['provider']      = $activation->service_name ?? $activation->provider ?? 'System';
+                if (in_array('phone',         $cols)) $row['phone']         = $activation->phone ?? null;
+                if (in_array('recipient',     $cols)) $row['recipient']     = null;
+                if (in_array('service_name',  $cols)) $row['service_name']  = $activation->service_name ?? null;
+                if (in_array('balance_after', $cols)) $row['balance_after'] = (float) DB::table('wallets')->where('user_id', $activation->user_id)->value('balance');
+                if (in_array('response',      $cols)) $row['response']      = json_encode(['original_activation_id' => $activation->id, 'reason' => 'expires_at passed']);
+
+                DB::table('transactions')->insert($row);
+
+                Log::info('✓ ExpireOtp refund OK', [
+                    'id'        => $activation->id,
+                    'user_id'   => $activation->user_id,
+                    'amount'    => $activation->amount,
+                    'reference' => $row['reference'],
                 ]);
-
-                Log::info('ExpireOtpActivations: refund completed', [
-                    'activation_id' => $activation->id,
-                    'user_id'       => $activation->user_id,
-                    'amount'        => $activation->amount,
-                    'new_balance'   => $newBalance,
-                ]);
-
-                $this->info("✓ [ID: {$activation->id}] Refunded ₦" . number_format($activation->amount, 2));
             });
 
             return true;
 
         } catch (\Exception $e) {
-            Log::error('ExpireOtpActivations: refund failed', [
-                'activation_id' => $activation->id,
-                'error'         => $e->getMessage(),
-                'trace'         => $e->getTraceAsString(),
-            ]);
+            Log::error('✗ ExpireOtp refund FAILED', ['id' => $activation->id, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return false;
         }
     }
