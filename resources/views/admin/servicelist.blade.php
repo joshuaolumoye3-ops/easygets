@@ -188,7 +188,7 @@
                     <p>Manage all platform services and their configurations</p>
                 </div>
 
-                <a href="{{ route('admin.manage.services') }}">
+                <a href="{{ route('admin.manage-services') }}">
                     <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
                     </svg>
