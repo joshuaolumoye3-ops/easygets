@@ -123,6 +123,51 @@
         font-size: 15px;
         color: #94a3b8;
     }
+    .header-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+    }
+
+    /* Button */
+    .manage-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 10px 16px;
+        border-radius: 10px;
+        text-decoration: none;
+        transition: all 0.25s ease;
+        box-shadow: 0 4px 12px rgba(59,130,246,0.25);
+    }
+
+    .manage-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .manage-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 18px rgba(59,130,246,0.35);
+    }
+
+    /* Mobile fix */
+    @media (max-width: 768px) {
+        .header-top {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .manage-btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
     
     @media (max-width: 768px) {
         .services-grid {
@@ -136,10 +181,20 @@
 <div class="container">
     <div class="main-content">
         
-        <!-- Header -->
         <div class="header">
-            <h1>📋 Manage Services</h1>
-            <p>Manage all platform services and their configurations</p>
+            <div class="header-top">
+                <div>
+                    <h1>📋 Manage Services</h1>
+                    <p>Manage all platform services and their configurations</p>
+                </div>
+
+                <a href="{{ route('admin.manage.services') }}">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Manage Service
+                </a>
+            </div>
         </div>
 
         <!-- Services Grid -->
