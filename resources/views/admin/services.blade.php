@@ -1,8 +1,3 @@
-@extends('layouts.admin')
-
-@section('title', 'Services Management - Admin')
-
-@push('head')
 
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -329,6 +324,3 @@ function showToast(svc) {
 updateCounts();
 render();
 </script>
-
-
-@endsection
