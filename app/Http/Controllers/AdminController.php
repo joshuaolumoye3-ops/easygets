@@ -884,15 +884,19 @@ public function addFunds(Request $request, $userId)
     }
 
     /**
-     * Toggle service active/inactive status
+     * Toggle service active/inactive status with proper transaction handling
      */
     public function toggleService(Request $request, $serviceId)
     {
         try {
-            $service = Service::findOrFail($serviceId);
+            DB::beginTransaction();
+
+            // Force a fresh read from database - use locking to prevent race conditions
+            $service = Service::lockForUpdate()->findOrFail($serviceId);
             $admin = Auth::guard('admins')->user();
 
             if (!$admin) {
+                DB::rollBack();
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Admin not logged in.'
@@ -900,17 +904,20 @@ public function addFunds(Request $request, $userId)
             }
 
             $oldStatus = $service->is_active;
-            $service->is_active = !$service->is_active;
+            $newStatus = !$service->is_active;
+            
+            // Update the service
+            $service->is_active = $newStatus;
             $service->save();
 
-            $action = $service->is_active ? 'ACTIVATE_SERVICE' : 'DEACTIVATE_SERVICE';
+            $action = $newStatus ? 'ACTIVATE_SERVICE' : 'DEACTIVATE_SERVICE';
             $description = sprintf(
                 '%s service: %s (ID: %d). Status: %s → %s',
-                $service->is_active ? 'Activated' : 'Deactivated',
+                $newStatus ? 'Activated' : 'Deactivated',
                 $service->name,
                 $service->id,
                 $oldStatus ? 'Active' : 'Inactive',
-                $service->is_active ? 'Active' : 'Inactive'
+                $newStatus ? 'Active' : 'Inactive'
             );
 
             // Log admin action
@@ -923,26 +930,36 @@ public function addFunds(Request $request, $userId)
                 'reference' => 'SVC_' . strtoupper(Str::random(8))
             ]);
 
-            Log::info('Service status toggled', [
+            DB::commit();
+
+            // Log the change
+            Log::info('Service status toggled successfully', [
                 'admin_id' => $admin->id,
                 'service_id' => $serviceId,
                 'service_name' => $service->name,
-                'new_status' => $service->is_active
+                'new_status' => $newStatus,
+                'old_status' => $oldStatus,
+                'timestamp' => now()
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => $service->is_active ? "✓ {$service->name} has been activated" : "✓ {$service->name} has been deactivated",
-                'is_active' => $service->is_active,
+                'message' => $newStatus ? "✓ {$service->name} has been activated" : "✓ {$service->name} has been deactivated",
+                'is_active' => $newStatus,
                 'service_id' => $service->id
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Toggle service error: ' . $e->getMessage(), ['service_id' => $serviceId]);
+            DB::rollBack();
+            Log::error('Toggle service error', [
+                'service_id' => $serviceId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update service status'
+                'message' => 'Failed to update service status. Please try again.'
             ], 500);
         }
     }

@@ -32,9 +32,9 @@ return [
     |
     */
 
-    'lifetime' => env('SESSION_LIFETIME', 120),
+    'lifetime' => env('SESSION_LIFETIME', 480),
 
-    'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
+    'expire_on_close' => false,
 
     /*
     |--------------------------------------------------------------------------
@@ -47,7 +47,7 @@ return [
     |
     */
 
-    'encrypt' => env('SESSION_ENCRYPT', false),
+    'encrypt' => false,
 
     /*
     |--------------------------------------------------------------------------
@@ -85,7 +85,6 @@ return [
     | for you; however, you're welcome to change this to another table.
     |
     */
-    'domain' => env('SESSION_DOMAIN', null),
     'table' => env('SESSION_TABLE', 'sessions'),
 
     /*
@@ -96,8 +95,6 @@ return [
     | When using one of the framework's cache driven session backends, you may
     | define the cache store which should be used to store the session data
     | between requests. This must match one of your defined cache stores.
-    // Set to true if using HTTPS, false for local dev
-    'secure' => env('SESSION_SECURE_COOKIE', false),
     |
     */
 
@@ -124,7 +121,6 @@ return [
     | Here you may change the name of the session cookie that is created by
     | the framework. Typically, you should not need to change this value
     | since doing so does not grant a meaningful security improvement.
-    |
     |
     */
 
@@ -157,7 +153,7 @@ return [
     |
     */
 
-    'domain' => env('SESSION_DOMAIN'),
+    'domain' => env('SESSION_DOMAIN', null),
 
     /*
     |--------------------------------------------------------------------------
@@ -170,7 +166,7 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    'secure' => env('SESSION_SECURE_COOKIE', true),
 
     /*
     |--------------------------------------------------------------------------
@@ -183,7 +179,7 @@ return [
     |
     */
 
-    'http_only' => env('SESSION_HTTP_ONLY', true),
+    'http_only' => true,
 
     /*
     |--------------------------------------------------------------------------

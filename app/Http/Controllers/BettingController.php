@@ -44,55 +44,164 @@ class BettingController extends Controller
     {
         $data = $request->isJson() ? $request->json()->all() : $request->all();
 
+        // === 1️⃣ VALIDATION ===
         $validator = Validator::make($data, [
-            'betting_company' => 'required|string',
+            'betting_company' => 'required|string|min:3|max:50',
             'customer_id' => 'required|string|min:3|max:50',
             'amount' => 'required|numeric|min:100|max:50000',
             'pin' => 'required|string|digits:4',
         ]);
 
         if ($validator->fails()) {
+            Log::warning('Betting validation failed', [
+                'user_id' => auth()->id(),
+                'errors' => $validator->errors()->toArray(),
+            ]);
+
             return response()->json([
-                'status' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors(),
+                'success' => false,
+                'error_type' => 'validation',
+                'title' => 'Invalid Request',
+                'message' => 'Please check all fields and try again.',
+                'details' => $this->formatValidationErrors($validator->errors()),
+                'suggestion' => 'Ensure betting company, customer ID, amount, and PIN are correct.',
             ], 422);
         }
 
+        // === 2️⃣ PIN VERIFICATION ===
         try {
             PinHelper::verifyPin($data['pin']);
         } catch (ValidationException $e) {
+            Log::warning('Betting PIN verification failed', [
+                'user_id' => auth()->id(),
+                'reference' => 'PIN-' . time(),
+            ]);
+
             return response()->json([
-                'status' => false,
-                'message' => 'Invalid PIN',
-                'errors' => $e->errors(),
+                'success' => false,
+                'error_type' => 'validation',
+                'title' => 'Invalid PIN',
+                'message' => 'Your transaction PIN is not correct.',
+                'details' => 'Please enter your 4-digit transaction PIN.',
+                'suggestion' => 'If you forgot your PIN, visit Settings → Security to reset it.',
             ], 422);
         }
 
         DB::beginTransaction();
 
         try {
+            // === 3️⃣ WALLET CHECK ===
             $wallet = Wallet::where('user_id', auth()->id())->lockForUpdate()->first();
 
             if (!$wallet) {
                 DB::rollBack();
+                Log::error('Wallet not found for betting', ['user_id' => auth()->id()]);
+
                 return response()->json([
-                    'status' => false,
-                    'message' => 'Wallet not found. Please contact support.',
-                ], 400);
+                    'success' => false,
+                    'error_type' => 'system_error',
+                    'title' => 'Account Error',
+                    'message' => 'We could not access your wallet. Please contact support.',
+                    'details' => 'Wallet initialization failed.',
+                    'suggestion' => 'Contact our support team if this persists.',
+                ], 500);
             }
 
+            // === 4️⃣ BALANCE CHECK ===
             if ($wallet->balance < $data['amount']) {
                 DB::rollBack();
+
+                $shortfall = $data['amount'] - $wallet->balance;
+
+                Log::info('Insufficient balance for betting', [
+                    'user_id' => auth()->id(),
+                    'required' => $data['amount'],
+                    'available' => $wallet->balance,
+                    'shortfall' => $shortfall,
+                ]);
+
                 return response()->json([
-                    'status' => false,
-                    'message' => 'Insufficient wallet balance. Please fund your wallet.',
+                    'success' => false,
+                    'error_type' => 'insufficient_balance',
+                    'title' => 'Insufficient Balance',
+                    'message' => 'Your wallet balance is not enough for this transaction.',
+                    'details' => [
+                        'Required Amount' => '₦' . number_format($data['amount'], 2),
+                        'Available Balance' => '₦' . number_format($wallet->balance, 2),
+                        'Shortfall' => '₦' . number_format($shortfall, 2),
+                    ],
+                    'suggestion' => 'Please fund your wallet with at least ₦' . number_format($shortfall, 0) . ' to proceed.',
                 ], 400);
             }
 
+            // === 5️⃣ DEDUCT FUNDS ===
             $reference = 'BET-' . strtoupper(Str::random(10)) . '-' . time();
+            $oldBalance = $wallet->balance;
             $wallet->decrement('balance', $data['amount']);
 
+            Log::info('Wallet debited for betting', [
+                'user_id' => auth()->id(),
+                'reference' => $reference,
+                'amount' => $data['amount'],
+                'old_balance' => $oldBalance,
+                'new_balance' => $wallet->fresh()->balance,
+            ]);
+
+            // === 6️⃣ VERIFY CUSTOMER ===
+            try {
+                $verifyResponse = ClubKonnectHelper::verifyBettingCustomer(
+                    $data['betting_company'],
+                    $data['customer_id']
+                );
+
+                Log::debug('Customer verification response', [
+                    'reference' => $reference,
+                    'response' => $verifyResponse,
+                ]);
+
+                if (!$verifyResponse || 
+                    (isset($verifyResponse['customer_name']) && 
+                     (str_contains(strtolower($verifyResponse['customer_name']), 'error') ||
+                      str_contains(strtolower($verifyResponse['customer_name']), 'invalid')))) {
+                    
+                    $wallet->increment('balance', $data['amount']);
+                    DB::rollBack();
+
+                    Log::warning('Customer verification failed', [
+                        'reference' => $reference,
+                        'betting_company' => $data['betting_company'],
+                        'customer_id' => $data['customer_id'],
+                    ]);
+
+                    return response()->json([
+                        'success' => false,
+                        'error_type' => 'validation',
+                        'title' => 'Invalid Customer ID',
+                        'message' => 'The customer ID you provided is not valid for this betting provider.',
+                        'details' => 'Please verify your customer/account ID with your betting provider.',
+                        'suggestion' => 'Double-check your customer ID and try again.',
+                    ], 400);
+                }
+            } catch (\Exception $e) {
+                $wallet->increment('balance', $data['amount']);
+                DB::rollBack();
+
+                Log::error('Customer verification exception', [
+                    'reference' => $reference,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'error_type' => 'service_error',
+                    'title' => 'Verification Temporarily Unavailable',
+                    'message' => 'We are unable to verify your customer ID at the moment.',
+                    'details' => 'The verification service is temporarily unavailable.',
+                    'suggestion' => 'Please try again in a few moments.',
+                ], 503);
+            }
+
+            // === 7️⃣ PLACE BET ===
             $response = ClubKonnectHelper::placeBet(
                 $data['betting_company'],
                 $data['customer_id'],
@@ -101,7 +210,11 @@ class BettingController extends Controller
                 route('clubkonnect.callback', [], true)
             );
 
-            Log::info('ClubKonnect Betting Response', ['reference' => $reference, 'response' => $response]);
+            Log::info('Betting API call initiated', [
+                'reference' => $reference,
+                'betting_company' => $data['betting_company'],
+                'amount' => $data['amount'],
+            ]);
 
             // --- ✅ Normalize response structure ---
             $response = is_array($response) ? $response : json_decode($response, true);
@@ -126,12 +239,11 @@ class BettingController extends Controller
                 default => 'failed',
             };
 
-            Log::info('Transaction status resolved', [
+            Log::info('API Response processed', [
                 'reference' => $reference,
                 'status' => $status,
                 'statusCode' => $statusCode,
                 'rawStatus' => $rawStatus,
-                'remark' => $remark,
             ]);
 
             $transaction = Transaction::create([
@@ -150,55 +262,107 @@ class BettingController extends Controller
                 'description' => "Betting account funding for {$this->getBettingProviderName($data['betting_company'])}",
             ]);
 
-            // --- 🧾 Commit or refund ---
+            // --- 🧾 SUCCESS or PENDING - Commit transaction ---
             if (in_array($status, ['success', 'pending'])) {
                 DB::commit();
 
+                Log::info('Betting transaction successful', [
+                    'reference' => $reference,
+                    'order_id' => $orderId,
+                    'status' => $status,
+                    'user_id' => auth()->id(),
+                ]);
+
                 return response()->json([
-                    'status' => true,
+                    'success' => true,
+                    'title' => $status === 'success' ? 'Funding Successful' : 'Funding Received',
                     'message' => $status === 'success'
-                        ? 'Betting account funded successfully!'
-                        : 'Your betting request has been received and is being processed.',
+                        ? 'Your betting account has been funded successfully!'
+                        : 'Your betting fund request has been received and is being processed.',
                     'data' => [
                         'reference' => $reference,
                         'order_id' => $orderId,
                         'transaction_status' => $status,
+                        'amount' => $data['amount'],
                         'new_balance' => $wallet->fresh()->balance,
+                        'provider' => $this->getBettingProviderName($data['betting_company']),
+                        'customer_id' => $data['customer_id'],
+                        'timestamp' => now()->toDateTimeString(),
                     ],
-                ]);
+                ], 200);
             }
 
-            // Refund for failed transaction
+            // --- 🔴 FAILED - Refund and rollback ---
             $wallet->increment('balance', $data['amount']);
             DB::commit();
 
-            return response()->json([
-                'status' => false,
-                'message' => 'Betting funding failed: ' . $remark,
-                'data' => [
-                    'reference' => $reference,
-                    'response' => $response,
-                ],
-            ], 400);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Betting transaction exception: ' . $e->getMessage(), [
-                'user_id' => auth()->id(),
-                'data' => $data,
-                'trace' => $e->getTraceAsString(),
+            Log::warning('Betting transaction failed', [
+                'reference' => $reference,
+                'status_code' => $statusCode,
+                'api_status' => $rawStatus,
             ]);
 
             return response()->json([
-                'status' => false,
-                'message' => 'Something went wrong. Please try again later.',
-                // 'debug' => config('app.debug') ? [
-                //     'error' => $e->getMessage(),
-                //     'line' => $e->getLine(),
-                //     'file' => basename($e->getFile()),
-                // ] : null,
+                'success' => false,
+                'error_type' => 'service_error',
+                'title' => 'Funding Failed',
+                'message' => 'We could not process your betting account funding at this time.',
+                'details' => 'The provider returned an error: ' . $remark,
+                'suggestion' => 'Your funds have been refunded. Please try again or contact support if the issue persists.',
+                'data' => [
+                    'reference' => $reference,
+                    'wallet_refunded' => true,
+                    'refunded_amount' => $data['amount'],
+                    'current_balance' => $wallet->fresh()->balance,
+                ],
+            ], 503);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Betting transaction exception', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => basename($e->getFile()),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error_type' => 'system_error',
+                'title' => 'Something Went Wrong',
+                'message' => 'An unexpected error occurred while processing your request.',
+                'details' => 'Our team has been notified of this issue.',
+                'suggestion' => 'Please try again later or contact support if the problem continues.',
             ], 500);
         }
+    }
+
+    /**
+     * Format validation errors in a user-friendly way
+     */
+    private function formatValidationErrors($errors)
+    {
+        $formatted = [];
+        foreach ($errors->messages() as $field => $messages) {
+            $formatted[$this->getFieldLabel($field)] = $messages[0] ?? 'Invalid input';
+        }
+        return $formatted;
+    }
+
+    /**
+     * Get user-friendly field labels
+     */
+    private function getFieldLabel($field)
+    {
+        $labels = [
+            'betting_company' => 'Betting Provider',
+            'customer_id' => 'Customer/Account ID',
+            'amount' => 'Amount',
+            'pin' => 'Transaction PIN',
+        ];
+
+        return $labels[$field] ?? $field;
     }
 
 

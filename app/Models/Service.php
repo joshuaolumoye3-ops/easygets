@@ -28,10 +28,44 @@ class Service extends Model
     }
 
     /**
-     * Check if service is active
+     * Check if service is active - Always fetch fresh from DB
+     * This method forces a fresh database query to ensure real-time status
      */
     public function isActive(): bool
     {
+        // Refresh the model from database to ensure latest status
+        $this->refresh();
         return $this->is_active === true;
+    }
+
+    /**
+     * Get fresh service by slug - Always queries fresh from database
+     */
+    public static function findActiveBySlug($slug): ?self
+    {
+        return static::where('slug', $slug)
+            ->where('is_active', true)
+            ->first();
+    }
+
+    /**
+     * Check if a service slug is active - Direct DB query, no model caching
+     */
+    public static function isSlugActive($slug): bool
+    {
+        $exists = static::where('slug', $slug)
+            ->where('is_active', true)
+            ->exists();
+        
+        return $exists;
+    }
+
+    /**
+     * Get all active services - fresh query each time
+     */
+    public static function getAllActive()
+    {
+        return static::where('is_active', true)
+            ->get();
     }
 }

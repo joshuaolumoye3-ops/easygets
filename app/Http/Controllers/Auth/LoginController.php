@@ -10,6 +10,8 @@ class LoginController extends Controller
 {
     public function showLoginForm()
     {
+        // Regenerate session and CSRF token for fresh login form
+        session()->regenerate();
         return view('auth.login');
     }
 
@@ -41,16 +43,20 @@ class LoginController extends Controller
 
         // Attempt authentication
         if (Auth::attempt([$fieldType => $credentials['login'], 'password' => $credentials['password']])) {
+            // Regenerate session and CSRF token on successful login
+            $request->session()->regenerate();
+            
             // Update last login timestamp
             $user = Auth::user();
             $user->update(['last_login_at' => now()]);
-            
-            $request->session()->regenerate();
 
             return redirect()->intended(route('dashboard'))
                             ->with('success', 'Welcome back!');
         }
 
+        // Failed login - regenerate token for security
+        $request->session()->regenerateToken();
+        
         return back()->withErrors([
             'login' => 'Invalid email/username or password.',
         ])->onlyInput('login');

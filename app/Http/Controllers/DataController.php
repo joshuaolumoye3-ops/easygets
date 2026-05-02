@@ -130,9 +130,38 @@ private function detectPlanType($productName)
             'pin'       => 'required|string|size:4',
         ]);
 
+        $network    = null;
+        $productId  = null;
+        $recipient  = null;
+        $amount     = null;
+        $product    = null;
+        $wallet     = null;
+
         try {
+            // ✅ Initialize transaction variables
+            DB::beginTransaction();
+
             // ✅ Verify user PIN first
-            PinHelper::verifyPin($validated['pin']);
+            try {
+                PinHelper::verifyPin($validated['pin']);
+            } catch (ValidationException $e) {
+                DB::rollBack();
+                $pinError = $e->validator->errors()->first('pin') ?? 'Invalid PIN. Please try again.';
+                
+                \Log::warning('Data purchase - Invalid PIN', [
+                    'user_id' => auth()->id(),
+                    'recipient' => $validated['recipient']
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'title' => 'Invalid PIN',
+                    'message' => $pinError,
+                    'error_type' => 'validation',
+                    'suggestion' => 'Please enter your 4-digit transaction PIN.',
+                    'details' => []
+                ], 422);
+            }
 
             $network    = strtolower($validated['network']);
             $productId  = $validated['data_plan'];
@@ -144,36 +173,88 @@ private function detectPlanType($productName)
             // ✅ Fetch product from DB (not from API)
             $product = Product::where('product_code', $productId)
                 ->where('is_active', 1)
+                ->lockForUpdate()
                 ->first();
 
             if (!$product) {
+                DB::rollBack();
+                
+                \Log::warning('Data purchase - Product not found', [
+                    'user_id' => auth()->id(),
+                    'product_code' => $productId
+                ]);
+                
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid data plan selected.',
+                    'title' => 'Package Not Found',
+                    'message' => 'The selected data package is no longer available. Please select another package.',
                     'error_type' => 'validation',
+                    'details' => []
                 ], 400);
             }
 
             $amount = (float) ($product->client_price ?? 0);
             if ($amount <= 0) {
+                DB::rollBack();
+                
+                \Log::error('Data purchase - Invalid product price', [
+                    'user_id' => auth()->id(),
+                    'product_id' => $product->id,
+                    'price' => $amount
+                ]);
+                
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid amount for selected data plan.',
-                    'error_type' => 'validation',
+                    'title' => 'Invalid Amount',
+                    'message' => 'Unable to process this data package at this time. The pricing information is incorrect. Please try again later.',
+                    'error_type' => 'system_error',
+                    'details' => []
                 ], 400);
             }
 
             // ✅ Fetch and lock user wallet
             $wallet = Wallet::where('user_id', auth()->id())->lockForUpdate()->first();
-            if (!$wallet || $wallet->balance < $amount) {
+            if (!$wallet) {
+                DB::rollBack();
+                
+                \Log::error('Data purchase - Wallet not found', [
+                    'user_id' => auth()->id()
+                ]);
+                
                 return response()->json([
                     'success' => false,
-                    'message' => 'Insufficient wallet balance. Please fund your account.',
-                    'error_type' => 'insufficient_balance',
-                ], 400);
+                    'title' => 'Wallet Error',
+                    'message' => 'Your wallet could not be accessed. Please contact support.',
+                    'error_type' => 'system_error',
+                    'details' => []
+                ], 500);
             }
 
-            DB::beginTransaction();
+            if ($wallet->balance < $amount) {
+                DB::rollBack();
+                
+                $shortfall = $amount - $wallet->balance;
+                
+                \Log::info('Data purchase - Insufficient balance', [
+                    'user_id' => auth()->id(),
+                    'balance' => $wallet->balance,
+                    'required_amount' => $amount,
+                    'shortfall' => $shortfall
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'title' => 'Insufficient Balance',
+                    'message' => 'Your wallet balance is not enough for this purchase.',
+                    'error_type' => 'insufficient_balance',
+                    'details' => [
+                        'Required' => '₦' . number_format($amount, 2),
+                        'Available Balance' => '₦' . number_format($wallet->balance, 2),
+                        'Shortfall' => '₦' . number_format($shortfall, 2)
+                    ],
+                    'suggestion' => 'Please fund your wallet with at least ₦' . number_format($shortfall, 2) . ' to complete this purchase.'
+                ], 400);
+            }
 
             // ✅ Call DemmyPay data purchase API
             $response = DemmyPayHelper::buyData($product->product_code, $recipient, $requestId);
@@ -186,27 +267,38 @@ private function detectPlanType($productName)
             ];
             $networkName = $networkNames[$network] ?? ucfirst($network);
 
-            // ✅ Save transaction record
-            $transaction = Transaction::create([
-                'reference' => substr($requestId, 0, 100),
-                'user_id'   => auth()->id(),
-                'type'      => 'data',
-                'channel'   => 'DemmyPay',
-                'provider'  => $networkName,
-                'phone'     => $recipient,
-                'recipient' => $recipient,
-                'amount'    => $amount,
-                'status'    => isset($response['status']) && $response['status'] == 200 ? 'success' : 'failed',
-                'response'  => substr(json_encode($response, JSON_UNESCAPED_SLASHES), 0, 65535), // safely truncated
-            ]);
+            // ✅ Check API response - Handle both successful and failed responses
+            $isApiSuccess = isset($response['status']) && (int)$response['status'] === 200;
 
-            if (isset($response['status']) && (int)$response['status'] === 200) {
-                // ✅ Deduct wallet on success
+            if ($isApiSuccess) {
+                // ✅ API was successful - Deduct wallet
                 $wallet->decrement('balance', $amount);
+
+                // ✅ Save transaction record with success status
+                $transaction = Transaction::create([
+                    'reference' => substr($requestId, 0, 100),
+                    'user_id'   => auth()->id(),
+                    'type'      => 'data',
+                    'channel'   => 'DemmyPay',
+                    'provider'  => $networkName,
+                    'phone'     => $recipient,
+                    'recipient' => $recipient,
+                    'amount'    => $amount,
+                    'status'    => 'success',
+                    'response'  => substr(json_encode($response, JSON_UNESCAPED_SLASHES), 0, 65535),
+                ]);
+
                 DB::commit();
 
-                $successMessage = "Your {$networkName} data purchase of ₦" . number_format($amount, 2) .
-                                " ({$product->name}) to {$recipient} was successful!";
+                $successMessage = "Your {$networkName} data bundle ({$product->name}) has been successfully purchased and delivered to {$recipient}!";
+
+                \Log::info('Data purchase - Success', [
+                    'user_id' => auth()->id(),
+                    'transaction_id' => $transaction->id,
+                    'network' => $networkName,
+                    'amount' => $amount,
+                    'recipient' => $recipient
+                ]);
 
                 return response()->json([
                     'success' => true,
@@ -214,7 +306,6 @@ private function detectPlanType($productName)
                     'data' => [
                         'transaction_reference' => $requestId,
                         'network' => $networkName,
-                        'network_code' => $network,
                         'recipient' => $recipient,
                         'package_name' => $product->name ?? 'Data Bundle',
                         'amount' => $amount,
@@ -222,61 +313,134 @@ private function detectPlanType($productName)
                         'new_balance' => $wallet->fresh()->balance,
                         'formatted_balance' => '₦' . number_format($wallet->fresh()->balance, 2),
                         'transaction_time' => now()->format('Y-m-d H:i:s'),
-                        'provider_response' => $response['data'] ?? null,
+                        'transaction_id' => $transaction->id,
                     ],
-                    'transaction_id' => $transaction->id,
                 ]);
             } else {
+                // ✅ API Failed - DO NOT deduct wallet
                 DB::rollBack();
 
-                $errorMessage = $response['detail'] 
-                    ?? $response['message'] 
-                    ?? $response['error'] 
-                    ?? 'Data purchase failed';
+                // Determine error message based on API response
+                $errorMessage = null;
+                $errorDetails = [];
 
-                return response()->json([
-                    'success' => false,
-                    'message' => $errorMessage,
-                    'error_code' => $response['status'] ?? 'unknown',
-                    'provider_response' => $response,
-                ], 400);
+                // Try to extract specific error information
+                if (!empty($response['detail'])) {
+                    $errorMessage = $response['detail'];
+                } elseif (!empty($response['message'])) {
+                    $errorMessage = $response['message'];
+                } elseif (!empty($response['error'])) {
+                    $errorMessage = $response['error'];
+                }
+
+                // Check if it's a user validation error or API/system error
+                $isValidationError = false;
+                if ($errorMessage) {
+                    $validationKeywords = ['invalid', 'not found', 'does not exist', 'incorrect', 'invalid phone'];
+                    foreach ($validationKeywords as $keyword) {
+                        if (stripos($errorMessage, $keyword) !== false) {
+                            $isValidationError = true;
+                            break;
+                        }
+                    }
+                }
+
+                // Log the failure
+                \Log::warning('Data purchase - API failed', [
+                    'user_id' => auth()->id(),
+                    'network' => $networkName,
+                    'recipient' => $recipient,
+                    'product_id' => $product->id,
+                    'amount' => $amount,
+                    'api_response' => $response,
+                    'api_status' => $response['status'] ?? 'unknown'
+                ]);
+
+                // Save transaction record with failed status (for audit trail)
+                $failedTransaction = Transaction::create([
+                    'reference' => substr($requestId, 0, 100),
+                    'user_id'   => auth()->id(),
+                    'type'      => 'data',
+                    'channel'   => 'DemmyPay',
+                    'provider'  => $networkName,
+                    'phone'     => $recipient,
+                    'recipient' => $recipient,
+                    'amount'    => $amount,
+                    'status'    => 'failed',
+                    'response'  => substr(json_encode($response, JSON_UNESCAPED_SLASHES), 0, 65535),
+                ]);
+
+                // Return appropriate error message
+                if ($isValidationError) {
+                    // User validation error
+                    return response()->json([
+                        'success' => false,
+                        'title' => 'Invalid Details',
+                        'message' => 'The phone number or network details you provided may be incorrect. Please verify and try again.',
+                        'error_type' => 'validation',
+                        'details' => [
+                            'Network' => $networkName,
+                            'Phone Number' => $recipient,
+                            'Package' => $product->name
+                        ],
+                        'suggestion' => 'Please check that the phone number is correct for the selected network.'
+                    ], 400);
+                } else {
+                    // API/System error - show user-friendly message
+                    return response()->json([
+                        'success' => false,
+                        'title' => 'Service Temporarily Unavailable',
+                        'message' => 'We\'re experiencing technical difficulties with the data service right now. Your funds have not been deducted. Please try again in a few moments.',
+                        'error_type' => 'service_error',
+                        'details' => [
+                            'Network' => $networkName,
+                            'Package' => $product->name,
+                            'Amount' => '₦' . number_format($amount, 2)
+                        ],
+                        'suggestion' => 'If the problem persists, please contact our support team. We apologize for the inconvenience.'
+                    ], 503);
+                }
             }
 
         } catch (ValidationException $e) {
             DB::rollBack();
-            $pinError = $e->validator->errors()->first('pin');
             
-            if ($pinError) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $pinError,
-                    'error_type' => 'pin_validation',
-                ], 422);
-            }
-
+            \Log::warning('Data purchase - Validation error', [
+                'user_id' => auth()->id(),
+                'errors' => $e->validator->errors()->all()
+            ]);
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed: ' . $e->getMessage(),
+                'title' => 'Invalid Information',
+                'message' => 'Please check all the details you provided and try again.',
                 'error_type' => 'validation',
+                'details' => []
             ], 422);
 
         } catch (\Exception $e) {
             DB::rollBack();
 
-            \Log::error('Data purchase error', [
+            // Log the unexpected error
+            \Log::error('Data purchase - Unexpected error', [
                 'user_id' => auth()->id(),
-                'amount' => $amount ?? null,
-                'recipient' => $recipient ?? null,
-                'network' => $network ?? null,
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'network' => $network ?? 'unknown',
+                'recipient' => $recipient ?? 'unknown',
+                'amount' => $amount ?? 'unknown',
                 'trace' => $e->getTraceAsString(),
             ]);
 
+            // Return generic error message to user
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred while processing your request. Please try again.',
+                'title' => 'Something Went Wrong',
+                'message' => 'We encountered an unexpected error while processing your request. Your funds have not been deducted.',
                 'error_type' => 'system_error',
-                // 'debug_message' => app()->environment('local') ? $e->getMessage() : null, // removed for production
+                'details' => [],
+                'suggestion' => 'Please try again later. If you continue to experience issues, please contact our support team.'
             ], 500);
         }
     }
