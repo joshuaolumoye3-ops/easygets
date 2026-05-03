@@ -212,6 +212,8 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/jamb/verify-profile', [CableController::class, 'verifyProfile'])->middleware('check.user.not.blocked')->name('jamb.verify-profile');
 
+    Route::post('/jamb/purchase', [CableController::class, 'purchase'])->middleware('check.user.not.blocked')->name('jamb.purchase');
+
     Route::get('/betting', [BettingController::class, 'show'])->middleware('check.user.not.blocked')->name('bettinng.show');
 
     Route::post('/fund-bet', [BettingController::class, 'fund_account'])->middleware('check.user.not.blocked')->name('fund_bet');
