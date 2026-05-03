@@ -257,7 +257,7 @@ public function purchase(Request $request)
     public function jambshow() // or whatever method renders your betting view
     {
         $wallet = Wallet::where('user_id', auth()->id())->first();
-        return view('users.jambpin', compact('wallet'));
+        return view('users.jambPin', compact('wallet'));
     }
 
     public function jamb(Request $request)
