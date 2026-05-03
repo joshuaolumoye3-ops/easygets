@@ -720,5 +720,4 @@ function toggleLoading(show) {
     }
 }
 </script>
-@endsection
 {{-- @endsection --}}
