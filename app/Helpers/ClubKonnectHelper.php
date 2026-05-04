@@ -92,17 +92,33 @@ class ClubKonnectHelper
 
             if ($response->successful()) {
                 $data = $response->json();
+                $companies = [];
 
-                if (!empty($data) && isset($data['BETTING_COMPANY'])) {
+                if (!empty($data)) {
+                    if (isset($data['BETTING_COMPANY'])) {
+                        $companies = $data['BETTING_COMPANY'];
+                    } elseif (isset($data['SERVICES'])) {
+                        $companies = $data['SERVICES'];
+                    } elseif (is_array($data)) {
+                        $companies = $data;
+                    }
+                }
+
+                if (is_object($companies)) {
+                    $companies = array_values((array) $companies);
+                }
+
+                if (is_array($companies) && count($companies) > 0) {
                     Log::info('Betting companies fetched successfully', [
-                        'count' => count($data['BETTING_COMPANY']),
+                        'count' => count($companies),
                     ]);
-                    return $data;
+                    return ['BETTING_COMPANY' => $companies];
                 }
             }
 
             Log::warning('Betting companies endpoint returned empty or invalid data', [
                 'status' => $response->status(),
+                'body' => substr($response->body(), 0, 1000),
             ]);
 
             return ['BETTING_COMPANY' => []];

@@ -20,21 +20,31 @@ class BettingController extends Controller
     public function show()
 {
     $wallet = Wallet::where('user_id', auth()->id())->first();
+    $cacheKey = 'nellobytes_betting_companies';
 
-    $bettingCompanies = Cache::remember('nellobytes_betting_companies', 3600, function () {
-        try {
-            $response = ClubKonnectHelper::getBettingCompanies();
+    $bettingCompanies = Cache::get($cacheKey, []);
 
-            if (isset($response['BETTING_COMPANY']) && is_array($response['BETTING_COMPANY'])) {
-                return $response['BETTING_COMPANY'];
+    if (!is_array($bettingCompanies) || count($bettingCompanies) === 0) {
+        $bettingCompanies = Cache::remember($cacheKey, 3600, function () {
+            try {
+                $response = ClubKonnectHelper::getBettingCompanies();
+
+                if (isset($response['BETTING_COMPANY']) && is_array($response['BETTING_COMPANY']) && count($response['BETTING_COMPANY']) > 0) {
+                    return $response['BETTING_COMPANY'];
+                }
+
+                return $this->getDefaultBettingCompanies();
+            } catch (\Exception $e) {
+                Log::error('Error fetching betting companies: ' . $e->getMessage());
+                return $this->getDefaultBettingCompanies();
             }
+        });
+    }
 
-            return [];
-        } catch (\Exception $e) {
-            Log::error('Error fetching betting companies: ' . $e->getMessage());
-            return [];
-        }
-    });
+    if (!is_array($bettingCompanies) || count($bettingCompanies) === 0) {
+        $bettingCompanies = $this->getDefaultBettingCompanies();
+    }
+
     // dd($bettingCompanies); // removed for production
     return view('users.betting', compact('wallet', 'bettingCompanies'));
 }

@@ -156,20 +156,27 @@
     try {
         const rawData = @json($bettingCompanies ?? []);
         console.log('Raw betting companies data:', rawData);
-        
-        // Handle different data structures
-        if (Array.isArray(rawData)) {
-            bettingCompanies = rawData;
-        } else if (rawData && typeof rawData === 'object' && rawData.SERVICES) {
-            bettingCompanies = rawData.SERVICES;
-        } else if (rawData && typeof rawData === 'object') {
-            // Convert object to array
-            bettingCompanies = Object.values(rawData);
-        }
-        
-        console.log('Processed betting companies:', bettingCompanies);
-    } catch (error) {
-        console.error('Error parsing betting companies:', error);
+
+            if (Array.isArray(rawData)) {
+                bettingCompanies = rawData;
+            } else if (rawData && typeof rawData === 'object') {
+                if (rawData.BETTING_COMPANY) {
+                    bettingCompanies = Array.isArray(rawData.BETTING_COMPANY)
+                        ? rawData.BETTING_COMPANY
+                        : Object.values(rawData.BETTING_COMPANY);
+                } else if (rawData.SERVICES) {
+                    bettingCompanies = Array.isArray(rawData.SERVICES)
+                        ? rawData.SERVICES
+                        : Object.values(rawData.SERVICES);
+                } else {
+                    bettingCompanies = Object.values(rawData);
+                }
+            }
+
+            if (!Array.isArray(bettingCompanies)) {
+                bettingCompanies = [];
+            }
+
         bettingCompanies = [];
     }
 
@@ -233,17 +240,15 @@
         let companyCode, displayName, minAmount, maxAmount;
 
         if (typeof company === 'string') {
-            // API returns array of strings
             companyCode = company;
             displayName = company.toUpperCase();
             minAmount = 100;
             maxAmount = 50000;
-        } else {
-            // API returns objects
-            companyCode = company.PRODUCT_CODE || company.code || '';
-            displayName = company.PRODUCT_CODE || company.name || companyCode.toUpperCase();
-            minAmount = company.MINAMOUNT || company.min_amount || 100;
-            maxAmount = company.MAXAMOUNT || company.max_amount || 50000;
+        } else if (company && typeof company === 'object') {
+            companyCode = company.PRODUCT_CODE || company.code || company.BETTINGCOMPANY || company.BettingCompany || company.key || company.value || '';
+            displayName = company.name || company.NAME || company.DESCRIPTION || company.Description || companyCode.toUpperCase();
+            minAmount = company.MINAMOUNT || company.min_amount || company.MIN_AMOUNT || 100;
+            maxAmount = company.MAXAMOUNT || company.max_amount || company.MAX_AMOUNT || 50000;
         }
 
         if (!companyCode) return;
@@ -254,7 +259,7 @@
             <li class="flex justify-between items-center p-3 rounded-lg cursor-pointer border-b border-gray-200 hover:bg-gray-100 transition duration-150 betting-option"
                 data-value="${companyCode}" data-display="${displayName}">
                 <div class="flex items-center">
-                    <div class="w-8 h-8 rounded-full bg-${color} flex items-center justify-center mr-3">
+                    <div class="w-8 h-8 rounded-full ${color} flex items-center justify-center mr-3">
                         <span class="text-white font-bold text-xs">${displayName.substring(0, 2)}</span>
                     </div>
                     <span class="text-gray-800 font-medium">${displayName}</span>
