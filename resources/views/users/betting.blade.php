@@ -643,5 +643,9 @@
             }
         }, 5000);
     }
-    </script>
+
+    // Initialize when DOM is loaded
+    populateBettingCompanies();
+    setupPinModal();
+});
 @endsection
