@@ -278,9 +278,6 @@
     });
 }
 
-    document.addEventListener('DOMContentLoaded', function() {
-
-
     // Show betting modal
     function showBettingModal() {
         const bettingModal = document.getElementById('bettingModal');
@@ -300,6 +297,8 @@
         modalContent.classList.add('translate-y-full');
         setTimeout(() => bettingModal.classList.add('hidden'), 300);
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
 
     // Close betting modal on outside click
     document.getElementById('bettingModal').addEventListener('click', function(event) {
@@ -643,6 +642,8 @@
             }
         }, 5000);
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize when DOM is loaded
     populateBettingCompanies();
