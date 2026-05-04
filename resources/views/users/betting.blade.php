@@ -28,7 +28,7 @@
                     <div class="relative">
                         <input type="text" id="betting_company_display"
                             class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full text-gray-500 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition duration-200 cursor-pointer"
-                            placeholder="Select Betting Company" readonly onclick="showBettingModal()">
+                            placeholder="Select Betting Company" readonly id="betting_company_display">
                         <input type="hidden" id="betting_company" name="betting_company" required>
                         <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -122,7 +122,6 @@
     </div>
 
     <style>
-        /* Spinner styles */
         .loader {
             border-top-color: #3490dc;
             animation: spin 1s linear infinite;
@@ -148,15 +147,12 @@
     </style>
 
     <script>
-    // Wallet balance from controller
-    const walletBalance = {{ $wallet->balance ?? 0 }};
-    
-    // Betting companies from controller - parse carefully
-    let bettingCompanies = [];
-    try {
-        const rawData = @json($bettingCompanies ?? []);
-        console.log('Raw betting companies data:', rawData);
+        // ─── Data from controller ────────────────────────────────────────────────
+        const walletBalance = {{ $wallet->balance ?? 0 }};
 
+        let bettingCompanies = [];
+        try {
+            const rawData = @json($bettingCompanies ?? []);
             if (Array.isArray(rawData)) {
                 bettingCompanies = rawData;
             } else if (rawData && typeof rawData === 'object') {
@@ -172,481 +168,381 @@
                     bettingCompanies = Object.values(rawData);
                 }
             }
-
-            if (!Array.isArray(bettingCompanies)) {
-                bettingCompanies = [];
-            }
-
-            console.log('Processed betting companies:', bettingCompanies);
-        } catch (error) {
-            console.error('Error parsing betting companies:', error);
+            if (!Array.isArray(bettingCompanies)) bettingCompanies = [];
+        } catch (e) {
+            console.error('Error parsing betting companies:', e);
             bettingCompanies = [];
         }
 
-    // Show betting modal
-    function showBettingModal() {
-        const bettingModal = document.getElementById('bettingModal');
-        const modalContent = bettingModal.querySelector('div');
-        bettingModal.classList.remove('hidden');
-        setTimeout(() => {
-            bettingModal.classList.add('opacity-100');
-            modalContent.classList.remove('translate-y-full');
-        }, 10);
-    }
-
-    // Hide betting modal
-    function hideBettingModal() {
-        const bettingModal = document.getElementById('bettingModal');
-        const modalContent = bettingModal.querySelector('div');
-        bettingModal.classList.remove('opacity-100');
-        modalContent.classList.add('translate-y-full');
-        setTimeout(() => bettingModal.classList.add('hidden'), 300);
-    }
-
-    // Populate betting companies from controller data
-    function populateBettingCompanies() {
-    const companiesList = document.getElementById('bettingCompaniesList');
-    console.log('Populating with companies:', bettingCompanies);
-
-    if (!bettingCompanies || bettingCompanies.length === 0) {
-        companiesList.innerHTML = `
-            <div class="text-center py-8">
-                <p class="text-gray-500 mb-4">No betting companies available</p>
-                <button onclick="location.reload()" class="text-brand-green hover:underline">Refresh Page</button>
-            </div>
-        `;
-        return;
-    }
-
-    const colors = ['yellow-500', 'purple-600', 'green-600', 'blue-700', 'orange-600', 'red-600', 'teal-600', 'pink-600', 'indigo-600', 'blue-500', 'purple-700', 'green-700'];
-    let html = '<ul class="grid grid-cols-1 gap-2">';
-
-    bettingCompanies.forEach((company, index) => {
-        let companyCode, displayName, minAmount, maxAmount;
-
-        if (typeof company === 'string') {
-            companyCode = company;
-            displayName = company.toUpperCase();
-            minAmount = 100;
-            maxAmount = 50000;
-        } else if (company && typeof company === 'object') {
-            companyCode = company.PRODUCT_CODE || company.code || company.BETTINGCOMPANY || company.BettingCompany || company.key || company.value || '';
-            displayName = company.name || company.NAME || company.DESCRIPTION || company.Description || companyCode.toUpperCase();
-            minAmount = company.MINAMOUNT || company.min_amount || company.MIN_AMOUNT || 100;
-            maxAmount = company.MAXAMOUNT || company.max_amount || company.MAX_AMOUNT || 50000;
+        // ─── Modal helpers (global so onclick="" works) ──────────────────────────
+        function showBettingModal() {
+            const modal = document.getElementById('bettingModal');
+            const inner = modal.querySelector('div');
+            modal.classList.remove('hidden');
+            // Trigger transition on next frame
+            requestAnimationFrame(() => {
+                modal.classList.add('opacity-100');
+                inner.classList.remove('translate-y-full');
+            });
         }
 
-        if (!companyCode) return;
-
-        const color = colors[index % colors.length];
-
-        html += `
-            <li class="flex justify-between items-center p-3 rounded-lg cursor-pointer border-b border-gray-200 hover:bg-gray-100 transition duration-150 betting-option"
-                data-value="${companyCode}" data-display="${displayName}">
-                <div class="flex items-center">
-                    <div class="w-8 h-8 rounded-full bg-${color} flex items-center justify-center mr-3">
-                        <span class="text-white font-bold text-xs">${displayName.substring(0, 2)}</span>
-                    </div>
-                    <span class="text-gray-800 font-medium">${displayName}</span>
-                </div>
-                <div class="text-right text-xs text-gray-500">
-                    Min: ₦${minAmount} <br> Max: ₦${maxAmount}
-                </div>
-            </li>
-        `;
-    });
-
-    html += '</ul>';
-    companiesList.innerHTML = html;
-
-    // Add click event
-    document.querySelectorAll('.betting-option').forEach(option => {
-        option.addEventListener('click', function() {
-            const displayValue = this.dataset.display;
-            const codeValue = this.dataset.value;
-
-            document.getElementById('betting_company_display').value = displayValue;
-            document.getElementById('betting_company').value = codeValue;
-            hideBettingModal();
-
-            document.getElementById('customerNameDisplay').classList.add('hidden');
-            document.getElementById('customerNameDisplay').textContent = '';
-
-            const event = new Event('change');
-            document.getElementById('betting_company').dispatchEvent(event);
-        });
-    });
-}
-
-    // Show betting modal
-    function showBettingModal() {
-        const bettingModal = document.getElementById('bettingModal');
-        const modalContent = bettingModal.querySelector('div');
-        bettingModal.classList.remove('hidden');
-        setTimeout(() => {
-            bettingModal.classList.add('opacity-100');
-            modalContent.classList.remove('translate-y-full');
-        }, 10);
-    }
-
-    // Hide betting modal
-    function hideBettingModal() {
-        const bettingModal = document.getElementById('bettingModal');
-        const modalContent = bettingModal.querySelector('div');
-        bettingModal.classList.remove('opacity-100');
-        modalContent.classList.add('translate-y-full');
-        setTimeout(() => bettingModal.classList.add('hidden'), 300);
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-
-    // Close betting modal on outside click
-    document.getElementById('bettingModal').addEventListener('click', function(event) {
-        if (event.target === this) hideBettingModal();
-    });
-
-    // Verify customer ID
-    async function verifyCustomer() {
-        const bettingCompany = document.getElementById('betting_company').value;
-        const customerId = document.getElementById('customer_id').value;
-        const verifyBtn = document.getElementById('verifyCustomerBtn');
-        const customerNameDisplay = document.getElementById('customerNameDisplay');
-
-        if (!bettingCompany || !customerId) {
-            showErrorMessage('Please select a betting company and enter customer ID.');
-            return;
+        function hideBettingModal() {
+            const modal = document.getElementById('bettingModal');
+            const inner = modal.querySelector('div');
+            modal.classList.remove('opacity-100');
+            inner.classList.add('translate-y-full');
+            setTimeout(() => modal.classList.add('hidden'), 300);
         }
 
-        // Show loading state
-        const originalText = verifyBtn.textContent;
-        verifyBtn.textContent = 'Verifying...';
-        verifyBtn.disabled = true;
+        // ─── Populate betting companies list ─────────────────────────────────────
+        function populateBettingCompanies() {
+            const companiesList = document.getElementById('bettingCompaniesList');
 
-        try {
-            const response = await fetch("{{ route('betting.verify-customer') }}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': "{{ csrf_token() }}",
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    betting_company: bettingCompany,
-                    customer_id: customerId
-                })
+            if (!bettingCompanies || bettingCompanies.length === 0) {
+                companiesList.innerHTML = `
+                    <div class="text-center py-8">
+                        <p class="text-gray-500 mb-4">No betting companies available</p>
+                        <button onclick="location.reload()" class="text-brand-green hover:underline">Refresh Page</button>
+                    </div>`;
+                return;
+            }
+
+            const colors = ['yellow-500','purple-600','green-600','blue-700','orange-600',
+                            'red-600','teal-600','pink-600','indigo-600','blue-500','purple-700','green-700'];
+            let html = '<ul class="grid grid-cols-1 gap-2">';
+
+            bettingCompanies.forEach((company, index) => {
+                let companyCode, displayName, minAmount, maxAmount;
+
+                if (typeof company === 'string') {
+                    companyCode  = company;
+                    displayName  = company.toUpperCase();
+                    minAmount    = 100;
+                    maxAmount    = 50000;
+                } else if (company && typeof company === 'object') {
+                    companyCode  = company.PRODUCT_CODE || company.code || company.BETTINGCOMPANY || company.BettingCompany || company.key || company.value || '';
+                    displayName  = company.name || company.NAME || company.DESCRIPTION || company.Description || companyCode.toUpperCase();
+                    minAmount    = company.MINAMOUNT || company.min_amount || company.MIN_AMOUNT || 100;
+                    maxAmount    = company.MAXAMOUNT || company.max_amount || company.MAX_AMOUNT || 50000;
+                }
+
+                if (!companyCode) return;
+
+                const color = colors[index % colors.length];
+                html += `
+                    <li class="flex justify-between items-center p-3 rounded-lg cursor-pointer border-b border-gray-200 hover:bg-gray-100 transition duration-150 betting-option"
+                        data-value="${companyCode}" data-display="${displayName}">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-full bg-${color} flex items-center justify-center mr-3">
+                                <span class="text-white font-bold text-xs">${displayName.substring(0, 2)}</span>
+                            </div>
+                            <span class="text-gray-800 font-medium">${displayName}</span>
+                        </div>
+                        <div class="text-right text-xs text-gray-500">
+                            Min: ₦${minAmount} <br> Max: ₦${maxAmount}
+                        </div>
+                    </li>`;
             });
 
-            const result = await response.json();
+            html += '</ul>';
+            companiesList.innerHTML = html;
 
-            if (response.ok && result.status) {
-                customerNameDisplay.textContent = `✓ Customer: ${result.data.customer_name}`;
-                customerNameDisplay.classList.remove('hidden', 'text-red-600');
-                customerNameDisplay.classList.add('text-green-600');
-            } else {
-                customerNameDisplay.textContent = `✗ ${result.message || 'Invalid Customer ID'}`;
+            document.querySelectorAll('.betting-option').forEach(option => {
+                option.addEventListener('click', function () {
+                    document.getElementById('betting_company_display').value = this.dataset.display;
+                    document.getElementById('betting_company').value          = this.dataset.value;
+                    hideBettingModal();
+
+                    const nameDisplay = document.getElementById('customerNameDisplay');
+                    nameDisplay.classList.add('hidden');
+                    nameDisplay.textContent = '';
+
+                    document.getElementById('betting_company').dispatchEvent(new Event('change'));
+                });
+            });
+        }
+
+        // ─── Verify customer ─────────────────────────────────────────────────────
+        async function verifyCustomer() {
+            const bettingCompany   = document.getElementById('betting_company').value;
+            const customerId       = document.getElementById('customer_id').value;
+            const verifyBtn        = document.getElementById('verifyCustomerBtn');
+            const customerNameDisplay = document.getElementById('customerNameDisplay');
+
+            if (!bettingCompany || !customerId) {
+                showErrorMessage('Please select a betting company and enter customer ID.');
+                return;
+            }
+
+            const originalText     = verifyBtn.textContent;
+            verifyBtn.textContent  = 'Verifying...';
+            verifyBtn.disabled     = true;
+
+            try {
+                const response = await fetch("{{ route('betting.verify-customer') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': "{{ csrf_token() }}",
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ betting_company: bettingCompany, customer_id: customerId })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.status) {
+                    customerNameDisplay.textContent = `✓ Customer: ${result.data.customer_name}`;
+                    customerNameDisplay.classList.remove('hidden', 'text-red-600');
+                    customerNameDisplay.classList.add('text-green-600');
+                } else {
+                    customerNameDisplay.textContent = `✗ ${result.message || 'Invalid Customer ID'}`;
+                    customerNameDisplay.classList.remove('hidden', 'text-green-600');
+                    customerNameDisplay.classList.add('text-red-600');
+                }
+            } catch (error) {
+                console.error('Verification error:', error);
+                customerNameDisplay.textContent = '✗ Verification failed. Please try again.';
                 customerNameDisplay.classList.remove('hidden', 'text-green-600');
                 customerNameDisplay.classList.add('text-red-600');
+            } finally {
+                verifyBtn.textContent = originalText;
+                verifyBtn.disabled    = false;
             }
-        } catch (error) {
-            console.error('Verification error:', error);
-            customerNameDisplay.textContent = '✗ Verification failed. Please try again.';
-            customerNameDisplay.classList.remove('hidden', 'text-green-600');
-            customerNameDisplay.classList.add('text-red-600');
-        } finally {
-            verifyBtn.textContent = originalText;
-            verifyBtn.disabled = false;
         }
-    }
 
-    // Handle form submission
-    function handleFormSubmit(e) {
-        e.preventDefault();
-        
-        // Validate form fields
-        const bettingCompany = document.getElementById('betting_company').value;
-        const bettingCompanyDisplay = document.getElementById('betting_company_display').value;
-        const customerId = document.getElementById('customer_id').value;
-        const amount = parseFloat(document.getElementById('amount').value) || 0;
-        
-        // Validation
-        if (!bettingCompany) {
-            showErrorMessage('Please select a betting company.');
-            return;
-        }
-        if (!customerId) {
-            showErrorMessage('Please enter your customer ID.');
-            return;
-        }
-        if (!amount || amount < 100) {
-            showErrorMessage('Please enter a valid amount (minimum ₦100).');
-            return;
-        }
-        if (amount > 50000) {
-            showErrorMessage('Maximum amount allowed is ₦50,000.');
-            return;
-        }
-        
-        // Check wallet balance
-        if (walletBalance < amount) {
-            showErrorMessage(`Insufficient balance. Your wallet balance is ₦${walletBalance.toFixed(2)}. Please fund your wallet.`);
-            return;
-        }
-        
-        // Show PIN modal with summary
-        document.getElementById('pinModalSummary').innerHTML = `
-            <div class="space-y-1">
-                <div class="flex justify-between"><span class="font-medium">Betting Company:</span> <span>${bettingCompanyDisplay}</span></div>
-                <div class="flex justify-between"><span class="font-medium">Customer ID:</span> <span>${customerId}</span></div>
-                <div class="flex justify-between"><span class="font-medium">Amount:</span> <span>₦${amount.toFixed(2)}</span></div>
-                <div class="flex justify-between pt-2 border-t"><span class="font-semibold text-green-700">New Balance:</span> <span class="font-semibold text-green-700">₦${(walletBalance - amount).toFixed(2)}</span></div>
-            </div>
-        `;
-        
-        // Clear PIN inputs and errors
-        document.querySelectorAll('.pin-input').forEach(input => input.value = '');
-        document.getElementById('pinModalError').classList.add('hidden');
-        
-        // Show PIN modal
-        document.getElementById('pinModal').classList.remove('hidden');
-        document.querySelector('.pin-input').focus();
-    }
+        // ─── Form submit handler ──────────────────────────────────────────────────
+        function handleFormSubmit(e) {
+            e.preventDefault();
 
-    // Setup PIN modal
-    function setupPinModal() {
-        // Close button
-        document.getElementById('pinModalCloseBtn').addEventListener('click', () => {
-            document.getElementById('pinModal').classList.add('hidden');
-        });
+            const bettingCompany        = document.getElementById('betting_company').value;
+            const bettingCompanyDisplay = document.getElementById('betting_company_display').value;
+            const customerId            = document.getElementById('customer_id').value;
+            const amount                = parseFloat(document.getElementById('amount').value) || 0;
 
-        // Auto-focus next PIN input
-        document.querySelectorAll('.pin-input').forEach((input, idx, arr) => {
-            input.addEventListener('input', function() {
-                if (this.value.length === 1 && idx < arr.length - 1) {
-                    arr[idx + 1].focus();
-                }
-            });
-            
-            // Handle backspace
-            input.addEventListener('keydown', function(e) {
-                if (e.key === 'Backspace' && this.value === '' && idx > 0) {
-                    arr[idx - 1].focus();
-                }
-            });
-        });
+            if (!bettingCompany)          return showErrorMessage('Please select a betting company.');
+            if (!customerId)              return showErrorMessage('Please enter your customer ID.');
+            if (!amount || amount < 100)  return showErrorMessage('Please enter a valid amount (minimum ₦100).');
+            if (amount > 50000)           return showErrorMessage('Maximum amount allowed is ₦50,000.');
+            if (walletBalance < amount)   return showErrorMessage(`Insufficient balance. Your wallet balance is ₦${walletBalance.toFixed(2)}.`);
 
-        // Confirm button
-        document.getElementById('confirmPinBtn').addEventListener('click', handlePinConfirmation);
+            document.getElementById('pinModalSummary').innerHTML = `
+                <div class="space-y-1">
+                    <div class="flex justify-between"><span class="font-medium">Betting Company:</span> <span>${bettingCompanyDisplay}</span></div>
+                    <div class="flex justify-between"><span class="font-medium">Customer ID:</span> <span>${customerId}</span></div>
+                    <div class="flex justify-between"><span class="font-medium">Amount:</span> <span>₦${amount.toFixed(2)}</span></div>
+                    <div class="flex justify-between pt-2 border-t"><span class="font-semibold text-green-700">New Balance:</span> <span class="font-semibold text-green-700">₦${(walletBalance - amount).toFixed(2)}</span></div>
+                </div>`;
 
-        // Close when clicking outside
-        document.getElementById('pinModal').addEventListener('click', (e) => {
-            if (e.target === document.getElementById('pinModal')) {
+            document.querySelectorAll('.pin-input').forEach(input => input.value = '');
+            document.getElementById('pinModalError').classList.add('hidden');
+            document.getElementById('pinModal').classList.remove('hidden');
+            document.querySelector('.pin-input').focus();
+        }
+
+        // ─── PIN modal setup ──────────────────────────────────────────────────────
+        function setupPinModal() {
+            document.getElementById('pinModalCloseBtn').addEventListener('click', () => {
                 document.getElementById('pinModal').classList.add('hidden');
-            }
-        });
-    }
-
-    // Handle PIN confirmation
-    async function handlePinConfirmation(e) {
-        e.preventDefault();
-        
-        const pinInputs = document.querySelectorAll('.pin-input');
-        let pin = '';
-        pinInputs.forEach(input => pin += input.value);
-
-        if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
-            document.getElementById('pinModalError').textContent = 'Please enter your 4-digit PIN.';
-            document.getElementById('pinModalError').classList.remove('hidden');
-            return;
-        }
-
-        // Show loading state
-        const confirmBtn = document.getElementById('confirmPinBtn');
-        const originalText = confirmBtn.innerHTML;
-        confirmBtn.innerHTML = `
-            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Processing...
-        `;
-        confirmBtn.disabled = true;
-
-        // Gather form data
-        const formData = new FormData();
-        formData.append('betting_company', document.getElementById('betting_company').value);
-        formData.append('customer_id', document.getElementById('customer_id').value);
-        formData.append('amount', document.getElementById('amount').value);
-        formData.append('pin', pin);
-
-        try {
-            const response = await fetch("{{ route('fund_bet') }}", {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': "{{ csrf_token() }}",
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                },
-                body: formData
             });
 
-            const result = await response.json();
-
-            if (response.ok && result.status) {
-                // Hide PIN modal
-                document.getElementById('pinModal').classList.add('hidden');
-                
-                // Show success message
-                await showSuccessPartial({
-                    title: 'Betting Account Funded Successfully!',
-                    message: result.message || 'Your betting account has been funded successfully!',
-                    details: {
-                        'Transaction Reference': result.data?.reference || 'N/A',
-                        'Order ID': result.data?.order_id || 'N/A',
-                        'Betting Company': document.getElementById('betting_company_display').value,
-                        'Customer ID': document.getElementById('customer_id').value,
-                        'Amount': `₦${parseFloat(document.getElementById('amount').value).toFixed(2)}`,
-                        'Transaction Status': result.data?.transaction_status?.toUpperCase() || 'PENDING',
-                        'New Wallet Balance': result.data?.new_balance ? `₦${parseFloat(result.data.new_balance).toFixed(2)}` : 'N/A',
-                        'Date & Time': new Date().toLocaleString()
-                    }
+            document.querySelectorAll('.pin-input').forEach((input, idx, arr) => {
+                input.addEventListener('input', function () {
+                    if (this.value.length === 1 && idx < arr.length - 1) arr[idx + 1].focus();
                 });
-                
-                // Reset form
-                document.getElementById('bettingForm').reset();
-                document.getElementById('betting_company_display').value = '';
-                document.getElementById('betting_company').value = '';
-                document.getElementById('customerNameDisplay').classList.add('hidden');
-                
-                // Reload page after 3 seconds to refresh balance
-                setTimeout(() => window.location.reload(), 3000);
-            } else {
-                // Handle errors
-                let errorMessage = result.message || 'Transaction failed.';
-                
-                if (result.errors) {
-                    errorMessage = Object.values(result.errors).flat().join(', ');
+                input.addEventListener('keydown', function (e) {
+                    if (e.key === 'Backspace' && this.value === '' && idx > 0) arr[idx - 1].focus();
+                });
+            });
+
+            document.getElementById('confirmPinBtn').addEventListener('click', handlePinConfirmation);
+
+            document.getElementById('pinModal').addEventListener('click', e => {
+                if (e.target === document.getElementById('pinModal')) {
+                    document.getElementById('pinModal').classList.add('hidden');
                 }
-                
-                document.getElementById('pinModalError').textContent = errorMessage;
+            });
+        }
+
+        // ─── PIN confirmation ─────────────────────────────────────────────────────
+        async function handlePinConfirmation(e) {
+            e.preventDefault();
+
+            let pin = '';
+            document.querySelectorAll('.pin-input').forEach(input => pin += input.value);
+
+            if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+                document.getElementById('pinModalError').textContent = 'Please enter your 4-digit PIN.';
                 document.getElementById('pinModalError').classList.remove('hidden');
+                return;
             }
-        } catch (error) {
-            console.error('Transaction error:', error);
-            document.getElementById('pinModalError').textContent = 'Network error. Please check your connection and try again.';
-            document.getElementById('pinModalError').classList.remove('hidden');
-        } finally {
-            // Reset button state
-            confirmBtn.innerHTML = originalText;
-            confirmBtn.disabled = false;
-        }
-    }
 
-    // Show success partial
-    async function showSuccessPartial(data) {
-        try {
-            const response = await fetch('/render-success-partial', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'text/html'
-                },
-                body: JSON.stringify({
-                    title: data.title,
-                    message: data.message,
-                    details: data.details || {}
-                })
-            });
+            const confirmBtn   = document.getElementById('confirmPinBtn');
+            const originalText = confirmBtn.innerHTML;
+            confirmBtn.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>Processing...`;
+            confirmBtn.disabled = true;
 
-            if (response.ok) {
-                const partialHtml = await response.text();
-                
-                const modalWrapper = document.createElement('div');
-                modalWrapper.id = 'successPartialModal';
-                modalWrapper.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4';
-                
-                modalWrapper.innerHTML = `
-                    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full relative transform animate-bounce-in">
-                        <button id="closePartialModal" class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 transition text-xl font-bold z-10">
-                            ✕
-                        </button>
-                        <div class="p-6">
-                            ${partialHtml}
-                            <div class="mt-6">
-                                <button id="doneBtn" class="w-full bg-brand-green text-white font-semibold py-3 px-4 rounded-xl hover:bg-teal-700 transition duration-200">
-                                    Done
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
+            const formData = new FormData();
+            formData.append('betting_company', document.getElementById('betting_company').value);
+            formData.append('customer_id',     document.getElementById('customer_id').value);
+            formData.append('amount',           document.getElementById('amount').value);
+            formData.append('pin',              pin);
 
-                document.body.appendChild(modalWrapper);
-
-                const closeModal = () => {
-                    modalWrapper.classList.add('animate-fade-out');
-                    setTimeout(() => modalWrapper.remove(), 300);
-                };
-                
-                document.getElementById('closePartialModal').addEventListener('click', closeModal);
-                document.getElementById('doneBtn').addEventListener('click', closeModal);
-                modalWrapper.addEventListener('click', (e) => {
-                    if (e.target === modalWrapper) closeModal();
+            try {
+                const response = await fetch("{{ route('fund_bet') }}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': "{{ csrf_token() }}",
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    body: formData
                 });
 
-                const handleEscape = (e) => {
-                    if (e.key === 'Escape') {
-                        closeModal();
-                        document.removeEventListener('keydown', handleEscape);
-                    }
-                };
-                document.addEventListener('keydown', handleEscape);
-            } else {
+                const result = await response.json();
+
+                if (response.ok && result.status) {
+                    document.getElementById('pinModal').classList.add('hidden');
+
+                    await showSuccessPartial({
+                        title: 'Betting Account Funded Successfully!',
+                        message: result.message || 'Your betting account has been funded successfully!',
+                        details: {
+                            'Transaction Reference': result.data?.reference || 'N/A',
+                            'Order ID':              result.data?.order_id || 'N/A',
+                            'Betting Company':       document.getElementById('betting_company_display').value,
+                            'Customer ID':           document.getElementById('customer_id').value,
+                            'Amount':                `₦${parseFloat(document.getElementById('amount').value).toFixed(2)}`,
+                            'Transaction Status':    result.data?.transaction_status?.toUpperCase() || 'PENDING',
+                            'New Wallet Balance':    result.data?.new_balance ? `₦${parseFloat(result.data.new_balance).toFixed(2)}` : 'N/A',
+                            'Date & Time':           new Date().toLocaleString()
+                        }
+                    });
+
+                    document.getElementById('bettingForm').reset();
+                    document.getElementById('betting_company_display').value = '';
+                    document.getElementById('betting_company').value          = '';
+                    document.getElementById('customerNameDisplay').classList.add('hidden');
+
+                    setTimeout(() => window.location.reload(), 3000);
+                } else {
+                    let errorMessage = result.message || 'Transaction failed.';
+                    if (result.errors) errorMessage = Object.values(result.errors).flat().join(', ');
+                    document.getElementById('pinModalError').textContent = errorMessage;
+                    document.getElementById('pinModalError').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Transaction error:', error);
+                document.getElementById('pinModalError').textContent = 'Network error. Please check your connection and try again.';
+                document.getElementById('pinModalError').classList.remove('hidden');
+            } finally {
+                confirmBtn.innerHTML = originalText;
+                confirmBtn.disabled  = false;
+            }
+        }
+
+        // ─── Success partial ──────────────────────────────────────────────────────
+        async function showSuccessPartial(data) {
+            try {
+                const response = await fetch('/render-success-partial', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'text/html'
+                    },
+                    body: JSON.stringify({ title: data.title, message: data.message, details: data.details || {} })
+                });
+
+                if (response.ok) {
+                    const partialHtml = await response.text();
+                    const modalWrapper = document.createElement('div');
+                    modalWrapper.id        = 'successPartialModal';
+                    modalWrapper.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4';
+                    modalWrapper.innerHTML = `
+                        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full relative transform animate-bounce-in">
+                            <button id="closePartialModal" class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 transition text-xl font-bold z-10">✕</button>
+                            <div class="p-6">
+                                ${partialHtml}
+                                <div class="mt-6">
+                                    <button id="doneBtn" class="w-full bg-brand-green text-white font-semibold py-3 px-4 rounded-xl hover:bg-teal-700 transition duration-200">Done</button>
+                                </div>
+                            </div>
+                        </div>`;
+                    document.body.appendChild(modalWrapper);
+
+                    const closeModal = () => {
+                        modalWrapper.classList.add('animate-fade-out');
+                        setTimeout(() => modalWrapper.remove(), 300);
+                    };
+                    document.getElementById('closePartialModal').addEventListener('click', closeModal);
+                    document.getElementById('doneBtn').addEventListener('click', closeModal);
+                    modalWrapper.addEventListener('click', e => { if (e.target === modalWrapper) closeModal(); });
+                    document.addEventListener('keydown', function handleEscape(e) {
+                        if (e.key === 'Escape') { closeModal(); document.removeEventListener('keydown', handleEscape); }
+                    });
+                } else {
+                    showSimpleSuccessModal(data);
+                }
+            } catch (error) {
+                console.error('Error loading success partial:', error);
                 showSimpleSuccessModal(data);
             }
-        } catch (error) {
-            console.error('Error loading success partial:', error);
-            showSimpleSuccessModal(data);
         }
-    }
 
-    // Fallback success modal
-    function showSimpleSuccessModal(data) {
-        let detailsText = '';
-        if (data.details) {
-            detailsText = '\n\nDetails:\n' + Object.entries(data.details)
-                .map(([key, value]) => `${key}: ${value}`)
-                .join('\n');
-        }
-        
-        alert(`${data.title}\n\n${data.message}${detailsText}`);
-    }
-
-    // Show error message
-    function showErrorMessage(message) {
-        const existingMessages = document.querySelectorAll('.message-alert');
-        existingMessages.forEach(msg => msg.remove());
-
-        const messageEl = document.createElement('div');
-        messageEl.className = 'message-alert mb-4 p-3 rounded bg-red-100 text-red-700 border border-red-300';
-        messageEl.textContent = message;
-
-        const form = document.getElementById('bettingForm');
-        form.parentNode.insertBefore(messageEl, form);
-
-        setTimeout(() => {
-            if (messageEl.parentNode) {
-                messageEl.remove();
+        function showSimpleSuccessModal(data) {
+            let detailsText = '';
+            if (data.details) {
+                detailsText = '\n\nDetails:\n' + Object.entries(data.details).map(([k, v]) => `${k}: ${v}`).join('\n');
             }
-        }, 5000);
-    }
+            alert(`${data.title}\n\n${data.message}${detailsText}`);
+        }
 
-    document.addEventListener('DOMContentLoaded', function() {
+        // ─── Error message helper ─────────────────────────────────────────────────
+        function showErrorMessage(message) {
+            document.querySelectorAll('.message-alert').forEach(el => el.remove());
+            const el = document.createElement('div');
+            el.className   = 'message-alert mb-4 p-3 rounded bg-red-100 text-red-700 border border-red-300';
+            el.textContent = message;
+            const form = document.getElementById('bettingForm');
+            form.parentNode.insertBefore(el, form);
+            setTimeout(() => { if (el.parentNode) el.remove(); }, 5000);
+        }
 
-    // Initialize when DOM is loaded
-    populateBettingCompanies();
-    setupPinModal();
-});
+        // ─── Boot on DOM ready ────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', function () {
+            populateBettingCompanies();
+            setupPinModal();
+
+            // Attach modal trigger to the display input (replaces inline onclick)
+            document.getElementById('betting_company_display').addEventListener('click', showBettingModal);
+
+            // Close betting modal on backdrop click
+            document.getElementById('bettingModal').addEventListener('click', function (e) {
+                if (e.target === this) hideBettingModal();
+            });
+
+            // Form submit
+            document.getElementById('bettingForm').addEventListener('submit', handleFormSubmit);
+
+            // Show verify button when customer ID is typed
+            document.getElementById('customer_id').addEventListener('input', function () {
+                const verifyBtn = document.getElementById('verifyCustomerBtn');
+                if (this.value.trim().length > 0) {
+                    verifyBtn.classList.remove('hidden');
+                } else {
+                    verifyBtn.classList.add('hidden');
+                }
+            });
+
+            // Verify button click
+            document.getElementById('verifyCustomerBtn').addEventListener('click', verifyCustomer);
+        });
+    </script>
 @endsection
