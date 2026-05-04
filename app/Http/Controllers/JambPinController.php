@@ -39,7 +39,7 @@ class JambPinController extends Controller
             }
         });
 
-        return view('users.jamb-pin', compact('wallet', 'jambPackages'));
+        return view('users.jambPin', compact('wallet', 'jambPackages'));
     }
 
     /**
