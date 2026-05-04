@@ -198,29 +198,21 @@ class JambPinController extends Controller
             ]);
 
             // === 7️⃣ BUY JAMB PIN FROM API ===
-            // Map exam types to API expected values
-            $apiExamType = match($data['exam_type']) {
-                'utme-mock', 'utme-no-mock' => 'utme',
-                'de' => 'de',
-                default => 'utme'
-            };
-
             $response = ClubKonnectHelper::buyJamb(
                 $data['phone_number'],
                 $reference,
-                $apiExamType,
+                $data['exam_type'],
                 env('APP_CALLBACK_URL') . '/jamb-pin/callback'
             );
-
-            Log::info('JAMB API response', $response);
 
             Log::info('JAMB API call initiated', [
                 'user_id' => auth()->id(),
                 'reference' => $reference,
                 'exam_type' => $data['exam_type'],
-                'api_exam_type' => $apiExamType,
                 'phone' => substr($data['phone_number'], 0, 4) . '****' . substr($data['phone_number'], -3),
             ]);
+
+            Log::info('JAMB API response', $response);
 
             // --- ✅ Normalize response structure ---
             $response = is_array($response) ? $response : json_decode($response, true);

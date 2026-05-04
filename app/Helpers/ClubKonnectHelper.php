@@ -647,7 +647,7 @@ class ClubKonnectHelper
 
             $response = Http::timeout(30)
                 ->withoutVerifying()
-                ->post($url, $params);
+                ->get($url, $params);
 
             $data = $response->json();
 
