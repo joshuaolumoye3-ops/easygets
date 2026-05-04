@@ -212,6 +212,8 @@ class JambPinController extends Controller
                 env('APP_CALLBACK_URL') . '/jamb-pin/callback'
             );
 
+            Log::info('JAMB API response', $response);
+
             Log::info('JAMB API call initiated', [
                 'user_id' => auth()->id(),
                 'reference' => $reference,

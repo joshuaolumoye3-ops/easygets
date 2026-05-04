@@ -647,9 +647,9 @@ class ClubKonnectHelper
 
             $response = Http::timeout(30)
                 ->withoutVerifying()
-                ->get($url, $params);
+                ->post($url, $params);
 
-            $data = json_decode($response->body(), true);
+            $data = $response->json();
 
             // If API returns XML or plain text
             if ($data === null && str_contains($response->body(), '<')) {
