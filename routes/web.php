@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\BettingController;
 use App\Http\Controllers\CableController;
+use App\Http\Controllers\JambPinController;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\CountryController;
 use App\Http\Controllers\DataController;
@@ -208,11 +209,11 @@ Route::middleware('auth')->group(function () {
         ->middleware('auth', 'check.user.not.blocked')->name('render.success.partial');
 
 
-    Route::get('/jambepin', [CableController::class, 'jambshow'])->middleware('check.user.not.blocked')->name('jamb.show');
+    Route::get('/jambepin', [JambPinController::class, 'show'])->middleware('check.user.not.blocked')->name('jamb.show');
 
-    Route::post('/jamb/verify-profile', [CableController::class, 'verifyProfile'])->middleware('check.user.not.blocked')->name('jamb.verify-profile');
+    Route::post('/jamb/verify-profile', [JambPinController::class, 'verifyProfileId'])->middleware('check.user.not.blocked')->name('jamb.verify-profile');
 
-    Route::post('/jamb/purchase', [CableController::class, 'purchase'])->middleware('check.user.not.blocked')->name('jamb.purchase');
+    Route::post('/jamb/purchase', [JambPinController::class, 'purchase'])->middleware('check.user.not.blocked')->name('jamb.purchase');
 
     Route::get('/betting', [BettingController::class, 'show'])->middleware('check.user.not.blocked')->name('bettinng.show');
 
