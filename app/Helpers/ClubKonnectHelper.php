@@ -86,7 +86,9 @@ class ClubKonnectHelper
             $response = Http::withoutVerifying()
                 ->timeout(15)
                 ->acceptJson()
-                ->get('https://www.nellobytesystems.com/' . $endpoint);
+                ->get('https://www.nellobytesystems.com/' . $endpoint, [
+                    'UserID' => self::getUserId(),
+                ]);
 
             if ($response->successful()) {
                 $data = $response->json();

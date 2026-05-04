@@ -230,14 +230,25 @@
     let html = '<ul class="grid grid-cols-1 gap-2">';
 
     bettingCompanies.forEach((company, index) => {
-        const companyCode = company.PRODUCT_CODE || '';
-        const minAmount = company.MINAMOUNT || 0;
-        const maxAmount = company.MAXAMOUNT || 0;
+        let companyCode, displayName, minAmount, maxAmount;
+
+        if (typeof company === 'string') {
+            // API returns array of strings
+            companyCode = company;
+            displayName = company.toUpperCase();
+            minAmount = 100;
+            maxAmount = 50000;
+        } else {
+            // API returns objects
+            companyCode = company.PRODUCT_CODE || company.code || '';
+            displayName = company.PRODUCT_CODE || company.name || companyCode.toUpperCase();
+            minAmount = company.MINAMOUNT || company.min_amount || 100;
+            maxAmount = company.MAXAMOUNT || company.max_amount || 50000;
+        }
 
         if (!companyCode) return;
 
         const color = colors[index % colors.length];
-        const displayName = companyCode.toUpperCase();
 
         html += `
             <li class="flex justify-between items-center p-3 rounded-lg cursor-pointer border-b border-gray-200 hover:bg-gray-100 transition duration-150 betting-option"
