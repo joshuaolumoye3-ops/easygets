@@ -393,7 +393,7 @@ function closeAdminModal() {
 }
 
 function loadAdminDetails(adminId) {
-    fetch(`/admin/${adminId}`)
+    fetch(`/app/admin/${adminId}`)
         .then(res => res.json())
         .then(data => {
             const admin = data;
@@ -448,7 +448,7 @@ function updateAdmin(e) {
         data.password_confirmation = confirmPassword;
     }
     
-    fetch(`/admin/${currentAdminId}/update`, {
+    fetch(`/app/admin/${currentAdminId}/update`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
