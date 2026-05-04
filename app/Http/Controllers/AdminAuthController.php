@@ -18,22 +18,32 @@ class AdminAuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        // Try to authenticate with admins guard
-        if (!Auth::guard('admins')->attempt([
-            'email' => $request->email,
+        $login = $request->email;
+        $admin = Admin::where('email', $login)
+            ->orWhere('name', $login)
+            ->first();
+
+        if ($admin && $admin->status !== 'active') {
+            return back()->withErrors([
+                'email' => 'Your admin account is inactive. Please contact a super admin to reactivate it.',
+            ])->withInput();
+        }
+
+        $credentials = [
             'password' => $request->password,
-        ], $request->filled('remember'))) {
-            
-            // Try also by username instead of email
-            $admin = \App\Models\Admin::where('name', $request->email)->first();
+            'status' => 'active',
+        ];
 
-            if (!$admin || !\Illuminate\Support\Facades\Hash::check($request->password, $admin->password)) {
-                return back()->withErrors([
-                    'email' => 'Invalid credentials.',
-                ])->withInput();
-            }
+        if (filter_var($login, FILTER_VALIDATE_EMAIL)) {
+            $credentials['email'] = $login;
+        } else {
+            $credentials['name'] = $login;
+        }
 
-            Auth::guard('admins')->login($admin, $request->filled('remember'));
+        if (!Auth::guard('admins')->attempt($credentials, $request->filled('remember'))) {
+            return back()->withErrors([
+                'email' => 'Invalid credentials.',
+            ])->withInput();
         }
 
         // regenerate session to prevent CSRF/session fixation issues
@@ -87,18 +97,32 @@ class AdminAuthController extends Controller
 
     public function updateadmin(Request $request, Admin $admin)
     {
+        $currentAdmin = Auth::guard('admins')->user();
+        if (!$currentAdmin || $currentAdmin->role !== 'super_admin') {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized. Only super admins can update administrators.'], 403);
+            }
+            return redirect()->back()->with('error', 'Unauthorized. Only super admins can update administrators.');
+        }
+
         $request->validate([
             'role' => 'required|in:super_admin,admin',
+            'status' => 'required|in:active,inactive',
             'password' => 'nullable|min:6|confirmed',
         ]);
 
         $admin->role = $request->role;
+        $admin->status = $request->status;
 
         if ($request->filled('password')) {
             $admin->password = Hash::make($request->password);
         }
 
         $admin->save();
+
+        if ($request->wantsJson() || $request->expectsJson()) {
+            return response()->json(['success' => true, 'message' => 'Admin updated successfully!']);
+        }
 
         return redirect()->back()->with('success', 'Admin updated successfully!');
     }

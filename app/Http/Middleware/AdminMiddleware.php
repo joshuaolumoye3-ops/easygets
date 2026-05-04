@@ -50,6 +50,19 @@ class AdminMiddleware
             return redirect()->back()->with('error', 'You do not have the required role.');
         }
 
+        if ($admin->status !== 'active') {
+            Auth::guard('admins')->logout();
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your admin account is inactive. Please contact a super admin to reactivate it.'
+                ], 403);
+            }
+
+            return redirect()->route('admin.login')->with('error', 'Your admin account is inactive. Please contact a super admin to reactivate it.');
+        }
+
         return $next($request);
     }
 }

@@ -74,8 +74,6 @@
         font-size: 14px;
         color: #f1f5f9;
     }
-    tbody tr { transition: background-color 0.2s ease; cursor: pointer; }
-    tbody tr:hover { background-color: #334155; }
     
     .admin-cell { display: flex; align-items: center; gap: 12px; }
     .admin-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px; }
@@ -107,7 +105,21 @@
     }
     .status-active { background-color: #15803d44; color: #86efac; }
     .status-inactive { background-color: #7f1d1d44; color: #fca5a5; }
-    
+
+    .badge-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 6px;
+        font-size: 14px;
+    }
+
+    .clickable-row {
+        transition: background-color 0.2s ease;
+        cursor: pointer;
+    }
+    .clickable-row:hover { background-color: #334155; }
+
     .action-btn {
         padding: 8px 14px;
         background-color: #1e3a8a;
@@ -246,12 +258,14 @@
                             <th>Role</th>
                             <th>Phone</th>
                             <th>Status</th>
-                            <th>Action</th>
+                            @if(Auth::guard('admins')->user()->role === 'super_admin')
+                                <th>Action</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($admins as $admin)
-                        <tr onclick="openAdminModal({{ $admin->id }})">
+                        <tr @if(Auth::guard('admins')->user()->role === 'super_admin') class="clickable-row" onclick="openAdminModal({{ $admin->id }})" @endif>
                             <td>
                                 <div class="admin-cell">
                                     <div class="admin-avatar">{{ strtoupper(substr($admin->name ?? 'A', 0, 1)) }}</div>
@@ -264,24 +278,26 @@
                             <td>{{ $admin->email }}</td>
                             <td>
                                 @if($admin->role === 'super_admin')
-                                    <span class="role-badge role-super">👑 Super Admin</span>
+                                    <span class="role-badge role-super"><i class="mdi mdi-shield-account badge-icon"></i>Super Admin</span>
                                 @else
-                                    <span class="role-badge role-admin">🔐 Admin</span>
+                                    <span class="role-badge role-admin"><i class="mdi mdi-account-cog badge-icon"></i>Admin</span>
                                 @endif
                             </td>
                             <td>{{ $admin->phone ?? '—' }}</td>
                             <td>
                                 @if($admin->status === 'active')
-                                    <span class="status-badge status-active">● Active</span>
+                                    <span class="status-badge status-active"><i class="mdi mdi-checkbox-marked-circle badge-icon"></i>Active</span>
                                 @else
-                                    <span class="status-badge status-inactive">● Inactive</span>
+                                    <span class="status-badge status-inactive"><i class="mdi mdi-cancel badge-icon"></i>Inactive</span>
                                 @endif
                             </td>
-                            <td><button class="action-btn" onclick="event.stopPropagation(); openAdminModal({{ $admin->id }})">👁️ View</button></td>
+                            @if(Auth::guard('admins')->user()->role === 'super_admin')
+                                <td><button class="action-btn" onclick="event.stopPropagation(); openAdminModal({{ $admin->id }})"><i class="mdi mdi-eye badge-icon"></i>View</button></td>
+                            @endif
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6">
+                            <td colspan="@if(Auth::guard('admins')->user()->role === 'super_admin') 6 @else 5 @endif">
                                 <div class="empty-state">
                                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
@@ -353,7 +369,7 @@
                     </div>
                     
                     <div class="btn-group">
-                        <button type="button" onclick="updateAdmin(event)" class="btn btn-primary">💾 Update Admin</button>
+                        <button type="button" onclick="updateAdmin(event)" class="btn btn-primary"><i class="mdi mdi-content-save-outline badge-icon"></i>Update Admin</button>
                         <button type="button" onclick="closeAdminModal()" class="btn btn-secondary">Cancel</button>
                     </div>
                 </form>
@@ -377,10 +393,10 @@ function closeAdminModal() {
 }
 
 function loadAdminDetails(adminId) {
-    fetch(`/admin/api/admin/${adminId}`)
+    fetch(`/admin/${adminId}`)
         .then(res => res.json())
         .then(data => {
-            const admin = data.admin;
+            const admin = data;
             const detailsHtml = `
                 <div class="info-item">
                     <div class="info-label">Name</div>
@@ -396,11 +412,11 @@ function loadAdminDetails(adminId) {
                 </div>
                 <div class="info-item">
                     <div class="info-label">Role</div>
-                    <div class="info-value">${admin.role === 'super_admin' ? '👑 Super Admin' : '🔐 Administrator'}</div>
+                    <div class="info-value">${admin.role === 'super_admin' ? 'Super Admin' : 'Administrator'}</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Status</div>
-                    <div class="info-value">${admin.status === 'active' ? '✓ Active' : '✗ Inactive'}</div>
+                    <div class="info-value">${admin.status === 'active' ? 'Active' : 'Inactive'}</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">Created At</div>
@@ -427,12 +443,16 @@ function updateAdmin(e) {
     }
     
     const data = { role, status };
-    if (newPassword) data.password = newPassword;
+    if (newPassword) {
+        data.password = newPassword;
+        data.password_confirmation = confirmPassword;
+    }
     
-    fetch(`/admin/api/admin/${currentAdminId}/update`, {
+    fetch(`/admin/${currentAdminId}/update`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
         },
         body: JSON.stringify(data)
@@ -443,9 +463,15 @@ function updateAdmin(e) {
             alert('Administrator updated successfully!');
             closeAdminModal();
             location.reload();
+            return;
         }
+
+        alert(data.message || 'Unable to update administrator.');
     })
-    .catch(err => console.error(err));
+    .catch(err => {
+        console.error(err);
+        alert('Unable to update administrator. Please try again.');
+    });
 }
 
 // Search functionality
