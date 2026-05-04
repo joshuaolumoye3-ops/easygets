@@ -177,46 +177,31 @@
                 bettingCompanies = [];
             }
 
-        bettingCompanies = [];
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        // Populate betting companies modal immediately
-        populateBettingCompanies();
-
-        // Amount validation
-        const amountInput = document.getElementById('amount');
-        amountInput.addEventListener('change', function() {
-            if (this.value < 100) this.value = 100;
-            if (this.value > 50000) this.value = 50000;
-        });
-
-        // Show/hide verify button when betting company and customer ID are filled
-        const bettingCompanyInput = document.getElementById('betting_company');
-        const customerIdInput = document.getElementById('customer_id');
-        const verifyBtn = document.getElementById('verifyCustomerBtn');
-
-        function updateVerifyButtonVisibility() {
-            if (bettingCompanyInput.value && customerIdInput.value.length >= 3) {
-                verifyBtn.classList.remove('hidden');
-            } else {
-                verifyBtn.classList.add('hidden');
-            }
+            console.log('Processed betting companies:', bettingCompanies);
+        } catch (error) {
+            console.error('Error parsing betting companies:', error);
+            bettingCompanies = [];
         }
 
-        bettingCompanyInput.addEventListener('change', updateVerifyButtonVisibility);
-        customerIdInput.addEventListener('input', updateVerifyButtonVisibility);
+    // Show betting modal
+    function showBettingModal() {
+        const bettingModal = document.getElementById('bettingModal');
+        const modalContent = bettingModal.querySelector('div');
+        bettingModal.classList.remove('hidden');
+        setTimeout(() => {
+            bettingModal.classList.add('opacity-100');
+            modalContent.classList.remove('translate-y-full');
+        }, 10);
+    }
 
-        // Verify customer ID
-        verifyBtn.addEventListener('click', verifyCustomer);
-
-        // Override form submission to show PIN modal
-        const form = document.getElementById('bettingForm');
-        form.addEventListener('submit', handleFormSubmit);
-
-        // PIN modal functionality
-        setupPinModal();
-    });
+    // Hide betting modal
+    function hideBettingModal() {
+        const bettingModal = document.getElementById('bettingModal');
+        const modalContent = bettingModal.querySelector('div');
+        bettingModal.classList.remove('opacity-100');
+        modalContent.classList.add('translate-y-full');
+        setTimeout(() => bettingModal.classList.add('hidden'), 300);
+    }
 
     // Populate betting companies from controller data
     function populateBettingCompanies() {
@@ -259,7 +244,7 @@
             <li class="flex justify-between items-center p-3 rounded-lg cursor-pointer border-b border-gray-200 hover:bg-gray-100 transition duration-150 betting-option"
                 data-value="${companyCode}" data-display="${displayName}">
                 <div class="flex items-center">
-                    <div class="w-8 h-8 rounded-full ${color} flex items-center justify-center mr-3">
+                    <div class="w-8 h-8 rounded-full bg-${color} flex items-center justify-center mr-3">
                         <span class="text-white font-bold text-xs">${displayName.substring(0, 2)}</span>
                     </div>
                     <span class="text-gray-800 font-medium">${displayName}</span>
@@ -292,6 +277,8 @@
         });
     });
 }
+
+    document.addEventListener('DOMContentLoaded', function() {
 
 
     // Show betting modal
