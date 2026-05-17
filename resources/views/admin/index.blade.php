@@ -5,7 +5,7 @@
 @push('head')
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 @endpush
 
 @section('content')
@@ -13,455 +13,653 @@
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-        --bg-base:    #060d1a;
-        --bg-surface: #0b1525;
-        --bg-card:    #0f1e35;
-        --bg-input:   #0b1525;
-        --border:     rgba(80,130,220,0.11);
-        --border-hi:  rgba(80,130,220,0.22);
-        --accent:     #3b82f6;
-        --accent-d:   rgba(59,130,246,0.14);
-        --accent-g:   rgba(59,130,246,0.28);
-        --purple:     #8b5cf6;
-        --purple-d:   rgba(139,92,246,0.14);
-        --green:      #10b981;
-        --green-d:    rgba(16,185,129,0.14);
-        --amber:      #f59e0b;
-        --amber-d:    rgba(245,158,11,0.14);
-        --red:        #ef4444;
-        --red-d:      rgba(239,68,68,0.14);
-        --t1: #eef4ff;
-        --t2: #7da0cc;
-        --t3: #3d5a7a;
-        --r-sm: 8px; --r-md: 12px; --r-lg: 18px; --r-xl: 24px;
-        --font: 'DM Sans', sans-serif;
-        --mono: 'DM Mono', monospace;
+        --bg:          #080f1c;
+        --bg-2:        #0d1629;
+        --bg-3:        #111e38;
+        --bg-4:        #162340;
+        --border:      rgba(99,152,255,0.10);
+        --border-2:    rgba(99,152,255,0.20);
+        --border-3:    rgba(99,152,255,0.30);
+
+        --blue:        #4f8cff;
+        --blue-dim:    rgba(79,140,255,0.12);
+        --blue-glow:   rgba(79,140,255,0.22);
+        --blue-text:   #93b8ff;
+
+        --violet:      #8b7cf8;
+        --violet-dim:  rgba(139,124,248,0.12);
+        --violet-text: #c4b8fd;
+
+        --emerald:     #34d98b;
+        --emerald-dim: rgba(52,217,139,0.12);
+        --emerald-text:#6ee7b7;
+
+        --amber:       #fbbf24;
+        --amber-dim:   rgba(251,191,36,0.12);
+        --amber-text:  #fcd34d;
+
+        --rose:        #f4566e;
+        --rose-dim:    rgba(244,86,110,0.12);
+        --rose-text:   #fda4af;
+
+        --t1: #eef3ff;
+        --t2: #7a9fd4;
+        --t3: #3a5578;
+
+        --r1: 6px;
+        --r2: 10px;
+        --r3: 14px;
+        --r4: 20px;
+
+        --font: 'Plus Jakarta Sans', sans-serif;
+        --mono: 'JetBrains Mono', monospace;
+
+        --shadow-card: 0 1px 3px rgba(0,0,0,0.4), 0 4px 20px rgba(0,0,0,0.25);
+        --shadow-glow: 0 0 0 1px var(--border-2), 0 8px 32px rgba(79,140,255,0.08);
     }
 
-    body { font-family: var(--font); background: var(--bg-base); color: var(--t1); -webkit-font-smoothing: antialiased; }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--font); background: var(--bg); color: var(--t1); -webkit-font-smoothing: antialiased; min-height: 100vh; }
 
-    .d-wrap  { padding-top: 70px; min-height: 100vh; }
-    .d-inner { padding: 32px 26px; max-width: 1440px; margin: 0 auto; }
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg-2); }
+    ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-3); }
 
-    /* ─── Top Bar ─── */
-    .top-bar {
-        position: relative;
-        display: flex; justify-content: space-between; align-items: center;
-        flex-wrap: wrap; gap: 14px;
-        background: var(--bg-card); border: 1px solid var(--border);
-        border-radius: var(--r-lg); padding: 20px 26px; margin-bottom: 26px;
+    /* ── Layout ── */
+    .dash { padding-top: 70px; min-height: 100vh; }
+    .inner { padding: 28px 24px; max-width: 1400px; margin: 0 auto; }
+
+    /* ── Header ── */
+    .hdr {
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 16px;
+        background: var(--bg-3);
+        border: 1px solid var(--border);
+        border-radius: var(--r4);
+        padding: 18px 22px;
+        margin-bottom: 24px;
+        position: relative; overflow: hidden;
     }
-    .top-bar::after {
-        content: ''; position: absolute; inset: 0; border-radius: var(--r-lg);
-        background: linear-gradient(135deg, rgba(59,130,246,0.04) 0%, transparent 60%);
-        pointer-events: none;
+    .hdr::before {
+        content: '';
+        position: absolute; top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, var(--blue), var(--violet), transparent);
+        opacity: 0.5;
     }
-    .tb-l h1 { font-size: 21px; font-weight: 700; color: var(--t1); letter-spacing: -0.3px; }
-    .tb-l p  { font-size: 12px; color: var(--t3); margin-top: 3px; font-weight: 500; }
-    .tb-r    { display: flex; align-items: center; gap: 12px; }
+    .hdr-brand { display: flex; flex-direction: column; gap: 3px; }
+    .hdr-brand h1 { font-size: 18px; font-weight: 800; color: var(--t1); letter-spacing: -0.4px; }
+    .hdr-brand p  { font-size: 11.5px; color: var(--t3); font-weight: 500; letter-spacing: 0.1px; }
 
-    /* Global search form */
-    .search-form { display: flex; align-items: center; gap: 8px; }
-    .search-box { position: relative; }
-    .search-box input {
-        width: 240px; padding: 8px 13px 8px 34px;
-        background: var(--bg-input); border: 1px solid var(--border-hi);
-        border-radius: var(--r-sm); color: var(--t1); font-size: 13px;
-        font-family: var(--font); transition: border-color .2s, box-shadow .2s;
+    .hdr-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    /* Global search */
+    .gsearch { position: relative; }
+    .gsearch input {
+        width: 220px; height: 38px;
+        padding: 0 12px 0 36px;
+        background: var(--bg-2);
+        border: 1px solid var(--border-2);
+        border-radius: var(--r2);
+        color: var(--t1); font-size: 13px; font-family: var(--font);
+        transition: border-color .2s, box-shadow .2s, width .3s;
     }
-    .search-box input::placeholder { color: var(--t3); }
-    .search-box input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-d); }
-    .search-box svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--t3); pointer-events: none; }
+    .gsearch input::placeholder { color: var(--t3); }
+    .gsearch input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-dim); width: 260px; }
+    .gsearch .ico { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--t3); pointer-events: none; }
 
-    .av {
-        width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
-        background: linear-gradient(135deg, var(--accent), var(--purple));
+    .svc-link {
+        height: 38px; padding: 0 14px;
+        display: inline-flex; align-items: center; gap: 7px;
+        background: var(--blue-dim);
+        color: var(--blue-text);
+        border: 1px solid rgba(79,140,255,0.25);
+        border-radius: var(--r2);
+        font-size: 12.5px; font-weight: 700; font-family: var(--font);
+        text-decoration: none; white-space: nowrap;
+        transition: background .2s, color .2s, border-color .2s, box-shadow .2s;
+    }
+    .svc-link:hover { background: var(--blue); color: #fff; border-color: var(--blue); box-shadow: 0 4px 16px var(--blue-glow); }
+
+    .avatar {
+        width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+        background: linear-gradient(135deg, var(--blue), var(--violet));
         display: flex; align-items: center; justify-content: center;
-        font-weight: 700; font-size: 15px; color: #fff;
-        box-shadow: 0 0 0 3px var(--accent-d);
+        font-weight: 800; font-size: 14px; color: #fff;
+        box-shadow: 0 0 0 2px var(--bg-3), 0 0 0 4px var(--blue-dim);
     }
 
-    /* ─── Stats ─── */
-    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 16px; margin-bottom: 26px; }
-    .sc {
-        background: var(--bg-card); border: 1px solid var(--border);
-        border-radius: var(--r-lg); padding: 20px 22px;
-        position: relative; overflow: hidden; transition: border-color .2s, transform .2s;
-    }
-    .sc:hover { border-color: var(--border-hi); transform: translateY(-2px); }
-    .sc .bar  { position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: var(--r-lg) var(--r-lg) 0 0; }
-    .sc.bl .bar { background: linear-gradient(90deg,#3b82f6,#60a5fa); }
-    .sc.gr .bar { background: linear-gradient(90deg,#10b981,#34d399); }
-    .sc.am .bar { background: linear-gradient(90deg,#f59e0b,#fcd34d); }
-    .sc-row  { display: flex; justify-content: space-between; align-items: flex-start; }
-    .sc-lbl  { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--t3); margin-bottom: 9px; }
-    .sc-val  { font-size: 28px; font-weight: 700; color: var(--t1); letter-spacing: -.5px; line-height: 1; margin-bottom: 9px; }
-    .sc-chip { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; background: var(--green-d); color: #34d399; }
-    .sc-ico  { width: 44px; height: 44px; border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
-    .sc-ico.bl { background: var(--accent-d); }
-    .sc-ico.gr { background: var(--green-d); }
-    .sc-ico.am { background: var(--amber-d); }
+    /* ── Stats Grid ── */
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
 
-    /* ─── Table Card ─── */
-    .tc {
-        background: var(--bg-card); border: 1px solid var(--border);
-        border-radius: var(--r-lg); overflow: hidden; margin-bottom: 22px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        transition: border-color .3s, box-shadow .3s;
+    .stat-card {
+        background: var(--bg-3);
+        border: 1px solid var(--border);
+        border-radius: var(--r4);
+        padding: 20px;
+        position: relative; overflow: hidden;
+        transition: border-color .25s, transform .25s, box-shadow .25s;
+        cursor: default;
     }
-    .tc:hover { border-color: var(--border-hi); box-shadow: 0 4px 16px rgba(59,130,246,0.1); }
+    .stat-card:hover { border-color: var(--border-2); transform: translateY(-2px); box-shadow: var(--shadow-glow); }
 
-    .tc-head {
-        padding: 20px 22px; border-bottom: 1.5px solid var(--border);
-        display: flex; justify-content: space-between; align-items: center;
-        gap: 12px; flex-wrap: wrap;
-        background: linear-gradient(135deg, rgba(59,130,246,0.05) 0%, rgba(139,92,246,0.02) 100%);
+    .stat-card .accent-line {
+        position: absolute; top: 0; left: 20px; right: 20px; height: 2px;
+        border-radius: 0 0 4px 4px;
     }
-    .tc-title    { display: flex; align-items: center; gap: 12px; }
-    .tc-title h3 { font-size: 16px; font-weight: 700; color: var(--t1); letter-spacing: -0.3px; }
-    .pill {
-        padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700;
-        background: linear-gradient(135deg, var(--accent-d), rgba(59,130,246,0.2));
-        color: #93c5fd; border: 1px solid rgba(59,130,246,0.3);
-    }
-    .tc-ctrl { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+    .stat-card.blue .accent-line  { background: linear-gradient(90deg, transparent, var(--blue), transparent); }
+    .stat-card.green .accent-line { background: linear-gradient(90deg, transparent, var(--emerald), transparent); }
+    .stat-card.amber .accent-line { background: linear-gradient(90deg, transparent, var(--amber), transparent); }
 
-    /* Table filter form */
-    .filter-form { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
-    .tc-search { position: relative; }
-    .tc-search input {
-        padding: 8px 12px 8px 32px; width: 200px;
-        background: var(--bg-input); border: 1.5px solid var(--border-hi);
-        border-radius: 8px; color: var(--t1); font-size: 13px;
-        font-family: var(--font); transition: border-color .2s, box-shadow .2s;
+    .stat-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+    .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.9px; color: var(--t3); }
+    .stat-icon {
+        width: 40px; height: 40px; border-radius: var(--r2);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 18px; flex-shrink: 0;
     }
-    .tc-search input::placeholder { color: var(--t3); }
-    .tc-search input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-d); background: var(--bg-card); }
-    .tc-search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--t3); pointer-events: none; }
+    .stat-card.blue  .stat-icon { background: var(--blue-dim);    color: var(--blue); }
+    .stat-card.green .stat-icon { background: var(--emerald-dim);  color: var(--emerald); }
+    .stat-card.amber .stat-icon { background: var(--amber-dim);    color: var(--amber); }
 
-    .pp-sel {
-        padding: 8px 11px; background: var(--bg-input); border: 1.5px solid var(--border-hi);
-        border-radius: 8px; color: #93c5fd; font-size: 12px; font-family: var(--font);
-        cursor: pointer; transition: border-color .2s;
+    .stat-value { font-size: 26px; font-weight: 800; color: var(--t1); letter-spacing: -0.5px; line-height: 1; margin-bottom: 10px; }
+    .stat-badge {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700;
     }
-    .pp-sel:hover, .pp-sel:focus { border-color: var(--accent); outline: none; }
+    .stat-card.blue  .stat-badge { background: var(--blue-dim);    color: var(--blue-text);    border: 1px solid rgba(79,140,255,0.2); }
+    .stat-card.green .stat-badge { background: var(--emerald-dim);  color: var(--emerald-text); border: 1px solid rgba(52,217,139,0.2); }
+    .stat-card.amber .stat-badge { background: var(--amber-dim);    color: var(--amber-text);   border: 1px solid rgba(251,191,36,0.2); }
 
-    .filter-btn {
-        padding: 8px 14px; background: var(--accent-d); color: #93c5fd;
-        border: 1.5px solid rgba(59,130,246,0.3); border-radius: 8px;
-        font-size: 12px; font-weight: 700; cursor: pointer;
-        font-family: var(--font); transition: background .2s, color .2s;
-        white-space: nowrap;
+    /* ── Table Card ── */
+    .tcard {
+        background: var(--bg-3);
+        border: 1px solid var(--border);
+        border-radius: var(--r4);
+        overflow: hidden;
+        margin-bottom: 20px;
+        box-shadow: var(--shadow-card);
+        transition: border-color .25s;
     }
-    .filter-btn:hover { background: var(--accent); color: #fff; }
+    .tcard:hover { border-color: var(--border-2); }
 
-    .clear-btn {
-        padding: 8px 14px; background: transparent; color: var(--t3);
-        border: 1.5px solid var(--border-hi); border-radius: 8px;
-        font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none;
-        font-family: var(--font); transition: border-color .2s, color .2s;
-        white-space: nowrap; display: inline-flex; align-items: center;
+    .tcard-head {
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 12px;
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(135deg, rgba(79,140,255,0.04) 0%, transparent 60%);
     }
-    .clear-btn:hover { border-color: var(--red); color: #fca5a5; }
+    .tcard-title { display: flex; align-items: center; gap: 10px; }
+    .tcard-title h3 { font-size: 15px; font-weight: 700; color: var(--t1); letter-spacing: -0.3px; }
+    .count-pill {
+        padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+        background: var(--blue-dim);
+        color: var(--blue-text);
+        border: 1px solid rgba(79,140,255,0.2);
+    }
 
-    /* ─── Table ─── */
-    .t-scroll { overflow-x: auto; width: 100%; }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    thead tr { background: var(--bg-surface); }
+    /* Filter form */
+    .filter-form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .fsearch { position: relative; }
+    .fsearch input {
+        height: 36px; width: 190px;
+        padding: 0 10px 0 32px;
+        background: var(--bg-2);
+        border: 1px solid var(--border-2);
+        border-radius: var(--r2);
+        color: var(--t1); font-size: 12.5px; font-family: var(--font);
+        transition: border-color .2s, box-shadow .2s;
+    }
+    .fsearch input::placeholder { color: var(--t3); }
+    .fsearch input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-dim); }
+    .fsearch .ico { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 13px; height: 13px; color: var(--t3); pointer-events: none; }
+
+    .per-page {
+        height: 36px; padding: 0 10px;
+        background: var(--bg-2); border: 1px solid var(--border-2);
+        border-radius: var(--r2); color: var(--blue-text); font-size: 12px;
+        font-family: var(--font); cursor: pointer;
+        transition: border-color .2s;
+        appearance: none; -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%233a5578' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        padding-right: 26px;
+    }
+    .per-page:focus { border-color: var(--blue); outline: none; }
+
+    .btn-filter {
+        height: 36px; padding: 0 14px;
+        background: var(--blue-dim); color: var(--blue-text);
+        border: 1px solid rgba(79,140,255,0.25);
+        border-radius: var(--r2); font-size: 12px; font-weight: 700;
+        cursor: pointer; font-family: var(--font); white-space: nowrap;
+        transition: background .2s, color .2s, box-shadow .2s;
+    }
+    .btn-filter:hover { background: var(--blue); color: #fff; box-shadow: 0 4px 14px var(--blue-glow); }
+
+    .btn-clear {
+        height: 36px; padding: 0 12px;
+        background: transparent; color: var(--t3);
+        border: 1px solid var(--border-2);
+        border-radius: var(--r2); font-size: 12px; font-weight: 700;
+        cursor: pointer; font-family: var(--font); white-space: nowrap;
+        text-decoration: none; display: inline-flex; align-items: center; gap: 5px;
+        transition: border-color .2s, color .2s, background .2s;
+    }
+    .btn-clear:hover { border-color: var(--rose); color: var(--rose-text); background: var(--rose-dim); }
+
+    /* ── Table ── */
+    .tscroll { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 520px; }
+    thead tr { background: var(--bg-2); }
     th {
-        padding: 11px 16px; text-align: left; font-size: 10px; font-weight: 700;
-        color: var(--t3); text-transform: uppercase; letter-spacing: .8px;
+        padding: 10px 16px;
+        text-align: left; font-size: 10px; font-weight: 700;
+        color: var(--t3); text-transform: uppercase; letter-spacing: 0.9px;
         border-bottom: 1px solid var(--border); white-space: nowrap;
     }
     td {
-        padding: 13px 16px; border-bottom: 1px solid rgba(80,130,220,0.06);
+        padding: 12px 16px;
         font-size: 13px; color: var(--t1); vertical-align: middle;
+        border-bottom: 1px solid rgba(79,140,255,0.05);
     }
     tbody tr { transition: background .15s; }
-    tbody tr:hover { background: rgba(59,130,246,0.07); }
+    tbody tr:hover { background: rgba(79,140,255,0.05); }
     tbody tr:last-child td { border-bottom: none; }
 
-    .empty-st { padding: 48px 24px; text-align: center; }
-    .empty-st .ei { font-size: 40px; opacity: .25; margin-bottom: 12px; }
-    .empty-st p { color: var(--t3); font-size: 14px; font-weight: 500; }
+    .empty {
+        padding: 56px 24px; text-align: center;
+    }
+    .empty-icon { font-size: 36px; opacity: .2; margin-bottom: 12px; }
+    .empty p { color: var(--t3); font-size: 13.5px; font-weight: 500; }
 
-    /* ─── Cell styles ─── */
-    .u-cell { display: flex; align-items: center; gap: 10px; }
-    .u-av   {
-        width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
-        background: linear-gradient(135deg, var(--accent), var(--purple));
+    /* ── Cell Components ── */
+    .ucell { display: flex; align-items: center; gap: 10px; }
+    .uav {
+        width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+        background: linear-gradient(135deg, var(--blue), var(--violet));
         display: flex; align-items: center; justify-content: center;
-        font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0;
+        font-size: 12px; font-weight: 800; color: #fff;
     }
-    .u-name { font-weight: 600; font-size: 14px; }
-    .type-tag {
-        padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;
-        background: rgba(80,130,220,0.1); color: #93c5fd;
-        font-family: var(--mono); border: 1px solid rgba(59,130,246,0.2);
-    }
-    .bal { color: #34d399; font-weight: 700; font-family: var(--mono); font-size: 14px; }
-    .amt { color: #fcd34d; font-weight: 700; font-family: var(--mono); font-size: 14px; }
+    .uname { font-weight: 600; font-size: 13.5px; }
 
-    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; }
-    .bd    { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-    .badge.ok  { background: rgba(16,185,129,0.15);  color: #6ee7b7; border: 1.5px solid rgba(16,185,129,0.4); } .badge.ok  .bd { background: #6ee7b7; }
-    .badge.pnd { background: rgba(245,158,11,0.15);  color: #fbbf24; border: 1.5px solid rgba(245,158,11,0.4); } .badge.pnd .bd { background: #fbbf24; }
-    .badge.no  { background: rgba(239,68,68,0.15);   color: #f87171; border: 1.5px solid rgba(239,68,68,0.4);  } .badge.no  .bd { background: #f87171; }
-    .badge.ot  { background: rgba(59,130,246,0.15);  color: #93c5fd; border: 1.5px solid rgba(59,130,246,0.4); } .badge.ot  .bd { background: #93c5fd; }
+    .type-chip {
+        display: inline-block; padding: 3px 9px; border-radius: var(--r1);
+        font-size: 11.5px; font-weight: 600;
+        background: rgba(79,140,255,0.10); color: var(--blue-text);
+        border: 1px solid rgba(79,140,255,0.18);
+        font-family: var(--mono);
+        white-space: nowrap;
+        max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+    }
+    .bal  { color: var(--emerald-text); font-weight: 700; font-family: var(--mono); font-size: 13.5px; }
+    .amt  { color: var(--amber-text);   font-weight: 700; font-family: var(--mono); font-size: 13.5px; }
+
+    .status-chip {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 4px 10px; border-radius: var(--r1);
+        font-size: 11.5px; font-weight: 700; white-space: nowrap;
+    }
+    .status-chip .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 
     .view-btn {
-        padding: 6px 13px; background: rgba(59,130,246,0.1); color: #93c5fd;
-        border: 1.5px solid rgba(59,130,246,0.35); border-radius: 7px;
-        font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
         display: inline-flex; align-items: center; gap: 5px;
-        transition: background .2s, color .2s, box-shadow .2s; font-family: var(--font);
+        height: 32px; padding: 0 12px;
+        background: var(--blue-dim); color: var(--blue-text);
+        border: 1px solid rgba(79,140,255,0.25); border-radius: var(--r2);
+        font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
+        font-family: var(--font);
+        transition: background .2s, color .2s, box-shadow .2s;
     }
-    .view-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 4px 14px rgba(59,130,246,0.35); }
+    .view-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); box-shadow: 0 4px 14px var(--blue-glow); }
+    .view-btn svg { width: 13px; height: 13px; }
 
-    /* ─── Pagination ─── */
-    .pg-bar {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 16px 22px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 12px;
+    /* ── Pagination ── */
+    .pgbar {
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 10px;
+        padding: 14px 20px;
+        border-top: 1px solid var(--border);
     }
-    .pg-info { font-size: 13px; color: var(--t3); font-weight: 500; }
-    .pg-info b { color: #93c5fd; font-weight: 700; }
-    .pg-nav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .pg-nav a, .pg-nav span {
-        min-width: 38px; height: 38px; padding: 0 10px;
+    .pg-info { font-size: 12.5px; color: var(--t3); font-weight: 500; }
+    .pg-info b { color: var(--blue-text); font-weight: 700; }
+
+    .laravel-pagination { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; list-style: none; }
+    .laravel-pagination li a,
+    .laravel-pagination li span {
+        min-width: 36px; height: 36px; padding: 0 9px;
         display: inline-flex; align-items: center; justify-content: center;
-        background: #1a2a4a; border: 1.5px solid #3b5998;
-        border-radius: var(--r-md); color: #93c5fd;
+        background: var(--bg-2);
+        border: 1px solid var(--border-2);
+        border-radius: var(--r2); color: var(--blue-text);
         font-size: 12px; font-weight: 700; font-family: var(--font);
-        text-decoration: none; transition: background .2s, color .2s, box-shadow .2s;
+        text-decoration: none;
+        transition: background .2s, color .2s, box-shadow .2s;
     }
-    .pg-nav a:hover { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 4px 14px rgba(59,130,246,0.35); }
-    .pg-nav span.active { background: linear-gradient(135deg,#3b82f6,#1d4ed8); border-color: var(--accent); color: #fff; box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
-    .pg-nav span.disabled { opacity: .35; cursor: not-allowed; }
-    .pg-nav span.dots { background: transparent; border-color: transparent; color: var(--t3); }
+    .laravel-pagination li a:hover { background: var(--blue); border-color: var(--blue); color: #fff; box-shadow: 0 4px 14px var(--blue-glow); }
+    .laravel-pagination li span[aria-current] { background: var(--blue); border-color: var(--blue); color: #fff; box-shadow: 0 0 0 3px var(--blue-dim); }
+    .laravel-pagination li span.disabled { opacity: .3; cursor: not-allowed; }
 
-    /* ─── Modal ─── */
-    .m-overlay {
+    /* ── Modal ── */
+    .overlay {
         display: none; position: fixed; inset: 0;
-        background: rgba(3,7,18,.88); z-index: 1000;
-        align-items: center; justify-content: center;
-        padding: 18px; backdrop-filter: blur(5px);
+        background: rgba(4,8,20,.85);
+        z-index: 1000;
+        align-items: flex-end; justify-content: center;
+        padding: 0;
+        backdrop-filter: blur(6px);
     }
-    .m-overlay.open { display: flex; }
-    .m-box {
-        background: var(--bg-card); border: 1px solid var(--border-hi);
-        border-radius: var(--r-xl); width: 100%; max-width: 860px; max-height: 90vh;
-        overflow-y: auto; box-shadow: 0 40px 100px rgba(0,0,0,.8);
-        animation: mUp .22s ease;
-    }
-    @keyframes mUp { from { transform: translateY(14px); opacity:0; } to { transform: translateY(0); opacity:1; } }
-    .m-hd {
-        padding: 20px 24px; border-bottom: 1px solid var(--border);
-        display: flex; justify-content: space-between; align-items: center;
-        position: sticky; top: 0; background: var(--bg-card); z-index: 5;
-    }
-    .m-hd h2 { font-size: 17px; font-weight: 700; color: var(--t1); }
-    .m-close {
-        width: 30px; height: 30px; border-radius: 50%;
-        background: rgba(80,130,220,0.1); border: none; color: var(--t2); font-size: 16px;
-        cursor: pointer; display: flex; align-items: center; justify-content: center;
-        transition: background .2s, color .2s;
-    }
-    .m-close:hover { background: var(--red-d); color: #fca5a5; }
-    .m-body { padding: 24px; }
-    .m-sec { margin-bottom: 24px; }
-    .m-stitle { font-size: 10px; font-weight: 700; color: var(--t3); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 12px; }
+    .overlay.open { display: flex; }
 
-    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px,1fr)); gap: 12px; }
-    .info-tile { padding: 13px 15px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-md); }
-    .info-tile .lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--t3); margin-bottom: 5px; }
-    .info-tile .val { font-size: 14px; font-weight: 600; color: var(--t1); }
-    .info-tile .val.g { color: var(--green); font-family: var(--mono); }
-    .info-tile .val.gn { color: var(--green); }
-    .info-tile .val.rd { color: var(--red); font-weight: 700; }
-
-    .act-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; margin-bottom: 14px; }
-    .act-b {
-        padding: 10px 13px; border-radius: var(--r-md); font-size: 12px; font-weight: 700;
-        cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
-        transition: background .2s, color .2s, box-shadow .2s; font-family: var(--font); border: none;
+    @media (min-width: 640px) {
+        .overlay { align-items: center; padding: 20px; }
     }
-    .act-b.bl { background: var(--accent-d); color: var(--accent); border: 1px solid rgba(59,130,246,.25); }
-    .act-b.pu { background: var(--purple-d); color: var(--purple); border: 1px solid rgba(139,92,246,.25); }
-    .act-b.gr { background: var(--green-d);  color: var(--green);  border: 1px solid rgba(16,185,129,.25); }
-    .act-b.bl:hover { background: var(--accent); color: #fff; box-shadow: 0 4px 16px var(--accent-g); }
-    .act-b.pu:hover { background: var(--purple); color: #fff; }
-    .act-b.gr:hover { background: var(--green);  color: #fff; }
 
-    .flash { padding: 9px 13px; border-radius: var(--r-sm); font-size: 12px; font-weight: 600; margin-bottom: 12px; display: none; }
-    .flash.ok  { display: block; background: var(--green-d); color: #34d399; border-left: 3px solid var(--green); }
-    .flash.err { display: block; background: var(--red-d);   color: #fca5a5; border-left: 3px solid var(--red); }
+    .mbox {
+        background: var(--bg-3);
+        border: 1px solid var(--border-2);
+        width: 100%; max-width: 860px;
+        max-height: 92vh; overflow-y: auto;
+        box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px var(--border);
+    }
 
-    /* Loading state in modal */
-    .m-loading { padding: 48px; text-align: center; color: var(--t3); font-size: 14px; }
-    .m-loading .spinner {
-        width: 32px; height: 32px; border: 3px solid var(--border);
-        border-top-color: var(--accent); border-radius: 50%;
-        animation: spin .7s linear infinite; margin: 0 auto 14px;
+    @media (max-width: 639px) {
+        .mbox {
+            border-radius: var(--r4) var(--r4) 0 0;
+            max-height: 88vh;
+        }
+    }
+    @media (min-width: 640px) {
+        .mbox {
+            border-radius: var(--r4);
+            animation: mUp .2s ease;
+        }
+    }
+
+    @keyframes mUp { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .mhd {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--border);
+        position: sticky; top: 0; background: var(--bg-3); z-index: 5;
+    }
+    .mhd-left { display: flex; align-items: center; gap: 10px; }
+    .mhd-av {
+        width: 38px; height: 38px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--blue), var(--violet));
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 800; font-size: 15px; color: #fff;
+    }
+    .mhd h2 { font-size: 15px; font-weight: 700; color: var(--t1); }
+    .mhd-sub { font-size: 11.5px; color: var(--t3); margin-top: 1px; }
+    .mclose {
+        width: 32px; height: 32px; border-radius: 50%;
+        background: var(--bg-2); border: 1px solid var(--border-2);
+        color: var(--t2); font-size: 16px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: background .2s, color .2s, border-color .2s;
+    }
+    .mclose:hover { background: var(--rose-dim); border-color: rgba(244,86,110,0.3); color: var(--rose-text); }
+
+    .mbody { padding: 20px; }
+
+    /* Modal sections */
+    .msec { margin-bottom: 22px; }
+    .msec-label {
+        font-size: 10px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.9px; color: var(--t3); margin-bottom: 12px;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .msec-label::after {
+        content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    /* Info tiles */
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+    .itile {
+        padding: 12px 14px;
+        background: var(--bg-2);
+        border: 1px solid var(--border);
+        border-radius: var(--r3);
+        transition: border-color .2s;
+    }
+    .itile:hover { border-color: var(--border-2); }
+    .itile .ilbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: var(--t3); margin-bottom: 5px; }
+    .itile .ival { font-size: 13.5px; font-weight: 600; color: var(--t1); }
+    .itile .ival.green  { color: var(--emerald); font-family: var(--mono); }
+    .itile .ival.ok     { color: var(--emerald); }
+    .itile .ival.danger { color: var(--rose); font-weight: 700; }
+
+    /* Action buttons */
+    .action-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
+    .action-grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+    .act-btn {
+        height: 40px; padding: 0 12px;
+        border-radius: var(--r2); font-size: 12px; font-weight: 700;
+        cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px;
+        transition: background .2s, color .2s, box-shadow .2s; font-family: var(--font); border: 1px solid;
+    }
+    .act-btn.blue   { background: var(--blue-dim);   color: var(--blue-text);    border-color: rgba(79,140,255,0.25); }
+    .act-btn.violet { background: var(--violet-dim);  color: var(--violet-text);  border-color: rgba(139,124,248,0.25); }
+    .act-btn.green  { background: var(--emerald-dim); color: var(--emerald-text); border-color: rgba(52,217,139,0.25); }
+    .act-btn.rose   { background: var(--rose-dim);    color: var(--rose-text);    border-color: rgba(244,86,110,0.25); }
+    .act-btn.blue:hover   { background: var(--blue);    color: #fff; border-color: var(--blue);    box-shadow: 0 4px 16px var(--blue-glow); }
+    .act-btn.violet:hover { background: var(--violet);  color: #fff; border-color: var(--violet); }
+    .act-btn.green:hover  { background: var(--emerald);  color: #fff; border-color: var(--emerald); }
+    .act-btn.rose:hover   { background: var(--rose);     color: #fff; border-color: var(--rose); }
+
+    /* Flash */
+    .flash-msg {
+        display: none; padding: 10px 14px; border-radius: var(--r2);
+        font-size: 12.5px; font-weight: 600; margin-bottom: 12px;
+        border-left: 3px solid;
+    }
+    .flash-msg.show-ok  { display: flex; align-items: center; gap: 8px; background: var(--emerald-dim); color: var(--emerald-text); border-color: var(--emerald); }
+    .flash-msg.show-err { display: flex; align-items: center; gap: 8px; background: var(--rose-dim);    color: var(--rose-text);    border-color: var(--rose); }
+
+    /* Sub forms */
+    .subform {
+        display: none; margin-top: 8px; padding: 16px;
+        background: var(--bg-2); border: 1px solid var(--border);
+        border-left: 3px solid var(--blue);
+        border-radius: 0 var(--r3) var(--r3) 0;
+        animation: fadeIn .18s ease;
+    }
+    .subform.open      { display: block; }
+    .subform.violet-sf { border-left-color: var(--violet); }
+    .subform.green-sf  { border-left-color: var(--emerald); }
+    .subform.rose-sf   { border-left-color: var(--rose); }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .subform h4 { font-size: 13px; font-weight: 700; color: var(--t1); margin-bottom: 14px; }
+    .f2col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .fg    { margin-bottom: 12px; }
+    .fl    { display: block; font-size: 11px; font-weight: 600; color: var(--t2); margin-bottom: 5px; letter-spacing: 0.1px; }
+    .fi, .fa {
+        width: 100%; height: 38px; padding: 0 11px;
+        background: var(--bg-3); border: 1px solid var(--border-2);
+        border-radius: var(--r2); color: var(--t1); font-size: 12.5px;
+        font-family: var(--font); transition: border-color .2s, box-shadow .2s;
+    }
+    .fi::placeholder, .fa::placeholder { color: var(--t3); }
+    .fi:focus, .fa:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-dim); }
+    .fa { height: auto; min-height: 68px; padding: 10px 11px; resize: vertical; }
+    .funds-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .fund-panel { padding: 14px; background: var(--bg-3); border: 1px solid var(--border); border-radius: var(--r3); }
+    .fund-panel-label { font-size: 11px; font-weight: 700; margin-bottom: 12px; }
+    .fund-panel.add .fund-panel-label { color: var(--emerald-text); }
+    .fund-panel.ded .fund-panel-label { color: var(--rose-text); }
+
+    .sbtn {
+        width: 100%; height: 38px;
+        border: none; border-radius: var(--r2);
+        font-size: 12.5px; font-weight: 700; cursor: pointer;
+        font-family: var(--font); transition: background .2s, box-shadow .2s; margin-top: 4px;
+    }
+    .sbtn.blue   { background: var(--blue);    color: #fff; } .sbtn.blue:hover   { background: #3b7af0; box-shadow: 0 4px 14px var(--blue-glow); }
+    .sbtn.violet { background: var(--violet);  color: #fff; } .sbtn.violet:hover { background: #7c6cf0; }
+    .sbtn.green  { background: var(--emerald); color: #fff; } .sbtn.green:hover  { background: #22c77a; }
+    .sbtn.rose   { background: var(--rose);    color: #fff; } .sbtn.rose:hover   { background: #e03250; }
+
+    /* Modal transactions table */
+    .mtxns { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .mtxns table { table-layout: auto; min-width: 400px; }
+    .mtxns table th { background: var(--bg); font-size: 10px; }
+    .mtxns table td, .mtxns table th { padding: 8px 12px; font-size: 12px; }
+
+    /* Loading spinner */
+    .mloading { padding: 56px 24px; text-align: center; color: var(--t3); font-size: 14px; }
+    .spinner {
+        width: 28px; height: 28px; border-radius: 50%;
+        border: 2px solid var(--border-2); border-top-color: var(--blue);
+        animation: spin .65s linear infinite; margin: 0 auto 14px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .sub-form { display: none; margin-top: 2px; padding: 16px; border-radius: var(--r-md); background: var(--bg-surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); }
-    .sub-form.open    { display: block; animation: fIn .18s ease; }
-    .sub-form.pu-form { border-left-color: var(--purple); }
-    .sub-form.gr-form { border-left-color: var(--green); }
-    @keyframes fIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
-    .sub-form h4 { font-size: 13px; font-weight: 700; color: var(--t1); margin-bottom: 13px; }
-
-    .f-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .f-g    { margin-bottom: 12px; }
-    .f-l    { display: block; font-size: 11px; font-weight: 600; color: var(--t2); margin-bottom: 5px; }
-    .f-i, .f-a {
-        width: 100%; padding: 9px 12px; background: var(--bg-card); border: 1px solid var(--border-hi);
-        border-radius: var(--r-sm); color: var(--t1); font-size: 12px;
-        font-family: var(--font); transition: border-color .2s, box-shadow .2s;
+    /* Mobile drawer handle */
+    .drawer-handle {
+        display: none; width: 40px; height: 4px; border-radius: 2px;
+        background: var(--border-2); margin: 10px auto 0;
     }
-    .f-i::placeholder, .f-a::placeholder { color: var(--t3); }
-    .f-i:focus, .f-a:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-d); }
-    .f-a { resize: vertical; min-height: 64px; }
-    .funds-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .s-btn {
-        width: 100%; padding: 9px; border: none; border-radius: var(--r-sm);
-        font-size: 12px; font-weight: 700; cursor: pointer;
-        font-family: var(--font); transition: background .2s, box-shadow .2s; margin-top: 4px;
+    @media (max-width: 639px) { .drawer-handle { display: block; } }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+        .stats { grid-template-columns: repeat(3, 1fr); }
+        .action-grid-4 { grid-template-columns: repeat(2, 1fr); }
     }
-    .s-btn.bl { background: var(--accent); color: #fff; } .s-btn.bl:hover { background: #2563eb; box-shadow: 0 4px 14px var(--accent-g); }
-    .s-btn.pu { background: var(--purple); color: #fff; } .s-btn.pu:hover { background: #7c3aed; }
-    .s-btn.gr { background: var(--green);  color: #fff; } .s-btn.gr:hover { background: #059669; }
-    .s-btn.rd { background: var(--red);    color: #fff; } .s-btn.rd:hover { background: #dc2626; }
-
-    .m-txns { overflow-x: auto; }
-    .m-txns table { table-layout: auto; }  /* override the global fixed layout */
-    .m-txns table th { background: var(--bg-base); }
-    .m-txns table td, .m-txns table th { padding: 9px 13px; font-size: 12px; }
-    .m-txns .badge { display: inline-flex !important; visibility: visible !important; }
-
-    /* Laravel paginator override */
-    .laravel-pagination { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; list-style: none; }
-    .laravel-pagination li a,
-    .laravel-pagination li span {
-        min-width: 38px; height: 38px; padding: 0 10px;
-        display: inline-flex; align-items: center; justify-content: center;
-        background: #1a2a4a; border: 1.5px solid #3b5998;
-        border-radius: var(--r-md); color: #93c5fd;
-        font-size: 12px; font-weight: 700; text-decoration: none;
-        transition: background .2s, color .2s, box-shadow .2s;
+    @media (max-width: 680px) {
+        .stats { grid-template-columns: 1fr 1fr; }
+        .stat-card:last-child { grid-column: 1 / -1; }
+        .hdr-right { width: 100%; }
+        .gsearch input { width: 100%; flex: 1; }
+        .gsearch { flex: 1; }
     }
-    .laravel-pagination li a:hover { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 4px 14px rgba(59,130,246,0.35); }
-    .laravel-pagination li span[aria-current] { background: linear-gradient(135deg,#3b82f6,#1d4ed8); border-color: var(--accent); color: #fff; box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
-    .laravel-pagination li span.disabled { opacity: .35; cursor: not-allowed; }
-
-    @media (max-width: 768px) {
-        .d-inner { padding: 16px 12px; }
-        .stats   { grid-template-columns: 1fr 1fr; }
-        .tb-r    { width: 100%; }
-        .search-box input  { width: 100%; }
-        .tc-search input   { width: 140px; }
-        .act-row           { grid-template-columns: 1fr; }
-        .f-2col, .funds-2  { grid-template-columns: 1fr; }
-        .pg-bar            { flex-direction: column; align-items: flex-start; }
+    @media (max-width: 540px) {
+        .inner { padding: 16px 14px; }
+        .stats { grid-template-columns: 1fr; }
+        .stat-card:last-child { grid-column: auto; }
+        .stat-value { font-size: 22px; }
+        .f2col, .funds-grid { grid-template-columns: 1fr; }
+        .action-grid, .action-grid-4 { grid-template-columns: 1fr 1fr; }
+        .filter-form { width: 100%; }
+        .fsearch { flex: 1; }
+        .fsearch input { width: 100%; }
+        .tcard-head { flex-direction: column; align-items: flex-start; gap: 10px; }
+        .mbody { padding: 14px; }
+        .subform { padding: 12px; }
+        .pg-info { display: none; }
+    }
+    @media (max-width: 400px) {
+        .action-grid, .action-grid-4 { grid-template-columns: 1fr; }
     }
 </style>
 
-<div class="d-wrap">
-<div class="d-inner">
+<div class="dash">
+<div class="inner">
 
-    {{-- Top bar --}}
-    <div class="top-bar">
-        <div class="tb-l">
+    {{-- Header --}}
+    <div class="hdr">
+        <div class="hdr-brand">
             <h1>Admin Dashboard</h1>
             <p>{{ now()->format('l, F j, Y') }}</p>
         </div>
-        <div class="tb-r">
-            {{-- Global search goes to users tab with query --}}
-            <form class="search-form" method="GET" action="{{ url()->current() }}">
-                @if(request('tx_search')) <input type="hidden" name="tx_search" value="{{ request('tx_search') }}"> @endif
-                <div class="search-box">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <div class="hdr-right">
+            <form method="GET" action="{{ url()->current() }}" style="display:contents;">
+                @if(request('tx_search'))<input type="hidden" name="tx_search" value="{{ request('tx_search') }}">@endif
+                <div class="gsearch">
+                    <svg class="ico" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     <input type="text" name="u_search" placeholder="Search users…" value="{{ request('u_search') }}">
                 </div>
             </form>
-            <a href="{{ route('admin.manage-services') }}" style="padding:8px 14px; background:var(--accent-d); color:var(--accent); border:1px solid rgba(59,130,246,0.3); border-radius:var(--r-sm); font-size:12px; font-weight:700; text-decoration:none; display:flex; align-items:center; gap:6px; transition:all .2s; white-space:nowrap;" class="toggle-switch" title="Manage Services">
-                🔧 Services
+            <a href="{{ route('admin.manage-services') }}" class="svc-link">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+                Services
             </a>
-            <div class="av">A</div>
+            <div class="avatar">A</div>
         </div>
     </div>
 
     {{-- Stats --}}
     <div class="stats">
-        <div class="sc bl">
-            <div class="bar"></div>
-            <div class="sc-row">
-                <div>
-                    <div class="sc-lbl">Total Users</div>
-                    <div class="sc-val">{{ number_format($stats['total_users'] ?? 0) }}</div>
-                    <span class="sc-chip">↑ Active</span>
+        <div class="stat-card blue">
+            <div class="accent-line"></div>
+            <div class="stat-top">
+                <div class="stat-label">Total Users</div>
+                <div class="stat-icon">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 </div>
-                <div class="sc-ico bl">👥</div>
             </div>
+            <div class="stat-value">{{ number_format($stats['total_users'] ?? 0) }}</div>
+            <span class="stat-badge">↑ Active</span>
         </div>
-        <div class="sc gr">
-            <div class="bar"></div>
-            <div class="sc-row">
-                <div>
-                    <div class="sc-lbl">Total Revenue</div>
-                    <div class="sc-val">₦{{ number_format($stats['total_revenue'] ?? 0, 0) }}</div>
-                    <span class="sc-chip">↑ 11%</span>
+
+        <div class="stat-card green">
+            <div class="accent-line"></div>
+            <div class="stat-top">
+                <div class="stat-label">Total Revenue</div>
+                <div class="stat-icon">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
-                <div class="sc-ico gr">💰</div>
             </div>
+            <div class="stat-value">₦{{ number_format($stats['total_revenue'] ?? 0, 0) }}</div>
+            <span class="stat-badge">↑ 11%</span>
         </div>
-        <div class="sc am">
-            <div class="bar"></div>
-            <div class="sc-row">
-                <div>
-                    <div class="sc-lbl">Transactions</div>
-                    <div class="sc-val">{{ number_format($stats['total_transactions'] ?? 0) }}</div>
-                    <span class="sc-chip">↑ 8.3%</span>
+
+        <div class="stat-card amber">
+            <div class="accent-line"></div>
+            <div class="stat-top">
+                <div class="stat-label">Transactions</div>
+                <div class="stat-icon">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                 </div>
-                <div class="sc-ico am">🛒</div>
             </div>
+            <div class="stat-value">{{ number_format($stats['total_transactions'] ?? 0) }}</div>
+            <span class="stat-badge">↑ 8.3%</span>
         </div>
     </div>
 
-    {{-- ══════════════════════════════════════
-         USERS TABLE  — full server-side
-    ══════════════════════════════════════ --}}
-    <div class="tc">
-        <div class="tc-head">
-            <div class="tc-title">
-                <h3>Recent Users</h3>
-                <span class="pill">{{ $users->total() }}</span>
+    {{-- ── Users Table ── --}}
+    <div class="tcard">
+        <div class="tcard-head">
+            <div class="tcard-title">
+                <h3>Users</h3>
+                <span class="count-pill">{{ $users->total() }}</span>
             </div>
-            <div class="tc-ctrl">
+            <div>
                 <form class="filter-form" method="GET" action="{{ url()->current() }}">
-                    {{-- Preserve transaction filter while changing user filter --}}
-                    @if(request('tx_search')) <input type="hidden" name="tx_search" value="{{ request('tx_search') }}"> @endif
-                    @if(request('tx_pp'))     <input type="hidden" name="tx_pp"     value="{{ request('tx_pp') }}">     @endif
+                    @if(request('tx_search'))<input type="hidden" name="tx_search" value="{{ request('tx_search') }}">@endif
+                    @if(request('tx_pp'))<input type="hidden" name="tx_pp" value="{{ request('tx_pp') }}">@endif
 
-                    <div class="tc-search">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <div class="fsearch">
+                        <svg class="ico" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                         <input type="text" name="u_search" placeholder="Search users…" value="{{ request('u_search') }}">
                     </div>
-                    <select class="pp-sel" name="u_pp" onchange="this.form.submit()">
+
+                    <select class="per-page" name="u_pp" onchange="this.form.submit()">
                         @foreach([10,25,50] as $n)
-                            <option value="{{ $n }}" {{ request('u_pp', 10) == $n ? 'selected' : '' }}>{{ $n }} / page</option>
+                            <option value="{{ $n }}" {{ request('u_pp', 10) == $n ? 'selected' : '' }}>{{ $n }} / pg</option>
                         @endforeach
                     </select>
-                    <button type="submit" class="filter-btn">Search</button>
+
+                    <button type="submit" class="btn-filter">Search</button>
+
                     @if(request('u_search'))
-                        <a href="{{ url()->current() }}{{ request('tx_search') ? '?tx_search='.urlencode(request('tx_search')) : '' }}" class="clear-btn">✕ Clear</a>
+                        <a href="{{ url()->current() }}{{ request('tx_search') ? '?tx_search='.urlencode(request('tx_search')) : '' }}" class="btn-clear">
+                            <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                            Clear
+                        </a>
                     @endif
                 </form>
             </div>
         </div>
 
-        <div class="t-scroll">
+        <div class="tscroll">
             @if($users->count())
             <table>
                 <thead>
@@ -470,7 +668,7 @@
                         <th>Email</th>
                         <th>Phone</th>
                         <th>Balance</th>
-                        <th style="width:110px;">Action</th>
+                        <th style="width:100px;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -481,17 +679,18 @@
                     @endphp
                     <tr>
                         <td>
-                            <div class="u-cell">
-                                <div class="u-av">{{ $ini }}</div>
-                                <div class="u-name">{{ $u->username ?? 'User' }}</div>
+                            <div class="ucell">
+                                <div class="uav">{{ $ini }}</div>
+                                <span class="uname">{{ $u->username ?? 'User' }}</span>
                             </div>
                         </td>
-                        <td style="color:var(--t2);">{{ $u->email ?? '—' }}</td>
-                        <td style="color:var(--t2);">{{ $u->phone_number ?? '—' }}</td>
+                        <td style="color:var(--t2); font-size:13px;">{{ $u->email ?? '—' }}</td>
+                        <td style="color:var(--t2); font-size:13px;">{{ $u->phone_number ?? '—' }}</td>
                         <td><span class="bal">₦{{ $bal }}</span></td>
                         <td>
                             <button class="view-btn" onclick="openModal({{ $u->id }})">
-                                👁 View
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                View
                             </button>
                         </td>
                     </tr>
@@ -499,126 +698,114 @@
                 </tbody>
             </table>
             @else
-            <div class="empty-st">
-                <div class="ei">🔍</div>
+            <div class="empty">
+                <div class="empty-icon">🔍</div>
                 <p>No users match your search.</p>
             </div>
             @endif
         </div>
 
-        {{-- Pagination --}}
         @if($users->hasPages())
-        <div class="pg-bar">
-            <div class="pg-info">
-                Showing <b>{{ $users->firstItem() }}–{{ $users->lastItem() }}</b> of <b>{{ $users->total() }}</b>
-            </div>
-            <div>
-                {{-- Append current filters to paginator links --}}
-                {{ $users->appends(request()->only(['u_search','u_pp','tx_search','tx_pp']))->links('partials.admin.custom') }}
-            </div>
+        <div class="pgbar">
+            <div class="pg-info">Showing <b>{{ $users->firstItem() }}–{{ $users->lastItem() }}</b> of <b>{{ $users->total() }}</b></div>
+            <div>{{ $users->appends(request()->only(['u_search','u_pp','tx_search','tx_pp']))->links('partials.admin.custom') }}</div>
         </div>
         @endif
     </div>
 
-    {{-- ══════════════════════════════════════
-         TRANSACTIONS TABLE — full server-side
-    ══════════════════════════════════════ --}}
-    <div class="tc">
-        <div class="tc-head">
-            <div class="tc-title">
-                <h3>Recent Transactions</h3>
-                <span class="pill">{{ $transactions?->total() ?? 0 }}</span>
+    {{-- ── Transactions Table ── --}}
+    <div class="tcard">
+        <div class="tcard-head">
+            <div class="tcard-title">
+                <h3>Transactions</h3>
+                <span class="count-pill">{{ $transactions?->total() ?? 0 }}</span>
             </div>
-            <div class="tc-ctrl">
+            <div>
                 <form class="filter-form" method="GET" action="{{ url()->current() }}">
-                    {{-- Preserve user filter --}}
-                    @if(request('u_search')) <input type="hidden" name="u_search" value="{{ request('u_search') }}"> @endif
-                    @if(request('u_pp'))     <input type="hidden" name="u_pp"     value="{{ request('u_pp') }}">     @endif
+                    @if(request('u_search'))<input type="hidden" name="u_search" value="{{ request('u_search') }}">@endif
+                    @if(request('u_pp'))<input type="hidden" name="u_pp" value="{{ request('u_pp') }}">@endif
 
-                    <div class="tc-search">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <div class="fsearch">
+                        <svg class="ico" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                         <input type="text" name="tx_search" placeholder="Search transactions…" value="{{ request('tx_search') }}">
                     </div>
-                    <select class="pp-sel" name="tx_pp" onchange="this.form.submit()">
+
+                    <select class="per-page" name="tx_pp" onchange="this.form.submit()">
                         @foreach([10,25,50] as $n)
-                            <option value="{{ $n }}" {{ request('tx_pp', 10) == $n ? 'selected' : '' }}>{{ $n }} / page</option>
+                            <option value="{{ $n }}" {{ request('tx_pp', 10) == $n ? 'selected' : '' }}>{{ $n }} / pg</option>
                         @endforeach
                     </select>
-                    <button type="submit" class="filter-btn">Search</button>
+
+                    <button type="submit" class="btn-filter">Search</button>
+
                     @if(request('tx_search'))
-                        <a href="{{ url()->current() }}{{ request('u_search') ? '?u_search='.urlencode(request('u_search')) : '' }}" class="clear-btn">✕ Clear</a>
+                        <a href="{{ url()->current() }}{{ request('u_search') ? '?u_search='.urlencode(request('u_search')) : '' }}" class="btn-clear">
+                            <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                            Clear
+                        </a>
                     @endif
                 </form>
             </div>
         </div>
 
-        <div class="t-scroll">
+        <div class="tscroll">
             @if($transactions && count($transactions) > 0)
             <table>
                 <thead>
                     <tr>
                         <th style="width:180px;">User</th>
-                        <th style="width:140px;">Type</th>
-                        <th style="width:130px;">Amount</th>
-                        <th style="width:130px;">Status</th>
+                        <th style="width:160px;">Type</th>
+                        <th style="width:140px;">Amount</th>
+                        <th style="width:140px;">Status</th>
                         <th style="width:110px;">Date</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($transactions as $tx)
-                        <tr>
-                            <td>
-                                <div class="u-cell">
-                                    <div class="u-av">{{ strtoupper(substr($tx->user?->username ?? 'N', 0, 1)) }}</div>
-                                    <div class="u-name">{{ $tx->user?->username ?? 'N/A' }}</div>
-                                </div>
-                            </td>
-                            <td><span class="type-tag">{{ $tx->type ?? '—' }}</span></td>
-                            <td><span class="amt">₦{{ number_format($tx->amount ?? 0, 2) }}</span></td>
-                            <td>
-                                @php
-                                    $s = strtolower(trim($tx->status ?? ''));
-                                    $bgColor = '#93c5fd';
-                                    $label = '◆ ' . ucfirst($tx->status ?? 'Unknown');
-                                    
-                                    if (in_array($s, ['success','completed','successful'])) {
-                                        $bgColor = '#6ee7b7';
-                                        $label = '✓ Success';
-                                    } elseif (str_contains($s, 'pending')) {
-                                        $bgColor = '#fbbf24';
-                                        $label = '⏳ Pending';
-                                    } elseif (in_array($s, ['failed','fail','error','cancelled','canceled','expired']) || str_contains($s, 'fail')) {
-                                        $bgColor = '#f87171';
-                                        $label = '✗ Failed';
-                                    }
-                                @endphp
-                                <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:rgba({{ $bgColor === '#6ee7b7' ? '110,231,183' : ($bgColor === '#fbbf24' ? '251,191,36' : ($bgColor === '#f87171' ? '248,113,113' : '147,197,253')) }},0.15); color:{{ $bgColor }}; border:1.5px solid rgba({{ $bgColor === '#6ee7b7' ? '110,231,183,0.4' : ($bgColor === '#fbbf24' ? '251,191,36,0.4' : ($bgColor === '#f87171' ? '248,113,113,0.4' : '147,197,253,0.4')) }}); border-radius:6px; font-size:12px; font-weight:700; white-space:nowrap;">
-                                    <span style="width:7px; height:7px; border-radius:50%; background:{{ $bgColor }}; flex-shrink:0;"></span>{{ $label }}
-                                </span>
-                            </td>
-                            <td style="color:var(--t3);font-size:12px;">
-                                {{ $tx->created_at?->format('d M Y') ?? '—' }}
-                            </td>
-                        </tr>
+                    @php
+                        $s = strtolower(trim($tx->status ?? ''));
+                        if (in_array($s, ['success','completed','successful'])) {
+                            $chipColor = '#34d98b'; $chipBg = 'rgba(52,217,139,0.12)'; $chipBdr = 'rgba(52,217,139,0.25)'; $chipLbl = 'Success';
+                        } elseif (str_contains($s, 'pending')) {
+                            $chipColor = '#fbbf24'; $chipBg = 'rgba(251,191,36,0.12)'; $chipBdr = 'rgba(251,191,36,0.25)'; $chipLbl = 'Pending';
+                        } elseif (in_array($s, ['failed','fail','error','cancelled','canceled','expired']) || str_contains($s, 'fail')) {
+                            $chipColor = '#f4566e'; $chipBg = 'rgba(244,86,110,0.12)'; $chipBdr = 'rgba(244,86,110,0.25)'; $chipLbl = 'Failed';
+                        } else {
+                            $chipColor = '#93b8ff'; $chipBg = 'rgba(79,140,255,0.12)'; $chipBdr = 'rgba(79,140,255,0.25)'; $chipLbl = ucfirst($tx->status ?? 'Unknown');
+                        }
+                    @endphp
+                    <tr>
+                        <td>
+                            <div class="ucell">
+                                <div class="uav">{{ strtoupper(substr($tx->user?->username ?? 'N', 0, 1)) }}</div>
+                                <span class="uname">{{ $tx->user?->username ?? 'N/A' }}</span>
+                            </div>
+                        </td>
+                        <td><span class="type-chip">{{ $tx->type ?? '—' }}</span></td>
+                        <td><span class="amt">₦{{ number_format($tx->amount ?? 0, 2) }}</span></td>
+                        <td>
+                            <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:11.5px;font-weight:700;white-space:nowrap;background:{{ $chipBg }};color:{{ $chipColor }};border:1px solid {{ $chipBdr }};">
+                                <span style="width:6px;height:6px;border-radius:50%;background:{{ $chipColor }};flex-shrink:0;"></span>
+                                {{ $chipLbl }}
+                            </span>
+                        </td>
+                        <td style="color:var(--t3);font-size:12px;">{{ $tx->created_at?->format('d M Y') ?? '—' }}</td>
+                    </tr>
                     @endforeach
                 </tbody>
             </table>
             @else
-            <div class="empty-st">
-                <div class="ei">🔍</div>
+            <div class="empty">
+                <div class="empty-icon">📭</div>
                 <p>No transactions to display.</p>
             </div>
             @endif
         </div>
 
         @if($transactions->hasPages())
-        <div class="pg-bar">
-            <div class="pg-info">
-                Showing <b>{{ $transactions->firstItem() }}–{{ $transactions->lastItem() }}</b> of <b>{{ $transactions->total() }}</b>
-            </div>
-            <div>
-                {{ $transactions->appends(request()->only(['u_search','u_pp','tx_search','tx_pp']))->links('partials.admin.custom') }}
-            </div>
+        <div class="pgbar">
+            <div class="pg-info">Showing <b>{{ $transactions->firstItem() }}–{{ $transactions->lastItem() }}</b> of <b>{{ $transactions->total() }}</b></div>
+            <div>{{ $transactions->appends(request()->only(['u_search','u_pp','tx_search','tx_pp']))->links('partials.admin.custom') }}</div>
         </div>
         @endif
     </div>
@@ -626,86 +813,107 @@
 </div>
 </div>
 
-{{-- ══════════════════════════════════════
-     USER MODAL  — AJAX only, no table rebuild
-══════════════════════════════════════ --}}
-<div class="m-overlay" id="userModal">
-    <div class="m-box">
-        <div class="m-hd">
-            <h2 id="mTitle">User Details</h2>
-            <button class="m-close" id="mCloseBtn">✕</button>
-        </div>
-        <div class="m-body" id="mBody">
-            <div class="m-loading">
-                <div class="spinner"></div>
-                Loading user details…
+{{-- ── Modal ── --}}
+<div class="overlay" id="userModal">
+    <div class="mbox" id="mboxEl">
+        <div class="drawer-handle"></div>
+        <div class="mhd">
+            <div class="mhd-left">
+                <div class="mhd-av" id="mhdAv">U</div>
+                <div>
+                    <h2 id="mTitle">User Details</h2>
+                    <div class="mhd-sub" id="mSub"></div>
+                </div>
             </div>
+            <button class="mclose" id="mCloseBtn">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="mbody" id="mBody">
+            <div class="mloading"><div class="spinner"></div>Loading…</div>
         </div>
     </div>
 </div>
 
-{{-- Modal inner template (hidden, cloned by JS) --}}
+{{-- Modal template --}}
 <template id="modalTpl">
-    <div class="m-sec">
-        <div class="m-stitle">Profile</div>
+    <div class="msec">
+        <div class="msec-label">Profile</div>
         <div class="info-grid" id="mInfo"></div>
     </div>
-    <div class="m-sec">
-        <div class="m-stitle">Admin Actions</div>
-        <div class="act-row">
-            <button class="act-b bl" id="btnTogPw">🔑 Password</button>
-            <button class="act-b pu" id="btnTogPin">🔐 PIN</button>
-            <button class="act-b gr" id="btnTogFunds">💳 Wallet</button>
+
+    <div class="msec">
+        <div class="msec-label">Admin Actions</div>
+        <div class="action-grid action-grid-4">
+            <button class="act-btn blue"   id="btnTogPw">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                Password
+            </button>
+            <button class="act-btn violet" id="btnTogPin">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                PIN
+            </button>
+            <button class="act-btn green"  id="btnTogFunds">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                Wallet
+            </button>
+            <button class="act-btn rose"   id="btnTogBlock">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                Block
+            </button>
         </div>
-        <div class="act-row">
-            <button class="act-b rd" id="btnTogBlock" style="grid-column:1;">🔒 Block User</button>
-        </div>
-        <div id="fMsg"></div>
-        <div id="fPw" class="sub-form">
+
+        <div id="fMsg" class="flash-msg"></div>
+
+        <div id="fPw" class="subform">
             <h4>Change Password</h4>
-            <div class="f-2col">
-                <div class="f-g"><label class="f-l">New Password</label><input type="password" id="nPw" class="f-i" placeholder="••••••••"></div>
-                <div class="f-g"><label class="f-l">Confirm</label><input type="password" id="cPw" class="f-i" placeholder="••••••••"></div>
+            <div class="f2col">
+                <div class="fg"><label class="fl">New Password</label><input type="password" id="nPw" class="fi" placeholder="••••••••"></div>
+                <div class="fg"><label class="fl">Confirm Password</label><input type="password" id="cPw" class="fi" placeholder="••••••••"></div>
             </div>
-            <button class="s-btn bl" id="btnDoPw">Update Password</button>
+            <button class="sbtn blue" id="btnDoPw">Update Password</button>
         </div>
-        <div id="fPin" class="sub-form pu-form">
-            <h4>Change PIN</h4>
-            <div class="f-g" style="max-width:200px;">
-                <label class="f-l">4-digit PIN</label>
-                <input type="password" id="nPin" class="f-i" placeholder="••••" maxlength="4">
+
+        <div id="fPin" class="subform violet-sf">
+            <h4>Change Transaction PIN</h4>
+            <div class="fg" style="max-width:180px;">
+                <label class="fl">4-digit PIN</label>
+                <input type="password" id="nPin" class="fi" placeholder="••••" maxlength="4" inputmode="numeric">
             </div>
-            <button class="s-btn pu" id="btnDoPin">Update PIN</button>
+            <button class="sbtn violet" id="btnDoPin">Update PIN</button>
         </div>
-        <div id="fFunds" class="sub-form gr-form">
+
+        <div id="fFunds" class="subform green-sf">
             <h4>Wallet Management</h4>
-            <div class="funds-2">
-                <div>
-                    <p style="font-size:11px;font-weight:700;color:#34d399;margin-bottom:10px;">➕ Add Funds</p>
-                    <div class="f-g"><label class="f-l">Amount (₦)</label><input type="number" id="aAmt" class="f-i" placeholder="0.00" min="0" step="0.01"></div>
-                    <div class="f-g"><label class="f-l">Reason</label><textarea id="aDesc" class="f-a" placeholder="Why are you adding funds?"></textarea></div>
-                    <button class="s-btn gr" id="btnDoAdd">Add Funds</button>
+            <div class="funds-grid">
+                <div class="fund-panel add">
+                    <div class="fund-panel-label">➕ Add Funds</div>
+                    <div class="fg"><label class="fl">Amount (₦)</label><input type="number" id="aAmt" class="fi" placeholder="0.00" min="0" step="0.01"></div>
+                    <div class="fg"><label class="fl">Reason</label><textarea id="aDesc" class="fa" placeholder="Reason for adding funds…"></textarea></div>
+                    <button class="sbtn green" id="btnDoAdd">Add Funds</button>
                 </div>
-                <div>
-                    <p style="font-size:11px;font-weight:700;color:#fca5a5;margin-bottom:10px;">➖ Deduct Funds</p>
-                    <div class="f-g"><label class="f-l">Amount (₦)</label><input type="number" id="dAmt" class="f-i" placeholder="0.00" min="0" step="0.01"></div>
-                    <div class="f-g"><label class="f-l">Reason</label><textarea id="dDesc" class="f-a" placeholder="Why are you deducting funds?"></textarea></div>
-                    <button class="s-btn rd" id="btnDoDed">Deduct Funds</button>
+                <div class="fund-panel ded">
+                    <div class="fund-panel-label">➖ Deduct Funds</div>
+                    <div class="fg"><label class="fl">Amount (₦)</label><input type="number" id="dAmt" class="fi" placeholder="0.00" min="0" step="0.01"></div>
+                    <div class="fg"><label class="fl">Reason</label><textarea id="dDesc" class="fa" placeholder="Reason for deducting funds…"></textarea></div>
+                    <button class="sbtn rose" id="btnDoDed">Deduct Funds</button>
                 </div>
             </div>
         </div>
-        <div id="fBlock" class="sub-form" style="border-left-color:#ef4444;">
-            <h4>Block/Unblock User</h4>
-            <div class="f-g">
-                <label class="f-l">Reason for blocking</label>
-                <textarea id="blockReason" class="f-a" placeholder="Enter reason for blocking this user..."></textarea>
+
+        <div id="fBlock" class="subform rose-sf">
+            <h4>Block / Unblock User</h4>
+            <div class="fg">
+                <label class="fl" id="blockReasonLabel">Reason for blocking</label>
+                <textarea id="blockReason" class="fa" placeholder="Enter reason for blocking this user…"></textarea>
             </div>
-            <button class="s-btn rd" id="btnDoBlock">Block User</button>
+            <button class="sbtn rose" id="btnDoBlock">Block User</button>
         </div>
     </div>
-    <div class="m-sec">
-        <div class="m-stitle">Recent Transactions</div>
-        <div class="m-txns" id="mTxns"></div>
+
+    <div class="msec">
+        <div class="msec-label">Recent Transactions</div>
+        <div class="mtxns" id="mTxns"></div>
     </div>
 </template>
 
@@ -715,8 +923,8 @@
 
     const BASE = @json(url('/'));
     const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    let uid = null;
 
-    /* ── Helpers ── */
     function esc(s) {
         const d = document.createElement('div');
         d.appendChild(document.createTextNode(String(s ?? '')));
@@ -726,67 +934,61 @@
         return Number(n ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    /* ── Modal open / close ── */
-    let uid = null;
-
     window.openModal = async function (userId) {
         uid = userId;
         const modal = document.getElementById('userModal');
         const body  = document.getElementById('mBody');
-
-        // Show spinner
-        body.innerHTML = '<div class="m-loading"><div class="spinner"></div>Loading user details…</div>';
+        document.getElementById('mTitle').textContent = 'Loading…';
+        document.getElementById('mSub').textContent = '';
+        document.getElementById('mhdAv').textContent = '…';
+        body.innerHTML = '<div class="mloading"><div class="spinner"></div>Loading user details…</div>';
         modal.classList.add('open');
+        document.body.style.overflow = 'hidden';
 
         try {
             const r = await fetch(`${BASE}/app/admin/users/${userId}`);
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             const { user, transactions } = await r.json();
 
-            // Clone template
+            const ini = (user.username || 'U').charAt(0).toUpperCase();
+            document.getElementById('mTitle').textContent   = '@' + (user.username || 'User');
+            document.getElementById('mSub').textContent     = user.email || '';
+            document.getElementById('mhdAv').textContent    = ini;
+
             const tpl  = document.getElementById('modalTpl');
             const node = tpl.content.cloneNode(true);
-
-            document.getElementById('mTitle').textContent = '@' + (user.username || 'User');
-
-            // Replace body with cloned template first so IDs exist
             body.replaceChildren(node);
 
             // Info tiles
-            const infoGrid = body.querySelector('#mInfo');
+            const grid = body.querySelector('#mInfo');
             const tiles = [
-                ['Full Name',      (user.first_name || '') + ' ' + (user.last_name || ''), null],
-                ['Username',       '@' + (user.username || ''), null],
-                ['Email',          user.email || '—', null],
-                ['Phone',          user.phone_number || '—', null],
-                ['Wallet Balance', '₦' + ngn(user.wallet?.balance), 'g'],
-                ['Status',         user.is_blocked ? '🔒 BLOCKED' : '✓ Active', user.is_blocked ? 'rd' : 'gn'],
+                ['Full Name', (user.first_name || '') + ' ' + (user.last_name || ''), null],
+                ['Username',  '@' + (user.username || ''), null],
+                ['Email',     user.email || '—', null],
+                ['Phone',     user.phone_number || '—', null],
+                ['Wallet',    '₦' + ngn(user.wallet?.balance), 'green'],
+                ['Status',    user.is_blocked ? 'Blocked' : 'Active', user.is_blocked ? 'danger' : 'ok'],
             ];
-            // Add blocked info if user is blocked
             if (user.is_blocked) {
-                if (user.blocked_reason) {
-                    tiles.push(['Blocked Reason', user.blocked_reason, null]);
-                }
-                if (user.blocked_at) {
-                    tiles.push(['Blocked At', new Date(user.blocked_at).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }), null]);
-                }
+                if (user.blocked_reason) tiles.push(['Block Reason', user.blocked_reason, null]);
+                if (user.blocked_at) tiles.push(['Blocked At', new Date(user.blocked_at).toLocaleString('en-US', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }), null]);
             }
             tiles.push(['Joined', new Date(user.created_at).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' }), null]);
-            
-            const igFrag = document.createDocumentFragment();
+
+            const frag = document.createDocumentFragment();
             tiles.forEach(([lbl, val, cls]) => {
-                const tile = document.createElement('div'); tile.className = 'info-tile';
-                const l = document.createElement('div'); l.className = 'lbl'; l.textContent = lbl;
-                const v = document.createElement('div'); v.className = 'val' + (cls ? ' ' + cls : ''); v.textContent = val;
-                tile.append(l, v); igFrag.appendChild(tile);
+                const tile = document.createElement('div'); tile.className = 'itile';
+                const l = document.createElement('div'); l.className = 'ilbl'; l.textContent = lbl;
+                const v = document.createElement('div'); v.className = 'ival' + (cls ? ' ' + cls : ''); v.textContent = val;
+                tile.append(l, v); frag.appendChild(tile);
             });
-            infoGrid.replaceChildren(igFrag);
+            grid.replaceChildren(frag);
 
             // Transactions mini table
             const mTxns = body.querySelector('#mTxns');
             if (!(transactions || []).length) {
                 const p = document.createElement('p');
-                p.style.cssText = 'color:var(--t3);text-align:center;padding:20px 0;font-size:13px;';
+                p.style.cssText = 'color:var(--t3);text-align:center;padding:20px;font-size:13px;';
                 p.textContent = 'No transactions found.';
                 mTxns.replaceChildren(p);
             } else {
@@ -795,24 +997,23 @@
                 const tbody = document.createElement('tbody');
                 const tfrag = document.createDocumentFragment();
                 transactions.forEach(tx => {
-                    const s   = (tx.status || '').toLowerCase().trim();
-                    let bgColor = '#93c5fd', textColor = '#fff';
-                    let lbl = '◆ ' + (tx.status || 'Unknown');
-                    
-                    if (['success', 'completed', 'successful'].includes(s)) {
-                        bgColor = '#6ee7b7'; textColor = '#fff'; lbl = '✓ Success';
+                    const s = (tx.status || '').toLowerCase().trim();
+                    let col, bg, bdr, lbl;
+                    if (['success','completed','successful'].includes(s)) {
+                        col='#34d98b'; bg='rgba(52,217,139,0.12)'; bdr='rgba(52,217,139,0.25)'; lbl='Success';
                     } else if (s.includes('pending')) {
-                        bgColor = '#fbbf24'; textColor = '#000'; lbl = '⏳ Pending';
-                    } else if (['failed', 'fail', 'error', 'cancelled', 'canceled', 'expired'].includes(s) || s.includes('fail')) {
-                        bgColor = '#f87171'; textColor = '#fff'; lbl = '✗ Failed';
+                        col='#fbbf24'; bg='rgba(251,191,36,0.12)'; bdr='rgba(251,191,36,0.25)'; lbl='Pending';
+                    } else if (['failed','fail','error','cancelled','canceled','expired'].includes(s) || s.includes('fail')) {
+                        col='#f4566e'; bg='rgba(244,86,110,0.12)'; bdr='rgba(244,86,110,0.25)'; lbl='Failed';
+                    } else {
+                        col='#93b8ff'; bg='rgba(79,140,255,0.12)'; bdr='rgba(79,140,255,0.25)'; lbl=tx.status||'Unknown';
                     }
-                    
                     const tr = document.createElement('tr');
                     tr.innerHTML =
-                        `<td style="padding:9px 13px; color:var(--t1);">${esc(tx.type || '—')}</td>` +
-                        `<td style="padding:9px 13px; color:var(--t1); font-family:var(--mono); font-weight:600;">₦${ngn(tx.amount)}</td>` +
-                        `<td style="padding:9px 13px;"><span style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:rgba(${bgColor === '#6ee7b7' ? '110,231,183' : bgColor === '#fbbf24' ? '251,191,36' : bgColor === '#f87171' ? '248,113,113' : '147,197,253'},0.15); color:${bgColor}; border:1.5px solid rgba(${bgColor === '#6ee7b7' ? '110,231,183,0.4' : bgColor === '#fbbf24' ? '251,191,36,0.4' : bgColor === '#f87171' ? '248,113,113,0.4' : '147,197,253,0.4'}); border-radius:6px; font-size:12px; font-weight:700; white-space:nowrap;"><span style="width:7px; height:7px; border-radius:50%; background:${bgColor}; flex-shrink:0;"></span>${lbl}</span></td>` +
-                        `<td style="padding:9px 13px; color:var(--t3); font-size:12px;">${new Date(tx.created_at).toLocaleDateString()}</td>`;
+                        `<td style="color:var(--t1);">${esc(tx.type||'—')}</td>` +
+                        `<td style="color:var(--amber-text);font-family:var(--mono);font-weight:600;">₦${ngn(tx.amount)}</td>` +
+                        `<td><span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:5px;font-size:11px;font-weight:700;background:${bg};color:${col};border:1px solid ${bdr};"><span style="width:5px;height:5px;border-radius:50%;background:${col};flex-shrink:0;"></span>${lbl}</span></td>` +
+                        `<td style="color:var(--t3);">${new Date(tx.created_at).toLocaleDateString()}</td>`;
                     tfrag.appendChild(tr);
                 });
                 tbody.replaceChildren(tfrag);
@@ -820,59 +1021,64 @@
                 mTxns.replaceChildren(tbl);
             }
 
-            // Wire up action buttons (they are now in the DOM)
+            // Wire buttons
             body.querySelector('#btnTogPw').addEventListener('click',    () => togForm('fPw', body));
             body.querySelector('#btnTogPin').addEventListener('click',   () => togForm('fPin', body));
             body.querySelector('#btnTogFunds').addEventListener('click', () => togForm('fFunds', body));
-            
-            // Update block button text based on status
-            const blockBtn = body.querySelector('#btnTogBlock');
-            const blockForm = body.querySelector('#fBlock');
-            const blockReasonInput = body.querySelector('#blockReason');
-            if (user.is_blocked) {
-                blockBtn.textContent = '🔓 Unblock User';
-                blockBtn.classList.remove('rd');
-                blockBtn.classList.add('gr');
-                blockForm.style.borderLeftColor = 'var(--green)';
-                blockReasonInput.style.display = 'none';
-                body.querySelector('#btnDoBlock').textContent = 'Unblock User';
-            }
-            blockBtn.addEventListener('click', () => togForm('fBlock', body));
-            
-            body.querySelector('#btnDoPw').addEventListener('click',     () => doPw(body));
-            body.querySelector('#btnDoPin').addEventListener('click',    () => doPin(body));
-            body.querySelector('#btnDoAdd').addEventListener('click',    () => doAdd(body));
-            body.querySelector('#btnDoDed').addEventListener('click',    () => doDed(body));
-            body.querySelector('#btnDoBlock').addEventListener('click',  () => doBlock(body, user));
 
-        } catch (e) {
-            body.innerHTML = `<div class="empty-st"><div class="ei">⚠️</div><p>Failed to load user: ${esc(e.message)}</p></div>`;
+            const blockBtn    = body.querySelector('#btnTogBlock');
+            const blockForm   = body.querySelector('#fBlock');
+            const blockReason = body.querySelector('#blockReason');
+            const doBlockBtn  = body.querySelector('#btnDoBlock');
+            const rlLabel     = body.querySelector('#blockReasonLabel');
+
+            if (user.is_blocked) {
+                blockBtn.innerHTML = `<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg> Unblock`;
+                blockBtn.classList.replace('rose', 'green');
+                blockForm.classList.add('green-sf');
+                blockForm.classList.remove('rose-sf');
+                rlLabel.style.display = 'none';
+                blockReason.style.display = 'none';
+                doBlockBtn.textContent = 'Unblock User';
+                doBlockBtn.className = 'sbtn green';
+            }
+
+            blockBtn.addEventListener('click', () => togForm('fBlock', body));
+            body.querySelector('#btnDoPw').addEventListener('click',    () => doPw(body));
+            body.querySelector('#btnDoPin').addEventListener('click',   () => doPin(body));
+            body.querySelector('#btnDoAdd').addEventListener('click',   () => doAdd(body));
+            body.querySelector('#btnDoDed').addEventListener('click',   () => doDed(body));
+            body.querySelector('#btnDoBlock').addEventListener('click', () => doBlock(body, user));
+
+        } catch(e) {
+            body.innerHTML = `<div class="empty" style="padding:40px;"><div class="empty-icon">⚠️</div><p>Failed to load: ${esc(e.message)}</p></div>`;
         }
     };
 
     document.getElementById('mCloseBtn').addEventListener('click', closeModal);
-    document.getElementById('userModal').addEventListener('click', function (e) {
-        if (e.target === e.currentTarget) closeModal();
+    document.getElementById('userModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
     });
 
     function closeModal() {
         document.getElementById('userModal').classList.remove('open');
+        document.body.style.overflow = '';
         uid = null;
     }
 
     function togForm(id, body) {
-        const el  = body.querySelector('#' + id);
+        const el = body.querySelector('#' + id);
         const was = el.classList.contains('open');
-        body.querySelectorAll('.sub-form').forEach(f => f.classList.remove('open'));
+        body.querySelectorAll('.subform').forEach(f => f.classList.remove('open'));
         if (!was) el.classList.add('open');
     }
 
     function flash(body, msg, type) {
         const el = body.querySelector('#fMsg');
         if (!el) return;
-        if (!msg) { el.className = 'flash'; el.textContent = ''; return; }
+        if (!msg) { el.className = 'flash-msg'; el.textContent = ''; return; }
         el.textContent = msg;
-        el.className   = 'flash ' + type;
+        el.className = 'flash-msg ' + (type === 'ok' ? 'show-ok' : 'show-err');
     }
 
     async function post(url, data) {
@@ -892,9 +1098,9 @@
         try {
             flash(body, 'Saving…', 'ok');
             const d = await post(`${BASE}/app/admin/users/${uid}/update-password`, { password: p, password_confirmation: c });
-            flash(body, d.message || (d.success ? 'Done.' : 'Failed.'), d.success ? 'ok' : 'err');
+            flash(body, d.message || (d.success ? 'Password updated.' : 'Failed.'), d.success ? 'ok' : 'err');
             if (d.success) { body.querySelector('#nPw').value = ''; body.querySelector('#cPw').value = ''; }
-        } catch (e) { flash(body, 'Error: ' + e.message, 'err'); }
+        } catch(e) { flash(body, 'Error: ' + e.message, 'err'); }
     }
 
     async function doPin(body) {
@@ -903,70 +1109,70 @@
         try {
             flash(body, 'Saving…', 'ok');
             const d = await post(`${BASE}/app/admin/users/${uid}/update-pin`, { pin: p });
-            flash(body, d.message || (d.success ? 'Done.' : 'Failed.'), d.success ? 'ok' : 'err');
+            flash(body, d.message || (d.success ? 'PIN updated.' : 'Failed.'), d.success ? 'ok' : 'err');
             if (d.success) body.querySelector('#nPin').value = '';
-        } catch (e) { flash(body, 'Error: ' + e.message, 'err'); }
+        } catch(e) { flash(body, 'Error: ' + e.message, 'err'); }
     }
 
     async function doAdd(body) {
-        const a    = parseFloat(body.querySelector('#aAmt').value);
+        const a = parseFloat(body.querySelector('#aAmt').value);
         const desc = body.querySelector('#aDesc').value.trim();
         if (!a || a <= 0 || !desc) { flash(body, 'Please fill in amount and reason.', 'err'); return; }
         try {
             flash(body, 'Processing…', 'ok');
             const d = await post(`${BASE}/app/admin/users/${uid}/add-funds`, { amount: a, description: desc });
-            flash(body, d.message || (d.success ? 'Done.' : 'Failed.'), d.success ? 'ok' : 'err');
+            flash(body, d.message || (d.success ? 'Funds added.' : 'Failed.'), d.success ? 'ok' : 'err');
             if (d.success) {
                 body.querySelector('#aAmt').value = '';
                 body.querySelector('#aDesc').value = '';
                 setTimeout(() => openModal(uid), 900);
             }
-        } catch (e) { flash(body, 'Error: ' + e.message, 'err'); }
+        } catch(e) { flash(body, 'Error: ' + e.message, 'err'); }
     }
 
     async function doDed(body) {
-        const a    = parseFloat(body.querySelector('#dAmt').value);
+        const a = parseFloat(body.querySelector('#dAmt').value);
         const desc = body.querySelector('#dDesc').value.trim();
         if (!a || a <= 0 || !desc) { flash(body, 'Please fill in amount and reason.', 'err'); return; }
         try {
             flash(body, 'Processing…', 'ok');
             const d = await post(`${BASE}/app/admin/users/${uid}/deduct-funds`, { amount: a, description: desc });
-            flash(body, d.message || (d.success ? 'Done.' : 'Failed.'), d.success ? 'ok' : 'err');
+            flash(body, d.message || (d.success ? 'Funds deducted.' : 'Failed.'), d.success ? 'ok' : 'err');
             if (d.success) {
                 body.querySelector('#dAmt').value = '';
                 body.querySelector('#dDesc').value = '';
                 setTimeout(() => openModal(uid), 900);
             }
-        } catch (e) { flash(body, 'Error: ' + e.message, 'err'); }
+        } catch(e) { flash(body, 'Error: ' + e.message, 'err'); }
     }
 
     async function doBlock(body, user) {
         if (user.is_blocked) {
-            // Unblock user - no reason needed
             try {
                 flash(body, 'Processing…', 'ok');
                 const d = await post(`${BASE}/app/admin/users/${uid}/unblock`, {});
                 flash(body, d.message || (d.success ? 'User unblocked.' : 'Failed.'), d.success ? 'ok' : 'err');
-                if (d.success) {
-                    setTimeout(() => openModal(uid), 900);
-                }
-            } catch (e) { flash(body, 'Error: ' + e.message, 'err'); }
+                if (d.success) setTimeout(() => openModal(uid), 900);
+            } catch(e) { flash(body, 'Error: ' + e.message, 'err'); }
         } else {
-            // Block user - reason required
             const reason = body.querySelector('#blockReason').value.trim();
             if (!reason) { flash(body, 'Please provide a reason for blocking.', 'err'); return; }
             try {
                 flash(body, 'Processing…', 'ok');
-                const d = await post(`${BASE}/app/admin/users/${uid}/block`, { reason: reason });
+                const d = await post(`${BASE}/app/admin/users/${uid}/block`, { reason });
                 flash(body, d.message || (d.success ? 'User blocked.' : 'Failed.'), d.success ? 'ok' : 'err');
                 if (d.success) {
                     body.querySelector('#blockReason').value = '';
                     setTimeout(() => openModal(uid), 900);
                 }
-            } catch (e) { flash(body, 'Error: ' + e.message, 'err'); }
+            } catch(e) { flash(body, 'Error: ' + e.message, 'err'); }
         }
     }
 
+    // Escape key closes modal
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeModal();
+    });
 })();
 </script>
 

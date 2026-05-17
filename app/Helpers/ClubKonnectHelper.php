@@ -132,6 +132,35 @@ class ClubKonnectHelper
     }
 
     /**
+     * Get Electricity Discos and their products
+     * Cached for 60 seconds to reduce API calls
+     */
+    public static function getElectricityDiscos()
+    {
+        try {
+            $endpoint = 'APIElectricityDiscosV1.asp';
+
+            $response = Http::timeout(15)
+                ->withoutVerifying()
+                ->acceptJson()
+                ->get(self::getBaseUrl() . '/' . $endpoint, [
+                    'UserID' => self::getUserId(),
+                ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['ELECTRIC_COMPANY'] ?? $data;
+            }
+
+            Log::warning('Electricity discos endpoint returned non-success', ['status' => $response->status()]);
+            return [];
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch electricity discos', ['error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    /**
      * Place a Bet / Fund Betting Account
      */
     public static function placeBet($bettingCompany, $customerId, $amount, $requestId, $callbackUrl = null)

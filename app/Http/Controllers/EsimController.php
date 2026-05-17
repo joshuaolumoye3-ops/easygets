@@ -3,12 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\PinHelper;
+use App\Mail\EsimPurchaseAdminNotification;
+use App\Mail\EsimPurchaseUserNotification;
+use App\Models\Admin;
 use App\Models\Transaction;
 use App\Models\EsimCountry;
 use App\Models\EsimPackage;
 use App\Models\Wallet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -264,6 +268,40 @@ class EsimController extends Controller
                 'transaction_id' => $transaction->id,
                 'reference' => $reference,
             ]);
+
+            // Notify admins
+            $adminEmails = Admin::whereNotNull('email')
+                ->where('email', '<>', '')
+                ->pluck('email')
+                ->filter()
+                ->unique()
+                ->toArray();
+
+            if (!empty($adminEmails)) {
+                $primaryAdmin = array_shift($adminEmails);
+                try {
+                    Mail::to($primaryAdmin)
+                        ->bcc($adminEmails)
+                        ->send(new EsimPurchaseAdminNotification($transaction, $country, $package, auth()->user()));
+                } catch (\Exception $mailException) {
+                    Log::warning('Failed to send admin eSIM notification', [
+                        'transaction_id' => $transaction->id,
+                        'error' => $mailException->getMessage(),
+                    ]);
+                }
+            }
+
+            // Notify user
+            $user = auth()->user();
+            try {
+                Mail::to($user->email)->send(new EsimPurchaseUserNotification($transaction, $country, $package, $user));
+            } catch (\Exception $mailException) {
+                Log::warning('Failed to send user eSIM notification', [
+                    'transaction_id' => $transaction->id,
+                    'user_id' => $userId,
+                    'error' => $mailException->getMessage(),
+                ]);
+            }
 
             return response()->json([
                 'success' => true,

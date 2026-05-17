@@ -131,6 +131,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/electricity', [ElectricityController::class, 'showElectricityPlans'])->middleware('check.user.not.blocked', 'check.service.active:electricity')->name('electricity');
     Route::post('/electricity/render-success', [ElectricityController::class, 'renderSuccessPartial'])->middleware('check.user.not.blocked')->name('electricity.render-success');
     Route::post('/verify-electricity-meter', [ElectricityController::class, 'verifyElectricityMeter'])->middleware('check.user.not.blocked')->name('verify.meter');
+    Route::post('/electricity/packages', [ElectricityController::class, 'getPackages'])->middleware('check.user.not.blocked')->name('electricity.packages');
     Route::post('/electricity/purchase', [ElectricityController::class, 'purchase'])->middleware('check.user.not.blocked')->name('electricity.purchase');
 
     

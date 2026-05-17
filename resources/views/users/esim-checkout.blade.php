@@ -137,12 +137,16 @@
             console.log('Submitting to:', url);
             console.log('PIN values:', pinValues);
 
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
             const response = await fetch(url, {
                 method: "POST",
                 headers: {
                     "Accept": "application/json",
                     "X-Requested-With": "XMLHttpRequest",
+                    "X-CSRF-TOKEN": csrfToken,
                 },
+                credentials: 'same-origin',
                 body: formData
             });
 
@@ -155,6 +159,12 @@
             overlay.classList.add('hidden');
             submitBtn.disabled = false;
             submitBtn.textContent = 'Confirm Purchase';
+
+            if (response.status === 419) {
+                errorMsg.textContent = "Your session has expired. Please refresh the page and try again.";
+                errorMsg.classList.remove('hidden');
+                return;
+            }
 
             if (response.ok && result.success) {
                 responseMsg.className = "mt-6 p-4 rounded-lg text-center bg-green-100 text-green-800 font-medium";

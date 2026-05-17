@@ -252,12 +252,41 @@
         });
     });
 
-    // Verify Meter
-    document.getElementById('verifyMeterBtn').addEventListener('click', async () => {
-        const electricCompany = document.getElementById('networkInput').value.trim();
-        const meterNumber = document.getElementById('meterNumber').value.trim();
-        const verificationDiv = document.getElementById('meterVerification');
+    // Helper: safely read multiple possible keys from product
+    function getProductField(product, candidates) {
+        if (!product) return null;
+        // normalize keys to lowercase for robust matching
+        const normalized = {};
+        Object.keys(product).forEach(k => {
+            try {
+                normalized[k.toLowerCase()] = product[k];
+            } catch (e) {
+                normalized[k.toLowerCase()] = product[k];
+            }
+        });
 
+        for (const candidate of candidates) {
+            const key = candidate.toLowerCase();
+            if (normalized[key] !== undefined && normalized[key] !== null) return normalized[key];
+        }
+
+        // attempt to find numeric-looking properties
+        for (const k of Object.keys(normalized)) {
+            if (/(min|maximum|max|amount|price)/i.test(k) && !isNaN(parseFloat(normalized[k]))) {
+                return normalized[k];
+            }
+        }
+
+        return null;
+    }
+
+    // Verify Meter (click) and auto-verify on input
+    const verifyBtn = document.getElementById('verifyMeterBtn');
+    const meterInput = document.getElementById('meterNumber');
+    const verificationDiv = document.getElementById('meterVerification');
+    let verifyTimer = null;
+
+    async function verifyMeter(electricCompany, meterNumber) {
         if (!electricCompany) {
             showModal('Error', 'Please select your Electric Company first.', 'text-red-600');
             return;
@@ -286,17 +315,17 @@
 
             if (response.ok && data.status) {
                 meterVerified = true;
-                customerName = data.customer_name;
-                verificationDiv.innerHTML = `<span class="text-green-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Verified: ${data.customer_name}</span>`;
+                customerName = data.customer_name || data.CustomerName || data.customerName || '';
+                verificationDiv.innerHTML = `<span class="text-green-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Verified: ${customerName}</span>`;
                 verificationDiv.classList.remove('hidden');
-                
-                showModal('Verification Successful', `Customer Name: ${data.customer_name}\nMeter Number: ${data.meter_number}`, 'text-green-600');
+
+                showModal('Verification Successful', `Customer Name: ${customerName}\nMeter Number: ${meterNumber}`, 'text-green-600');
             } else {
                 meterVerified = false;
                 customerName = '';
-                verificationDiv.innerHTML = `<span class="text-red-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>${data.message || 'Verification failed'}</span>`;
+                verificationDiv.innerHTML = `<span class="text-red-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>${data.message || data.CustomerName || 'Verification failed'}</span>`;
                 verificationDiv.classList.remove('hidden');
-                
+
                 showModal('Verification Failed', data.message || 'Invalid meter number', 'text-red-600');
             }
         } catch (error) {
@@ -304,16 +333,70 @@
             customerName = '';
             verificationDiv.innerHTML = `<span class="text-red-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>Verification failed</span>`;
             verificationDiv.classList.remove('hidden');
-            
+
             showModal('Error', 'Verification failed. Please try again.', 'text-red-600');
             console.error(error);
         } finally {
             toggleLoading(false);
         }
+    }
+
+    verifyBtn.addEventListener('click', () => {
+        const electricCompany = document.getElementById('networkInput').value.trim();
+        const meterNumber = meterInput.value.trim();
+        verifyMeter(electricCompany, meterNumber);
+    });
+
+    // Auto-verify meter after user stops typing (debounced) when length >= 10
+    meterInput.addEventListener('input', () => {
+        const electricCompany = document.getElementById('networkInput').value.trim();
+        const val = meterInput.value.replace(/\D/g, '');
+        meterInput.value = val; // only digits
+
+        verifyBtn.disabled = val.length < 6 || !electricCompany; // enable when reasonable length and provider selected
+
+        if (verifyTimer) clearTimeout(verifyTimer);
+        if (val.length >= 10 && electricCompany) {
+            verifyTimer = setTimeout(() => {
+                verifyMeter(electricCompany, val);
+            }, 700);
+        }
+    });
+
+    // When provider changes, re-evaluate verify button
+    document.getElementById('openServiceProvider').addEventListener('click', () => {
+        // existing modal code will set networkInput; we don't change here
     });
 
     // Provider and Package Selection
     const plans = @json($plans);
+
+    const providers = [];
+    const isObject = (value) => value && typeof value === 'object' && !Array.isArray(value);
+
+    if (Array.isArray(plans)) {
+        plans.forEach((item, index) => {
+            const company = Array.isArray(item) ? item[0] : item;
+            if (isObject(company)) {
+                providers.push({
+                    key: company.ELECTRIC_COMPANY ?? company.ID ?? String(index),
+                    name: company.NAME || company.ELECTRIC_COMPANY || `Provider ${index + 1}`,
+                    raw: company
+                });
+            }
+        });
+    } else if (isObject(plans)) {
+        Object.entries(plans).forEach(([providerKey, item]) => {
+            const company = Array.isArray(item) ? item[0] : item;
+            if (isObject(company)) {
+                providers.push({
+                    key: providerKey,
+                    name: company.NAME || company.ELECTRIC_COMPANY || providerKey,
+                    raw: company
+                });
+            }
+        });
+    }
 
     const modalShow = (modal) => {
         modal.classList.remove('hidden');
@@ -338,14 +421,13 @@
         const list = document.getElementById('serviceProviderList');
         list.innerHTML = '';
 
-        Object.keys(plans).forEach(providerKey => {
-            const company = plans[providerKey][0];
+        providers.forEach(provider => {
             const btn = document.createElement('button');
-            btn.textContent = company.NAME;
+            btn.textContent = provider.name;
             btn.className = 'block w-full text-left px-4 py-3 border-b hover:bg-gray-100 rounded transition-colors';
             btn.onclick = () => {
-                document.querySelector('.provider-text').textContent = company.NAME;
-                document.getElementById('networkInput').value = providerKey;
+                document.querySelector('.provider-text').textContent = provider.name;
+                document.getElementById('networkInput').value = provider.key;
                 
                 // Reset package selection
                 document.querySelector('.package-text').textContent = 'Choose a Package';
@@ -364,6 +446,13 @@
             list.appendChild(btn);
         });
 
+        if (providers.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'text-gray-500 p-4';
+            empty.textContent = 'No electricity providers are available right now. Please try again later.';
+            list.appendChild(empty);
+        }
+
         modalShow(document.getElementById('serviceProviderModal'));
     });
 
@@ -375,32 +464,51 @@
             return;
         }
 
-        const products = plans[providerKey][0].PRODUCT;
+        const provider = providers.find(item => String(item.key) === String(providerKey));
+        if (!provider) {
+            showModal('Error', 'Selected provider is unavailable. Please choose another provider.', 'text-red-600');
+            return;
+        }
+
+        const products = provider.raw.PRODUCT || provider.raw.products || [];
         const list = document.getElementById('packageList');
         list.innerHTML = '';
 
         products.forEach(product => {
+            const productType = getProductField(product, ['PRODUCT_TYPE','PRODUCT_NAME','PRODUCT_TYPE_NAME','PRODUCT_NAME','PRODUCT_DESCRIPTION']) || 'Meter';
+            const productId = getProductField(product, ['PRODUCT_ID','PRODUCT_CODE','PRODUCT_SNO','PRODUCT_SNO','ID']) || '';
+            let minAmt = getProductField(product, ['MINIMUM_AMOUNT','MINIMUN_AMOUNT','MINAMOUNT','MIN_AMOUNT','MIN']) || getProductField(product, ['MINAMOUNT','MIN']) || null;
+            let maxAmt = getProductField(product, ['MAXIMUM_AMOUNT','MAXAMOUNT','MAX_AMOUNT','MAXIMUM','MAX']) || null;
+
+            // Normalize numeric values
+            minAmt = minAmt !== null ? parseFloat(String(minAmt).replace(/[^0-9.]/g, '')) : null;
+            maxAmt = maxAmt !== null ? parseFloat(String(maxAmt).replace(/[^0-9.]/g, '')) : null;
+
+            // sensible defaults
+            if (!minAmt || isNaN(minAmt) || minAmt <= 0) minAmt = 100;
+            if (!maxAmt || isNaN(maxAmt) || maxAmt <= 0) maxAmt = 200000;
+
             const btn = document.createElement('button');
             btn.innerHTML = `
                 <div class="text-left">
-                    <div class="font-semibold">${product.PRODUCT_TYPE}</div>
-                    <div class="text-sm text-gray-500">Min: ₦${parseInt(product.MINIMUN_AMOUNT).toLocaleString()} - Max: ₦${parseInt(product.MAXIMUM_AMOUNT).toLocaleString()}</div>
+                    <div class="font-semibold">${productType || 'Meter'}</div>
+                    <div class="text-sm text-gray-500">Min: ₦${Math.floor(minAmt).toLocaleString()} - Max: ₦${Math.ceil(maxAmt).toLocaleString()}</div>
                 </div>
             `;
             btn.className = 'block w-full px-4 py-3 border-b hover:bg-gray-100 rounded transition-colors';
             btn.onclick = () => {
-                document.querySelector('.package-text').textContent = product.PRODUCT_TYPE;
-                document.getElementById('packageInput').value = product.PRODUCT_ID;
-                document.getElementById('minAmount').value = product.MINIMUN_AMOUNT;
-                document.getElementById('maxAmount').value = product.MAXIMUM_AMOUNT;
+                document.querySelector('.package-text').textContent = productType || 'Meter';
+                document.getElementById('packageInput').value = productId || '';
+                document.getElementById('minAmount').value = minAmt;
+                document.getElementById('maxAmount').value = maxAmt;
 
                 // Update amount input limits
                 const amountInput = document.getElementById('amount');
-                amountInput.min = product.MINIMUN_AMOUNT;
-                amountInput.max = product.MAXIMUM_AMOUNT;
+                amountInput.min = Math.floor(minAmt);
+                amountInput.max = Math.ceil(maxAmt);
                 
                 // Show amount limits
-                document.getElementById('amountLimits').textContent = `Min: ₦${parseInt(product.MINIMUN_AMOUNT).toLocaleString()} - Max: ₦${parseInt(product.MAXIMUM_AMOUNT).toLocaleString()}`;
+                document.getElementById('amountLimits').textContent = `Min: ₦${Math.floor(minAmt).toLocaleString()} - Max: ₦${Math.ceil(maxAmt).toLocaleString()}`;
                 document.getElementById('amountLimits').classList.remove('hidden');
 
                 modalHide(document.getElementById('packageModal'));
@@ -446,6 +554,9 @@
             }
             if (!meterNumber) {
                 return showModal('Error', 'Please enter your meter number.', 'text-red-600');
+            }
+            if (!meterVerified) {
+                return showModal('Confirm meter verification', 'Please verify the meter number and confirm the customer name before purchasing.', 'text-yellow-600');
             }
             if (!amount || amount < 100) {
                 return showModal('Error', 'Please enter a valid amount (minimum ₦100).', 'text-red-600');
