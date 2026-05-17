@@ -419,21 +419,21 @@ class MoreThanPanelHelper
     /**
      * Map API status to your local status
      */
-    public function mapStatus($apiStatus)
+    public function mapStatus($apiStatus): string
     {
         $apiStatus = trim(strtolower($apiStatus));
-        
+
         $statusMap = [
-            'pending' => 'pending',
+            'pending'     => 'pending',
             'in progress' => 'processing',
-            'processing' => 'processing',
-            'completed' => 'completed',
-            'complete' => 'completed',
-            'partial' => 'partial',
-            'canceled' => 'failed',
-            'cancelled' => 'failed',
-            'refunded' => 'refunded',
-            'failed' => 'failed',
+            'processing'  => 'processing',
+            'completed'   => 'success',    // ← was 'completed', now 'success'
+            'complete'    => 'success',
+            'partial'     => 'partial',
+            'canceled'    => 'failed',
+            'cancelled'   => 'failed',
+            'refunded'    => 'refunded',
+            'failed'      => 'failed',
         ];
 
         return $statusMap[$apiStatus] ?? 'pending';

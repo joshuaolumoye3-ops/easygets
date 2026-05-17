@@ -84,10 +84,12 @@
                 </div>
                 <div class="text-right">
                     <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1
-                        {{ $boost['raw_status'] === 'completed' ? 'bg-green-100 text-green-700' :
-                          ($boost['raw_status'] === 'processing' ? 'bg-blue-100 text-blue-700' :
-                          ($boost['raw_status'] === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                          ($boost['raw_status'] === 'partial' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-700'))) }}">
+                        {{ $boost['raw_status'] === 'success' || $boost['raw_status'] === 'completed' 
+                            ? 'bg-green-100 text-green-700' :
+                        ($boost['raw_status'] === 'processing' ? 'bg-blue-100 text-blue-700' :
+                        ($boost['raw_status'] === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                        ($boost['raw_status'] === 'partial' ? 'bg-orange-100 text-orange-700' 
+                        : 'bg-gray-100 text-gray-700'))) }}
                         {{ $boost['status'] }}
                     </span>
                 </div>

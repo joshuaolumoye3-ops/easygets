@@ -60,31 +60,31 @@ class HistoryController extends Controller
         // Fetch social boost history
         $socialBoosts = DB::table('transactions')
             ->where('user_id', $userId)
-            ->where('type', 'social_boost')
+            ->whereIn('type', ['social_boost', 'smm'])   // include both old and new
             ->whereNotNull('request_id')
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($boost) {
                 $responseData = json_decode($boost->response, true) ?? [];
                 return [
-                    'id' => $boost->id,
-                    'reference' => $boost->reference,
-                    'request_id' => $boost->request_id, // MTP order ID
-                    'service_name' => $boost->service_name,
+                    'id'           => $boost->id,
+                    'reference'    => $boost->reference,
+                    'request_id'   => $boost->request_id,
+                    'service_name' => $boost->service_name ?? $boost->provider ?? 'Social Boost',
                     'service_logo' => $boost->service_logo ?? '🚀',
-                    'category' => $responseData['category'] ?? 'Social Media',
-                    'link' => $responseData['link'] ?? null,
-                    'quantity' => $responseData['quantity'] ?? 0,
-                    'start_count' => $responseData['start_count'] ?? null,
-                    'remains' => $responseData['remains'] ?? null,
-                    'amount' => '₦' . number_format($boost->amount, 2),
-                    'status' => $this->getSocialStatusLabel($boost->status),
-                    'raw_status' => $boost->status,
-                    'date' => Carbon::parse($boost->created_at)->format('M d, Y h:i A'),
+                    'category'     => $responseData['category'] ?? 'Social Media',
+                    'link'         => $responseData['link'] ?? $boost->account ?? null,
+                    'quantity'     => $responseData['quantity'] ?? 0,
+                    'start_count'  => $responseData['start_count'] ?? null,
+                    'remains'      => $responseData['remains'] ?? null,
+                    'amount'       => '₦' . number_format($boost->amount, 2),
+                    'status'       => $this->getSocialStatusLabel($boost->status),
+                    'raw_status'   => $boost->status,
+                    'date'         => Carbon::parse($boost->created_at)->format('M d, Y h:i A'),
                     'service_type' => $responseData['service_type'] ?? 'Default',
-                    'mtp_status' => $responseData['mtp_status'] ?? null,
+                    'mtp_status'   => $responseData['mtp_status'] ?? null,
                     'refill_available' => $responseData['refill'] ?? false,
-                    'can_cancel' => $responseData['cancel'] ?? false,
+                    'can_cancel'   => $responseData['cancel'] ?? false,
                 ];
             });
 
@@ -241,22 +241,23 @@ class HistoryController extends Controller
             // Map MTP status to local status
             $localStatus = $this->mtpHelper->mapStatus($mtpStatus);
 
-            // Get existing response data
-            $existingResponseData = json_decode($transaction->response, true) ?? [];
+            // Treat "Completed" as success so the UI shows green
+            if ($localStatus === 'completed') {
+                $localStatus = 'success';
+            }
 
-            // Update local database with new status
             DB::table('transactions')
                 ->where('id', $transaction->id)
                 ->update([
-                    'status' => $localStatus,
+                    'status'   => $localStatus,
                     'response' => json_encode(array_merge(
-                        $existingResponseData,
+                        json_decode($transaction->response, true) ?? [],
                         [
-                            'mtp_status' => $mtpStatus,
-                            'start_count' => $startCount,
-                            'remains' => $remains,
-                            'charge' => $charge,
-                            'last_checked' => now()->toIso8601String(),
+                            'mtp_status'  => $mtpStatus,
+                            'start_count' => $statusResponse['start_count'] ?? null,
+                            'remains'     => $statusResponse['remains'] ?? null,
+                            'charge'      => $statusResponse['charge'] ?? null,
+                            'last_checked'=> now()->toIso8601String(),
                         ]
                     )),
                     'updated_at' => now(),
@@ -845,7 +846,6 @@ class HistoryController extends Controller
     private function cancelSmsBus($activation)
     {
         $token = env('SMSBUS_TOKEN');
-
         if (!$token) {
             Log::error('Provider2 token not configured');
             return ['success' => false, 'message' => 'Service token not configured'];
@@ -989,18 +989,18 @@ class HistoryController extends Controller
         return $labels[$status] ?? ucfirst($status);
     }
 
-    private function getSocialStatusLabel($status)
+    private function getSocialStatusLabel($status): string
     {
         $labels = [
-            'pending' => 'Processing',
+            'pending'    => 'Processing',
             'processing' => 'In Progress',
-            'completed' => 'Completed',
-            'partial' => 'Partial',
-            'failed' => 'Failed',
-            'cancelled' => 'Cancelled',
-            'refunded' => 'Refunded'
+            'success'    => 'Completed',      // ← add this
+            'completed'  => 'Completed',
+            'partial'    => 'Partial',
+            'failed'     => 'Failed',
+            'cancelled'  => 'Cancelled',
+            'refunded'   => 'Refunded',
         ];
-
         return $labels[$status] ?? ucfirst($status);
     }
 
