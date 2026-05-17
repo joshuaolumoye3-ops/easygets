@@ -39,7 +39,7 @@
                 Verify
             </button>
             <div class="text-center">
-                <a href="signin" id="backLink" class="text-sm font-medium text-blue-600 transition-colors hover:text-gray-800">Back to login</a>
+                <a href="{{ route('login') }}" id="backLink" class="text-sm font-medium text-blue-600 transition-colors hover:text-gray-800">Back to login</a>
             </div>
         </form>
     </div>

@@ -61,6 +61,12 @@ Route::middleware('guest')->group(function () {
 
     Route::get('/onboarding/email-otp/{user}', [RegisterController::class, 'showOtpForm'])
         ->name('onboarding.emailOtp');
+
+    // Email verification routes (for login flow)
+    Route::get('/verify-email/{user}', [LoginController::class, 'showVerifyEmailForm'])->name('verify.email.form');
+    Route::post('/verify-email-submit', [LoginController::class, 'verifyEmailFromLogin'])->name('verify.email.submit');
+    Route::post('/verify-email-resend', [LoginController::class, 'resendVerificationOtp'])->name('verify.email.resend');
+
     Route::get('/emailverification', function () {
         return view('onboarding.emailOtp');
     });

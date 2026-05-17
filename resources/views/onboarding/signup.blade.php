@@ -112,20 +112,21 @@
                         <input 
                             type="password" 
                             name="password" 
+                            id="passwordInput"
                             placeholder="Password" 
-                             class="form-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"                    
+                            class="form-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"                    
                             required 
-                            minlength="6" 
                         />
                         <input 
                             type="password" 
                             name="password_confirmation" 
+                            id="passwordConfirmInput"
                             placeholder="Confirm Password" 
-                             class="form-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"                    
+                            class="form-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"                    
                             required 
                         />
                         <p class="error-text text-xs text-red-600 hidden">
-                            Passwords must match and be at least 6 characters.
+                            Passwords must match and be at least 6 characters long.
                         </p>
 
                         <div class="flex items-center space-x-2 text-sm text-gray-700">
@@ -182,6 +183,12 @@
             "Create a secure password"
         ];
         
+        const validateEmail = (email) => {
+            // HTML5 email validation pattern - compatible across all browsers
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email.trim());
+        };
+
         const updateFormState = () => {
             steps.forEach((step, index) => {
                 step.classList.toggle('hidden', index !== currentStep);
@@ -194,39 +201,58 @@
 
         const validateCurrentStep = () => {
             const step = steps[currentStep];
-            const inputs = Array.from(step.querySelectorAll('input'));
+            const inputs = Array.from(step.querySelectorAll('input[type!="checkbox"]:not([type="hidden"])'));
             let isValid = true;
 
             step.querySelector('.error-text')?.classList.add('hidden');
             inputs.forEach(input => input.classList.remove('error'));
 
             if (currentStep === 0) {
+                // Email validation
                 const email = inputs[0].value.trim();
-                const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-                if (!validEmail) {
+                if (!validateEmail(email)) {
                     inputs[0].classList.add('error');
                     step.querySelector('.error-text').classList.remove('hidden');
                     isValid = false;
                 }
             } else if (currentStep === 1) {
-                if (inputs[0].value.trim().length < 3) {
+                // Username validation
+                const username = inputs[0].value.trim();
+                if (username.length < 3) {
                     inputs[0].classList.add('error');
                     step.querySelector('.error-text').classList.remove('hidden');
                     isValid = false;
                 }
             } else if (currentStep === 2) {
+                // Contact info validation
                 inputs.forEach(input => {
-                    if (input.value.trim() === '') {
+                    // Only validate required fields (first_name, last_name)
+                    if (input.name !== 'phone_number' && input.value.trim() === '') {
                         input.classList.add('error');
                         isValid = false;
                     }
                 });
                 if (!isValid) step.querySelector('.error-text').classList.remove('hidden');
             } else if (currentStep === 3) {
-                const [pass, confirm] = inputs;
-                if (pass.value.length < 6 || pass.value !== confirm.value) {
-                    pass.classList.add('error');
-                    confirm.classList.add('error');
+                // Password validation - no strict requirements
+                const pass = document.getElementById('passwordInput').value;
+                const confirm = document.getElementById('passwordConfirmInput').value;
+                const termsChecked = step.querySelector('input[name="terms"]').checked;
+
+                if (pass.length < 6) {
+                    document.getElementById('passwordInput').classList.add('error');
+                    step.querySelector('.error-text').classList.remove('hidden');
+                    isValid = false;
+                }
+                
+                if (pass !== confirm) {
+                    document.getElementById('passwordInput').classList.add('error');
+                    document.getElementById('passwordConfirmInput').classList.add('error');
+                    step.querySelector('.error-text').classList.remove('hidden');
+                    isValid = false;
+                }
+
+                if (!termsChecked) {
                     step.querySelector('.error-text').classList.remove('hidden');
                     isValid = false;
                 }
@@ -253,7 +279,7 @@
                 currentStep++;
                 updateFormState();
             }
-            // ✅ At last step, Laravel will process submission normally
+            // ✅ At last step, form submission continues to Laravel
         });
 
         backLinks.forEach(link => {
@@ -266,7 +292,16 @@
             });
         });
 
-        form.addEventListener('input', validateCurrentStep);
+        // Real-time validation - add slight delay for Safari compatibility
+        form.addEventListener('input', (e) => {
+            // Use setTimeout to ensure all input events are processed
+            setTimeout(() => {
+                validateCurrentStep();
+            }, 0);
+        });
+
+        form.addEventListener('change', validateCurrentStep);
+
         updateFormState();
     });
 </script>

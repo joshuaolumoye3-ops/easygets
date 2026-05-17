@@ -80,11 +80,10 @@ class RegisterController extends Controller
         'last_name' => 'required|string|max:100',
         'email' => 'required|email|max:255',
         'phone_number' => 'nullable|string|max:20',
-        'password' => 'required|string|min:8|confirmed|regex:/^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]+$/',
+        'password' => 'required|string|min:6|confirmed',
     ], [
         'username.regex' => 'Username can only contain letters, numbers, underscores, and hyphens.',
-        'password.regex' => 'Password must contain letters, numbers, and special characters.',
-        'password.min' => 'Password must be at least 8 characters.',
+        'password.min' => 'Password must be at least 6 characters.',
     ]);
 
     // ============ SUSPICIOUS PATTERN DETECTION ============
