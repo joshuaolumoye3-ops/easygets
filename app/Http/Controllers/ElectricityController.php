@@ -16,37 +16,185 @@ class ElectricityController extends Controller
 {
     public function showElectricityPlans()
     {
-        $plans = ClubKonnectHelper::getElectricityDiscos();
-        if (!is_array($plans)) {
-            $plans = [];
-        }
-
-        $wallet = Wallet::where('user_id', auth()->id())->first();
+        $rawPlans = ClubKonnectHelper::getElectricityDiscos();
+        $plans    = $this->normalizePlans($rawPlans);
+        $wallet   = Wallet::where('user_id', auth()->id())->first();
 
         return view('users.electricity', compact('plans', 'wallet'));
     }
 
+    // -------------------------------------------------------------------------
+    // Normalize the raw ClubKonnect response into a consistent shape:
+    //   [ { code, name, products: [ { id, type, min, max } ] } ]
+    // The "code" is the numeric ElectricCompany value the API requires (e.g. "07").
+    // -------------------------------------------------------------------------
+    private function normalizePlans(array $rawPlans): array
+    {
+        if (empty($rawPlans)) {
+            return [];
+        }
+
+        // Log a sample so we can inspect field names during development
+        $sample = array_slice($rawPlans, 0, 1);
+        Log::info('ClubKonnect electricity discos raw sample', ['sample' => $sample]);
+
+        $normalized = [];
+        $isIndexed  = array_is_list($rawPlans);
+
+        $entries = $isIndexed
+            ? array_map(fn ($c) => [null, $c], $rawPlans)
+            : array_map(null, array_keys($rawPlans), array_values($rawPlans));
+
+        foreach ($entries as [$stringKey, $company]) {
+            if (!is_array($company)) {
+                continue;
+            }
+
+            $code = $this->extractCompanyCode($company) ?? $stringKey;
+            if (!$code) {
+                continue;
+            }
+
+            $name = $company['NAME']
+                ?? $company['COMPANY_NAME']
+                ?? $company['DISCO_NAME']
+                ?? $stringKey
+                ?? 'Unknown Provider';
+
+            $rawProducts = $company['PRODUCT']
+                ?? $company['PRODUCTS']
+                ?? $company['products']
+                ?? [];
+
+            $products = $this->normalizeProducts((array) $rawProducts);
+
+            $normalized[] = [
+                'code'     => (string) $code,
+                'name'     => (string) $name,
+                'products' => $products,
+            ];
+        }
+
+        return $normalized;
+    }
+
+    private function normalizeProducts(array $rawProducts): array
+    {
+        $products = [];
+
+        foreach ($rawProducts as $product) {
+            if (!is_array($product)) {
+                continue;
+            }
+
+            $id = $product['PRODUCT_ID']
+                ?? $product['PRODUCT_CODE']
+                ?? $product['PRODUCT_SNO']
+                ?? $product['ID']
+                ?? null;
+
+            if ($id === null || $id === '') {
+                continue;
+            }
+
+            $type = $product['PRODUCT_TYPE']
+                ?? $product['PRODUCT_TYPE_NAME']
+                ?? $product['PRODUCT_NAME']
+                ?? $product['PRODUCT_DESCRIPTION']
+                ?? 'Meter';
+
+            $rawMin = $product['MINIMUM_AMOUNT']
+                ?? $product['MINIMUN_AMOUNT']
+                ?? $product['MINAMOUNT']
+                ?? $product['MIN_AMOUNT']
+                ?? null;
+
+            $rawMax = $product['MAXIMUM_AMOUNT']
+                ?? $product['MAXAMOUNT']
+                ?? $product['MAX_AMOUNT']
+                ?? $product['MAX']
+                ?? null;
+
+            $min = $rawMin !== null
+                ? (float) preg_replace('/[^0-9.]/', '', (string) $rawMin)
+                : 0;
+
+            $max = $rawMax !== null
+                ? (float) preg_replace('/[^0-9.]/', '', (string) $rawMax)
+                : 0;
+
+            $products[] = [
+                'id'   => (string) $id,
+                'type' => (string) $type,
+                'min'  => $min > 0 ? $min : 100,
+                'max'  => $max > 0 ? $max : 200000,
+            ];
+        }
+
+        return $products;
+    }
+
     /**
-     * Verify meter number.
-     * MeterType is now REQUIRED because the ClubKonnect API needs it.
-     * The frontend must select meter type BEFORE triggering verification.
+     * Extract the numeric API code for an electricity company.
+     *
+     * ClubKonnect expects a numeric string like "07" for the ElectricCompany
+     * parameter. The response may place this in various field names; we try
+     * known candidates before falling back to the ELECTRIC_COMPANY string.
      */
+    private function extractCompanyCode(array $company): ?string
+    {
+        // Fields that are typically the numeric API code
+        $numericCandidates = [
+            'COMPANY_CODE',
+            'DISCO_CODE',
+            'CODE',
+            'ELECTRIC_CODE',
+            'COMPANY_NO',
+            'DISCO_NO',
+            'PROVIDER_CODE',
+            'PROVIDER_ID',
+        ];
+
+        foreach ($numericCandidates as $field) {
+            $val = trim((string) ($company[$field] ?? ''));
+            if ($val !== '' && preg_match('/^\d+$/', $val)) {
+                return $val;
+            }
+        }
+
+        // ELECTRIC_COMPANY is numeric in some response formats (e.g. "07")
+        $ec = trim((string) ($company['ELECTRIC_COMPANY'] ?? ''));
+        if ($ec !== '' && preg_match('/^\d+$/', $ec)) {
+            return $ec;
+        }
+
+        // Non-numeric ELECTRIC_COMPANY string (e.g. "IBADAN_ELECTRIC") as
+        // last resort — some ClubKonnect endpoints also accept string codes.
+        if ($ec !== '') {
+            return $ec;
+        }
+
+        return null;
+    }
+
+    // -------------------------------------------------------------------------
+    // Verify meter number — MeterType is required by the ClubKonnect API.
+    // -------------------------------------------------------------------------
     public function verifyElectricityMeter(Request $request)
     {
         $request->validate([
             'electricCompany' => 'required|string',
             'meterNo'         => 'required|string',
-            'meterType'       => 'required|string', // e.g. "01" for Prepaid, "02" for Postpaid
+            'meterType'       => 'required|string',
         ]);
 
         try {
             $response = ClubKonnectHelper::verifyElectricityMeter(
                 $request->electricCompany,
                 $request->meterNo,
-                $request->meterType   // <-- now forwarded to the API
+                $request->meterType
             );
 
-            // Normalize customer name from various possible response keys
             $customerName = null;
             if (is_array($response)) {
                 foreach (['customer_name', 'CustomerName', 'customerName', 'Customer_Name', 'name'] as $key) {
@@ -57,7 +205,6 @@ class ElectricityController extends Controller
                 }
             }
 
-            // ClubKonnect returns "INVALID_METERNO" as the customer name on failure
             if (!empty($customerName) && strtolower($customerName) !== 'invalid_meterno') {
                 return response()->json([
                     'status'        => true,
@@ -67,12 +214,10 @@ class ElectricityController extends Controller
                 ]);
             }
 
-            // Extract a meaningful error message
             $errorMsg = 'Invalid meter number. Please check and try again.';
             if (is_array($response)) {
-                if (!empty($response['message'])) $errorMsg = $response['message'];
-                elseif (!empty($response['status']) && strtolower($response['status']) !== 'invalid_meterno') {
-                    $errorMsg = $response['status'];
+                if (!empty($response['message'])) {
+                    $errorMsg = $response['message'];
                 }
             }
 
@@ -83,10 +228,10 @@ class ElectricityController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Electricity meter verification exception', [
-                'user_id'         => auth()->id(),
-                'electric_company'=> $request->electricCompany,
-                'meter_masked'    => substr($request->meterNo, 0, 4) . '****',
-                'error'           => $e->getMessage(),
+                'user_id'          => auth()->id(),
+                'electric_company' => $request->electricCompany,
+                'meter_masked'     => substr($request->meterNo, 0, 4) . '****',
+                'error'            => $e->getMessage(),
             ]);
 
             return response()->json([
@@ -97,7 +242,9 @@ class ElectricityController extends Controller
     }
 
     /**
-     * Fetch packages for a given electricity provider (helper for any AJAX needs).
+     * Fetch packages for a given electricity provider (AJAX helper).
+     * Now that the blade loads packages from normalized plan data directly,
+     * this endpoint is mainly used for server-side amount validation.
      */
     public function getPackages(Request $request)
     {
@@ -106,57 +253,15 @@ class ElectricityController extends Controller
         ]);
 
         try {
-            $discos = ClubKonnectHelper::getElectricityDiscos();
+            $rawPlans = ClubKonnectHelper::getElectricityDiscos();
+            $plans    = $this->normalizePlans($rawPlans);
 
-            if (!is_array($discos) || count($discos) === 0) {
-                return response()->json([
-                    'status'   => false,
-                    'packages' => [],
-                    'message'  => 'No providers found. Please try again later.',
-                ]);
-            }
+            $match = collect($plans)->firstWhere('code', $request->electricCompany);
 
-            $packages = [];
-            foreach ($discos as $provider) {
-                if (!is_array($provider)) continue;
-
-                // Match by provider key or ELECTRIC_COMPANY field
-                $providerKey = $provider['ELECTRIC_COMPANY'] ?? $provider['PROVIDER_KEY'] ?? $provider['KEY'] ?? null;
-                if ((string)$providerKey !== (string)$request->electricCompany) continue;
-
-                $products = $provider['PRODUCT'] ?? $provider['products'] ?? [];
-                if (!is_array($products)) continue;
-
-                foreach ($products as $product) {
-                    if (!is_array($product)) continue;
-
-                    $productType = $product['PRODUCT_TYPE'] ?? $product['PRODUCT_NAME'] ?? $product['type'] ?? 'Meter';
-                    $productId   = $product['PRODUCT_ID'] ?? $product['PRODUCT_CODE'] ?? $product['PRODUCT_SNO'] ?? $product['ID'] ?? null;
-
-                    $minAmt = $product['MINIMUM_AMOUNT'] ?? $product['MINIMUN_AMOUNT'] ?? $product['MINAMOUNT'] ?? $product['MIN_AMOUNT'] ?? null;
-                    $maxAmt = $product['MAXIMUM_AMOUNT'] ?? $product['MAXAMOUNT'] ?? $product['MAX_AMOUNT'] ?? $product['MAX'] ?? null;
-
-                    $minAmt = $minAmt !== null ? (float) preg_replace('/[^0-9.]/', '', (string)$minAmt) : 100;
-                    $maxAmt = $maxAmt !== null ? (float) preg_replace('/[^0-9.]/', '', (string)$maxAmt) : 200000;
-
-                    if (!$minAmt || $minAmt <= 0) $minAmt = 100;
-                    if (!$maxAmt || $maxAmt <= 0) $maxAmt = 200000;
-
-                    $packages[] = [
-                        'id'   => $productId,
-                        'type' => $productType,
-                        'min'  => $minAmt,
-                        'max'  => $maxAmt,
-                    ];
-                }
-
-                break; // found provider, stop searching
-            }
-
-            if (count($packages) > 0) {
+            if ($match && !empty($match['products'])) {
                 return response()->json([
                     'status'   => true,
-                    'packages' => $packages,
+                    'packages' => $match['products'],
                     'message'  => 'Packages retrieved',
                 ]);
             }
@@ -185,13 +290,12 @@ class ElectricityController extends Controller
     {
         $validated = $request->validate([
             'electricCompany' => 'required|string',
-            'package'         => 'required|string', // meter type code e.g. "01"
+            'package'         => 'required|string',
             'meterNumber'     => 'required|string',
             'amount'          => 'required|numeric|min:100',
             'pin'             => 'required|string|size:4',
         ]);
 
-        // Verify transaction PIN before anything else
         try {
             PinHelper::verifyPin($request->pin);
         } catch (ValidationException $e) {
@@ -201,7 +305,6 @@ class ElectricityController extends Controller
             ], 400);
         }
 
-        // Lock wallet row to prevent race conditions
         $wallet = Wallet::where('user_id', auth()->id())->lockForUpdate()->first();
 
         if (!$wallet || $wallet->balance < $validated['amount']) {
@@ -217,48 +320,22 @@ class ElectricityController extends Controller
         DB::beginTransaction();
 
         try {
-            // Server-side min/max validation from provider product data
-            $discos      = ClubKonnectHelper::getElectricityDiscos();
+            // Server-side min/max validation from normalized plan data
+            $rawPlans     = ClubKonnectHelper::getElectricityDiscos();
+            $plans        = $this->normalizePlans($rawPlans);
+            $providerPlan = collect($plans)->firstWhere('code', $validated['electricCompany']);
             $foundProduct = null;
 
-            if (is_array($discos)) {
-                foreach ($discos as $provider) {
-                    $products = $provider['PRODUCT'] ?? $provider['products'] ?? [];
-                    if (!is_array($products)) continue;
-                    foreach ($products as $prod) {
-                        $pid = $prod['PRODUCT_ID'] ?? $prod['PRODUCT_CODE'] ?? $prod['PRODUCT_SNO'] ?? $prod['ID'] ?? null;
-                        if ($pid && (string)$pid === (string)$validated['package']) {
-                            $foundProduct = $prod;
-                            break 2;
-                        }
-                    }
-                }
+            if ($providerPlan) {
+                $foundProduct = collect($providerPlan['products'])
+                    ->firstWhere('id', $validated['package']);
             }
 
-            $minAllowed = 100;
-            $maxAllowed = 200000;
+            $minAllowed = $foundProduct['min'] ?? (float) $request->input('minAmount', 100);
+            $maxAllowed = $foundProduct['max'] ?? (float) $request->input('maxAmount', 200000);
 
-            if ($foundProduct) {
-                $rawMin = $foundProduct['MINIMUM_AMOUNT'] ?? $foundProduct['MINIMUN_AMOUNT'] ?? $foundProduct['MINAMOUNT'] ?? $foundProduct['MIN_AMOUNT'] ?? null;
-                $rawMax = $foundProduct['MAXIMUM_AMOUNT'] ?? $foundProduct['MAXAMOUNT'] ?? $foundProduct['MAX_AMOUNT'] ?? $foundProduct['MAX'] ?? null;
-
-                if ($rawMin !== null) {
-                    $parsed = (float) preg_replace('/[^0-9.]/', '', (string)$rawMin);
-                    if ($parsed > 0) $minAllowed = $parsed;
-                }
-                if ($rawMax !== null) {
-                    $parsed = (float) preg_replace('/[^0-9.]/', '', (string)$rawMax);
-                    if ($parsed > 0) $maxAllowed = $parsed;
-                }
-            }
-
-            // Fallback to client-submitted limits only if product not found server-side
-            if (!$foundProduct) {
-                $clientMin = (float) $request->input('minAmount', 100);
-                $clientMax = (float) $request->input('maxAmount', 200000);
-                if ($clientMin > 0) $minAllowed = $clientMin;
-                if ($clientMax > 0) $maxAllowed = $clientMax;
-            }
+            if ($minAllowed <= 0) $minAllowed = 100;
+            if ($maxAllowed <= 0) $maxAllowed = 200000;
 
             if ($validated['amount'] < $minAllowed) {
                 DB::rollBack();
@@ -276,24 +353,20 @@ class ElectricityController extends Controller
                 ], 400);
             }
 
-            // Call ClubKonnect API
             $response = ClubKonnectHelper::buyElectricity(
-                $validated['electricCompany'],
-                $validated['package'],      // MeterType (e.g. "01")
+                $validated['electricCompany'],  // numeric code e.g. "07"
+                $validated['package'],          // MeterType e.g. "01"
                 $validated['meterNumber'],
                 $validated['amount'],
                 $phoneNo,
                 $requestId
             );
 
-            // Determine success/failure
-            // ClubKonnect uses statuscode: 100 = ORDER_RECEIVED, 200 = ORDER_COMPLETED
             $statusCode = (string) ($response['statuscode'] ?? $response['StatusCode'] ?? '');
             $statusText = strtoupper($response['status'] ?? $response['Status'] ?? '');
             $accepted   = in_array($statusCode, ['100', '200'])
                 || in_array($statusText, ['ORDER_RECEIVED', 'ORDER_COMPLETED', 'SUCCESS']);
 
-            // Record transaction regardless of outcome for reconciliation
             Transaction::create([
                 'reference'    => $requestId,
                 'user_id'      => auth()->id(),
@@ -358,9 +431,6 @@ class ElectricityController extends Controller
         }
     }
 
-    /**
-     * Render success partial for AJAX display.
-     */
     public function renderSuccessPartial(Request $request)
     {
         $data = $request->validate([
