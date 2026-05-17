@@ -264,13 +264,18 @@ class ElectricityController extends Controller
             ], 400);
         }
 
+        // Use a fallback phone so ClubKonnect never receives an empty string
+        $phoneNo = auth()->user()->phone ?? '';
+        if (empty(trim($phoneNo))) {
+            $phoneNo = '08000000000'; // neutral fallback — ClubKonnect requires a non-empty value
+        }
+
         $requestId = Str::uuid()->toString();
-        $phoneNo   = auth()->user()->phone ?? '';
 
         DB::beginTransaction();
 
         try {
-            // Server-side min/max validation from normalized plan data
+            // Server-side min/max validation
             $rawPlans     = ClubKonnectHelper::getElectricityDiscos();
             $plans        = $this->normalizePlans($rawPlans);
             $providerPlan = collect($plans)->firstWhere('code', $validated['electricCompany']);
@@ -303,17 +308,35 @@ class ElectricityController extends Controller
                 ], 400);
             }
 
+            // Log exactly what we are sending to ClubKonnect
+            Log::info('Electricity purchase request', [
+                'user_id'          => auth()->id(),
+                'electric_company' => $validated['electricCompany'],
+                'package'          => $validated['package'],
+                'meter_masked'     => substr($validated['meterNumber'], 0, 4) . '****',
+                'amount'           => $validated['amount'],
+                'phone'            => $phoneNo,
+                'request_id'       => $requestId,
+            ]);
+
             $response = ClubKonnectHelper::buyElectricity(
-                $validated['electricCompany'],  // numeric code e.g. "07"
-                $validated['package'],          // MeterType e.g. "01"
+                $validated['electricCompany'],
+                $validated['package'],
                 $validated['meterNumber'],
                 $validated['amount'],
                 $phoneNo,
                 $requestId
             );
 
+            // Log the raw ClubKonnect response so we can see exactly what came back
+            Log::info('Electricity purchase raw response', [
+                'user_id'    => auth()->id(),
+                'request_id' => $requestId,
+                'response'   => $response,
+            ]);
+
             $statusCode = (string) ($response['statuscode'] ?? $response['StatusCode'] ?? '');
-            $statusText = strtoupper($response['status'] ?? $response['Status'] ?? '');
+            $statusText = strtoupper($response['status']   ?? $response['Status']     ?? '');
             $accepted   = in_array($statusCode, ['100', '200'])
                 || in_array($statusText, ['ORDER_RECEIVED', 'ORDER_COMPLETED', 'SUCCESS']);
 
@@ -340,7 +363,7 @@ class ElectricityController extends Controller
                     'message' => 'Electricity purchase successful.',
                     'data'    => [
                         'token'          => $response['metertoken'] ?? $response['token'] ?? '',
-                        'order_id'       => $response['orderid'] ?? $response['OrderID'] ?? '',
+                        'order_id'       => $response['orderid']    ?? $response['OrderID'] ?? '',
                         'meter_number'   => $validated['meterNumber'],
                         'amount'         => $validated['amount'],
                         'company'        => $validated['electricCompany'],
@@ -367,11 +390,8 @@ class ElectricityController extends Controller
             DB::rollBack();
 
             Log::error('Electricity purchase exception', [
-                'user_id'      => auth()->id(),
-                'meter_masked' => isset($validated['meterNumber']) ? substr($validated['meterNumber'], 0, 4) . '****' : null,
-                'amount'       => $validated['amount'] ?? null,
-                'company'      => $validated['electricCompany'] ?? null,
-                'error'        => $e->getMessage(),
+                'user_id' => auth()->id(),
+                'error'   => $e->getMessage(),
             ]);
 
             return response()->json([
