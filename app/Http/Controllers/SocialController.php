@@ -65,9 +65,12 @@ public function order(Request $request)
         $serviceName = $service->name;
         $rate        = (float)$service->rate;
 
-        // Cost per 1000 units + 5% markup
-        $baseAmount = ($rate / 1000) * $request->quantity;
-        $amount     = round($baseAmount * 1.05, 2);
+        // ✅ FIX: Use MoreThanPanelHelper::calculateCost() so the amount charged
+        // matches exactly what was shown to the user (admin client_price + markup percentage).
+        $mtpHelper    = new \App\Helpers\MoreThanPanelHelper();
+        $exchangeRate = 1500; // same default used in formatServiceForDisplay()
+        $costBreakdown = $mtpHelper->calculateCost($rate, $request->quantity, $exchangeRate, (string)$serviceId);
+        $amount = $costBreakdown['cost_local'];   // already rounded, includes admin markup
 
         // Lock wallet
         $wallet = Wallet::where('user_id', auth()->id())->lockForUpdate()->first();
@@ -99,7 +102,7 @@ public function order(Request $request)
         Transaction::create([
             'reference'    => 'SMM-' . strtoupper(uniqid()),
             'user_id'      => auth()->id(),
-            'type'         => 'social_boost',          // must match HistoryController query
+            'type'         => 'social_boost',
             'channel'      => 'MoreThanPanel',
             'provider'     => 'MoreThanPanel',
             'service_id'   => $serviceId,
@@ -107,18 +110,20 @@ public function order(Request $request)
             'service_logo' => $logo,
             'account'      => $request->link,
             'amount'       => $amount,
-            'status'       => 'pending',               // always pending until callback/check
-            'request_id'   => $mtpOrderId,             // MTP order ID — used for status checks
+            'status'       => 'pending',
+            'request_id'   => $mtpOrderId,
             'description'  => "Social Boost: {$serviceName} — " . number_format($request->quantity) . " units",
             'response'     => json_encode([
-                'link'         => $request->link,
-                'quantity'     => $request->quantity,
-                'service_type' => $service->type ?? 'Default',
-                'category'     => $category,
-                'refill'       => $service->refill ?? false,
-                'cancel'       => $service->cancel ?? false,
-                'mtp_order_id' => $mtpOrderId,
-                'order_placed_at' => now()->toIso8601String(),
+                'link'             => $request->link,
+                'quantity'         => $request->quantity,
+                'service_type'     => $service->type ?? 'Default',
+                'category'         => $category,
+                'refill'           => $service->refill ?? false,
+                'cancel'           => $service->cancel ?? false,
+                'mtp_order_id'     => $mtpOrderId,
+                'cost_source'      => $costBreakdown['source'],         // 'product_client_price' or 'api_rate_with_exchange'
+                'percentage_applied' => $costBreakdown['percentage_applied'],
+                'order_placed_at'  => now()->toIso8601String(),
             ]),
         ]);
 
