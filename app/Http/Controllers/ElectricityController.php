@@ -34,43 +34,37 @@ class ElectricityController extends Controller
             return [];
         }
 
-        // Log a sample so we can inspect field names during development
-        $sample = array_slice($rawPlans, 0, 1);
-        Log::info('ClubKonnect electricity discos raw sample', ['sample' => $sample]);
-
         $normalized = [];
-        $isIndexed  = array_is_list($rawPlans);
 
-        $entries = $isIndexed
-            ? array_map(fn ($c) => [null, $c], $rawPlans)
-            : array_map(null, array_keys($rawPlans), array_values($rawPlans));
+        // Response is a keyed object: { "EKO_ELECTRIC": [ { "ID": "01", "NAME": "...", "PRODUCT": [...] } ] }
+        foreach ($rawPlans as $key => $companyWrapper) {
 
-        foreach ($entries as [$stringKey, $company]) {
+            // Each value is an array containing one company object — unwrap it
+            if (!is_array($companyWrapper)) {
+                continue;
+            }
+
+            // Handle both [ {...} ] (wrapped) and { ... } (direct object)
+            $company = isset($companyWrapper[0]) ? $companyWrapper[0] : $companyWrapper;
+
             if (!is_array($company)) {
                 continue;
             }
 
-            $code = $this->extractCompanyCode($company) ?? $stringKey;
-            if (!$code) {
+            $code = trim((string) ($company['ID'] ?? ''));
+            if ($code === '') {
                 continue;
             }
 
-            $name = $company['NAME']
-                ?? $company['COMPANY_NAME']
-                ?? $company['DISCO_NAME']
-                ?? $stringKey
-                ?? 'Unknown Provider';
+            $name = trim((string) ($company['NAME'] ?? $key));
 
-            $rawProducts = $company['PRODUCT']
-                ?? $company['PRODUCTS']
-                ?? $company['products']
-                ?? [];
+            $rawProducts = $company['PRODUCT'] ?? $company['PRODUCTS'] ?? [];
 
             $products = $this->normalizeProducts((array) $rawProducts);
 
             $normalized[] = [
-                'code'     => (string) $code,
-                'name'     => (string) $name,
+                'code'     => $code,   // "01", "02", etc. — numeric ID the API expects
+                'name'     => $name,
                 'products' => $products,
             ];
         }
@@ -80,6 +74,11 @@ class ElectricityController extends Controller
 
     private function normalizeProducts(array $rawProducts): array
     {
+        // Guard: single product object instead of array of objects
+        if (!empty($rawProducts) && isset($rawProducts['PRODUCT_ID'])) {
+            $rawProducts = [$rawProducts];
+        }
+
         $products = [];
 
         foreach ($rawProducts as $product) {
@@ -87,45 +86,25 @@ class ElectricityController extends Controller
                 continue;
             }
 
-            $id = $product['PRODUCT_ID']
-                ?? $product['PRODUCT_CODE']
-                ?? $product['PRODUCT_SNO']
-                ?? $product['ID']
-                ?? null;
-
-            if ($id === null || $id === '') {
+            $id = trim((string) ($product['PRODUCT_ID'] ?? $product['ID'] ?? ''));
+            if ($id === '') {
                 continue;
             }
 
-            $type = $product['PRODUCT_TYPE']
-                ?? $product['PRODUCT_TYPE_NAME']
+            // Capitalise the type for display e.g. "prepaid" → "Prepaid"
+            $type = ucfirst(strtolower(
+                $product['PRODUCT_TYPE']
                 ?? $product['PRODUCT_NAME']
-                ?? $product['PRODUCT_DESCRIPTION']
-                ?? 'Meter';
+                ?? $product['TYPE']
+                ?? 'Meter'
+            ));
 
-            $rawMin = $product['MINIMUM_AMOUNT']
-                ?? $product['MINIMUN_AMOUNT']
-                ?? $product['MINAMOUNT']
-                ?? $product['MIN_AMOUNT']
-                ?? null;
-
-            $rawMax = $product['MAXIMUM_AMOUNT']
-                ?? $product['MAXAMOUNT']
-                ?? $product['MAX_AMOUNT']
-                ?? $product['MAX']
-                ?? null;
-
-            $min = $rawMin !== null
-                ? (float) preg_replace('/[^0-9.]/', '', (string) $rawMin)
-                : 0;
-
-            $max = $rawMax !== null
-                ? (float) preg_replace('/[^0-9.]/', '', (string) $rawMax)
-                : 0;
+            $min = (float) ($product['MINAMOUNT'] ?? $product['MIN_AMOUNT'] ?? $product['MINIMUM_AMOUNT'] ?? 100);
+            $max = (float) ($product['MAXAMOUNT'] ?? $product['MAX_AMOUNT'] ?? $product['MAXIMUM_AMOUNT'] ?? 200000);
 
             $products[] = [
-                'id'   => (string) $id,
-                'type' => (string) $type,
+                'id'   => $id,
+                'type' => $type,
                 'min'  => $min > 0 ? $min : 100,
                 'max'  => $max > 0 ? $max : 200000,
             ];
@@ -134,38 +113,15 @@ class ElectricityController extends Controller
         return $products;
     }
 
-    /**
-     * Extract the numeric API code for an electricity company.
-     *
-     * ClubKonnect expects a numeric string like "07" for the ElectricCompany
-     * parameter. The response may place this in various field names; we try
-     * known candidates before falling back to the ELECTRIC_COMPANY string.
-     */
     private function extractCompanyCode(array $company): ?string
     {
-        // V2 API: ELECTRIC_COMPANY holds the numeric code (e.g. "07")
-        $ec = trim((string) ($company['ELECTRIC_COMPANY'] ?? ''));
-        if ($ec !== '') {
-            return $ec;
-        }
+        // No longer used by normalizePlans() — kept for any direct callers
+        $id = trim((string) ($company['ID'] ?? ''));
+        if ($id !== '') return $id;
 
-        // Fallback: check other known numeric-code field names
-        $numericCandidates = [
-            'COMPANY_CODE',
-            'DISCO_CODE',
-            'CODE',
-            'ELECTRIC_CODE',
-            'COMPANY_NO',
-            'DISCO_NO',
-            'PROVIDER_CODE',
-            'PROVIDER_ID',
-        ];
-
-        foreach ($numericCandidates as $field) {
+        foreach (['ELECTRIC_COMPANY', 'COMPANY_CODE', 'CODE', 'DISCO_CODE'] as $field) {
             $val = trim((string) ($company[$field] ?? ''));
-            if ($val !== '') {
-                return $val;
-            }
+            if ($val !== '') return $val;
         }
 
         return null;
