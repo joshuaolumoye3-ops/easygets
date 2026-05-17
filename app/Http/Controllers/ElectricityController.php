@@ -143,7 +143,13 @@ class ElectricityController extends Controller
      */
     private function extractCompanyCode(array $company): ?string
     {
-        // Fields that are typically the numeric API code
+        // V2 API: ELECTRIC_COMPANY holds the numeric code (e.g. "07")
+        $ec = trim((string) ($company['ELECTRIC_COMPANY'] ?? ''));
+        if ($ec !== '') {
+            return $ec;
+        }
+
+        // Fallback: check other known numeric-code field names
         $numericCandidates = [
             'COMPANY_CODE',
             'DISCO_CODE',
@@ -157,21 +163,9 @@ class ElectricityController extends Controller
 
         foreach ($numericCandidates as $field) {
             $val = trim((string) ($company[$field] ?? ''));
-            if ($val !== '' && preg_match('/^\d+$/', $val)) {
+            if ($val !== '') {
                 return $val;
             }
-        }
-
-        // ELECTRIC_COMPANY is numeric in some response formats (e.g. "07")
-        $ec = trim((string) ($company['ELECTRIC_COMPANY'] ?? ''));
-        if ($ec !== '' && preg_match('/^\d+$/', $ec)) {
-            return $ec;
-        }
-
-        // Non-numeric ELECTRIC_COMPANY string (e.g. "IBADAN_ELECTRIC") as
-        // last resort — some ClubKonnect endpoints also accept string codes.
-        if ($ec !== '') {
-            return $ec;
         }
 
         return null;

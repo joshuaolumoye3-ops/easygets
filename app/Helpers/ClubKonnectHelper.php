@@ -83,23 +83,29 @@ class ClubKonnectHelper
      */
     public static function getElectricityDiscos(): array
     {
-        $endpoint = 'APIElectricityDiscosV1.asp';
+        // V2 endpoint returns numeric ELECTRIC_COMPANY codes (e.g. "07")
+        $endpoint = 'APIElectricityDiscosV2.asp';
 
         try {
             $response = Http::timeout(15)
                 ->withoutVerifying()
                 ->acceptJson()
-                ->get(self::getBaseUrl() . '/' . $endpoint, [
-                    'UserID' => self::getUserId(),
-                ]);
+                ->get(self::getBaseUrl() . '/' . $endpoint, self::credentials()); // Pass full credentials, not just UserID
 
             if ($response->successful()) {
                 $data = $response->json();
+
+                Log::info('ClubKonnect: getElectricityDiscos raw response', [
+                    'keys'   => is_array($data) ? array_keys($data) : 'not-array',
+                    'sample' => is_array($data) ? array_slice($data, 0, 2) : $data,
+                ]);
+
                 return $data['ELECTRIC_COMPANY'] ?? (is_array($data) ? $data : []);
             }
 
             Log::warning('ClubKonnect: getElectricityDiscos non-success', [
                 'http_status' => $response->status(),
+                'body'        => substr($response->body(), 0, 500),
             ]);
             return [];
 
