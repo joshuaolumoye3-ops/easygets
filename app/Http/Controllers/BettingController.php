@@ -18,36 +18,91 @@ use Illuminate\Support\Facades\Log;
 class BettingController extends Controller
 {
     public function show()
-{
-    $wallet = Wallet::where('user_id', auth()->id())->first();
-    $cacheKey = 'nellobytes_betting_companies';
+    {
+        $wallet = Wallet::where('user_id', auth()->id())->first();
 
-    $bettingCompanies = Cache::get($cacheKey, []);
-
-    if (!is_array($bettingCompanies) || count($bettingCompanies) === 0) {
-        $bettingCompanies = Cache::remember($cacheKey, 3600, function () {
+        $bettingCompanies = Cache::remember('clubkonnect_betting_companies', 3600, function () {
             try {
                 $response = ClubKonnectHelper::getBettingCompanies();
-
-                if (isset($response['BETTING_COMPANY']) && is_array($response['BETTING_COMPANY']) && count($response['BETTING_COMPANY']) > 0) {
-                    return $response['BETTING_COMPANY'];
-                }
-
-                return $this->getDefaultBettingCompanies();
+                return $this->normalizeBettingCompanies($response);
             } catch (\Exception $e) {
                 Log::error('Error fetching betting companies: ' . $e->getMessage());
                 return $this->getDefaultBettingCompanies();
             }
         });
+
+        if (empty($bettingCompanies)) {
+            $bettingCompanies = $this->getDefaultBettingCompanies();
+        }
+
+        return view('users.betting', compact('wallet', 'bettingCompanies'));
     }
 
-    if (!is_array($bettingCompanies) || count($bettingCompanies) === 0) {
-        $bettingCompanies = $this->getDefaultBettingCompanies();
-    }
+    private function normalizeBettingCompanies(array $raw): array
+    {
+        $normalized = [];
 
-    // dd($bettingCompanies); // removed for production
-    return view('users.betting', compact('wallet', 'bettingCompanies'));
-}
+        // V2 returns: { "BETTING_COMPANY": [ { "PRODUCT_CODE": "...", "PRODUCT_NAME": "...", ... } ] }
+        $entries = $raw['BETTING_COMPANY'] ?? $raw['SERVICES'] ?? $raw;
+
+        if (!is_array($entries)) return [];
+
+        if (array_is_list($entries)) {
+            // Flat array — the actual V2 format
+            foreach ($entries as $company) {
+                if (!is_array($company)) continue;
+
+                $code = $company['PRODUCT_CODE'] ?? $company['CODE'] ?? $company['code'] ?? null;
+                // PRODUCT_NAME is the correct field in V2
+                $name = $company['PRODUCT_NAME'] ?? $company['NAME'] ?? $company['DESCRIPTION'] ?? $company['name'] ?? $code;
+                $min  = (int) ($company['MINAMOUNT'] ?? $company['MIN_AMOUNT'] ?? 100);
+                $max  = (int) ($company['MAXAMOUNT'] ?? $company['MAX_AMOUNT'] ?? 50000);
+
+                if (!$code) continue;
+
+                $normalized[] = [
+                    'code' => (string) $code,
+                    'name' => (string) $name,
+                    'min'  => $min,
+                    'max'  => $max,
+                ];
+            }
+        } else {
+            // Keyed object fallback: { "BET9JA": [ {...} ] }
+            foreach ($entries as $key => $wrapper) {
+                if (!is_array($wrapper)) continue;
+                $company = isset($wrapper[0]) ? $wrapper[0] : $wrapper;
+                if (!is_array($company)) continue;
+
+                $code = $company['PRODUCT_CODE'] ?? $company['CODE'] ?? strtolower($key);
+                $name = $company['PRODUCT_NAME'] ?? $company['NAME'] ?? $company['DESCRIPTION'] ?? $key;
+                $min  = (int) ($company['MINAMOUNT'] ?? 100);
+                $max  = (int) ($company['MAXAMOUNT'] ?? 50000);
+
+                $normalized[] = [
+                    'code' => (string) $code,
+                    'name' => (string) $name,
+                    'min'  => $min,
+                    'max'  => $max,
+                ];
+            }
+        }
+
+        // Merge with default companies — add any defaults whose code isn't already in API results
+        $apiCodes    = array_column($normalized, 'code');
+        $defaults    = $this->getDefaultBettingCompanies();
+
+        foreach ($defaults as $default) {
+            if (!in_array($default['code'], $apiCodes)) {
+                $normalized[] = $default;
+            }
+        }
+
+        // Sort alphabetically by name
+        usort($normalized, fn($a, $b) => strcasecmp($a['name'], $b['name']));
+
+        return $normalized;
+    }
 
 
     public function fund_account(Request $request)
@@ -578,26 +633,29 @@ class BettingController extends Controller
         return $providers[strtolower($code)] ?? ucfirst($code);
     }
 
-    private function getDefaultBettingCompanies()
+    private function getDefaultBettingCompanies(): array
     {
-        // Fallback betting companies if API fails
         return [
-            ['code' => 'bet9ja', 'name' => 'Bet9ja'],
-            ['code' => 'betking', 'name' => 'BetKing'],
-            ['code' => '1xbet', 'name' => '1XBet'],
-            ['code' => 'nairabet', 'name' => 'NairaBet'],
-            ['code' => 'betway', 'name' => 'Betway'],
-            ['code' => 'merrybet', 'name' => 'MerryBet'],
-            ['code' => 'msport', 'name' => 'MSport'],
-            ['code' => 'naijabet', 'name' => 'NaijaBet'],
-            ['code' => 'bangbet', 'name' => 'BangBet'],
-            ['code' => 'supabet', 'name' => 'SupaBet'],
-            ['code' => 'betland', 'name' => 'BetLand'],
-            ['code' => 'betlion', 'name' => 'BetLion'],
-            ['code' => 'mlotto', 'name' => 'MLotto'],
-            ['code' => 'green-lotto', 'name' => 'Green Lotto'],
-            ['code' => 'western-lotto', 'name' => 'Western Lotto'],
-            ['code' => 'hallabet', 'name' => 'HallaBet'],
+            ['code' => 'prd-bet9ja',          'name' => 'Bet9ja',          'min' => 100, 'max' => 50000],
+            ['code' => 'prd-betking',          'name' => 'BetKing',         'min' => 100, 'max' => 50000],
+            ['code' => 'prd-betway',           'name' => 'Betway',          'min' => 100, 'max' => 50000],
+            ['code' => 'prd-nairabet',         'name' => 'NairaBet',        'min' => 100, 'max' => 50000],
+            ['code' => 'prd-merrybet',         'name' => 'MerryBet',        'min' => 100, 'max' => 50000],
+            ['code' => 'prd-msport',           'name' => 'MSport',          'min' => 100, 'max' => 50000],
+            ['code' => 'prd-bangbet',          'name' => 'BangBet',         'min' => 100, 'max' => 50000],
+            ['code' => 'prd-supabet',          'name' => 'SupaBet',         'min' => 100, 'max' => 50000],
+            ['code' => 'prd-betlion',          'name' => 'BetLion',         'min' => 100, 'max' => 50000],
+            ['code' => 'prd-paripesa',         'name' => 'Paripesa',        'min' => 100, 'max' => 50000],
+            ['code' => 'prd-22bet',            'name' => '22Bet',           'min' => 100, 'max' => 50000],
+            ['code' => 'prd-betwinner',        'name' => 'BetWinner',       'min' => 100, 'max' => 50000],
+            ['code' => 'prd-cloudbet',         'name' => 'Cloudbet',        'min' => 100, 'max' => 50000],
+            ['code' => 'prd-western-lotto',    'name' => 'Western Lotto',   'min' => 100, 'max' => 50000],
+            ['code' => 'prd-green-lotto',      'name' => 'Green Lotto',     'min' => 100, 'max' => 50000],
+            ['code' => 'prd-hallabet',         'name' => 'HallaBet',        'min' => 100, 'max' => 50000],
+            ['code' => 'prd-mlotto',           'name' => 'MLotto',          'min' => 100, 'max' => 50000],
+            ['code' => 'prd-bet9ja-agent',     'name' => 'Bet9ja Agent',    'min' => 100, 'max' => 50000],
         ];
     }
+
+    
 }

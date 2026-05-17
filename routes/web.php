@@ -135,10 +135,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/electricity/purchase', [ElectricityController::class, 'purchase'])->middleware('check.user.not.blocked')->name('electricity.purchase');
 
     // Temporary — remove after debugging
-Route::get('/debug-discos', function () {
-    $raw = \App\Helpers\ClubKonnectHelper::getElectricityDiscos();
-    return response()->json($raw);
-})->middleware('auth');
+    // Route::get('/debug-discos', function () {
+    //     $raw = \App\Helpers\ClubKonnectHelper::getElectricityDiscos();
+    //     return response()->json($raw);
+    // })->middleware('auth');
 
     Route::get('/social-boost', [SocialBoostController::class, 'index'])->middleware('check.user.not.blocked', 'check.service.active:social-boost')->name('social-boost.index');
 
