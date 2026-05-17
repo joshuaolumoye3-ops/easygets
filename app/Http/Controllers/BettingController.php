@@ -287,19 +287,28 @@ class BettingController extends Controller
                 $response = ['status' => false, 'message' => 'Invalid API response'];
             }
 
-            $statusCode = $response['statuscode'] ?? $response['StatusCode'] ?? null;
-            $orderId = $response['orderid'] ?? $response['OrderID'] ?? $reference;
-            $rawStatus = strtoupper(trim($response['status'] ?? $response['Status'] ?? ''));
-            $message = $response['message'] ?? $response['Message'] ?? 'Unknown response';
-            $remark = $response['remark'] ?? $response['Remark'] ?? $message;
+            // --- Determine transaction state ---
+            $statusCode = (string) ($response['statuscode'] ?? $response['StatusCode'] ?? '');
+            $rawStatus  = strtoupper(trim($response['status'] ?? $response['Status'] ?? ''));
+            $message    = $response['message'] ?? $response['Message'] ?? 'Unknown response';
+            $remark     = $response['remark']  ?? $response['Remark']  ?? $message;
+            $orderId    = $response['orderid'] ?? $response['OrderID'] ?? $reference;
 
-            // --- 🟢 Determine transaction state ---
             $status = match (true) {
-                in_array($statusCode, ['200', 200]),
-                in_array($rawStatus, ['SUCCESS', 'SUCCESSFUL', 'ORDER_COMPLETED']) => 'success',
+                // Fully completed
+                in_array($statusCode, ['200']),
+                in_array($rawStatus, ['SUCCESS', 'SUCCESSFUL', 'ORDER_COMPLETED'])
+                    => 'success',
 
-                in_array($statusCode, ['100', 100]),
-                in_array($rawStatus, ['PENDING', 'ORDER_RECEIVED', 'ORDER_ONHOLD']) => 'pending',
+                // ORDER_RECEIVED (100) = accepted and queued — treat as success for betting
+                // ClubKonnect processes these immediately; final confirmation comes via callback
+                in_array($statusCode, ['100']),
+                in_array($rawStatus, ['ORDER_RECEIVED'])
+                    => 'success',
+
+                // Genuinely async / on-hold
+                in_array($rawStatus, ['ORDER_ONHOLD', 'PENDING'])
+                    => 'pending',
 
                 default => 'failed',
             };
@@ -331,30 +340,21 @@ class BettingController extends Controller
             if (in_array($status, ['success', 'pending'])) {
                 DB::commit();
 
-                Log::info('Betting transaction successful', [
-                    'reference' => $reference,
-                    'order_id' => $orderId,
-                    'status' => $status,
-                    'user_id' => auth()->id(),
-                ]);
-
                 return response()->json([
-                    'success' => true,
-                    'title' => $status === 'success' ? 'Funding Successful' : 'Funding Received',
-                    'message' => $status === 'success'
-                        ? 'Your betting account has been funded successfully!'
-                        : 'Your betting fund request has been received and is being processed.',
-                    'data' => [
-                        'reference' => $reference,
-                        'order_id' => $orderId,
+                    'status'  => true,
+                    'title'   => 'Funding Successful',
+                    'message' => 'Your betting account has been funded successfully.',
+                    'data'    => [
+                        'reference'          => $reference,
+                        'order_id'           => $orderId,
                         'transaction_status' => $status,
-                        'amount' => $data['amount'],
-                        'new_balance' => $wallet->fresh()->balance,
-                        'provider' => $this->getBettingProviderName($data['betting_company']),
-                        'customer_id' => $data['customer_id'],
-                        'timestamp' => now()->toDateTimeString(),
+                        'amount'             => $data['amount'],
+                        'new_balance'        => $wallet->fresh()->balance,
+                        'provider'           => $this->getBettingProviderName($data['betting_company']),
+                        'customer_id'        => $data['customer_id'],
+                        'timestamp'          => now()->toDateTimeString(),
                     ],
-                ], 200);
+                ]);
             }
 
             // --- 🔴 FAILED - Refund and rollback ---
