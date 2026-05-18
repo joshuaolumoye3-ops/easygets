@@ -3,33 +3,32 @@
 @section('title', 'Data Purchase')
 
 @section('content')
-{{-- {{dd($plans)}} --}}
+
 <div class="max-w-xl mx-auto py-8 font-[Inter] bg-white mt-16 md:mt-0 pt-0">
     <div class="container mx-auto px-4 py-8 max-w-md w-full">
 
         <!-- Header -->
         <div class="relative flex items-center justify-center mb-8 sm:mb-12">
             <a href="dashboard" class="absolute left-0 text-gray-600 hover:text-gray-800">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
             </a>
             <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Data Purchase</h1>
         </div>
 
-        <!-- Airtime Purchase Form -->
-        <form action="{{ route('data.purchase') }}" method="POST" class="space-y-8">
+        <!-- Data Purchase Form -->
+        <form id="dataPurchaseForm" action="{{ route('data.purchase') }}" method="POST" class="space-y-8">
             @csrf
 
             <!-- Network Selection -->
             <div class="pt-6 lg:pt-0">
-                <label for="network" class="block text-sm font-semibold text-gray-700 mb-2">Network</label>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Network</label>
                 <div class="relative">
                     <input type="hidden" name="network" id="networkInput">
-                    <select 
-                        id="network" 
-                        class="custom-select w-full appearance-none px-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-gray-500 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition duration-200"
-                    >
+                    <select id="network"
+                        class="custom-select w-full appearance-none px-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-gray-500 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition duration-200">
                         <option value="" disabled selected>Choose A Network</option>
                         <option value="mtn">MTN</option>
                         <option value="glo">Glo</option>
@@ -38,19 +37,19 @@
                     </select>
                     <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            <path fill-rule="evenodd"
+                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                clip-rule="evenodd" />
                         </svg>
                     </div>
                 </div>
             </div>
 
-            <!-- Type Selection -->
+            <!-- Plan Duration Selection -->
             <div class="pt-6 lg:pt-0">
-                <label for="type" class="block text-sm font-semibold text-gray-700 mb-2">Plan Duration</label>
-                <div 
-                    id="typeSelect" 
-                    class="custom-select w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-gray-500 cursor-pointer focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200"
-                >
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Plan Duration</label>
+                <div id="typeSelect"
+                    class="custom-select w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-gray-500 cursor-pointer focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200">
                     Choose Plan Duration
                 </div>
                 <input type="hidden" name="data_type" id="typeInput">
@@ -58,36 +57,26 @@
 
             <!-- Package Selection -->
             <div class="pt-6 lg:pt-0">
-                <label for="package" class="block text-sm font-semibold text-gray-700 mb-2">Package</label>
-                <div 
-                    id="packageSelect" 
-                    class="custom-select w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-gray-500 cursor-pointer focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200"
-                >
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Package</label>
+                <div id="packageSelect"
+                    class="custom-select w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-gray-500 cursor-pointer focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200">
                     Choose a Package
                 </div>
-                <!-- Hidden input to hold the selected PRODUCT_CODE -->
                 <input type="hidden" name="data_plan" id="packageInput">
                 <input type="hidden" name="amount" id="amountInput">
             </div>
 
-            <!-- Recipient Input -->
+            <!-- Recipient -->
             <div class="pt-6 lg:pt-0">
                 <label for="recipient" class="block text-sm font-semibold text-gray-700 mb-2">Recipient</label>
-                <input 
-                    type="tel" 
-                    id="recipient" 
-                    name="recipient" 
-                    placeholder="Phone Number"
-                    class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-full placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition duration-200"
-                >
+                <input type="tel" id="recipient" name="recipient" placeholder="Phone Number"
+                    class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-full placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition duration-200">
             </div>
 
-            <!-- Submit Button -->
-             <div class="pt-32 lg:pt-20 justify-center flex items-center">
-                <button 
-                    type="submit"
-                    class="w-full lg:w-52 bg-brand-green text-white font-bold py-3 px-4 rounded-lg hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700 transition duration-200 shadow-lg shadow-teal-700/20"
-                >
+            <!-- Submit -->
+            <div class="pt-32 lg:pt-20 justify-center flex items-center">
+                <button type="submit"
+                    class="w-full lg:w-52 bg-brand-green text-white font-bold py-3 px-4 rounded-lg hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-700 transition duration-200 shadow-lg shadow-teal-700/20">
                     Pay Now
                 </button>
             </div>
@@ -95,736 +84,653 @@
     </div>
 </div>
 
-<div id="networkModal" class="fixed inset-0 z-50 flex items-end justify-center hidden modal-overlay bg-black/60 opacity-0 transition-opacity duration-300">
-    <div class="rounded-t-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden transform transition-all duration-300 ease-out translate-y-full h-1/2" id="modalContent">
-        <div class="px-6 py-4 border-b border-gray-200">
+<!-- ===================== NETWORK MODAL ===================== -->
+<div id="networkModal"
+    class="fixed inset-0 z-50 flex items-end justify-center hidden modal-overlay bg-black/60 opacity-0 transition-opacity duration-300">
+    <div class="rounded-t-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden transform transition-all duration-300 ease-out translate-y-full h-1/2"
+        id="modalContent">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-800">
             <h3 class="text-lg font-semibold text-white text-center">Choose a Network</h3>
         </div>
         <div class="bg-white p-4 h-full overflow-y-auto pb-16">
             <ul class="space-y-2">
-                <li class="flex items-center p-3 rounded-lg cursor-pointer border-b border-gray-200-5 pt hover:bg-gray-100 transition duration-150 network-option" data-value="airtel">
-                    <svg class="w-6 h-6 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd" d="M17.778 8.222c-4.296-4.296-11.264-4.296-15.56 0L2 8.444l.222.222c3.904 3.904 10.232 3.904 14.136 0l.222-.222-.222-.222zM10 12a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
-                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM10 4a6 6 0 100 12 6 6 0 000-12z" fill-rule="evenodd" clip-rule="evenodd"></path>
-                    </svg>
+                <li class="flex items-center p-3 rounded-lg cursor-pointer border-b border-gray-100 hover:bg-gray-50 transition duration-150 network-option"
+                    data-value="airtel" data-label="Airtel NG Data">
+                    <span
+                        class="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold text-sm mr-3">A</span>
                     <span class="text-gray-800 font-medium">Airtel NG Data</span>
                 </li>
-                <li class="flex items-center p-3 rounded-lg cursor-pointer border-b border-gray-200 pt-5 hover:bg-gray-100 transition duration-150 network-option" data-value="mtn">
-                    <svg class="w-6 h-6 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd" d="M17.778 8.222c-4.296-4.296-11.264-4.296-15.56 0L2 8.444l.222.222c3.904 3.904 10.232 3.904 14.136 0l.222-.222-.222-.222zM10 12a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
-                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM10 4a6 6 0 100 12 6 6 0 000-12z" fill-rule="evenodd" clip-rule="evenodd"></path>
-                    </svg>
+                <li class="flex items-center p-3 rounded-lg cursor-pointer border-b border-gray-100 hover:bg-gray-50 transition duration-150 network-option"
+                    data-value="mtn" data-label="MTN NG Data">
+                    <span
+                        class="w-8 h-8 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center font-bold text-sm mr-3">M</span>
                     <span class="text-gray-800 font-medium">MTN NG Data</span>
                 </li>
-                <li class="flex items-center p-3 rounded-lg cursor-pointer border-b border-gray-200 pt-5 hover:bg-gray-100 transition duration-150 network-option" data-value="9mobile">
-                    <svg class="w-6 h-6 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd" d="M17.778 8.222c-4.296-4.296-11.264-4.296-15.56 0L2 8.444l.222.222c3.904 3.904 10.232 3.904 14.136 0l.222-.222-.222-.222zM10 12a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
-                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM10 4a6 6 0 100 12 6 6 0 000-12z" fill-rule="evenodd" clip-rule="evenodd"></path>
-                    </svg>
+                <li class="flex items-center p-3 rounded-lg cursor-pointer border-b border-gray-100 hover:bg-gray-50 transition duration-150 network-option"
+                    data-value="9mobile" data-label="9Mobile NG Data">
+                    <span
+                        class="w-8 h-8 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-bold text-sm mr-3">9</span>
                     <span class="text-gray-800 font-medium">9Mobile NG Data</span>
                 </li>
-                <li class="flex items-center p-3 rounded-lg cursor-pointer border-b border-gray-200 pt-5 hover:bg-gray-100 transition duration-150 network-option" data-value="glo">
-                    <svg class="w-6 h-6 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd" d="M17.778 8.222c-4.296-4.296-11.264-4.296-15.56 0L2 8.444l.222.222c3.904 3.904 10.232 3.904 14.136 0l.222-.222-.222-.222zM10 12a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
-                        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM10 4a6 6 0 100 12 6 6 0 000-12z" fill-rule="evenodd" clip-rule="evenodd"></path>
-                    </svg>
+                <li class="flex items-center p-3 rounded-lg cursor-pointer hover:bg-gray-50 transition duration-150 network-option"
+                    data-value="glo" data-label="Glo NG Data">
+                    <span
+                        class="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-bold text-sm mr-3">G</span>
                     <span class="text-gray-800 font-medium">Glo NG Data</span>
                 </li>
             </ul>
         </div>
     </div>
 </div>
-<!-- Type Modal -->
-<div id="typeModal" class="fixed inset-0 z-50 flex items-end justify-center hidden modal-overlay bg-black/60 opacity-0 transition-opacity duration-300">
-    <div id="typeModalContent" class="rounded-t-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden transform transition-all duration-300 ease-out translate-y-full h-auto pb-16">
-        <div class="px-6 py-4 pb-5">
-            <h3 id="typeModalTitle" class="text-lg font-semibold text-white text-center">Choose Plan Duration</h3>   
+
+<!-- ===================== TYPE MODAL ===================== -->
+<div id="typeModal"
+    class="fixed inset-0 z-50 flex items-end justify-center hidden modal-overlay bg-black/60 opacity-0 transition-opacity duration-300">
+    <div id="typeModalContent"
+        class="rounded-t-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden transform transition-all duration-300 ease-out translate-y-full h-auto pb-16">
+        <div class="px-6 py-4 pb-5 bg-gray-800">
+            <h3 id="typeModalTitle" class="text-lg font-semibold text-white text-center">Choose Plan Duration</h3>
         </div>
-        <div class="bg-white p-4 overflow-y-auto">
-            <ul id="typeList" class="space-y-2"></ul>
+        <div class="bg-white p-4 overflow-y-auto max-h-96">
+            <ul id="typeList" class="space-y-1"></ul>
         </div>
     </div>
 </div>
 
-<!-- Package Modal -->
-<div id="packageModal" class="fixed inset-0 z-50 flex items-end justify-center hidden modal-overlay bg-black/60 opacity-0 transition-opacity duration-300">
-    <div id="packageModalContent" class="rounded-t-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden transform transition-all duration-300 ease-out translate-y-full h-2/3 pb-16">
-        <div class="px-6 py-4 pb-5">
-            <h3 id="packageModalTitle" class="text-lg font-semibold text-white text-center">Choose a Package</h3>   
+<!-- ===================== PACKAGE MODAL ===================== -->
+<div id="packageModal"
+    class="fixed inset-0 z-50 flex items-end justify-center hidden modal-overlay bg-black/60 opacity-0 transition-opacity duration-300">
+    <div id="packageModalContent"
+        class="rounded-t-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden transform transition-all duration-300 ease-out translate-y-full pb-16"
+        style="max-height: 70vh;">
+        <div class="px-6 py-4 pb-5 bg-gray-800">
+            <h3 id="packageModalTitle" class="text-lg font-semibold text-white text-center">Choose a Package</h3>
         </div>
-        <div class="bg-white p-4 h-full overflow-y-auto">
-            <ul id="packageList" class="space-y-2"></ul>
+        <div class="bg-white p-4 overflow-y-auto" style="max-height: calc(70vh - 60px);">
+            <ul id="packageList" class="space-y-1"></ul>
         </div>
     </div>
 </div>
+
+<!-- ===================== PIN MODAL ===================== -->
+<div id="dataPinModal"
+    class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50 px-4">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full relative">
+        <button id="dataPinModalCloseBtn"
+            class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 transition text-lg font-bold">✕</button>
+        <h2 class="text-xl font-semibold text-center text-gray-800 mb-3">🔒 Confirm Purchase</h2>
+        <div id="dataPinModalSummary"
+            class="mb-5 text-gray-600 text-sm leading-relaxed bg-gray-50 rounded-xl p-4 space-y-1"></div>
+        <div class="mb-5">
+            <label class="block text-gray-700 font-medium mb-3 text-center text-sm">Enter your 4-digit PIN</label>
+            <div class="flex space-x-3 justify-center">
+                <input type="password" maxlength="1" inputmode="numeric"
+                    class="data-pin-input w-12 h-12 text-center border-2 border-gray-200 rounded-xl text-xl font-bold focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition">
+                <input type="password" maxlength="1" inputmode="numeric"
+                    class="data-pin-input w-12 h-12 text-center border-2 border-gray-200 rounded-xl text-xl font-bold focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition">
+                <input type="password" maxlength="1" inputmode="numeric"
+                    class="data-pin-input w-12 h-12 text-center border-2 border-gray-200 rounded-xl text-xl font-bold focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition">
+                <input type="password" maxlength="1" inputmode="numeric"
+                    class="data-pin-input w-12 h-12 text-center border-2 border-gray-200 rounded-xl text-xl font-bold focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition">
+            </div>
+        </div>
+        <button id="confirmDataPinBtn" type="button"
+            class="w-full bg-brand-green text-white font-semibold py-3 px-4 rounded-xl shadow hover:bg-teal-700 transition duration-200">
+            ✅ Confirm & Purchase Data
+        </button>
+        <div id="dataPinModalError" class="text-red-600 mt-3 text-center text-sm font-medium hidden"></div>
+    </div>
+</div>
+
+<!-- ===================== ERROR/INFO MODAL ===================== -->
+<div id="dataCustomModal"
+    class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50 px-4">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full relative">
+        <button id="dataModalCloseBtn"
+            class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 transition text-lg font-bold">✕</button>
+        <h2 id="dataModalTitle" class="text-lg font-bold mb-2"></h2>
+        <p id="dataModalMessage" class="whitespace-pre-wrap text-gray-700 text-sm"></p>
+        <button id="dataModalOkBtn"
+            class="mt-5 w-full bg-gray-800 text-white font-semibold py-2.5 px-4 rounded-xl hover:bg-gray-700 transition duration-200">
+            OK
+        </button>
+    </div>
+</div>
+
+<!-- ===================== LOADING OVERLAY ===================== -->
+<div id="dataLoadingOverlay"
+    class="fixed inset-0 bg-black bg-opacity-40 flex flex-col items-center justify-center hidden z-[60]">
+    <div class="data-loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-16 w-16 mb-4"></div>
+    <p class="text-white font-medium text-sm">Processing your purchase...</p>
+</div>
+
+<style>
+    .data-loader {
+        border-top-color: #059669;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .modal-overlay {
+        transition: opacity 0.3s ease;
+    }
+</style>
+
+<script>
+    window.dataPlans = @json($plans);
+    const dataWalletBalance = {{ $wallet->balance ?? 0 }};
+</script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const networkSelect = document.getElementById('network');
-    const networkInput = document.getElementById('networkInput');
-    const typeSelect = document.getElementById('typeSelect');
-    const typeInput = document.getElementById('typeInput');
-    const packageTrigger = document.getElementById('packageSelect');
-    const packageInput = document.getElementById('packageInput');
-    const amountInput = document.getElementById('amountInput');
 
-    const networkModal = document.getElementById('networkModal');
-    const typeModal = document.getElementById('typeModal');
-    const packageModal = document.getElementById('packageModal');
-    const modalContent = document.getElementById('modalContent');
-    const typeModalContent = document.getElementById('typeModalContent');
-    const typeModalTitle = document.getElementById('typeModalTitle');
+    // ── DOM refs ──────────────────────────────────────────────────────────────
+    const networkSelect       = document.getElementById('network');
+    const networkInput        = document.getElementById('networkInput');
+    const typeSelectDiv       = document.getElementById('typeSelect');
+    const typeInput           = document.getElementById('typeInput');
+    const packageSelectDiv    = document.getElementById('packageSelect');
+    const packageInput        = document.getElementById('packageInput');
+    const amountInput         = document.getElementById('amountInput');
+    const recipientInput      = document.getElementById('recipient');
+
+    const networkModal        = document.getElementById('networkModal');
+    const modalContent        = document.getElementById('modalContent');
+    const typeModal           = document.getElementById('typeModal');
+    const typeModalContent    = document.getElementById('typeModalContent');
+    const typeModalTitle      = document.getElementById('typeModalTitle');
+    const packageModal        = document.getElementById('packageModal');
     const packageModalContent = document.getElementById('packageModalContent');
-    const packageModalTitle = document.getElementById('packageModalTitle');
+    const packageModalTitle   = document.getElementById('packageModalTitle');
+    const typeList            = document.getElementById('typeList');
+    const packageList         = document.getElementById('packageList');
 
-    const networkOptions = document.querySelectorAll('.network-option');
-    const typeList = document.getElementById('typeList');
-    const packageList = document.getElementById('packageList');
+    const dataPinModal        = document.getElementById('dataPinModal');
+    const dataCustomModal     = document.getElementById('dataCustomModal');
+    const dataLoadingOverlay  = document.getElementById('dataLoadingOverlay');
 
     const dataPlans = window.dataPlans || {};
     let selectedNetwork = '';
-    let selectedType = '';
+    let selectedType    = '';
 
+    // ── Modal helpers ─────────────────────────────────────────────────────────
     function showModal(modal, content) {
         modal.classList.remove('hidden');
-        setTimeout(() => {
+        requestAnimationFrame(() => {
             modal.classList.add('opacity-100');
             content.classList.remove('translate-y-full');
-        }, 10);
+        });
     }
 
     function hideModal(modal, content) {
         modal.classList.remove('opacity-100');
         content.classList.add('translate-y-full');
-        setTimeout(() => {
-            modal.classList.add('hidden');
-        }, 300);
+        setTimeout(() => modal.classList.add('hidden'), 300);
     }
 
+    // Close bottom-sheet modals on backdrop click
+    [
+        { modal: networkModal,  content: modalContent },
+        { modal: typeModal,     content: typeModalContent },
+        { modal: packageModal,  content: packageModalContent },
+    ].forEach(({ modal, content }) => {
+        modal.addEventListener('click', e => {
+            if (e.target === modal) hideModal(modal, content);
+        });
+    });
+
+    // ── Data plan helpers ─────────────────────────────────────────────────────
     function normalizeNetworkKey(key) {
-        return Object.keys(dataPlans).find(k => k.toLowerCase().includes(key.toLowerCase()));
+        // Try direct key match first, then partial include
+        const lk = key.toLowerCase();
+        return Object.keys(dataPlans).find(k => k.toLowerCase() === lk)
+            || Object.keys(dataPlans).find(k => k.toLowerCase().includes(lk))
+            || Object.keys(dataPlans).find(k => lk.includes(k.toLowerCase()));
     }
 
-    function populatePackages(networkKey) {
+    function getProducts(networkKey) {
         const normalized = normalizeNetworkKey(networkKey);
         if (!normalized) return [];
         const raw = dataPlans[normalized];
-        return raw?.[0]?.PRODUCT || [];
+        // Support both array-wrapped and direct formats
+        if (Array.isArray(raw)) {
+            return raw[0]?.PRODUCT || raw[0]?.products || raw || [];
+        }
+        return raw?.PRODUCT || raw?.products || [];
     }
 
     function getAvailableTypes(networkKey) {
-        const plans = populatePackages(networkKey);
-        const typesSet = new Set();
-        
-        plans.forEach(plan => {
-            if (plan.PRODUCT_TYPE) {
-                typesSet.add(plan.PRODUCT_TYPE);
-            }
-        });
-        
-        // Sort types in logical order
-        const typeOrder = ['Daily', '2-Day', '3-Day', 'Weekly', 'Bi-Monthly', 'Monthly', 'Quarterly', 'Yearly', 'Other'];
-        return typeOrder.filter(t => typesSet.has(t));
+        const products = getProducts(networkKey);
+        const typesSet = new Set(products.map(p => p.PRODUCT_TYPE).filter(Boolean));
+        const typeOrder = ['Daily', '2-Day', '3-Day', 'Weekly', 'Bi-Monthly', 'Monthly', 'Quarterly', 'Yearly'];
+        const ordered = typeOrder.filter(t => typesSet.has(t));
+        // Append any remaining types not in the predefined order
+        typesSet.forEach(t => { if (!ordered.includes(t)) ordered.push(t); });
+        return ordered;
     }
 
     function filterPackagesByType(networkKey, planType) {
-        const plans = populatePackages(networkKey);
-        return plans.filter(plan => plan.PRODUCT_TYPE === planType);
+        return getProducts(networkKey).filter(p => p.PRODUCT_TYPE === planType);
     }
 
-    // Prevent native <select> dropdown and open modal instead
+    // ── Reset helpers ─────────────────────────────────────────────────────────
+    function resetTypeUI() {
+        typeSelectDiv.textContent = 'Choose Plan Duration';
+        typeInput.value = '';
+        typeSelectDiv.classList.replace('text-gray-800', 'text-gray-500') || typeSelectDiv.classList.add('text-gray-500');
+        selectedType = '';
+        resetPackageUI();
+    }
+
+    function resetPackageUI() {
+        packageSelectDiv.textContent = 'Choose a Package';
+        packageInput.value = '';
+        amountInput.value = '';
+        packageSelectDiv.classList.replace('text-gray-800', 'text-gray-500') || packageSelectDiv.classList.add('text-gray-500');
+    }
+
+    function setDivSelected(div) {
+        div.classList.remove('text-gray-500');
+        div.classList.add('text-gray-800');
+    }
+
+    // ── Network select: intercept native dropdown ─────────────────────────────
     networkSelect.addEventListener('mousedown', function (e) {
         e.preventDefault();
         showModal(networkModal, modalContent);
     });
+    networkSelect.addEventListener('focus', function () {
+        this.blur();
+        showModal(networkModal, modalContent);
+    });
 
-    // Handle network option click
-    networkOptions.forEach(option => {
+    // ── Network option chosen ─────────────────────────────────────────────────
+    document.querySelectorAll('.network-option').forEach(option => {
         option.addEventListener('click', function () {
-            const selectedValue = this.dataset.value;
-            const selectedText = this.querySelector('span')?.textContent || selectedValue;
+            const value = this.dataset.value;
+            const label = this.dataset.label || this.querySelector('span:last-child')?.textContent || value;
 
-            selectedNetwork = selectedValue;
-            selectedType = ''; // Reset type
-            networkInput.value = selectedValue;
-            typeSelect.dataset.networkName = selectedText;
+            selectedNetwork = value;
+            networkInput.value = value;
+            typeSelectDiv.dataset.networkName = label;
 
-            // Update visible <select> for UI consistency
             networkSelect.querySelectorAll('option').forEach(opt => {
-                opt.selected = (opt.value === selectedValue);
+                opt.selected = (opt.value === value);
             });
             networkSelect.classList.remove('text-gray-500');
             networkSelect.classList.add('text-gray-800');
 
-            // Reset type and package UI
-            typeSelect.textContent = 'Choose Plan Duration';
-            typeInput.value = '';
-            packageTrigger.textContent = 'Choose a Package';
-            packageInput.value = '';
-            amountInput.value = '';
-            typeSelect.classList.remove('text-gray-800');
-            typeSelect.classList.add('text-gray-500');
-            packageTrigger.classList.remove('text-gray-800');
-            packageTrigger.classList.add('text-gray-500');
-
+            resetTypeUI();
             hideModal(networkModal, modalContent);
         });
     });
 
-    // Show type modal
-    typeSelect.addEventListener('click', function () {
+    // ── Type select clicked ───────────────────────────────────────────────────
+    typeSelectDiv.addEventListener('click', function () {
         if (!selectedNetwork) {
-            alert('Please select a network first.');
+            showDataCustomModal('Select Network', 'Please select a network first.', 'text-orange-500');
             return;
         }
 
         const availableTypes = getAvailableTypes(selectedNetwork);
-        const networkName = typeSelect.dataset.networkName || 'Selected Network';
+        if (!availableTypes.length) {
+            showDataCustomModal('No Plans', 'No plan durations found for this network. Please try another network.', 'text-red-600');
+            return;
+        }
 
-        typeModalTitle.textContent = `${networkName} - Choose Plan Duration`;
+        const networkName = this.dataset.networkName || selectedNetwork.toUpperCase();
+        typeModalTitle.textContent = `${networkName} — Choose Duration`;
         typeList.innerHTML = '';
 
         availableTypes.forEach(type => {
             const li = document.createElement('li');
-            li.className = 'flex items-center p-4 rounded-lg cursor-pointer border-b border-gray-200 hover:bg-gray-100 transition duration-150 type-option';
+            li.className = 'flex items-center p-4 rounded-xl cursor-pointer border-b border-gray-100 hover:bg-green-50 active:bg-green-100 transition duration-150 type-option';
             li.dataset.type = type;
-
-            li.innerHTML = `
-                <span class="text-gray-800 font-medium">${type}</span>
-            `;
+            li.innerHTML = `<span class="text-gray-800 font-medium">${type}</span>
+                            <svg class="ml-auto w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>`;
             typeList.appendChild(li);
         });
 
         showModal(typeModal, typeModalContent);
     });
 
-    // Handle type selection
+    // ── Type option chosen ────────────────────────────────────────────────────
     typeList.addEventListener('click', function (e) {
         const target = e.target.closest('.type-option');
-        if (target) {
-            const selectedTypeValue = target.dataset.type;
-            
-            selectedType = selectedTypeValue;
-            typeInput.value = selectedTypeValue;
-            typeSelect.textContent = selectedTypeValue;
-            typeSelect.classList.remove('text-gray-500');
-            typeSelect.classList.add('text-gray-800');
+        if (!target) return;
 
-            // Reset package selection
-            packageTrigger.textContent = 'Choose a Package';
-            packageInput.value = '';
-            amountInput.value = '';
-            packageTrigger.classList.remove('text-gray-800');
-            packageTrigger.classList.add('text-gray-500');
-
-            hideModal(typeModal, typeModalContent);
-        }
+        selectedType = target.dataset.type;
+        typeInput.value = selectedType;
+        typeSelectDiv.textContent = selectedType;
+        setDivSelected(typeSelectDiv);
+        resetPackageUI();
+        hideModal(typeModal, typeModalContent);
     });
 
-    // Show package modal
-    packageTrigger.addEventListener('click', function () {
+    // ── Package select clicked ────────────────────────────────────────────────
+    packageSelectDiv.addEventListener('click', function () {
         if (!selectedNetwork) {
-            alert('Please select a network first.');
+            showDataCustomModal('Select Network', 'Please select a network first.', 'text-orange-500');
             return;
         }
-        
         if (!selectedType) {
-            alert('Please select a plan duration first.');
+            showDataCustomModal('Select Duration', 'Please select a plan duration first.', 'text-orange-500');
             return;
         }
 
         const plans = filterPackagesByType(selectedNetwork, selectedType);
-        const networkName = typeSelect.dataset.networkName || 'Selected Network';
+        if (!plans.length) {
+            showDataCustomModal('No Packages', `No ${selectedType} packages found for this network.`, 'text-red-600');
+            return;
+        }
 
-        packageModalTitle.textContent = `${networkName} - ${selectedType} Packages`;
+        const networkName = typeSelectDiv.dataset.networkName || selectedNetwork.toUpperCase();
+        packageModalTitle.textContent = `${networkName} — ${selectedType}`;
         packageList.innerHTML = '';
 
         plans.forEach(plan => {
             const li = document.createElement('li');
-            li.className = 'flex items-center p-3 rounded-lg cursor-pointer border-b border-gray-200 pt-5 hover:bg-gray-100 transition duration-150 package-option';
-            li.dataset.value = plan.PRODUCT_CODE;
+            li.className = 'flex items-center justify-between p-4 rounded-xl cursor-pointer border-b border-gray-100 hover:bg-green-50 active:bg-green-100 transition duration-150 package-option';
+            li.dataset.value  = plan.PRODUCT_CODE;
             li.dataset.amount = plan.PRODUCT_AMOUNT;
-
+            li.dataset.name   = plan.PRODUCT_NAME;
             li.innerHTML = `
-                <span class="text-gray-800 font-medium">${plan.PRODUCT_NAME} - ₦${parseFloat(plan.PRODUCT_AMOUNT).toFixed(0)}</span>
-            `;
+                <div>
+                    <p class="text-gray-800 font-semibold text-sm">${plan.PRODUCT_NAME}</p>
+                    <p class="text-gray-500 text-xs mt-0.5">${plan.PRODUCT_TYPE || selectedType}</p>
+                </div>
+                <span class="text-green-700 font-bold text-sm">₦${parseFloat(plan.PRODUCT_AMOUNT).toLocaleString('en-NG', {minimumFractionDigits: 0})}</span>`;
             packageList.appendChild(li);
         });
 
         showModal(packageModal, packageModalContent);
     });
 
-    // Handle package selection
+    // ── Package option chosen ─────────────────────────────────────────────────
     packageList.addEventListener('click', function (e) {
         const target = e.target.closest('.package-option');
-        if (target) {
-            const selectedValue = target.dataset.value;
-            const selectedAmount = target.dataset.amount;
-            const selectedText = target.textContent.trim();
+        if (!target) return;
 
-            packageInput.value = selectedValue;
-            amountInput.value = selectedAmount;
-            packageTrigger.textContent = selectedText;
-            packageTrigger.classList.remove('text-gray-500');
-            packageTrigger.classList.add('text-gray-800');
+        const code   = target.dataset.value;
+        const amount = target.dataset.amount;
+        const name   = target.dataset.name;
 
-            hideModal(packageModal, packageModalContent);
+        packageInput.value = code;
+        amountInput.value  = amount;
+        packageSelectDiv.textContent = `${name} — ₦${parseFloat(amount).toLocaleString('en-NG', {minimumFractionDigits: 0})}`;
+        setDivSelected(packageSelectDiv);
+
+        hideModal(packageModal, packageModalContent);
+    });
+
+    // ── Auto-detect network from phone number ─────────────────────────────────
+    recipientInput.addEventListener('input', function () {
+        let value = this.value.replace(/\D/g, '');
+        if (value.startsWith('234')) value = '0' + value.slice(3);
+        if (value.length < 4) return;
+
+        const prefix = value.slice(0, 4);
+        const networks = {
+            mtn:     ['0803','0806','0703','0706','0813','0816','0810','0814','0903','0906','0913','0916'],
+            glo:     ['0805','0807','0815','0811','0905','0915'],
+            airtel:  ['0802','0808','0708','0812','0701','0902','0907','0912'],
+            '9mobile':['0809','0817','0818','0909','0908','0917'],
+        };
+
+        let detected = null;
+        for (const [net, prefixes] of Object.entries(networks)) {
+            if (prefixes.includes(prefix)) { detected = net; break; }
+        }
+
+        if (detected && detected !== selectedNetwork) {
+            selectedNetwork = detected;
+            networkInput.value = detected;
+            networkSelect.querySelectorAll('option').forEach(opt => {
+                opt.selected = (opt.value === detected);
+            });
+            networkSelect.classList.remove('text-gray-500');
+            networkSelect.classList.add('text-gray-800');
+            typeSelectDiv.dataset.networkName = detected.toUpperCase();
+            resetTypeUI();
         }
     });
 
-    // Auto-detect network when user types recipient number and update network selection
-    const dataRecipient = document.getElementById('recipient');
-    if (dataRecipient) {
-        dataRecipient.addEventListener('input', function (e) {
-            let value = (e.target.value || '').replace(/\D/g, '');
-            if (value.startsWith('+234')) value = '0' + value.slice(4);
-            if (value.startsWith('234')) value = '0' + value.slice(3);
-            if (!value) return;
+    // ── Form submit → show PIN modal ──────────────────────────────────────────
+    document.getElementById('dataPurchaseForm').addEventListener('submit', function (e) {
+        e.preventDefault();
 
-            const prefix4 = value.slice(0,4);
-            const mtn = ['0803','0806','0703','0706','0813','0816','0810','0814','0903','0906','0913','0916'];
-            const glo = ['0805','0807','0815','0811','0905','0915'];
-            const airtel = ['0802','0808','0708','0812','0701','0902','0907','0912'];
-            const nine = ['0809','0817','0818','0909','0908','0917'];
+        const network   = networkInput.value.trim();
+        const dataPlan  = packageInput.value.trim();
+        const recipient = recipientInput.value.trim();
+        const amount    = parseFloat(amountInput.value) || 0;
+        const packageText = packageSelectDiv.textContent.trim();
+        const networkDisplay = networkSelect.options[networkSelect.selectedIndex]?.text || network.toUpperCase();
 
-            let detected = null;
-            if (mtn.includes(prefix4)) detected = 'mtn';
-            else if (glo.includes(prefix4)) detected = 'glo';
-            else if (airtel.includes(prefix4)) detected = 'airtel';
-            else if (nine.includes(prefix4)) detected = '9mobile';
+        if (!network)    return showDataCustomModal('Missing Network',   'Please select a network.',               'text-red-600');
+        if (!dataPlan)   return showDataCustomModal('Missing Package',   'Please select a data package.',          'text-red-600');
+        if (!recipient)  return showDataCustomModal('Missing Recipient', 'Please enter the recipient phone number.','text-red-600');
+        if (amount <= 0) return showDataCustomModal('Invalid Package',   'Selected package has an invalid amount.','text-red-600');
 
-            if (detected) {
-                // apply the same behavior as user choosing from modal
-                selectedNetwork = detected;
-                networkInput.value = detected;
-                // update visible select element
-                networkSelect.querySelectorAll('option').forEach(opt => {
-                    opt.selected = (opt.value === detected);
-                });
-                networkSelect.classList.remove('text-gray-500');
-                networkSelect.classList.add('text-gray-800');
-
-                // update type modal title dataset for UX consistency
-                const displayName = detected.toUpperCase();
-                typeSelect.dataset.networkName = displayName;
-
-                // Reset dependent selections (type & package)
-                typeSelect.textContent = 'Choose Plan Duration';
-                typeInput.value = '';
-                packageTrigger.textContent = 'Choose a Package';
-                packageInput.value = '';
-                amountInput.value = '';
-                typeSelect.classList.remove('text-gray-800');
-                typeSelect.classList.add('text-gray-500');
-                packageTrigger.classList.remove('text-gray-800');
-                packageTrigger.classList.add('text-gray-500');
-            }
-        });
-    }
-
-    // Close modals on background click
-    [networkModal, typeModal, packageModal].forEach(modal => {
-        modal.addEventListener('click', function (e) {
-            if (e.target === modal) {
-                const content = e.target === networkModal ? modalContent : 
-                               e.target === typeModal ? typeModalContent : 
-                               packageModalContent;
-                hideModal(modal, content);
-            }
-        });
-    });
-});
-</script>
-
-
-<script>
-    window.dataPlans = @json($plans);
-</script>
-<!-- PIN Confirmation Modal -->
-<div id="dataPinModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50 transition-opacity duration-300">
-  <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full relative transform scale-95 transition-transform duration-300">
-    
-    <!-- Close button -->
-    <button id="dataPinModalCloseBtn" class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 transition">
-      ✕
-    </button>
-    
-    <!-- Header -->
-    <h2 class="text-xl font-semibold text-center text-gray-800 mb-3">🔒 Confirm Data Purchase</h2>
-    <p id="dataPinModalSummary" class="mb-4 text-gray-600 text-center text-sm leading-relaxed"></p>
-    
-    <!-- PIN Input -->
-    <div class="mb-5">
-      <label class="block text-gray-700 font-medium mb-2 text-center">Enter your 4-digit PIN</label>
-      <div class="flex space-x-3 justify-center">
-        <input type="password" maxlength="1" class="data-pin-input w-12 h-12 text-center border border-gray-300 rounded-lg text-2xl focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none transition" required>
-        <input type="password" maxlength="1" class="data-pin-input w-12 h-12 text-center border border-gray-300 rounded-lg text-2xl focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none transition" required>
-        <input type="password" maxlength="1" class="data-pin-input w-12 h-12 text-center border border-gray-300 rounded-lg text-2xl focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none transition" required>
-        <input type="password" maxlength="1" class="data-pin-input w-12 h-12 text-center border border-gray-300 rounded-lg text-2xl focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none transition" required>
-      </div>
-    </div>
-    
-    <!-- Confirm Button -->
-    <button id="confirmDataPinBtn" type="button" class="w-full bg-brand-green text-white font-semibold py-3 px-4 rounded-xl shadow hover:bg-teal-700 hover:shadow-lg transition duration-200">
-      ✅ Confirm & Purchase Data
-    </button>
-    
-    <!-- Error Message -->
-    <div id="dataPinModalError" class="text-red-600 mt-3 text-center text-sm font-medium hidden"></div>
-  </div>
-</div>
-
-<!-- Loading overlay -->
-<div id="dataLoadingOverlay" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center hidden z-40">
-  <div class="data-loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-16 w-16"></div>
-</div>
-
-<!-- Custom modal for success/error messages -->
-<div id="dataCustomModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden z-50">
-  <div class="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full relative">
-    <button id="dataModalCloseBtn" class="absolute top-2 right-2 text-gray-500 hover:text-gray-800">&times;</button>
-    <h2 id="dataModalTitle" class="text-lg font-bold mb-2"></h2>
-    <p id="dataModalMessage" class="whitespace-pre-wrap text-gray-700"></p>
-  </div>
-</div>
-
-<style>
-  /* Spinner styles */
-  .data-loader {
-    border-top-color: #3490dc;
-    animation: spin 1s linear infinite;
-  }
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-</style>
-
-<script>
-// Add wallet balance (you'll need to pass this from your controller)
-const dataWalletBalance = {{ $wallet->balance ?? 0 }};
-
-// Add PIN functionality after existing DOMContentLoaded
-document.addEventListener('DOMContentLoaded', function() {
-    // Your existing data purchase code remains unchanged...
-    
-    // Override form submission to show PIN modal
-    const dataForm = document.querySelector('form[action="{{ route('data.purchase') }}"]');
-    if (dataForm) {
-        dataForm.addEventListener('submit', function(e) {
-            e.preventDefault(); // Prevent default form submission
-            
-            // Get form values
-            const network = document.getElementById('networkInput').value;
-            const networkDisplay = document.querySelector('#network option:checked')?.textContent || network;
-            const dataPlan = document.getElementById('packageInput').value;
-            const packageText = document.getElementById('packageSelect').textContent;
-            const recipient = document.getElementById('recipient').value;
-            const amount = parseFloat(document.getElementById('amountInput').value) || 0;
-            
-            // Validation
-            if (!network) return showDataCustomModal('Error', 'Please select a network.', 'text-red-600');
-            if (!dataPlan) return showDataCustomModal('Error', 'Please select a data package.', 'text-red-600');
-            if (!recipient) return showDataCustomModal('Error', 'Please enter recipient phone number.', 'text-red-600');
-            if (!amount || amount <= 0) return showDataCustomModal('Error', 'Invalid package selected.', 'text-red-600');
-            
-            // Phone number validation
-            const phoneRegex = /^(\+234|234|0)?[789][01]\d{8}$/;
-            if (!phoneRegex.test(recipient)) {
-                return showDataCustomModal('Error', 'Please enter a valid Nigerian phone number.', 'text-red-600');
-            }
-            
-            // Check wallet balance
-            if (dataWalletBalance < amount) {
-                showDataCustomModal(
-                    'Insufficient Balance',
-                    `Your account balance (₦${dataWalletBalance.toFixed(2)}) is not enough to purchase ₦${amount.toFixed(2)} data. Please fund your wallet.`,
-                    'text-red-600'
-                );
-                return;
-            }
-            
-            
-            // Show PIN modal with summary
-            document.getElementById('dataPinModalSummary').innerHTML = `
-              <div><strong>Network:</strong> ${networkDisplay}</div>
-              <div><strong>Package:</strong> ${packageText}</div>
-              <div><strong>Recipient:</strong> ${recipient}</div>
-              <div><strong>Amount:</strong> ₦${amount.toFixed(2)}</div>
-              <div class="mt-2 font-semibold text-green-700"><strong>Your Balance:</strong> ₦${dataWalletBalance.toFixed(2)}</div>
-            `;
-            
-            // Clear PIN inputs and errors
-            document.querySelectorAll('.data-pin-input').forEach(input => input.value = '');
-            document.getElementById('dataPinModalError').classList.add('hidden');
-            
-            // Show PIN modal
-            document.getElementById('dataPinModal').classList.remove('hidden');
-            document.querySelector('.data-pin-input').focus();
-        });
-    }
-});
-
-// Data PIN modal functionality
-document.getElementById('dataPinModalCloseBtn').addEventListener('click', () => {
-    document.getElementById('dataPinModal').classList.add('hidden');
-});
-
-// Auto-focus next PIN input for data
-document.querySelectorAll('.data-pin-input').forEach((input, idx, arr) => {
-    input.addEventListener('input', function() {
-        if (this.value.length === 1 && idx < arr.length - 1) {
-            arr[idx + 1].focus();
+        const phoneRegex = /^(\+?234|0)[789][01]\d{8}$/;
+        if (!phoneRegex.test(recipient.replace(/\s/g, ''))) {
+            return showDataCustomModal('Invalid Number', 'Please enter a valid Nigerian phone number.', 'text-red-600');
         }
-    });
-    
-    // Handle backspace
-    input.addEventListener('keydown', function(e) {
-        if (e.key === 'Backspace' && this.value === '' && idx > 0) {
-            arr[idx - 1].focus();
+
+        if (dataWalletBalance < amount) {
+            return showDataCustomModal(
+                'Insufficient Balance',
+                `Your wallet balance (₦${dataWalletBalance.toLocaleString('en-NG', {minimumFractionDigits: 2})}) is not enough to purchase this plan (₦${amount.toLocaleString('en-NG', {minimumFractionDigits: 2})}).\n\nPlease fund your wallet and try again.`,
+                'text-red-600'
+            );
         }
+
+        // Build summary
+        document.getElementById('dataPinModalSummary').innerHTML = `
+            <div class="flex justify-between"><span class="text-gray-500">Network</span><span class="font-semibold text-gray-800">${networkDisplay}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">Package</span><span class="font-semibold text-gray-800 text-right max-w-[55%]">${packageText}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">Recipient</span><span class="font-semibold text-gray-800">${recipient}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500">Amount</span><span class="font-bold text-green-700">₦${amount.toLocaleString('en-NG', {minimumFractionDigits: 2})}</span></div>
+            <div class="flex justify-between border-t border-gray-200 pt-2 mt-1"><span class="text-gray-500">Wallet Balance</span><span class="font-semibold text-gray-700">₦${dataWalletBalance.toLocaleString('en-NG', {minimumFractionDigits: 2})}</span></div>
+        `;
+
+        document.querySelectorAll('.data-pin-input').forEach(i => i.value = '');
+        document.getElementById('dataPinModalError').classList.add('hidden');
+        dataPinModal.classList.remove('hidden');
+        document.querySelector('.data-pin-input').focus();
     });
-});
-// Handle data PIN confirmation with success partial integration
-document.getElementById('confirmDataPinBtn').addEventListener('click', async (e) => {
-    e.preventDefault();
-    
-    const pinInputs = document.querySelectorAll('.data-pin-input');
-    let pin = '';
-    pinInputs.forEach(input => pin += input.value);
 
-    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
-        document.getElementById('dataPinModalError').textContent = 'Please enter your 4-digit PIN.';
-        document.getElementById('dataPinModalError').classList.remove('hidden');
-        return;
-    }
+    // ── PIN modal close ───────────────────────────────────────────────────────
+    document.getElementById('dataPinModalCloseBtn').addEventListener('click', () => {
+        dataPinModal.classList.add('hidden');
+    });
+    dataPinModal.addEventListener('click', e => {
+        if (e.target === dataPinModal) dataPinModal.classList.add('hidden');
+    });
 
-    // Show loading animation on confirm button
-    const confirmBtn = document.getElementById('confirmDataPinBtn');
-    const originalBtnText = confirmBtn.innerHTML;
-    
-    confirmBtn.disabled = true;
-    confirmBtn.innerHTML = `
-        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    // ── PIN input auto-advance ────────────────────────────────────────────────
+    document.querySelectorAll('.data-pin-input').forEach((input, idx, arr) => {
+        input.addEventListener('input', function () {
+            this.value = this.value.replace(/\D/g, '').slice(0, 1);
+            if (this.value && idx < arr.length - 1) arr[idx + 1].focus();
+        });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Backspace' && !this.value && idx > 0) arr[idx - 1].focus();
+        });
+    });
+
+    // ── Confirm purchase ──────────────────────────────────────────────────────
+    document.getElementById('confirmDataPinBtn').addEventListener('click', async function () {
+        let pin = '';
+        document.querySelectorAll('.data-pin-input').forEach(i => pin += i.value);
+
+        const errorEl = document.getElementById('dataPinModalError');
+        if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+            errorEl.textContent = 'Please enter all 4 PIN digits.';
+            errorEl.classList.remove('hidden');
+            return;
+        }
+        errorEl.classList.add('hidden');
+
+        const originalHTML = this.innerHTML;
+        this.disabled = true;
+        this.innerHTML = `<svg class="animate-spin h-5 w-5 text-white inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        Processing...
-    `;
+        </svg>Processing...`;
 
-    // Gather form data
-    const formData = new FormData();
-    formData.append('network', document.getElementById('networkInput').value);
-    formData.append('data_plan', document.getElementById('packageInput').value);
-    formData.append('recipient', document.getElementById('recipient').value);
-    formData.append('pin', pin);
+        dataLoadingOverlay.classList.remove('hidden');
 
-    try {
-        const response = await fetch("{{ route('data.purchase') }}", {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            },
-            body: formData
-        });
+        const formData = new FormData();
+        formData.append('network',    networkInput.value);
+        formData.append('data_plan',  packageInput.value);
+        formData.append('recipient',  recipientInput.value);
+        formData.append('amount',     amountInput.value);
+        formData.append('pin',        pin);
 
-        const result = await response.json();
-
-        if (response.ok && result.success) {
-            // Hide PIN modal
-            document.getElementById('dataPinModal').classList.add('hidden');
-            
-            // Get selected package text for display
-            const packageText = document.getElementById('packageSelect').textContent;
-            const networkDisplay = document.querySelector('#network option:checked')?.textContent || 
-                                 document.getElementById('networkInput').value.toUpperCase();
-            
-            // Call the success partial with enhanced data
-            await showDataSuccessPartial({
-                title: 'Data Purchase Successful!',
-                message: result.message,
-                details: {
-                    'Transaction ID': result.data?.transaction_reference || 'N/A',
-                    'Network': result.data?.network || networkDisplay,
-                    'Package': result.data?.package_name || packageText,
-                    'Phone Number': result.data?.recipient || document.getElementById('recipient').value,
-                    'Amount': result.data?.formatted_amount || `₦${parseFloat(document.getElementById('amountInput').value || 0).toFixed(2)}`,
-                    'New Balance': result.data?.formatted_balance || 'N/A',
-                    'Date & Time': result.data?.transaction_time ? 
-                        new Date(result.data.transaction_time).toLocaleString() : 
-                        new Date().toLocaleString()
-                }
+        try {
+            const response = await fetch("{{ route('data.purchase') }}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                body: formData,
             });
-            
-            // Reset form
-            const dataForm = document.querySelector('form[action="{{ route('data.purchase') }}"]');
-            if (dataForm) {
-                dataForm.reset();
-            }
-            document.getElementById('networkInput').value = '';
-            document.getElementById('packageInput').value = '';
-            document.getElementById('amountInput').value = '';
-            document.getElementById('packageSelect').textContent = 'Choose a Package';
-            document.getElementById('network').selectedIndex = 0;
-            
-        } else {
-            // Handle different types of errors
-            let errorMessage = result.message || 'Data purchase failed.';
-            
-            // Show more specific error for PIN validation
-            if (result.error_type === 'pin_validation') {
-                errorMessage = result.message;
-            } else if (result.error_type === 'validation') {
-                errorMessage = 'Please check your input and try again.';
-            }
-            
-            document.getElementById('dataPinModalError').textContent = errorMessage;
-            document.getElementById('dataPinModalError').classList.remove('hidden');
-        }
-    } catch (error) {
-        console.error('Data purchase error:', error);
-        document.getElementById('dataPinModalError').textContent = 'Network error. Please check your connection and try again.';
-        document.getElementById('dataPinModalError').classList.remove('hidden');
-    } finally {
-        // Reset button state
-        confirmBtn.disabled = false;
-        confirmBtn.innerHTML = originalBtnText;
-    }
-});
 
-// Enhanced function to call Laravel success partial for data purchases
-async function showDataSuccessPartial(data) {
-    try {
-        // Make AJAX request to get the rendered partial
-        const response = await fetch('/render-success-partial', {
+            const result = await response.json();
+            dataLoadingOverlay.classList.add('hidden');
+
+            if (response.ok && result.success) {
+                dataPinModal.classList.add('hidden');
+
+                const networkDisplay = networkSelect.options[networkSelect.selectedIndex]?.text
+                    || networkInput.value.toUpperCase();
+
+                showSuccessModal({
+                    title:   'Data Purchase Successful! 🎉',
+                    message: result.message || 'Your data has been sent successfully.',
+                    details: {
+                        'Transaction ID': result.data?.transaction_reference || 'N/A',
+                        'Network':        result.data?.network        || networkDisplay,
+                        'Package':        result.data?.package_name   || packageSelectDiv.textContent,
+                        'Phone Number':   result.data?.recipient      || recipientInput.value,
+                        'Amount':         result.data?.formatted_amount || `₦${parseFloat(amountInput.value||0).toLocaleString('en-NG',{minimumFractionDigits:2})}`,
+                        'New Balance':    result.data?.formatted_balance || 'N/A',
+                        'Date & Time':    result.data?.transaction_time
+                            ? new Date(result.data.transaction_time).toLocaleString()
+                            : new Date().toLocaleString(),
+                    },
+                });
+
+                // Reset form
+                document.getElementById('dataPurchaseForm').reset();
+                networkInput.value = '';
+                packageInput.value = '';
+                amountInput.value  = '';
+                selectedNetwork = '';
+                selectedType = '';
+                resetTypeUI();
+                networkSelect.classList.remove('text-gray-800');
+                networkSelect.classList.add('text-gray-500');
+
+            } else {
+                const msg = result.message || 'Data purchase failed. Please try again.';
+                errorEl.textContent = msg;
+                errorEl.classList.remove('hidden');
+            }
+
+        } catch (err) {
+            dataLoadingOverlay.classList.add('hidden');
+            errorEl.textContent = 'Network error. Please check your connection and try again.';
+            errorEl.classList.remove('hidden');
+            console.error('Data purchase error:', err);
+        } finally {
+            this.disabled = false;
+            this.innerHTML = originalHTML;
+        }
+    });
+
+    // ── Error/info modal close ────────────────────────────────────────────────
+    document.getElementById('dataModalCloseBtn').addEventListener('click', () => {
+        dataCustomModal.classList.add('hidden');
+    });
+    document.getElementById('dataModalOkBtn').addEventListener('click', () => {
+        dataCustomModal.classList.add('hidden');
+    });
+    dataCustomModal.addEventListener('click', e => {
+        if (e.target === dataCustomModal) dataCustomModal.classList.add('hidden');
+    });
+
+    // ── Helpers exposed to this scope ─────────────────────────────────────────
+    window.showDataCustomModal = function (title, message, colorClass = 'text-gray-800') {
+        document.getElementById('dataModalTitle').textContent = title;
+        document.getElementById('dataModalTitle').className = `text-lg font-bold mb-2 ${colorClass}`;
+        document.getElementById('dataModalMessage').textContent = message;
+        dataCustomModal.classList.remove('hidden');
+    };
+
+    function showSuccessModal(data) {
+        // Try the server-rendered partial first, fall back to inline
+        fetch('/render-success-partial', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                 'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'text/html'
+                'Accept': 'text/html',
             },
-            body: JSON.stringify({
-                title: data.title,
-                message: data.message,
-                details: data.details || {}
-            })
-        });
-
-        if (response.ok) {
-            const partialHtml = await response.text();
-            
-            // Create modal wrapper for the partial
-            const modalWrapper = document.createElement('div');
-            modalWrapper.id = 'dataSuccessPartialModal';
-            modalWrapper.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4';
-            
-            modalWrapper.innerHTML = `
-                <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full relative transform animate-bounce-in">
-                    <button id="closeDataPartialModal" class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 transition text-xl font-bold z-10">
-                        ✕
-                    </button>
-                    <div class="p-6">
-                        ${partialHtml}
-                        <div class="mt-6">
-                            <button id="dataDoneBtn" class="w-full bg-brand-green text-white font-semibold py-3 px-4 rounded-xl hover:bg-teal-700 transition duration-200">
-                                Done
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            document.body.appendChild(modalWrapper);
-
-            // Add close functionality
-            const closeModal = () => {
-                modalWrapper.classList.add('animate-fade-out');
-                setTimeout(() => modalWrapper.remove(), 300);
-            };
-            
-            document.getElementById('closeDataPartialModal').addEventListener('click', closeModal);
-            document.getElementById('dataDoneBtn').addEventListener('click', closeModal);
-            
-            // Close when clicking outside
-            modalWrapper.addEventListener('click', (e) => {
-                if (e.target === modalWrapper) closeModal();
-            });
-
-            // Close with Escape key
-            const handleEscape = (e) => {
-                if (e.key === 'Escape') {
-                    closeModal();
-                    document.removeEventListener('keydown', handleEscape);
-                }
-            };
-            document.addEventListener('keydown', handleEscape);
-
-        } else {
-            // Fallback to simple success message if partial loading fails
-            showSimpleDataSuccessModal(data);
-        }
-    } catch (error) {
-        console.error('Error loading data success partial:', error);
-        // Fallback to simple success message
-        showSimpleDataSuccessModal(data);
+            body: JSON.stringify({ title: data.title, message: data.message, details: data.details }),
+        })
+        .then(r => r.ok ? r.text() : Promise.reject())
+        .then(html => buildSuccessModal(html, true))
+        .catch(() => buildSuccessModal(null, false, data));
     }
-}
 
-// Show custom modal for error/info messages
-function showDataCustomModal(title, message, colorClass = 'text-gray-800') {
-    const dataCustomModal = document.getElementById('dataCustomModal');
-    const dataModalTitle = document.getElementById('dataModalTitle');
-    const dataModalMessage = document.getElementById('dataModalMessage');
+    function buildSuccessModal(html, fromPartial, data = {}) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 px-4';
 
-    dataModalTitle.textContent = title;
-    dataModalTitle.className = `text-lg font-bold mb-2 ${colorClass}`;
-    dataModalMessage.textContent = message;
-    dataCustomModal.classList.remove('hidden');
-}
+        const detailsHTML = data.details
+            ? Object.entries(data.details).map(([k, v]) =>
+                `<div class="flex justify-between py-1.5 border-b border-gray-100 last:border-0">
+                    <span class="text-gray-500 text-sm">${k}</span>
+                    <span class="font-semibold text-gray-800 text-sm text-right max-w-[55%]">${v}</span>
+                 </div>`).join('')
+            : '';
 
-// Fallback function for simple success display
-function showSimpleDataSuccessModal(data) {
-    let detailsText = '';
-    if (data.details) {
-        detailsText = '\n\nDetails:\n' + Object.entries(data.details)
-            .map(([key, value]) => `${key}: ${value}`)
-            .join('\n');
+        wrapper.innerHTML = fromPartial
+            ? `<div class="bg-white rounded-2xl shadow-2xl max-w-md w-full relative">
+                   <button class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-xl font-bold" onclick="this.closest('.fixed').remove()">✕</button>
+                   <div class="p-6">${html}
+                       <button class="mt-5 w-full bg-brand-green text-white font-semibold py-3 rounded-xl hover:bg-teal-700 transition" onclick="this.closest('.fixed').remove()">Done</button>
+                   </div>
+               </div>`
+            : `<div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative max-h-screen overflow-y-auto">
+                   <button class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-xl font-bold" onclick="this.closest('.fixed').remove()">✕</button>
+                   <div class="text-center mb-4">
+                       <div class="text-6xl mb-3">✅</div>
+                       <h2 class="text-xl font-bold text-gray-800">${data.title || 'Success!'}</h2>
+                       <p class="text-gray-500 text-sm mt-1">${data.message || ''}</p>
+                   </div>
+                   ${detailsHTML ? `<div class="bg-gray-50 rounded-xl p-4 mb-4">${detailsHTML}</div>` : ''}
+                   <button class="w-full bg-brand-green text-white font-semibold py-3 rounded-xl hover:bg-teal-700 transition" onclick="this.closest('.fixed').remove()">Done</button>
+               </div>`;
+
+        document.body.appendChild(wrapper);
+        wrapper.addEventListener('click', e => { if (e.target === wrapper) wrapper.remove(); });
+
+        // Escape key
+        const esc = e => { if (e.key === 'Escape') { wrapper.remove(); document.removeEventListener('keydown', esc); } };
+        document.addEventListener('keydown', esc);
     }
-    
-    // Create a simple modal instead of alert
-    const modalWrapper = document.createElement('div');
-    modalWrapper.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4';
-    
-    modalWrapper.innerHTML = `
-        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative">
-            <button class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 transition text-xl font-bold" onclick="this.closest('.fixed').remove()">
-                ✕
-            </button>
-            <div class="text-center">
-                <div class="text-green-600 text-6xl mb-4">✅</div>
-                <h2 class="text-xl font-bold text-gray-800 mb-2">${data.title}</h2>
-                <p class="text-gray-600 mb-4">${data.message}</p>
-                ${data.details ? `
-                <div class="text-left bg-gray-50 p-3 rounded-lg text-sm">
-                    ${Object.entries(data.details).map(([key, value]) => 
-                        `<div class="flex justify-between py-1"><span class="font-medium">${key}:</span><span>${value}</span></div>`
-                    ).join('')}
-                </div>
-                ` : ''}
-                <button class="w-full bg-brand-green text-white font-semibold py-3 px-4 rounded-xl hover:bg-teal-700 transition duration-200 mt-4" onclick="this.closest('.fixed').remove()">
-                    Done
-                </button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modalWrapper);
-    
-    // Close when clicking outside
-    modalWrapper.addEventListener('click', (e) => {
-        if (e.target === modalWrapper) modalWrapper.remove();
-    });
-}
+
+}); // end DOMContentLoaded
 </script>
+
 @endsection
