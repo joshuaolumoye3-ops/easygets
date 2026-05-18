@@ -12,14 +12,13 @@
 
         <div class="text-center">
             <h1 class="text-3xl font-bold text-gray-900">Sign Up</h1>
-            <p id="step-subtitle" class="mt-2 text-12 text-black font-semibold leading-[100%] tracking-[0] font-[sans-serif]"></p>
+            <p id="step-subtitle" class="mt-2 text-sm text-black font-semibold"></p>
         </div>
 
-        {{--  Add form action to RegisterController --}}
-        <form id="signupForm" 
-              class="mt-8 space-y-6" 
+        <form id="signupForm"
+              class="mt-8 space-y-6"
               novalidate
-              action="{{ route('register.submit') }}" 
+              action="{{ route('register.submit') }}"
               method="POST">
             @csrf
 
@@ -30,12 +29,13 @@
             <div class="step" data-step="0">
                 <div class="flex justify-center">
                     <div class="w-full max-w-xs">
-                        <input 
-                            type="email" 
-                            name="email" 
-                            placeholder="Email address" 
-                            class="form-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all" 
-                            required 
+                        <input
+                            type="email"
+                            name="email"
+                            id="emailInput"
+                            placeholder="Email address"
+                            class="step-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
+                            autocomplete="email"
                         />
                         <p class="error-text text-xs text-red-600 mt-2 hidden">
                             Please enter a valid email address.
@@ -59,15 +59,19 @@
             <div class="step hidden" data-step="1">
                 <div class="flex justify-center">
                     <div class="w-full max-w-xs">
-                        <input type="text" name="username" placeholder="Username" 
-                        class="form-input w-full max-w-xs px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all" 
-                        required minlength="3" />
+                        <input
+                            type="text"
+                            name="username"
+                            id="usernameInput"
+                            placeholder="Username"
+                            class="step-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
+                            autocomplete="username"
+                        />
                         <p class="error-text text-red-600 pt-2 text-xs hidden">Username must be at least 3 characters.</p>
                     </div>
                 </div>
-                
                 <div class="mt-4 text-center">
-                    <a href="#" id="backLink" class="text-sm font-medium text-blue-600 transition-colors hover:text-gray-800">Back</a>
+                    <a href="#" class="back-link text-sm font-medium text-blue-600 hover:text-gray-800">Back</a>
                 </div>
             </div>
 
@@ -78,75 +82,82 @@
                         <input
                             type="text"
                             name="first_name"
+                            id="firstNameInput"
                             placeholder="First name"
-                             class="form-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
-                            required
+                            class="step-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
+                            autocomplete="given-name"
                         />
                         <input
                             type="text"
                             name="last_name"
+                            id="lastNameInput"
                             placeholder="Last name"
-                             class="form-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
-                            required
+                            class="step-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
+                            autocomplete="family-name"
                         />
                         <input
                             type="tel"
                             name="phone_number"
-                            placeholder="Phone number"
-                             class="form-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
+                            id="phoneInput"
+                            placeholder="Phone number (optional)"
+                            class="step-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
+                            autocomplete="tel"
                         />
-                        <p class="error-text hidden text-xs text-red-600 mt-2">
-                            Please fill out all fields.
+                        <p class="error-text hidden text-xs text-red-600">
+                            Please fill out first and last name.
                         </p>
                     </div>
                 </div>
                 <div class="mt-5 text-center">
-                    <a href="#" id="backLink" class="text-sm font-medium text-blue-600 transition-colors hover:text-gray-800">Back</a>
+                    <a href="#" class="back-link text-sm font-medium text-blue-600 hover:text-gray-800">Back</a>
                 </div>
             </div>
-            
+
             <!-- Step 4: Password -->
             <div class="step hidden" data-step="3">
                 <div class="flex justify-center">
                     <div class="space-y-3 flex flex-col w-full max-w-xs">
-                        <input 
-                            type="password" 
-                            name="password" 
+                        <input
+                            type="password"
+                            name="password"
                             id="passwordInput"
-                            placeholder="Password" 
-                            class="form-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"                    
-                            required 
+                            placeholder="Password"
+                            class="step-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
+                            autocomplete="new-password"
                         />
-                        <input 
-                            type="password" 
-                            name="password_confirmation" 
+                        <input
+                            type="password"
+                            name="password_confirmation"
                             id="passwordConfirmInput"
-                            placeholder="Confirm Password" 
-                            class="form-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"                    
-                            required 
+                            placeholder="Confirm Password"
+                            class="step-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
+                            autocomplete="new-password"
                         />
                         <p class="error-text text-xs text-red-600 hidden">
                             Passwords must match and be at least 6 characters long.
                         </p>
 
                         <div class="flex items-center space-x-2 text-sm text-gray-700">
-                            <input type="checkbox" name="terms" required class="form-checkbox text-[#03624C] rounded focus:ring-[#03624C]" />
+                            <input type="checkbox" id="termsCheckbox" name="terms" class="form-checkbox text-[#03624C] rounded focus:ring-[#03624C]" />
                             <span>
-                                Accept terms and conditions. 
+                                Accept terms and conditions.
                                 <a href="#" class="text-blue-600 hover:underline">See here</a>
                             </span>
                         </div>
                     </div>
                 </div>
-
                 <div class="mt-4 text-center">
-                    <a href="#" id="backLink" class="text-sm font-medium text-blue-600 transition-colors hover:text-gray-800">Back</a>
+                    <a href="#" class="back-link text-sm font-medium text-blue-600 hover:text-gray-800">Back</a>
                 </div>
             </div>
 
-            <!-- Button -->
+            <!-- Next / Submit Button -->
             <div class="pt-2">
-                <button id="nextBtn" type="submit" class="w-full py-3 text-base font-semibold text-white transition-all duration-300 ease-in-out rounded-xl bg-gray-300 cursor-not-allowed" disabled>
+                <button
+                    id="nextBtn"
+                    type="button"
+                    class="w-full py-3 text-base font-semibold text-white transition-all duration-300 ease-in-out rounded-xl bg-gray-300 cursor-not-allowed"
+                    disabled>
                     Next
                 </button>
             </div>
@@ -155,125 +166,130 @@
 </div>
 
 <style>
-    .form-input {
-        @apply w-full px-4 py-3 text-base text-gray-800 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all;
+    .step-input {
+        display: block;
+        width: 100%;
     }
-    .form-input.error {
-        @apply border-red-500 ring-1 ring-red-500;
-    }
-    .error-text {
-        @apply mt-2 text-sm text-center text-red-600;
+    .step-input.input-error {
+        border-color: #ef4444;
+        box-shadow: 0 0 0 1px #ef4444;
     }
 </style>
 
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const form = document.getElementById('signupForm');
-        const steps = Array.from(document.querySelectorAll('.step'));
-        const nextBtn = document.getElementById('nextBtn');
-        const subtitle = document.getElementById('step-subtitle');
-        const backLinks = document.querySelectorAll('#backLink');
+document.addEventListener('DOMContentLoaded', function () {
 
-        let currentStep = 0;
+    var form        = document.getElementById('signupForm');
+    var nextBtn     = document.getElementById('nextBtn');
+    var subtitle    = document.getElementById('step-subtitle');
+    var steps       = Array.from(document.querySelectorAll('.step'));
+    var currentStep = 0;
 
-        const subheadings = [
-            "Enter your email address",
-            "Choose a unique username",
-            "Enter your contact information",
-            "Create a secure password"
-        ];
+    var subheadings = [
+        "Enter your email address",
+        "Choose a unique username",
+        "Enter your contact information",
+        "Create a secure password"
+    ];
 
-        const validateEmail = (email) => {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            return emailRegex.test(email.trim());
-        };
+    /* ── helpers ─────────────────────────────────────────── */
 
-        const updateFormState = () => {
-            steps.forEach((step, index) => {
-                step.classList.toggle('hidden', index !== currentStep);
-            });
-            subtitle.textContent = subheadings[currentStep];
-            nextBtn.textContent = currentStep === steps.length - 1 ? 'Sign Up' : 'Next';
-            validateCurrentStep();
-        };
+    function isValidEmail(val) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
+    }
 
-        const validateCurrentStep = () => {
-            const step = steps[currentStep];
-            const inputs = Array.from(step.querySelectorAll('input[type!="checkbox"]:not([type="hidden"])'));
-            let isValid = true;
+    function setBtn(enabled) {
+        nextBtn.disabled = !enabled;
+        if (enabled) {
+            nextBtn.classList.remove('bg-gray-300', 'cursor-not-allowed');
+            nextBtn.classList.add('bg-[#03624C]', 'hover:bg-opacity-90', 'cursor-pointer');
+        } else {
+            nextBtn.classList.add('bg-gray-300', 'cursor-not-allowed');
+            nextBtn.classList.remove('bg-[#03624C]', 'hover:bg-opacity-90', 'cursor-pointer');
+        }
+    }
 
-            step.querySelector('.error-text')?.classList.add('hidden');
-            inputs.forEach(input => input.classList.remove('error'));
-
-            if (currentStep === 0) {
-                const email = inputs[0].value.trim();
-                if (!validateEmail(email)) {
-                    isValid = false;
-                }
-            } else if (currentStep === 1) {
-                const username = inputs[0].value.trim();
-                if (username.length < 3) {
-                    isValid = false;
-                }
-            } else if (currentStep === 2) {
-                inputs.forEach(input => {
-                    if (input.name !== 'phone_number' && input.value.trim() === '') {
-                        isValid = false;
-                    }
-                });
-            } else if (currentStep === 3) {
-                const pass = document.getElementById('passwordInput').value;
-                const confirm = document.getElementById('passwordConfirmInput').value;
-                const termsChecked = step.querySelector('input[name="terms"]').checked;
-                if (pass.length < 6 || pass !== confirm || !termsChecked) {
-                    isValid = false;
-                }
-            }
-
-            nextBtn.disabled = !isValid;
-            if (isValid) {
-                nextBtn.classList.remove('bg-gray-300', 'cursor-not-allowed');
-                nextBtn.classList.add('bg-[#03624C]', 'hover:bg-opacity-90');
+    function showStep(index) {
+        steps.forEach(function (s, i) {
+            if (i === index) {
+                s.classList.remove('hidden');
             } else {
-                nextBtn.classList.add('bg-gray-300', 'cursor-not-allowed');
-                nextBtn.classList.remove('bg-[#03624C]', 'hover:bg-opacity-90');
-            }
-        };
-
-        // ✅ KEY FIX: Use click handler on button instead of form submit
-        nextBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            validateCurrentStep();
-            if (nextBtn.disabled) return;
-
-            if (currentStep < steps.length - 1) {
-                // Not last step — advance
-                currentStep++;
-                updateFormState();
-            } else {
-                // Last step — submit the form
-                form.submit();
+                s.classList.add('hidden');
             }
         });
+        subtitle.textContent = subheadings[index];
+        nextBtn.textContent  = (index === steps.length - 1) ? 'Sign Up' : 'Next';
+        validate();
 
-        backLinks.forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (currentStep > 0) {
-                    currentStep--;
-                    updateFormState();
-                }
-            });
-        });
+        // focus the first input of the new step
+        var first = steps[index].querySelector('input');
+        if (first) { setTimeout(function(){ first.focus(); }, 50); }
+    }
 
-        form.addEventListener('input', () => {
-            setTimeout(validateCurrentStep, 0);
-        });
+    /* ── validation ──────────────────────────────────────── */
 
-        form.addEventListener('change', validateCurrentStep);
+    function validate() {
+        var ok = false;
 
-        updateFormState();
+        if (currentStep === 0) {
+            var email = document.getElementById('emailInput').value;
+            ok = isValidEmail(email);
+
+        } else if (currentStep === 1) {
+            var username = document.getElementById('usernameInput').value.trim();
+            ok = username.length >= 3;
+
+        } else if (currentStep === 2) {
+            var fn = document.getElementById('firstNameInput').value.trim();
+            var ln = document.getElementById('lastNameInput').value.trim();
+            ok = fn.length > 0 && ln.length > 0;
+
+        } else if (currentStep === 3) {
+            var pass    = document.getElementById('passwordInput').value;
+            var confirm = document.getElementById('passwordConfirmInput').value;
+            var terms   = document.getElementById('termsCheckbox').checked;
+            ok = pass.length >= 6 && pass === confirm && terms;
+        }
+
+        setBtn(ok);
+        return ok;
+    }
+
+    /* ── button click: advance or submit ─────────────────── */
+
+    nextBtn.addEventListener('click', function () {
+        if (!validate()) return;
+
+        if (currentStep < steps.length - 1) {
+            currentStep++;
+            showStep(currentStep);
+        } else {
+            // Final step — actually submit to Laravel
+            form.submit();
+        }
     });
+
+    /* ── back links ──────────────────────────────────────── */
+
+    document.querySelectorAll('.back-link').forEach(function (link) {
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+            if (currentStep > 0) {
+                currentStep--;
+                showStep(currentStep);
+            }
+        });
+    });
+
+    /* ── live validation on any input / change ───────────── */
+
+    form.addEventListener('input',  function () { validate(); });
+    form.addEventListener('change', function () { validate(); });
+
+    /* ── initialise ──────────────────────────────────────── */
+
+    showStep(0);
+});
 </script>
 
 @endsection
