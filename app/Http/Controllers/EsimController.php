@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Helpers\PinHelper;
 use App\Mail\EsimPurchaseAdminNotification;
-use App\Mail\EsimPurchaseUserNotification;
 use App\Models\Admin;
 use App\Models\Transaction;
 use App\Models\EsimCountry;
@@ -289,18 +288,6 @@ class EsimController extends Controller
                         'error' => $mailException->getMessage(),
                     ]);
                 }
-            }
-
-            // Notify user
-            $user = auth()->user();
-            try {
-                Mail::to($user->email)->send(new EsimPurchaseUserNotification($transaction, $country, $package, $user));
-            } catch (\Exception $mailException) {
-                Log::warning('Failed to send user eSIM notification', [
-                    'transaction_id' => $transaction->id,
-                    'user_id' => $userId,
-                    'error' => $mailException->getMessage(),
-                ]);
             }
 
             return response()->json([
