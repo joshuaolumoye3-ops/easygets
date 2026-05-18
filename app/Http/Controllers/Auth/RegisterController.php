@@ -33,6 +33,7 @@ class RegisterController extends Controller
 
     public function showRegisterForm()
     {
+        session()->regenerateToken();
         return view('onboarding.signup');
     }
 

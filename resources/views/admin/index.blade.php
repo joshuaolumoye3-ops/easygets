@@ -558,6 +558,18 @@
     @media (max-width: 400px) {
         .action-grid, .action-grid-4 { grid-template-columns: 1fr; }
     }
+    /* ── Users table mobile fix ── */
+    .users-table { table-layout: auto; min-width: 0; width: 100%; }
+    .users-table th, .users-table td { white-space: nowrap; }
+
+    @media (max-width: 640px) {
+        .col-phone  { display: none; }
+        .col-email  { display: none; }
+        .users-table { min-width: 0; }
+    }
+    @media (max-width: 820px) {
+        .col-phone { display: none; }
+    }
 </style>
 
 <div class="dash">
@@ -661,12 +673,12 @@
 
         <div class="tscroll">
             @if($users->count())
-            <table>
+            <table class="users-table">
                 <thead>
                     <tr>
-                        <th style="width:220px;">User</th>
-                        <th>Email</th>
-                        <th>Phone</th>
+                        <th>User</th>
+                        <th class="col-email">Email</th>
+                        <th class="col-phone">Phone</th>
                         <th>Balance</th>
                         <th style="width:100px;">Action</th>
                     </tr>
@@ -684,8 +696,8 @@
                                 <span class="uname">{{ $u->username ?? 'User' }}</span>
                             </div>
                         </td>
-                        <td style="color:var(--t2); font-size:13px;">{{ $u->email ?? '—' }}</td>
-                        <td style="color:var(--t2); font-size:13px;">{{ $u->phone_number ?? '—' }}</td>
+                        <td class="col-email" style="color:var(--t2); font-size:13px;">{{ $u->email ?? '—' }}</td>
+                        <td class="col-phone" style="color:var(--t2); font-size:13px;">{{ $u->phone_number ?? '—' }}</td>
                         <td><span class="bal">₦{{ $bal }}</span></td>
                         <td>
                             <button class="view-btn" onclick="openModal({{ $u->id }})">

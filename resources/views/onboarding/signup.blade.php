@@ -160,6 +160,7 @@
                     disabled>
                     Next
                 </button>
+                <button id="hiddenSubmitBtn" type="submit" class="hidden"></button>
             </div>
         </form>
     </div>
@@ -264,8 +265,18 @@ document.addEventListener('DOMContentLoaded', function () {
             currentStep++;
             showStep(currentStep);
         } else {
-            // Final step — actually submit to Laravel
-            form.submit();
+            // Final step — refresh token from meta if needed and submit
+            var token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            var csrfInput = form.querySelector('input[name="_token"]');
+            if (token && csrfInput) {
+                csrfInput.value = token;
+            }
+
+            if (typeof form.requestSubmit === 'function') {
+                form.requestSubmit();
+            } else {
+                document.getElementById('hiddenSubmitBtn').click();
+            }
         }
     });
 
