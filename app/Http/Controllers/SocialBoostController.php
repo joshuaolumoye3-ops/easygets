@@ -294,8 +294,17 @@ class SocialBoostController extends Controller
                 ], 422);
             }
 
+            // Determine admin markup for this service, if configured
+            $adminPercentage = intval(SocialServiceDescription::where('service_id', (string)$validated['service_id'])->value('admin_percentage') ?? 0);
+
             // Calculate cost (pass service id so product-level `client_price` can be applied)
-            $costs = $this->mtpHelper->calculateCost($service['rate'], $validated['quantity'], $this->exchangeRate, $service['service'] ?? null);
+            $costs = $this->mtpHelper->calculateCost(
+                $service['rate'],
+                $validated['quantity'], 
+                $this->exchangeRate, 
+                $service['service'] ?? null,
+                $adminPercentage
+            );
             $costLocal = $costs['cost_local'];
             $costUsd = $costs['cost_usd'];
 

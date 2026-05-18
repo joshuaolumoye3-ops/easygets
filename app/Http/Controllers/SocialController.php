@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
    use Illuminate\Support\Facades\DB;
 use App\Models\Wallet;
 use App\Models\Transaction;
+use App\Models\SocialServiceDescription;
 // use App\Helpers\morethanpanel_helper;
 use App\Helpers\morethanpanel_helper;
 
@@ -65,11 +66,14 @@ public function order(Request $request)
         $serviceName = $service->name;
         $rate        = (float)$service->rate;
 
+        // Determine admin markup for this service, if configured
+        $adminPercentage = intval(SocialServiceDescription::where('service_id', (string)$serviceId)->value('admin_percentage') ?? 0);
+
         // ✅ FIX: Use MoreThanPanelHelper::calculateCost() so the amount charged
         // matches exactly what was shown to the user (admin client_price + markup percentage).
         $mtpHelper    = new \App\Helpers\MoreThanPanelHelper();
         $exchangeRate = 1500; // same default used in formatServiceForDisplay()
-        $costBreakdown = $mtpHelper->calculateCost($rate, $request->quantity, $exchangeRate, (string)$serviceId);
+        $costBreakdown = $mtpHelper->calculateCost($rate, $request->quantity, $exchangeRate, (string)$serviceId, $adminPercentage);
         $amount = $costBreakdown['cost_local'];   // already rounded, includes admin markup
 
         // Lock wallet

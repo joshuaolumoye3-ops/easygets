@@ -306,7 +306,7 @@ class MoreThanPanelHelper
      * Calculate order cost using product-level client_price
      * If client_price exists, use it directly; otherwise fall back to API rate with exchange
      */
-    public function calculateCost($rateUsd, $quantity, $exchangeRate = 1500, $serviceCode = null)
+    public function calculateCost($rateUsd, $quantity, $exchangeRate = 1500, $serviceCode = null, $adminPercentage = 0)
     {
         // Try to get product-level client_price first
         $clientPricePerUnit = null;
@@ -323,6 +323,13 @@ class MoreThanPanelHelper
             $markupMultiplier = 1 + ($providerPercentage / 100);
             $finalPerUnit = round($clientPricePerUnit * $markupMultiplier, 2);
             $costLocal = round($finalPerUnit * $quantity, 2);
+
+            if ($adminPercentage > 0) {
+                $adminMultiplier = 1 + ($adminPercentage / 100);
+                $finalPerUnit = round($finalPerUnit * $adminMultiplier, 2);
+                $costLocal = round($costLocal * $adminMultiplier, 2);
+                $providerPercentage += $adminPercentage;
+            }
 
             // For reference, also calculate what the USD cost would be
             $costUsd = round($costLocal / $exchangeRate, 2);
