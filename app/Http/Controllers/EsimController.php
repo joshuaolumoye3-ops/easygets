@@ -273,21 +273,28 @@ class EsimController extends Controller
                 ->where('email', '<>', '')
                 ->pluck('email')
                 ->filter()
-                ->unique()
-                ->toArray();
+                ->unique();
 
-            if (!empty($adminEmails)) {
-                $primaryAdmin = array_shift($adminEmails);
+            $validAdminEmails = $adminEmails->filter(function ($email) {
+                return filter_var($email, FILTER_VALIDATE_EMAIL);
+            })->values()->all();
+
+            if (!empty($validAdminEmails)) {
                 try {
-                    Mail::to($primaryAdmin)
-                        ->bcc($adminEmails)
+                    Mail::to($validAdminEmails)
                         ->send(new EsimPurchaseAdminNotification($transaction, $country, $package, auth()->user()));
                 } catch (\Exception $mailException) {
                     Log::warning('Failed to send admin eSIM notification', [
                         'transaction_id' => $transaction->id,
+                        'admin_emails' => $validAdminEmails,
                         'error' => $mailException->getMessage(),
                     ]);
                 }
+            } else {
+                Log::warning('No valid admin emails found for eSIM notification', [
+                    'transaction_id' => $transaction->id,
+                    'admin_emails' => $adminEmails->values()->all(),
+                ]);
             }
 
             return response()->json([
