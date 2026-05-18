@@ -24,3 +24,8 @@ Schedule::command('activations:expire-otp')
 Schedule::command('activations:process-expired', ['--limit=100', '--timeout=3'])
     ->everyMinute()
     ->withoutOverlapping();
+
+// Poll pending social boost orders every 2 minutes
+Schedule::command('social:check-pending-orders', ['--limit=50'])
+    ->everyTwoMinutes()
+    ->withoutOverlapping();

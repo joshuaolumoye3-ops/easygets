@@ -37,6 +37,15 @@ class Kernel extends ConsoleKernel
             ->everyMinute()          // run every minute so nothing sits longer than ~4 min total
             ->withoutOverlapping()   // built-in lock prevents concurrent runs
             ->onFailure(fn () => Log::error('activations:process-expired failed'));
+
+        // ── 4. Poll pending social boost orders every 2 minutes ────────────────
+        // Checks MoreThanPanel for status updates on pending/processing social
+        // orders and writes the result back to the transactions table.
+        $schedule->command('social:check-pending-orders', ['--limit=50'])
+            ->everyTwoMinutes()
+            ->withoutOverlapping()
+            ->onFailure(fn () => Log::error('social:check-pending-orders failed'));
+
     }
 
     /**
