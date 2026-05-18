@@ -182,9 +182,8 @@
             "Enter your contact information",
             "Create a secure password"
         ];
-        
+
         const validateEmail = (email) => {
-            // HTML5 email validation pattern - compatible across all browsers
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             return emailRegex.test(email.trim());
         };
@@ -193,7 +192,6 @@
             steps.forEach((step, index) => {
                 step.classList.toggle('hidden', index !== currentStep);
             });
-
             subtitle.textContent = subheadings[currentStep];
             nextBtn.textContent = currentStep === steps.length - 1 ? 'Sign Up' : 'Next';
             validateCurrentStep();
@@ -208,52 +206,26 @@
             inputs.forEach(input => input.classList.remove('error'));
 
             if (currentStep === 0) {
-                // Email validation
                 const email = inputs[0].value.trim();
                 if (!validateEmail(email)) {
-                    inputs[0].classList.add('error');
-                    step.querySelector('.error-text').classList.remove('hidden');
                     isValid = false;
                 }
             } else if (currentStep === 1) {
-                // Username validation
                 const username = inputs[0].value.trim();
                 if (username.length < 3) {
-                    inputs[0].classList.add('error');
-                    step.querySelector('.error-text').classList.remove('hidden');
                     isValid = false;
                 }
             } else if (currentStep === 2) {
-                // Contact info validation
                 inputs.forEach(input => {
-                    // Only validate required fields (first_name, last_name)
                     if (input.name !== 'phone_number' && input.value.trim() === '') {
-                        input.classList.add('error');
                         isValid = false;
                     }
                 });
-                if (!isValid) step.querySelector('.error-text').classList.remove('hidden');
             } else if (currentStep === 3) {
-                // Password validation - no strict requirements
                 const pass = document.getElementById('passwordInput').value;
                 const confirm = document.getElementById('passwordConfirmInput').value;
                 const termsChecked = step.querySelector('input[name="terms"]').checked;
-
-                if (pass.length < 6) {
-                    document.getElementById('passwordInput').classList.add('error');
-                    step.querySelector('.error-text').classList.remove('hidden');
-                    isValid = false;
-                }
-                
-                if (pass !== confirm) {
-                    document.getElementById('passwordInput').classList.add('error');
-                    document.getElementById('passwordConfirmInput').classList.add('error');
-                    step.querySelector('.error-text').classList.remove('hidden');
-                    isValid = false;
-                }
-
-                if (!termsChecked) {
-                    step.querySelector('.error-text').classList.remove('hidden');
+                if (pass.length < 6 || pass !== confirm || !termsChecked) {
                     isValid = false;
                 }
             }
@@ -268,18 +240,20 @@
             }
         };
 
-        form.addEventListener('submit', (e) => {
+        // ✅ KEY FIX: Use click handler on button instead of form submit
+        nextBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             validateCurrentStep();
-            if (nextBtn.disabled) {
-                e.preventDefault();
-                return;
-            }
+            if (nextBtn.disabled) return;
+
             if (currentStep < steps.length - 1) {
-                e.preventDefault();
+                // Not last step — advance
                 currentStep++;
                 updateFormState();
+            } else {
+                // Last step — submit the form
+                form.submit();
             }
-            // ✅ At last step, form submission continues to Laravel
         });
 
         backLinks.forEach(link => {
@@ -292,12 +266,8 @@
             });
         });
 
-        // Real-time validation - add slight delay for Safari compatibility
-        form.addEventListener('input', (e) => {
-            // Use setTimeout to ensure all input events are processed
-            setTimeout(() => {
-                validateCurrentStep();
-            }, 0);
+        form.addEventListener('input', () => {
+            setTimeout(validateCurrentStep, 0);
         });
 
         form.addEventListener('change', validateCurrentStep);
