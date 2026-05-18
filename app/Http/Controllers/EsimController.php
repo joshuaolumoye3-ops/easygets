@@ -280,15 +280,17 @@ class EsimController extends Controller
             })->values()->all();
 
             if (!empty($validAdminEmails)) {
-                try {
-                    Mail::to($validAdminEmails)
-                        ->send(new EsimPurchaseAdminNotification($transaction, $country, $package, auth()->user()));
-                } catch (\Exception $mailException) {
-                    Log::warning('Failed to send admin eSIM notification', [
-                        'transaction_id' => $transaction->id,
-                        'admin_emails' => $validAdminEmails,
-                        'error' => $mailException->getMessage(),
-                    ]);
+                // Send to each admin separately so one bad address doesn't stop others
+                foreach ($validAdminEmails as $adminEmail) {
+                    try {
+                        Mail::to($adminEmail)->send(new EsimPurchaseAdminNotification($transaction, $country, $package, auth()->user()));
+                    } catch (\Exception $mailException) {
+                        Log::warning('Failed to send admin eSIM notification to admin', [
+                            'transaction_id' => $transaction->id,
+                            'admin_email' => $adminEmail,
+                            'error' => $mailException->getMessage(),
+                        ]);
+                    }
                 }
             } else {
                 Log::warning('No valid admin emails found for eSIM notification', [
