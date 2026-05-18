@@ -349,12 +349,19 @@ class MoreThanPanelHelper
         $costLocalPerUnit = round($costUsdPerUnit * $exchangeRate, 4);
         $costLocal = round($costLocalPerUnit * $quantity, 2);
 
+        if ($adminPercentage > 0) {
+            $adminMultiplier = 1 + ($adminPercentage / 100);
+            $costLocalPerUnit = round($costLocalPerUnit * $adminMultiplier, 4);
+            $costLocal = round($costLocal * $adminMultiplier, 2);
+            $costUsd = round($costLocal / $exchangeRate, 2);
+        }
+
         return [
             'cost_usd' => $costUsd,
             'cost_local' => $costLocal,
             'cost_local_per_unit' => $costLocalPerUnit,
-            'percentage_applied' => 0,
-            'source' => 'api_rate_with_exchange',
+            'percentage_applied' => $adminPercentage,
+            'source' => $adminPercentage > 0 ? 'api_rate_with_exchange_with_admin_markup' : 'api_rate_with_exchange',
         ];
     }
 
