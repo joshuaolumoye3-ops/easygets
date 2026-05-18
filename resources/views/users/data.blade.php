@@ -771,6 +771,18 @@ async function showDataSuccessPartial(data) {
     }
 }
 
+// Show custom modal for error/info messages
+function showDataCustomModal(title, message, colorClass = 'text-gray-800') {
+    const dataCustomModal = document.getElementById('dataCustomModal');
+    const dataModalTitle = document.getElementById('dataModalTitle');
+    const dataModalMessage = document.getElementById('dataModalMessage');
+
+    dataModalTitle.textContent = title;
+    dataModalTitle.className = `text-lg font-bold mb-2 ${colorClass}`;
+    dataModalMessage.textContent = message;
+    dataCustomModal.classList.remove('hidden');
+}
+
 // Fallback function for simple success display
 function showSimpleDataSuccessModal(data) {
     let detailsText = '';
