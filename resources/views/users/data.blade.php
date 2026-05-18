@@ -371,6 +371,56 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Auto-detect network when user types recipient number and update network selection
+    const dataRecipient = document.getElementById('recipient');
+    if (dataRecipient) {
+        dataRecipient.addEventListener('input', function (e) {
+            let value = (e.target.value || '').replace(/\D/g, '');
+            if (value.startsWith('+234')) value = '0' + value.slice(4);
+            if (value.startsWith('234')) value = '0' + value.slice(3);
+            if (!value) return;
+
+            const prefix4 = value.slice(0,4);
+            const mtn = ['0803','0806','0703','0706','0813','0816','0810','0814','0903','0906','0913','0916'];
+            const glo = ['0805','0807','0815','0811','0905','0915'];
+            const airtel = ['0802','0808','0708','0812','0701','0902','0907','0912'];
+            const nine = ['0809','0817','0818','0909','0908','0917'];
+
+            let detected = null;
+            if (mtn.includes(prefix4)) detected = 'mtn';
+            else if (glo.includes(prefix4)) detected = 'glo';
+            else if (airtel.includes(prefix4)) detected = 'airtel';
+            else if (nine.includes(prefix4)) detected = '9mobile';
+
+            if (detected) {
+                // apply the same behavior as user choosing from modal
+                selectedNetwork = detected;
+                networkInput.value = detected;
+                // update visible select element
+                networkSelect.querySelectorAll('option').forEach(opt => {
+                    opt.selected = (opt.value === detected);
+                });
+                networkSelect.classList.remove('text-gray-500');
+                networkSelect.classList.add('text-gray-800');
+
+                // update type modal title dataset for UX consistency
+                const displayName = detected.toUpperCase();
+                typeSelect.dataset.networkName = displayName;
+
+                // Reset dependent selections (type & package)
+                typeSelect.textContent = 'Choose Plan Duration';
+                typeInput.value = '';
+                packageTrigger.textContent = 'Choose a Package';
+                packageInput.value = '';
+                amountInput.value = '';
+                typeSelect.classList.remove('text-gray-800');
+                typeSelect.classList.add('text-gray-500');
+                packageTrigger.classList.remove('text-gray-800');
+                packageTrigger.classList.add('text-gray-500');
+            }
+        });
+    }
+
     // Close modals on background click
     [networkModal, typeModal, packageModal].forEach(modal => {
         modal.addEventListener('click', function (e) {

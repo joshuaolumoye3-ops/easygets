@@ -175,6 +175,18 @@
             }
             
             e.target.value = value;
+
+            // Auto-detect network from number and update network select
+            const detected = detectNetworkFromNumber(value);
+            if (detected) {
+                // mapping to the select option codes used in this view
+                const map = { mtn: '01', glo: '02', airtel: '03', '9mobile': '04' };
+                const code = map[detected];
+                if (code) {
+                    networkSelect.value = code;
+                    networkSelect.dispatchEvent(new Event('change'));
+                }
+            }
         });
 
         // Amount validation
@@ -195,6 +207,28 @@
                 networkModal.classList.add('opacity-100'); // Fade in the overlay
                 modalContent.classList.remove('translate-y-full'); // Slide up the content
             }, 10);
+        }
+
+        // Detect network by Nigerian prefixes (supports +234 and 234 formats)
+        function detectNetworkFromNumber(raw) {
+            if (!raw) return null;
+            let num = raw.trim();
+            if (num.startsWith('+234')) num = '0' + num.slice(4);
+            if (num.startsWith('234')) num = '0' + num.slice(3);
+            if (!num.startsWith('0')) {
+                return null;
+            }
+            const prefix4 = num.slice(0,4);
+            const mtn = ['0803','0806','0703','0706','0813','0816','0810','0814','0903','0906','0913','0916'];
+            const glo = ['0805','0807','0815','0811','0905','0915'];
+            const airtel = ['0802','0808','0708','0812','0701','0902','0907','0912'];
+            const nine = ['0809','0817','0818','0909','0908','0917'];
+
+            if (mtn.includes(prefix4)) return 'mtn';
+            if (glo.includes(prefix4)) return 'glo';
+            if (airtel.includes(prefix4)) return 'airtel';
+            if (nine.includes(prefix4)) return '9mobile';
+            return null;
         }
 
         // Function to hide the modal with slide-down animation and undimming
