@@ -62,23 +62,23 @@
             <div class="space-y-3 text-center">
                 <p class="text-sm text-gray-600">Didn't receive the code?</p>
 
-                <form method="POST" action="{{ route('verify.email.resend') }}" id="resendForm" class="inline">
-                    @csrf
-                    <input type="hidden" name="user_id" value="{{ $user->id }}" />
-                    <button
-                        type="submit"
-                        class="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
-                    >
-                        Send a new verification code
-                    </button>
-                </form>
-
                 <div class="pt-2">
                     <a href="{{ route('login') }}" class="text-sm text-gray-600 hover:text-gray-800 transition-colors">
                         Back to Sign In
                     </a>
                 </div>
             </div>
+        </form>
+
+        <form method="POST" action="{{ route('verify.email.resend') }}" id="resendForm" class="text-center mt-4">
+            @csrf
+            <input type="hidden" name="user_id" value="{{ $user->id }}" />
+            <button
+                type="submit"
+                class="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+            >
+                Send a new verification code
+            </button>
         </form>
 
         <div class="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">

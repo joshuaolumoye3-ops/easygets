@@ -17,6 +17,29 @@ class LoginController extends Controller
         return view('auth.login');
     }
 
+    protected function sendVerificationOtp(User $user)
+    {
+        $otp = rand(100000, 999999);
+
+        \App\Models\EmailOtp::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'otp' => $otp,
+                'expires_at' => Carbon::now()->addMinutes(5),
+            ]
+        );
+
+        try {
+            Mail::to($user->email)->send(new \App\Mail\OtpMail($otp));
+        } catch (\Exception $exception) {
+            \Log::error('Failed to send verification OTP email', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'message' => $exception->getMessage(),
+            ]);
+        }
+    }
+
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -27,23 +50,14 @@ class LoginController extends Controller
         // Determine if the login field is email or username
         $fieldType = filter_var($credentials['login'], FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
 
-        // Check if user is blocked before attempting login
+        // Check if user exists before attempting login
         $user = User::where($fieldType, $credentials['login'])->first();
-        
         if (!$user) {
-            // User doesn't exist
             return back()->withErrors([
                 'login' => 'Invalid email/username or password.',
             ])->onlyInput('login');
         }
 
-        // Check if email is verified
-        if ($user->email_verified_at === null) {
-            // Email not verified - redirect to email verification screen
-            return redirect()->route('verify.email.form', ['user' => $user->id])
-                ->with('warning', 'Please verify your email first to continue. We\'ve sent a verification code to your email.');
-        }
-        
         if ($user->isBlocked()) {
             \Log::warning('Login attempt by blocked user', [
                 'username' => $user->username,
@@ -57,25 +71,28 @@ class LoginController extends Controller
             ])->onlyInput('login');
         }
 
-        // Attempt authentication
-        if (Auth::attempt([$fieldType => $credentials['login'], 'password' => $credentials['password']])) {
-            // Regenerate session and CSRF token on successful login
-            $request->session()->regenerate();
-            
-            // Update last login timestamp
-            $user = Auth::user();
-            $user->update(['last_login_at' => now()]);
-
-            return redirect()->intended(route('dashboard'))
-                            ->with('success', 'Welcome back!');
+        if (!Auth::attempt([$fieldType => $credentials['login'], 'password' => $credentials['password']])) {
+            $request->session()->regenerateToken();
+            return back()->withErrors([
+                'login' => 'Invalid email/username or password.',
+            ])->onlyInput('login');
         }
 
-        // Failed login - regenerate token for security
-        $request->session()->regenerateToken();
-        
-        return back()->withErrors([
-            'login' => 'Invalid email/username or password.',
-        ])->onlyInput('login');
+        $request->session()->regenerate();
+        $user = Auth::user();
+
+        if ($user->email_verified_at === null) {
+            Auth::logout();
+            $this->sendVerificationOtp($user);
+
+            return redirect()->route('verify.email.form', ['user' => $user->id])
+                ->with('warning', 'Please verify your email first to continue. We\'ve sent a verification code to your email.');
+        }
+
+        $user->update(['last_login_at' => now()]);
+
+        return redirect()->intended(route('dashboard'))
+                        ->with('success', 'Welcome back!');
     }
 
     public function showVerifyEmailForm($userId)
@@ -85,6 +102,15 @@ class LoginController extends Controller
         // If already verified, redirect to login
         if ($user->email_verified_at !== null) {
             return redirect()->route('login')->with('info', 'Your email is already verified. Please sign in.');
+        }
+
+        $existsOtp = \App\Models\EmailOtp::where('user_id', $user->id)
+            ->where('expires_at', '>', now())
+            ->latest('created_at')
+            ->first();
+
+        if (!$existsOtp) {
+            $this->sendVerificationOtp($user);
         }
 
         return view('auth.verify-email', ['user' => $user]);
@@ -138,19 +164,7 @@ class LoginController extends Controller
             return back()->with('info', 'Your email is already verified.');
         }
 
-        // Generate new OTP (use RegisterController's logic)
-        $otp = rand(100000, 999999);
-
-        \App\Models\EmailOtp::updateOrCreate(
-            ['user_id' => $user->id],
-            [
-                'otp' => $otp,
-                'expires_at' => \Carbon\Carbon::now()->addMinutes(5),
-            ]
-        );
-
-        // Send OTP email
-        \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\OtpMail($otp));
+        $this->sendVerificationOtp($user);
 
         return back()->with('success', 'A new verification code has been sent to your email. Check your inbox.');
     }
