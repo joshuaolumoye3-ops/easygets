@@ -131,7 +131,7 @@
     }
 
     /* ── Stats Grid ── */
-    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
 
     .stat-card {
         background: var(--bg-3);
@@ -151,6 +151,7 @@
     .stat-card.blue .accent-line  { background: linear-gradient(90deg, transparent, var(--blue), transparent); }
     .stat-card.green .accent-line { background: linear-gradient(90deg, transparent, var(--emerald), transparent); }
     .stat-card.amber .accent-line { background: linear-gradient(90deg, transparent, var(--amber), transparent); }
+    .stat-card.violet .accent-line { background: linear-gradient(90deg, transparent, var(--violet), transparent); }
 
     .stat-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
     .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.9px; color: var(--t3); }
@@ -162,6 +163,7 @@
     .stat-card.blue  .stat-icon { background: var(--blue-dim);    color: var(--blue); }
     .stat-card.green .stat-icon { background: var(--emerald-dim);  color: var(--emerald); }
     .stat-card.amber .stat-icon { background: var(--amber-dim);    color: var(--amber); }
+    .stat-card.violet .stat-icon { background: var(--violet-dim);   color: var(--violet); }
 
     .stat-value { font-size: 26px; font-weight: 800; color: var(--t1); letter-spacing: -0.5px; line-height: 1; margin-bottom: 10px; }
     .stat-badge {
@@ -171,6 +173,7 @@
     .stat-card.blue  .stat-badge { background: var(--blue-dim);    color: var(--blue-text);    border: 1px solid rgba(79,140,255,0.2); }
     .stat-card.green .stat-badge { background: var(--emerald-dim);  color: var(--emerald-text); border: 1px solid rgba(52,217,139,0.2); }
     .stat-card.amber .stat-badge { background: var(--amber-dim);    color: var(--amber-text);   border: 1px solid rgba(251,191,36,0.2); }
+    .stat-card.violet .stat-badge { background: rgba(139,124,248,0.12); color: var(--violet-text); border: 1px solid rgba(139,124,248,0.25); }
 
     /* ── Table Card ── */
     .tcard {
@@ -229,6 +232,17 @@
         padding-right: 26px;
     }
     .per-page:focus { border-color: var(--blue); outline: none; }
+
+    .date-input, .filter-select {
+        height: 36px; padding: 0 12px;
+        background: var(--bg-3); border: 1px solid var(--border-2);
+        border-radius: var(--r2); color: var(--t1); font-size: 12.5px;
+        font-family: var(--font); transition: border-color .2s, box-shadow .2s;
+    }
+    .date-input:focus, .filter-select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-dim); }
+    .tx-range-fields { display: none; gap: 8px; margin-left: 8px; }
+    .tx-range-fields.open { display: flex; }
+    .range-summary { font-size: 12px; color: var(--t3); margin-bottom: 14px; font-weight: 700; }
 
     .btn-filter {
         height: 36px; padding: 0 14px;
@@ -634,6 +648,18 @@
             <div class="stat-value">{{ number_format($stats['total_transactions'] ?? 0) }}</div>
             <span class="stat-badge">↑ 8.3%</span>
         </div>
+
+        <div class="stat-card violet">
+            <div class="accent-line"></div>
+            <div class="stat-top">
+                <div class="stat-label">Selected period revenue</div>
+                <div class="stat-icon">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8v1m0 0v8m0-8h0"/></svg>
+                </div>
+            </div>
+            <div class="stat-value">₦{{ number_format($transactionsTotalAmount ?? 0, 0) }}</div>
+            <span class="stat-badge">{{ $txDateLabel }}</span>
+        </div>
     </div>
 
     {{-- ── Users Table ── --}}
@@ -647,6 +673,9 @@
                 <form class="filter-form" method="GET" action="{{ url()->current() }}">
                     @if(request('tx_search'))<input type="hidden" name="tx_search" value="{{ request('tx_search') }}">@endif
                     @if(request('tx_pp'))<input type="hidden" name="tx_pp" value="{{ request('tx_pp') }}">@endif
+                    @if(request('tx_range'))<input type="hidden" name="tx_range" value="{{ request('tx_range') }}">@endif
+                    @if(request('tx_start'))<input type="hidden" name="tx_start" value="{{ request('tx_start') }}">@endif
+                    @if(request('tx_end'))<input type="hidden" name="tx_end" value="{{ request('tx_end') }}">@endif
 
                     <div class="fsearch">
                         <svg class="ico" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
@@ -659,10 +688,26 @@
                         @endforeach
                     </select>
 
+                    <select class="per-page filter-select" name="u_range" id="uRangeSelect" onchange="handleDateRangeChange('uRangeSelect', 'u')">
+                        <option value="" {{ !request('u_range') ? 'selected' : '' }}>All dates</option>
+                        <option value="today" {{ request('u_range') === 'today' ? 'selected' : '' }}>Today</option>
+                        <option value="this_week" {{ request('u_range') === 'this_week' ? 'selected' : '' }}>This week</option>
+                        <option value="last_week" {{ request('u_range') === 'last_week' ? 'selected' : '' }}>Last week</option>
+                        <option value="this_month" {{ request('u_range') === 'this_month' ? 'selected' : '' }}>This month</option>
+                        <option value="last_month" {{ request('u_range') === 'last_month' ? 'selected' : '' }}>Last month</option>
+                        <option value="this_year" {{ request('u_range') === 'this_year' ? 'selected' : '' }}>This year</option>
+                        <option value="custom" {{ request('u_range') === 'custom' ? 'selected' : '' }}>Custom</option>
+                    </select>
+
+                    <div class="tx-range-fields {{ request('u_range') === 'custom' ? 'open' : '' }}" id="uRangeFields">
+                        <input type="date" class="date-input" name="u_start" id="uStart" value="{{ request('u_start') }}">
+                        <input type="date" class="date-input" name="u_end" id="uEnd" value="{{ request('u_end') }}">
+                    </div>
+
                     <button type="submit" class="btn-filter">Search</button>
 
-                    @if(request('u_search'))
-                        <a href="{{ url()->current() }}{{ request('tx_search') ? '?tx_search='.urlencode(request('tx_search')) : '' }}" class="btn-clear">
+                    @if(request('u_search') || request('u_range') || request('u_start') || request('u_end'))
+                        <a href="{{ url()->current() }}{{ !empty(request()->except(['u_search','u_pp','u_range','u_start','u_end'])) ? '?'.http_build_query(request()->except(['u_search','u_pp','u_range','u_start','u_end'])) : '' }}" class="btn-clear">
                             <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
                             Clear
                         </a>
@@ -717,10 +762,15 @@
             @endif
         </div>
 
+        @if(!empty($uDateLabel))
+        <div class="range-summary">
+            Showing <b>{{ number_format($users->total()) }}</b> user{{ $users->total() === 1 ? '' : 's' }} created during <b>{{ $uDateLabel }}</b>
+        </div>
+        @endif
         @if($users->hasPages())
         <div class="pgbar">
             <div class="pg-info">Showing <b>{{ $users->firstItem() }}–{{ $users->lastItem() }}</b> of <b>{{ $users->total() }}</b></div>
-            <div>{{ $users->appends(request()->only(['u_search','u_pp','tx_search','tx_pp']))->links('partials.admin.custom') }}</div>
+            <div>{{ $users->appends(request()->only(['u_search','u_pp','tx_search','tx_pp','u_range','u_start','u_end','tx_range','tx_start','tx_end']))->links('partials.admin.custom') }}</div>
         </div>
         @endif
     </div>
@@ -736,10 +786,29 @@
                 <form class="filter-form" method="GET" action="{{ url()->current() }}">
                     @if(request('u_search'))<input type="hidden" name="u_search" value="{{ request('u_search') }}">@endif
                     @if(request('u_pp'))<input type="hidden" name="u_pp" value="{{ request('u_pp') }}">@endif
+                    @if(request('u_range'))<input type="hidden" name="u_range" value="{{ request('u_range') }}">@endif
+                    @if(request('u_start'))<input type="hidden" name="u_start" value="{{ request('u_start') }}">@endif
+                    @if(request('u_end'))<input type="hidden" name="u_end" value="{{ request('u_end') }}">@endif
 
                     <div class="fsearch">
                         <svg class="ico" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                         <input type="text" name="tx_search" placeholder="Search transactions…" value="{{ request('tx_search') }}">
+                    </div>
+
+                    <select class="per-page filter-select" name="tx_range" id="txRangeSelect" onchange="handleDateRangeChange('txRangeSelect', 'tx')">
+                        <option value="" {{ !request('tx_range') ? 'selected' : '' }}>All dates</option>
+                        <option value="today" {{ request('tx_range') === 'today' ? 'selected' : '' }}>Today</option>
+                        <option value="this_week" {{ request('tx_range') === 'this_week' ? 'selected' : '' }}>This week</option>
+                        <option value="last_week" {{ request('tx_range') === 'last_week' ? 'selected' : '' }}>Last week</option>
+                        <option value="this_month" {{ request('tx_range') === 'this_month' ? 'selected' : '' }}>This month</option>
+                        <option value="last_month" {{ request('tx_range') === 'last_month' ? 'selected' : '' }}>Last month</option>
+                        <option value="this_year" {{ request('tx_range') === 'this_year' ? 'selected' : '' }}>This year</option>
+                        <option value="custom" {{ request('tx_range') === 'custom' ? 'selected' : '' }}>Custom</option>
+                    </select>
+
+                    <div class="tx-range-fields {{ request('tx_range') === 'custom' ? 'open' : '' }}" id="txRangeFields">
+                        <input type="date" class="date-input" name="tx_start" id="txStart" value="{{ request('tx_start') }}">
+                        <input type="date" class="date-input" name="tx_end" id="txEnd" value="{{ request('tx_end') }}">
                     </div>
 
                     <select class="per-page" name="tx_pp" onchange="this.form.submit()">
@@ -750,8 +819,8 @@
 
                     <button type="submit" class="btn-filter">Search</button>
 
-                    @if(request('tx_search'))
-                        <a href="{{ url()->current() }}{{ request('u_search') ? '?u_search='.urlencode(request('u_search')) : '' }}" class="btn-clear">
+                    @if(request('tx_search') || request('tx_range') || request('tx_start') || request('tx_end'))
+                        <a href="{{ url()->current() }}{{ !empty(request()->except(['tx_search','tx_range','tx_start','tx_end'])) ? '?'.http_build_query(request()->except(['tx_search','tx_range','tx_start','tx_end'])) : '' }}" class="btn-clear">
                             <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
                             Clear
                         </a>
@@ -759,6 +828,12 @@
                 </form>
             </div>
         </div>
+
+        @if(!empty($txDateLabel))
+        <div class="range-summary">
+            Showing <b>{{ number_format($transactionsTotalCount) }}</b> transaction{{ $transactionsTotalCount === 1 ? '' : 's' }} for <b>{{ $txDateLabel }}</b> · Total amount ₦{{ number_format($transactionsTotalAmount, 2) }}
+        </div>
+        @endif
 
         <div class="tscroll">
             @if($transactions && count($transactions) > 0)
@@ -817,7 +892,7 @@
         @if($transactions->hasPages())
         <div class="pgbar">
             <div class="pg-info">Showing <b>{{ $transactions->firstItem() }}–{{ $transactions->lastItem() }}</b> of <b>{{ $transactions->total() }}</b></div>
-            <div>{{ $transactions->appends(request()->only(['u_search','u_pp','tx_search','tx_pp']))->links('partials.admin.custom') }}</div>
+            <div>{{ $transactions->appends(request()->only(['u_search','u_pp','tx_search','tx_pp','tx_range','tx_start','tx_end']))->links('partials.admin.custom') }}</div>
         </div>
         @endif
     </div>
@@ -1178,6 +1253,24 @@
                     setTimeout(() => openModal(uid), 900);
                 }
             } catch(e) { flash(body, 'Error: ' + e.message, 'err'); }
+        }
+    }
+
+    function handleDateRangeChange(selectId, prefix) {
+        const select = document.getElementById(selectId);
+        const fields = document.getElementById(prefix + 'RangeFields');
+        if (!select || !fields) return;
+        if (select.value === 'custom') {
+            fields.classList.add('open');
+            return;
+        }
+        fields.classList.remove('open');
+        const start = document.getElementById(prefix + 'Start');
+        const end   = document.getElementById(prefix + 'End');
+        if (start) start.value = '';
+        if (end) end.value = '';
+        if (select.form) {
+            select.form.submit();
         }
     }
 

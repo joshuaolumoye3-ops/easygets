@@ -17,6 +17,7 @@ use App\Models\Admin;
 use App\Models\AdminTransaction;
 use App\Helpers\MoreThanPanelHelper;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class AdminDashboard extends Controller
 {
@@ -31,8 +32,12 @@ class AdminDashboard extends Controller
         $uPP  = in_array((int) $request->get('u_pp',  10), [10, 25, 50]) ? (int) $request->get('u_pp',  10) : 10;
         $txPP = in_array((int) $request->get('tx_pp', 10), [10, 25, 50]) ? (int) $request->get('tx_pp', 10) : 10;
 
-        // ── Users (with optional search) ──────────────────────────────
-        $uSearch = trim($request->get('u_search', ''));
+        // ── Users (with optional search + date filter) ────────────────
+        $uSearch      = trim($request->get('u_search', ''));
+        $uRange       = trim($request->get('u_range', ''));
+        $uStart       = trim($request->get('u_start', ''));
+        $uEnd         = trim($request->get('u_end', ''));
+        $uDateLabel   = '';
 
         $userQuery = User::with('wallet')->latest();
         if ($uSearch !== '') {
@@ -42,10 +47,86 @@ class AdminDashboard extends Controller
                   ->orWhere('phone_number', 'like', "%{$uSearch}%");
             });
         }
+
+        if ($uRange || $uStart || $uEnd) {
+            $from = null;
+            $to   = null;
+
+            switch ($uRange) {
+                case 'today':
+                    $from = today()->startOfDay();
+                    $to   = today()->endOfDay();
+                    $uDateLabel = 'Today';
+                    break;
+                case 'this_week':
+                    $from = now()->startOfWeek();
+                    $to   = now()->endOfWeek();
+                    $uDateLabel = 'This week';
+                    break;
+                case 'last_week':
+                    $from = now()->subWeek()->startOfWeek();
+                    $to   = now()->subWeek()->endOfWeek();
+                    $uDateLabel = 'Last week';
+                    break;
+                case 'this_month':
+                    $from = now()->startOfMonth();
+                    $to   = now()->endOfMonth();
+                    $uDateLabel = 'This month';
+                    break;
+                case 'last_month':
+                    $from = now()->subMonthNoOverflow()->startOfMonth();
+                    $to   = now()->subMonthNoOverflow()->endOfMonth();
+                    $uDateLabel = 'Last month';
+                    break;
+                case 'this_year':
+                    $from = now()->startOfYear();
+                    $to   = now()->endOfYear();
+                    $uDateLabel = 'This year';
+                    break;
+                case 'custom':
+                default:
+                    if ($uStart) {
+                        try {
+                            $from = Carbon::parse($uStart)->startOfDay();
+                        } catch (\Exception $e) {
+                            $from = null;
+                        }
+                    }
+                    if ($uEnd) {
+                        try {
+                            $to = Carbon::parse($uEnd)->endOfDay();
+                        } catch (\Exception $e) {
+                            $to = null;
+                        }
+                    }
+                    if ($from && !$to) {
+                        $to = (clone $from)->endOfDay();
+                    }
+                    if (!$from && $to) {
+                        $from = (clone $to)->startOfDay();
+                    }
+                    if ($from && $to) {
+                        if ($from->gt($to)) {
+                            [$from, $to] = [$to, $from];
+                        }
+                        $uDateLabel = $from->format('d M Y') . ' – ' . $to->format('d M Y');
+                    }
+                    break;
+            }
+
+            if ($from && $to) {
+                $userQuery->whereBetween('created_at', [$from, $to]);
+            }
+        }
+
         $users = $userQuery->paginate($uPP)->withQueryString();
 
-        // ── Transactions (with optional search) ───────────────────────
-        $txSearch = trim($request->get('tx_search', ''));
+        // ── Transactions (with optional search + date filter) ─────────
+        $txSearch    = trim($request->get('tx_search', ''));
+        $txRange     = trim($request->get('tx_range', ''));
+        $txStart     = trim($request->get('tx_start', ''));
+        $txEnd       = trim($request->get('tx_end', ''));
+        $txDateLabel = '';
 
         $txQuery = Transaction::with('user')->latest();
         if ($txSearch !== '') {
@@ -59,7 +140,86 @@ class AdminDashboard extends Controller
                   });
             });
         }
-        $transactions = $txQuery->paginate($txPP)->withQueryString();
+
+        if ($txRange || $txStart || $txEnd) {
+            $from = null;
+            $to   = null;
+
+            switch ($txRange) {
+                case 'today':
+                    $from = today()->startOfDay();
+                    $to   = today()->endOfDay();
+                    $txDateLabel = 'Today';
+                    break;
+                case 'this_week':
+                    $from = now()->startOfWeek();
+                    $to   = now()->endOfWeek();
+                    $txDateLabel = 'This week';
+                    break;
+                case 'last_week':
+                    $from = now()->subWeek()->startOfWeek();
+                    $to   = now()->subWeek()->endOfWeek();
+                    $txDateLabel = 'Last week';
+                    break;
+                case 'this_month':
+                    $from = now()->startOfMonth();
+                    $to   = now()->endOfMonth();
+                    $txDateLabel = 'This month';
+                    break;
+                case 'last_month':
+                    $from = now()->subMonthNoOverflow()->startOfMonth();
+                    $to   = now()->subMonthNoOverflow()->endOfMonth();
+                    $txDateLabel = 'Last month';
+                    break;
+                case 'this_year':
+                    $from = now()->startOfYear();
+                    $to   = now()->endOfYear();
+                    $txDateLabel = 'This year';
+                    break;
+                case 'custom':
+                default:
+                    if ($txStart) {
+                        try {
+                            $from = Carbon::parse($txStart)->startOfDay();
+                        } catch (\Exception $e) {
+                            $from = null;
+                        }
+                    }
+                    if ($txEnd) {
+                        try {
+                            $to = Carbon::parse($txEnd)->endOfDay();
+                        } catch (\Exception $e) {
+                            $to = null;
+                        }
+                    }
+                    if ($from && !$to) {
+                        $to = (clone $from)->endOfDay();
+                    }
+                    if (!$from && $to) {
+                        $from = (clone $to)->startOfDay();
+                    }
+
+                    if ($from && $to) {
+                        if ($from->gt($to)) {
+                            [$from, $to] = [$to, $from];
+                        }
+                        $txDateLabel = $from->format('d M Y') . ' – ' . $to->format('d M Y');
+                    }
+                    break;
+            }
+
+            if ($from && $to) {
+                $txQuery->whereBetween('created_at', [$from, $to]);
+            }
+        }
+
+        if (empty($txDateLabel)) {
+            $txDateLabel = 'All time';
+        }
+
+        $transactionsTotalAmount = (clone $txQuery)->sum('amount');
+        $transactionsTotalCount  = (clone $txQuery)->count();
+        $transactions            = $txQuery->paginate($txPP)->withQueryString();
 
         // ── Stats (computed from the full dataset, not paginated) ──────
         $allTransactions    = Transaction::with('user')->get();
@@ -107,7 +267,15 @@ class AdminDashboard extends Controller
             'profit_month'            => round($thisMonthProfit, 2),
         ];
 
-        return view('admin.index', compact('users', 'transactions', 'stats'));
+        return view('admin.index', compact(
+            'users',
+            'transactions',
+            'stats',
+            'txDateLabel',
+            'transactionsTotalAmount',
+            'transactionsTotalCount',
+            'uDateLabel'
+        ));
     }
 
     public function createAdmin(Request $request)
