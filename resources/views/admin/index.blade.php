@@ -799,7 +799,7 @@
                     <select class="per-page filter-select" name="tx_service" id="txServiceSelect" onchange="this.form.submit()">
                         <option value="">All services</option>
                         @foreach($services as $service)
-                            <option value="{{ $service->id }}" {{ request('tx_service') == $service->id ? 'selected' : '' }}>{{ $service->name }}</option>
+                            <option value="{{ $service->slug }}" {{ request('tx_service') == $service->slug ? 'selected' : '' }}>{{ $service->name }}</option>
                         @endforeach
                     </select>
 

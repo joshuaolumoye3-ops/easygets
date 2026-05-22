@@ -148,14 +148,29 @@ class AdminDashboard extends Controller
         }
 
         if ($txService !== '') {
-            if (is_numeric($txService)) {
-                $txQuery->where('service_id', intval($txService));
+            $service = $services->firstWhere('slug', $txService);
+            if (!$service && is_numeric($txService)) {
                 $service = $services->firstWhere('id', intval($txService));
-            } else {
-                $service = Service::find($txService);
             }
+
             if (!empty($service)) {
                 $txServiceLabel = $service->name;
+
+                $serviceTypeMap = [
+                    'social-boost' => 'social_boost',
+                    'cabletv'      => 'cable',
+                    'otp'          => 'esim',
+                ];
+
+                $transactionType = $serviceTypeMap[$service->slug] ?? $service->slug;
+
+                $txQuery->where(function ($q) use ($transactionType, $service) {
+                    $q->where('type', $transactionType)
+                      ->orWhere('service_name', 'like', "%{$service->name}%");
+                });
+            } else {
+                // Fallback to raw stored service_id values for legacy entries
+                $txQuery->where('service_id', $txService);
             }
         }
 
