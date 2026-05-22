@@ -15,6 +15,7 @@ use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 use App\Models\Admin;
 use App\Models\AdminTransaction;
+use App\Models\Service;
 use App\Helpers\MoreThanPanelHelper;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -122,11 +123,16 @@ class AdminDashboard extends Controller
         $users = $userQuery->paginate($uPP)->withQueryString();
 
         // ── Transactions (with optional search + date filter) ─────────
-        $txSearch    = trim($request->get('tx_search', ''));
-        $txRange     = trim($request->get('tx_range', ''));
-        $txStart     = trim($request->get('tx_start', ''));
-        $txEnd       = trim($request->get('tx_end', ''));
-        $txDateLabel = '';
+        $txSearch        = trim($request->get('tx_search', ''));
+        $txRange         = trim($request->get('tx_range', ''));
+        $txStart         = trim($request->get('tx_start', ''));
+        $txEnd           = trim($request->get('tx_end', ''));
+        $txService       = trim($request->get('tx_service', ''));
+        $txDateLabel     = '';
+        $txServiceLabel  = 'All services';
+        $exchangeRate    = config('services.exchange_rate', 1500);
+
+        $services = Service::orderBy('name')->get();
 
         $txQuery = Transaction::with('user')->latest();
         if ($txSearch !== '') {
@@ -139,6 +145,18 @@ class AdminDashboard extends Controller
                          ->orWhere('email',  'like', "%{$txSearch}%");
                   });
             });
+        }
+
+        if ($txService !== '') {
+            if (is_numeric($txService)) {
+                $txQuery->where('service_id', intval($txService));
+                $service = $services->firstWhere('id', intval($txService));
+            } else {
+                $service = Service::find($txService);
+            }
+            if (!empty($service)) {
+                $txServiceLabel = $service->name;
+            }
         }
 
         if ($txRange || $txStart || $txEnd) {
@@ -219,6 +237,13 @@ class AdminDashboard extends Controller
 
         $transactionsTotalAmount = (clone $txQuery)->sum('amount');
         $transactionsTotalCount  = (clone $txQuery)->count();
+
+        $transactionsTotalProfit = 0.0;
+        foreach ((clone $txQuery)->get() as $t) {
+            $providerCost = $this->estimateProviderCost($t, $exchangeRate);
+            $transactionsTotalProfit += round(floatval($t->amount) - floatval($providerCost), 2);
+        }
+
         $transactions            = $txQuery->paginate($txPP)->withQueryString();
 
         // ── Stats (computed from the full dataset, not paginated) ──────
@@ -271,8 +296,11 @@ class AdminDashboard extends Controller
             'users',
             'transactions',
             'stats',
+            'services',
             'txDateLabel',
+            'txServiceLabel',
             'transactionsTotalAmount',
+            'transactionsTotalProfit',
             'transactionsTotalCount',
             'uDateLabel'
         ));

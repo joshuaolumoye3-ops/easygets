@@ -658,7 +658,7 @@
                 </div>
             </div>
             <div class="stat-value">₦{{ number_format($transactionsTotalAmount ?? 0, 0) }}</div>
-            <span class="stat-badge">{{ $txDateLabel }}</span>
+            <span class="stat-badge">Gain ₦{{ number_format($transactionsTotalProfit ?? 0, 0) }}</span>
         </div>
     </div>
 
@@ -676,6 +676,7 @@
                     @if(request('tx_range'))<input type="hidden" name="tx_range" value="{{ request('tx_range') }}">@endif
                     @if(request('tx_start'))<input type="hidden" name="tx_start" value="{{ request('tx_start') }}">@endif
                     @if(request('tx_end'))<input type="hidden" name="tx_end" value="{{ request('tx_end') }}">@endif
+                    @if(request('tx_service'))<input type="hidden" name="tx_service" value="{{ request('tx_service') }}">@endif
 
                     <div class="fsearch">
                         <svg class="ico" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
@@ -770,7 +771,7 @@
         @if($users->hasPages())
         <div class="pgbar">
             <div class="pg-info">Showing <b>{{ $users->firstItem() }}–{{ $users->lastItem() }}</b> of <b>{{ $users->total() }}</b></div>
-            <div>{{ $users->appends(request()->only(['u_search','u_pp','tx_search','tx_pp','u_range','u_start','u_end','tx_range','tx_start','tx_end']))->links('partials.admin.custom') }}</div>
+            <div>{{ $users->appends(request()->only(['u_search','u_pp','tx_search','tx_pp','tx_service','u_range','u_start','u_end','tx_range','tx_start','tx_end']))->links('partials.admin.custom') }}</div>
         </div>
         @endif
     </div>
@@ -794,6 +795,13 @@
                         <svg class="ico" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                         <input type="text" name="tx_search" placeholder="Search transactions…" value="{{ request('tx_search') }}">
                     </div>
+
+                    <select class="per-page filter-select" name="tx_service" id="txServiceSelect" onchange="this.form.submit()">
+                        <option value="">All services</option>
+                        @foreach($services as $service)
+                            <option value="{{ $service->id }}" {{ request('tx_service') == $service->id ? 'selected' : '' }}>{{ $service->name }}</option>
+                        @endforeach
+                    </select>
 
                     <select class="per-page filter-select" name="tx_range" id="txRangeSelect" onchange="handleDateRangeChange('txRangeSelect', 'tx')">
                         <option value="" {{ !request('tx_range') ? 'selected' : '' }}>All dates</option>
@@ -831,7 +839,7 @@
 
         @if(!empty($txDateLabel))
         <div class="range-summary">
-            Showing <b>{{ number_format($transactionsTotalCount) }}</b> transaction{{ $transactionsTotalCount === 1 ? '' : 's' }} for <b>{{ $txDateLabel }}</b> · Total amount ₦{{ number_format($transactionsTotalAmount, 2) }}
+            Showing <b>{{ number_format($transactionsTotalCount) }}</b> transaction{{ $transactionsTotalCount === 1 ? '' : 's' }} for <b>{{ $txServiceLabel }}</b> · <b>{{ $txDateLabel }}</b> · Total amount ₦{{ number_format($transactionsTotalAmount, 2) }}
         </div>
         @endif
 
@@ -892,7 +900,7 @@
         @if($transactions->hasPages())
         <div class="pgbar">
             <div class="pg-info">Showing <b>{{ $transactions->firstItem() }}–{{ $transactions->lastItem() }}</b> of <b>{{ $transactions->total() }}</b></div>
-            <div>{{ $transactions->appends(request()->only(['u_search','u_pp','tx_search','tx_pp','tx_range','tx_start','tx_end']))->links('partials.admin.custom') }}</div>
+            <div>{{ $transactions->appends(request()->only(['u_search','u_pp','tx_search','tx_pp','tx_service','tx_range','tx_start','tx_end','u_range','u_start','u_end']))->links('partials.admin.custom') }}</div>
         </div>
         @endif
     </div>
