@@ -128,11 +128,18 @@ class AdminDashboard extends Controller
         $txStart         = trim($request->get('tx_start', ''));
         $txEnd           = trim($request->get('tx_end', ''));
         $txService       = trim($request->get('tx_service', ''));
+        $txProvider      = trim($request->get('tx_provider', ''));
         $txDateLabel     = '';
         $txServiceLabel  = 'All services';
+        $txProviderLabel = 'All providers';
         $exchangeRate    = config('services.exchange_rate', 1500);
 
         $services = Service::orderBy('name')->get();
+        $txProviders = Transaction::select('provider')
+            ->whereNotNull('provider')
+            ->distinct()
+            ->orderBy('provider')
+            ->pluck('provider');
 
         $txQuery = Transaction::with('user')->latest();
         if ($txSearch !== '') {
@@ -172,6 +179,11 @@ class AdminDashboard extends Controller
                 // Fallback to raw stored service_id values for legacy entries
                 $txQuery->where('service_id', $txService);
             }
+        }
+
+        if ($txProvider !== '') {
+            $txProviderLabel = $txProvider;
+            $txQuery->where('provider', $txProvider);
         }
 
         if ($txRange || $txStart || $txEnd) {
@@ -312,8 +324,10 @@ class AdminDashboard extends Controller
             'transactions',
             'stats',
             'services',
+            'txProviders',
             'txDateLabel',
             'txServiceLabel',
+            'txProviderLabel',
             'transactionsTotalAmount',
             'transactionsTotalProfit',
             'transactionsTotalCount',

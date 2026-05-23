@@ -677,6 +677,7 @@
                     @if(request('tx_start'))<input type="hidden" name="tx_start" value="{{ request('tx_start') }}">@endif
                     @if(request('tx_end'))<input type="hidden" name="tx_end" value="{{ request('tx_end') }}">@endif
                     @if(request('tx_service'))<input type="hidden" name="tx_service" value="{{ request('tx_service') }}">@endif
+                    @if(request('tx_provider'))<input type="hidden" name="tx_provider" value="{{ request('tx_provider') }}">@endif
 
                     <div class="fsearch">
                         <svg class="ico" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
@@ -771,7 +772,7 @@
         @if($users->hasPages())
         <div class="pgbar">
             <div class="pg-info">Showing <b>{{ $users->firstItem() }}–{{ $users->lastItem() }}</b> of <b>{{ $users->total() }}</b></div>
-            <div>{{ $users->appends(request()->only(['u_search','u_pp','tx_search','tx_pp','tx_service','u_range','u_start','u_end','tx_range','tx_start','tx_end']))->links('partials.admin.custom') }}</div>
+            <div>{{ $users->appends(request()->only(['u_search','u_pp','tx_search','tx_pp','tx_service','tx_provider','u_range','u_start','u_end','tx_range','tx_start','tx_end']))->links('partials.admin.custom') }}</div>
         </div>
         @endif
     </div>
@@ -790,6 +791,7 @@
                     @if(request('u_range'))<input type="hidden" name="u_range" value="{{ request('u_range') }}">@endif
                     @if(request('u_start'))<input type="hidden" name="u_start" value="{{ request('u_start') }}">@endif
                     @if(request('u_end'))<input type="hidden" name="u_end" value="{{ request('u_end') }}">@endif
+                    @if(request('tx_provider'))<input type="hidden" name="tx_provider" value="{{ request('tx_provider') }}">@endif
 
                     <div class="fsearch">
                         <svg class="ico" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
@@ -800,6 +802,13 @@
                         <option value="">All services</option>
                         @foreach($services as $service)
                             <option value="{{ $service->slug }}" {{ request('tx_service') == $service->slug ? 'selected' : '' }}>{{ $service->name }}</option>
+                        @endforeach
+                    </select>
+
+                    <select class="per-page filter-select" name="tx_provider" id="txProviderSelect" onchange="this.form.submit()">
+                        <option value="">All providers</option>
+                        @foreach($txProviders as $provider)
+                            <option value="{{ $provider }}" {{ request('tx_provider') == $provider ? 'selected' : '' }}>{{ $provider }}</option>
                         @endforeach
                     </select>
 
@@ -837,9 +846,9 @@
             </div>
         </div>
 
-        @if(!empty($txDateLabel))
+        @if(!empty($txDateLabel) || request('tx_provider'))
         <div class="range-summary">
-            Showing <b>{{ number_format($transactionsTotalCount) }}</b> transaction{{ $transactionsTotalCount === 1 ? '' : 's' }} for <b>{{ $txServiceLabel }}</b> · <b>{{ $txDateLabel }}</b> · Total amount ₦{{ number_format($transactionsTotalAmount, 2) }}
+            Showing <b>{{ number_format($transactionsTotalCount) }}</b> transaction{{ $transactionsTotalCount === 1 ? '' : 's' }} for <b>{{ $txServiceLabel }}</b> · <b>{{ $txProviderLabel }}</b> · <b>{{ $txDateLabel }}</b> · Total amount ₦{{ number_format($transactionsTotalAmount, 2) }}
         </div>
         @endif
 
@@ -848,8 +857,10 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width:180px;">User</th>
-                        <th style="width:160px;">Type</th>
+                        <th style="width:160px;">User</th>
+                        <th style="width:120px;">Type</th>
+                        <th style="width:140px;">Provider</th>
+                        <th style="width:220px;">Details</th>
                         <th style="width:140px;">Amount</th>
                         <th style="width:140px;">Status</th>
                         <th style="width:110px;">Date</th>
@@ -877,6 +888,59 @@
                             </div>
                         </td>
                         <td><span class="type-chip">{{ $tx->type ?? '—' }}</span></td>
+                        <td>{{ $tx->provider ?? ucfirst($tx->channel ?? '—') }}</td>
+                        @php
+                            $txResponse = is_array($tx->response) ? $tx->response : json_decode($tx->response ?? '[]', true) ?? [];
+                            $details = [];
+                            if (strtolower($tx->type ?? '') === 'activation') {
+                                if (!empty($tx->service_name)) {
+                                    $details[] = 'Plan: ' . $tx->service_name;
+                                }
+                                if (!empty($tx->country_name)) {
+                                    $country = $tx->country_name . ($tx->country_code ? ' (' . $tx->country_code . ')' : '');
+                                    $details[] = 'Country: ' . $country;
+                                }
+                                if (!empty($tx->operator_name)) {
+                                    $details[] = 'Operator: ' . $tx->operator_name;
+                                }
+                                if (!empty($tx->phone)) {
+                                    $details[] = 'Number: ' . $tx->phone;
+                                } elseif (!empty($txResponse['number'])) {
+                                    $details[] = 'Number: ' . $txResponse['number'];
+                                }
+                            } elseif (strtolower($tx->type ?? '') === 'social_boost') {
+                                if (!empty($txResponse['link'])) {
+                                    $details[] = 'Link: ' . $txResponse['link'];
+                                }
+                                if (!empty($txResponse['quantity'])) {
+                                    $details[] = 'Quantity: ' . number_format($txResponse['quantity']);
+                                }
+                                if (!empty($tx->service_name)) {
+                                    $details[] = 'Package: ' . $tx->service_name;
+                                }
+                                if (!empty($txResponse['username'])) {
+                                    $details[] = 'Username: ' . $txResponse['username'];
+                                }
+                                if (!empty($txResponse['usernames'])) {
+                                    $details[] = 'Usernames: ' . $txResponse['usernames'];
+                                }
+                            } else {
+                                if (!empty($tx->description)) {
+                                    $details[] = $tx->description;
+                                }
+                            }
+                        @endphp
+                        <td>
+                            @if(count($details) > 0)
+                                <div class="detail-list">
+                                    @foreach($details as $detail)
+                                        <div>{{ $detail }}</div>
+                                    @endforeach
+                                </div>
+                            @else
+                                —
+                            @endif
+                        </td>
                         <td><span class="amt">₦{{ number_format($tx->amount ?? 0, 2) }}</span></td>
                         <td>
                             <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:11.5px;font-weight:700;white-space:nowrap;background:{{ $chipBg }};color:{{ $chipColor }};border:1px solid {{ $chipBdr }};">
@@ -900,7 +964,7 @@
         @if($transactions->hasPages())
         <div class="pgbar">
             <div class="pg-info">Showing <b>{{ $transactions->firstItem() }}–{{ $transactions->lastItem() }}</b> of <b>{{ $transactions->total() }}</b></div>
-            <div>{{ $transactions->appends(request()->only(['u_search','u_pp','tx_search','tx_pp','tx_service','tx_range','tx_start','tx_end','u_range','u_start','u_end']))->links('partials.admin.custom') }}</div>
+            <div>{{ $transactions->appends(request()->only(['u_search','u_pp','tx_search','tx_pp','tx_service','tx_provider','tx_range','tx_start','tx_end','u_range','u_start','u_end']))->links('partials.admin.custom') }}</div>
         </div>
         @endif
     </div>
