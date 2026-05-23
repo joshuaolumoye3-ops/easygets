@@ -262,14 +262,12 @@ class AdminDashboard extends Controller
             $txDateLabel = 'All time';
         }
 
-        $transactionsTotalAmount = (clone $txQuery)->sum('amount');
-        $transactionsTotalCount  = (clone $txQuery)->count();
+        // Calculate selected-period totals but only consider successful/completed transactions
+        $successfulStatusRaw = "LOWER(COALESCE(status, '')) IN ('success','completed')";
+        $transactionsTotalAmount = (clone $txQuery)->whereRaw($successfulStatusRaw)->sum('amount');
+        $transactionsTotalCount  = (clone $txQuery)->whereRaw($successfulStatusRaw)->count();
 
-        $transactionsTotalProfit = 0.0;
-        foreach ((clone $txQuery)->get() as $t) {
-            $providerCost = $this->estimateProviderCost($t, $exchangeRate);
-            $transactionsTotalProfit += round(floatval($t->amount) - floatval($providerCost), 2);
-        }
+        // Note: detailed profit/gain calculations removed for accuracy and performance.
 
         $transactions            = $txQuery->paginate($txPP)->withQueryString();
 
@@ -329,7 +327,6 @@ class AdminDashboard extends Controller
             'txServiceLabel',
             'txProviderLabel',
             'transactionsTotalAmount',
-            'transactionsTotalProfit',
             'transactionsTotalCount',
             'uDateLabel'
         ));

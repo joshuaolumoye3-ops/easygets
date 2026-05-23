@@ -658,7 +658,6 @@
                 </div>
             </div>
             <div class="stat-value">₦{{ number_format($transactionsTotalAmount ?? 0, 0) }}</div>
-            <span class="stat-badge">Gain ₦{{ number_format($transactionsTotalProfit ?? 0, 0) }}</span>
         </div>
     </div>
 
