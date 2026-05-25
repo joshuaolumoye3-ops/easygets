@@ -3,6 +3,9 @@
 @section('title', 'Logs Products')
 
 @section('content')
+<style>
+    .hidden { display: none !important; }
+</style>
 <div class="dash">
     <div class="inner">
         <div class="top-bar">
@@ -71,17 +74,57 @@
                                     <span>{{ Str::limit($product->description, 50) }}</span>
                                 @endif
                             </div>
+                            <p class="svc-desc" style="margin-top: 8px; font-size: 12px; color: #999;">₦{{ number_format($product->client_price, 2) }}</p>
                         </div>
-                        <div class="svc-controls">
+                        <div class="svc-controls" style="flex-direction: column; align-items: flex-end; gap: 8px;">
                             <span class="status-pill {{ $product->is_active ? 'on' : 'off' }}">
                                 <span class="status-dot"></span>
                                 {{ $product->is_active ? 'Active' : 'Inactive' }}
                             </span>
-                            <form action="{{ route('admin.products.toggle', ['id' => $product->id]) }}" method="POST" style="margin:0;">
-                                @csrf
-                                <button type="submit" class="filter-btn" style="background:{{ $product->is_active ? '#ef4444' : '#22c55e' }}; color:#fff;">{{ $product->is_active ? 'Disable' : 'Enable' }}</button>
-                            </form>
+                            <div style="display: flex; gap: 8px;">
+                                <button onclick="document.getElementById('edit-form-{{ $product->id }}').classList.toggle('hidden')" class="filter-btn" style="background:#3b82f6; color:#fff; font-size: 12px; padding: 6px 12px;">Edit</button>
+                                <form action="{{ route('admin.products.toggle', ['id' => $product->id]) }}" method="POST" style="margin:0;">
+                                    @csrf
+                                    <button type="submit" class="filter-btn" style="background:{{ $product->is_active ? '#ef4444' : '#22c55e' }}; color:#fff; font-size: 12px; padding: 6px 12px;">{{ $product->is_active ? 'Disable' : 'Enable' }}</button>
+                                </form>
+                            </div>
                         </div>
+                    </div>
+                    
+                    <!-- Edit Form -->
+                    <div id="edit-form-{{ $product->id }}" class="service-row hidden" style="grid-template-columns: 1fr; padding: 18px 22px 22px; background: rgba(255,255,255,0.04); margin-top: -10px; border-radius: 0 0 12px 12px;">
+                        <form action="{{ route('admin.logs.create') }}" method="POST" class="space-y-4">
+                            @csrf
+                            <input type="hidden" name="product_id" value="{{ $product->id }}">
+                            <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px;">
+                                <label class="block text-sm text-slate-200">
+                                    Product Name
+                                    <input type="text" name="name" value="{{ $product->name }}" required maxlength="255" class="w-full mt-2 px-4 py-3 rounded-xl border border-slate-700 bg-slate-950 text-white" />
+                                </label>
+                                <label class="block text-sm text-slate-200">
+                                    Country (optional)
+                                    <input type="text" name="country" value="{{ $product->country }}" maxlength="80" class="w-full mt-2 px-4 py-3 rounded-xl border border-slate-700 bg-slate-950 text-white" />
+                                </label>
+                            </div>
+                            <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px;">
+                                <label class="block text-sm text-slate-200">
+                                    Country Code
+                                    <input type="text" name="country_code" value="{{ $product->country_code }}" maxlength="2" class="w-full mt-2 px-4 py-3 rounded-xl border border-slate-700 bg-slate-950 text-white" />
+                                </label>
+                                <label class="block text-sm text-slate-200">
+                                    Price (NGN)
+                                    <input type="number" name="client_price" value="{{ $product->client_price }}" required step="0.01" min="0" class="w-full mt-2 px-4 py-3 rounded-xl border border-slate-700 bg-slate-950 text-white" />
+                                </label>
+                            </div>
+                            <label class="block text-sm text-slate-200">
+                                Description (optional)
+                                <textarea name="description" rows="3" class="w-full mt-2 px-4 py-3 rounded-xl border border-slate-700 bg-slate-950 text-white">{{ $product->description }}</textarea>
+                            </label>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="submit" class="filter-btn" style="background:#10b981; color:#fff; border:none;">Save Changes</button>
+                                <button type="button" onclick="document.getElementById('edit-form-{{ $product->id }}').classList.add('hidden')" class="filter-btn" style="background:#6b7280; color:#fff; border:none;">Cancel</button>
+                            </div>
+                        </form>
                     </div>
                 @empty
                     <div class="empty-state">

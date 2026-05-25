@@ -657,25 +657,43 @@ class AdminServiceController extends Controller
             'country' => 'nullable|string|max:80',
             'country_code' => 'nullable|string|max:2',
             'description' => 'nullable|string|max:1000',
+            'product_id' => 'nullable|integer',
         ]);
 
         $provider = $this->getLogsProvider();
-        $productCode = Str::slug($request->name, '-') . '-' . strtoupper(Str::random(4));
+        $productId = $request->product_id;
 
-        Product::create([
-            'provider_id' => $provider->id,
-            'product_code' => $productCode,
-            'name' => $request->name,
-            'category' => $request->country ?: 'Global',
-            'api_price' => $request->client_price,
-            'client_price' => $request->client_price,
-            'country' => $request->country,
-            'country_code' => strtoupper($request->country_code),
-            'description' => $request->description,
-            'is_active' => true,
-        ]);
+        if ($productId) {
+            // Update existing product
+            $product = Product::findOrFail($productId);
+            $product->update([
+                'name' => $request->name,
+                'category' => $request->country ?: 'Global',
+                'client_price' => $request->client_price,
+                'country' => $request->country,
+                'country_code' => strtoupper($request->country_code),
+                'description' => $request->description,
+            ]);
+            return redirect()->back()->with('success', 'Logs product updated successfully.');
+        } else {
+            // Create new product
+            $productCode = Str::slug($request->name, '-') . '-' . strtoupper(Str::random(4));
 
-        return redirect()->back()->with('success', 'Logs product created successfully.');
+            Product::create([
+                'provider_id' => $provider->id,
+                'product_code' => $productCode,
+                'name' => $request->name,
+                'category' => $request->country ?: 'Global',
+                'api_price' => $request->client_price,
+                'client_price' => $request->client_price,
+                'country' => $request->country,
+                'country_code' => strtoupper($request->country_code),
+                'description' => $request->description,
+                'is_active' => true,
+            ]);
+
+            return redirect()->back()->with('success', 'Logs product created successfully.');
+        }
     }
 
     public function logsOrders()

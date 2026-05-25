@@ -357,6 +357,18 @@
                 <span>Social Services</span>
             </a>
         </li>
+
+        <li class="menu-item">
+            <a class="nav-link {{ request()->is('app/admin/logs*') ? 'active' : '' }}" href="{{ route('admin.logs') }}">
+                <span class="nav-icon" style="color: #06b6d4;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 7h16M4 12h16M4 17h16"/>
+                        <rect x="2" y="4" width="20" height="16" rx="2"/>
+                    </svg>
+                </span>
+                <span>Logs Products</span>
+            </a>
+        </li>
     </ul>
 </nav>
 
