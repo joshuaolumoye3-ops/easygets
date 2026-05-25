@@ -297,7 +297,7 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
     Route::get('/esim/{id}', [AdminServiceController::class, 'show'])->name('admin.esim.show');
     Route::post('/esim/upload', [AdminServiceController::class, 'upload'])->name('admin.esim.upload');
 
-    Route::get('/logs', [AdminServiceController::class, 'logsIndex'])->name('admin.logs.products');
+    Route::get('/logs', [AdminServiceController::class, 'logsIndex'])->name('admin.logs');
     Route::get('/logs/orders', [AdminServiceController::class, 'logsOrders'])->name('admin.logs.orders');
     Route::post('/logs/create', [AdminServiceController::class, 'createLogProduct'])->name('admin.logs.create');
     Route::post('/logs/{id}/fulfill', [AdminServiceController::class, 'fulfillLogOrder'])->name('admin.logs.fulfill');
