@@ -524,7 +524,9 @@
             <div class="order-list">
                 @forelse($transactions as $transaction)
                     @php
-                        $response     = is_array($transaction->response) ? $transaction->response : json_decode($transaction->response ?? '[]', true) ?: [];
+                        $response     = is_array($transaction->response)
+                            ? $transaction->response
+                            : (json_decode($transaction->response ?? '[]', true) ?: []);
                         $status       = strtolower($transaction->status ?? 'pending');
                         $isPending    = $status === 'pending';
                         $isFulfilled  = in_array($status, ['success', 'completed', 'successful']);
