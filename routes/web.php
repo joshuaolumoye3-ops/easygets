@@ -223,6 +223,13 @@ Route::middleware('auth')->group(function () {
         ->middleware('auth', 'check.user.not.blocked')->name('render.success.partial');
 
 
+    // USER LOGS PAGE (outside admin group)
+    Route::middleware(['auth', 'check.user.not.blocked'])->group(function () {
+        Route::get('/logs', [CountryController::class, 'showLogs'])->name('logs');
+        Route::get('/logs/checkout/{id}', [CountryController::class, 'checkoutLog'])->name('logs.checkout');
+        Route::post('/logs/checkout/{id}', [CountryController::class, 'processLogPurchase'])->name('logs.process');
+    });
+
     Route::get('/jambepin', [JambPinController::class, 'show'])->middleware('check.user.not.blocked')->name('jamb.show');
 
     Route::post('/jamb/verify-profile', [JambPinController::class, 'verifyProfileId'])->middleware('check.user.not.blocked')->name('jamb.verify-profile');
@@ -336,10 +343,4 @@ Route::middleware(['admin:super_admin'])->prefix('admin')->group(function () {
     Route::post('/create', [AdminController::class, 'createAdmin'])->name('admin.create');
 });
 
-});
-// USER LOGS PAGE (outside admin group)
-Route::middleware(['auth', 'check.user.not.blocked'])->group(function () {
-    Route::get('/logs', [CountryController::class, 'showLogs'])->name('logs');
-    Route::get('/logs/checkout/{id}', [CountryController::class, 'checkoutLog'])->name('logs.checkout');
-    Route::post('/logs/checkout/{id}', [CountryController::class, 'processLogPurchase'])->name('logs.process');
 });
