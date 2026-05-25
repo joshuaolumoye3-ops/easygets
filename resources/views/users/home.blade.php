@@ -331,11 +331,11 @@
                     <span class="text-xs font-medium text-gray-700">eSim</span>
                 </a>
                  <!-- Service Item -->
-                <a href="#" class="flex flex-col items-center space-y-2">
+                <a href="logs" class="flex flex-col items-center space-y-2">
                     <div class="bg-brand-green-light rounded-full w-14 h-14 flex items-center justify-center">
                         <img src="assets/sim-icon.svg" class="w-8 h-8 text-brand-green" alt="">
                     </div>
-                    <span class="text-xs font-medium text-gray-700">eSim Renewal</span>
+                    <span class="text-xs font-medium text-gray-700">Logs</span>
                 </a>
                  <!-- Service Item -->
                 <a href="more-services" class="flex flex-col items-center space-y-2">
