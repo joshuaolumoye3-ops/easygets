@@ -874,6 +874,12 @@ public function addFunds(Request $request, $userId)
     public function manageServices()
     {
         try {
+            // Ensure the 'logs' service exists so admins can enable/disable it from the services page
+            Service::firstOrCreate(
+                ['slug' => 'logs'],
+                ['name' => 'Logs', 'is_active' => true]
+            );
+
             $services = Service::all();
 
             return view('admin.services', compact('services'));
