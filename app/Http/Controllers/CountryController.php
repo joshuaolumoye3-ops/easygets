@@ -2542,10 +2542,10 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
                 'recipient'    => $product->name . ' (x' . $quantity . ')',
                 'amount'       => $amount,
                 'status'       => 'pending',
-                'response'     => [
+                'response'     => json_encode([
                     'product'  => $product->toArray(),
                     'quantity' => $quantity,
-                ],
+                ]),
                 'description'  => 'Logs purchase awaiting admin fulfillment',
             ]);
 
@@ -2581,10 +2581,6 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
                         ]);
                     }
                 }
-            } else {
-                Log::warning('No valid admin emails found for logs notification', [
-                    'transaction_id' => $transaction->id,
-                ]);
             }
 
             return response()->json([
@@ -2592,15 +2588,27 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
                 'message'        => 'Logs purchase successful! Check your transactions for details.',
                 'transaction_id' => $transaction->id,
                 'data'           => [
-                    'reference'        => $reference,
-                    'product'          => $product->name,
-                    'quantity'         => $quantity,
-                    'amount'           => $amount,
-                    'formatted_amount' => '₦' . number_format($amount, 2),
-                    'new_balance'      => $wallet->fresh()->balance,
-                    'formatted_balance'=> '₦' . number_format($wallet->fresh()->balance, 2),
+                    'reference'         => $reference,
+                    'product'           => $product->name,
+                    'quantity'          => $quantity,
+                    'amount'            => $amount,
+                    'formatted_amount'  => '₦' . number_format($amount, 2),
+                    'new_balance'       => $wallet->fresh()->balance,
+                    'formatted_balance' => '₦' . number_format($wallet->fresh()->balance, 2),
                 ],
             ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->validator->errors()->first(),
+            ], 422);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Product not found or no longer available.',
+            ], 404);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -2611,9 +2619,10 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
                 'trace'      => $e->getTraceAsString()
             ]);
 
+            // Return the real error message so you can diagnose it
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred while processing your request. Please try again.'
+                'message' => $e->getMessage(), // ← real error exposed temporarily
             ], 500);
         }
     }
