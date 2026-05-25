@@ -2366,142 +2366,152 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
     public function showLogs(Request $request)
     {
         try {
-            // Get logs provider
-            $logsProvider = $this->getLogsProvider();
-            
-            // Base query for active products
+            $logsService = \App\Models\Service::firstOrCreate(
+                ['slug' => 'logs'],
+                ['name' => 'Logs', 'is_active' => true]
+            );
+
+            $logsProvider = \App\Models\Provider::firstOrCreate(
+                ['code' => 'logs'],
+                ['name' => 'Logs Service', 'service_id' => $logsService->id, 'api_identifier' => 'logs']
+            );
+
             $query = Product::where('provider_id', $logsProvider->id)
                 ->where('is_active', true)
                 ->orderBy('created_at', 'desc');
-            
-            // Apply search filter if present
+
             if ($request->filled('search')) {
                 $search = $request->search;
                 $query->where(function($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%")
-                      ->orWhere('country', 'like', "%{$search}%")
-                      ->orWhere('country_code', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('country', 'like', "%{$search}%")
+                    ->orWhere('country_code', 'like', "%{$search}%");
                 });
             }
-            
-            // Paginate results
+
             $products = $query->paginate(20);
-            
-            // Transform products for display
+
             $products->getCollection()->transform(function ($product) {
                 return (object)[
-                    'id' => $product->id,
-                    'name' => $product->name,
-                    'description' => $product->description ?? 'Premium logs access',
-                    'price' => $product->client_price,
-                    'country' => $product->country ?? 'Global',
+                    'id'           => $product->id,
+                    'name'         => $product->name,
+                    'description'  => $product->description ?? 'Premium logs access',
+                    'price'        => $product->client_price,
+                    'country'      => $product->country ?? 'Global',
                     'country_code' => $product->country_code ? strtoupper($product->country_code) : 'GLB',
                 ];
             });
-            
-            // Handle AJAX requests for infinite scroll
+
             if ($request->ajax()) {
                 $html = view('partials.logs-items', ['products' => $products])->render();
-                
+
                 return response()->json([
-                    'success' => true,
-                    'html' => $html,
-                    'has_more' => $products->hasMorePages(),
+                    'success'   => true,
+                    'html'      => $html,
+                    'has_more'  => $products->hasMorePages(),
                     'next_page' => $products->currentPage() + 1,
                 ]);
             }
-            
+
             return view('users.logs', compact('products'));
-            
+
         } catch (\Exception $e) {
             Log::error('Error displaying logs products', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'An error occurred loading products.'
                 ], 500);
             }
-            
+
             return back()->withErrors('Unable to load logs products. Please try again.');
         }
     }
-    
-    /**
-     * Show checkout page for a specific logs product
-     */
+
     public function checkoutLog($id)
     {
         try {
-            $logsProvider = $this->getLogsProvider();
-            
+            $logsService = \App\Models\Service::firstOrCreate(
+                ['slug' => 'logs'],
+                ['name' => 'Logs', 'is_active' => true]
+            );
+
+            $logsProvider = \App\Models\Provider::firstOrCreate(
+                ['code' => 'logs'],
+                ['name' => 'Logs Service', 'service_id' => $logsService->id, 'api_identifier' => 'logs']
+            );
+
             $product = Product::where('id', $id)
                 ->where('provider_id', $logsProvider->id)
                 ->where('is_active', true)
                 ->firstOrFail();
-            
+
             $productData = (object)[
-                'id' => $product->id,
-                'name' => $product->name,
-                'description' => $product->description ?? 'Premium logs access',
-                'price' => $product->client_price,
-                'country' => $product->country ?? 'Global',
+                'id'           => $product->id,
+                'name'         => $product->name,
+                'description'  => $product->description ?? 'Premium logs access',
+                'price'        => $product->client_price,
+                'country'      => $product->country ?? 'Global',
                 'country_code' => $product->country_code ? strtoupper($product->country_code) : 'GLB',
             ];
-            
+
             return view('users.logs-checkout', ['product' => $productData]);
-            
+
         } catch (\Exception $e) {
             Log::error('Error loading logs checkout', [
                 'product_id' => $id,
-                'error' => $e->getMessage()
+                'error'      => $e->getMessage()
             ]);
-            
+
             return redirect()->route('logs')->withErrors('Product not found or unavailable.');
         }
     }
-    
-    /**
-     * Process logs purchase
-     */
+
     public function processLogPurchase(Request $request, $id)
     {
         try {
             $request->validate([
                 'quantity' => 'required|integer|min:1|max:10',
-                'pin' => 'required|array|size:4',
-                'pin.*' => 'required|numeric|digits:1',
+                'pin'      => 'required|array|size:4',
+                'pin.*'    => 'required|numeric|digits:1',
             ]);
-            
-            // Combine PIN array into string
+
             $inputPin = implode('', $request->pin);
-            
-            // Verify PIN
+
             if (!PinHelper::verifyPin($inputPin, auth()->user())) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid PIN. Please try again.'
                 ], 422);
             }
-            
-            $logsProvider = $this->getLogsProvider();
-            
+
+            $logsService = \App\Models\Service::firstOrCreate(
+                ['slug' => 'logs'],
+                ['name' => 'Logs', 'is_active' => true]
+            );
+
+            $logsProvider = \App\Models\Provider::firstOrCreate(
+                ['code' => 'logs'],
+                ['name' => 'Logs Service', 'service_id' => $logsService->id, 'api_identifier' => 'logs']
+            );
+
             $product = Product::where('id', $id)
                 ->where('provider_id', $logsProvider->id)
                 ->where('is_active', true)
                 ->firstOrFail();
-            
+
             $quantity = (int) $request->quantity;
-            $amount = $product->client_price * $quantity;
-            
+            $amount   = $product->client_price * $quantity;
+
             DB::beginTransaction();
-            
+
             $wallet = Wallet::where('user_id', auth()->id())->lockForUpdate()->first();
-            
+
             if (!$wallet) {
                 DB::rollBack();
                 return response()->json([
@@ -2509,59 +2519,56 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
                     'message' => 'Wallet not found. Please contact support.'
                 ], 400);
             }
-            
+
             if ($wallet->balance < $amount) {
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
-                    'message' => 'Insufficient balance. You need ₦' . number_format($amount, 2) . ' but have ₦' . number_format($wallet->balance, 2)
+                    'message' => 'Insufficient balance. You need ₦' . number_format($amount, 2) .
+                                ' but have ₦' . number_format($wallet->balance, 2)
                 ], 400);
             }
-            
-            // Generate transaction reference
+
             $reference = 'LOGS' . time() . strtoupper(Str::random(8));
-            
-            // Create transaction
+
             $transaction = Transaction::create([
-                'reference' => $reference,
-                'user_id' => auth()->id(),
-                'type' => 'logs',
+                'reference'    => $reference,
+                'user_id'      => auth()->id(),
+                'type'         => 'logs',
                 'service_name' => 'Logs Purchase',
-                'channel' => 'web',
-                'provider' => 'logs',
-                'phone' => null,
-                'recipient' => $product->name . ' (x' . $quantity . ')',
-                'amount' => $amount,
-                'status' => 'pending',
-                'response' => [
-                    'product' => $product->toArray(),
+                'channel'      => 'web',
+                'provider'     => 'logs',
+                'phone'        => null,
+                'recipient'    => $product->name . ' (x' . $quantity . ')',
+                'amount'       => $amount,
+                'status'       => 'pending',
+                'response'     => [
+                    'product'  => $product->toArray(),
                     'quantity' => $quantity,
                 ],
-                'description' => 'Logs purchase awaiting admin fulfillment',
+                'description'  => 'Logs purchase awaiting admin fulfillment',
             ]);
-            
-            // Deduct wallet balance
+
             $wallet->decrement('balance', $amount);
-            
+
             DB::commit();
-            
+
             Log::info('Logs purchase successful', [
                 'transaction_id' => $transaction->id,
-                'reference' => $reference,
-                'quantity' => $quantity,
+                'reference'      => $reference,
+                'quantity'       => $quantity,
             ]);
-            
-            // Notify admins
+
             $adminEmails = Admin::whereNotNull('email')
                 ->where('email', '<>', '')
                 ->pluck('email')
                 ->filter()
                 ->unique();
-            
-            $validAdminEmails = $adminEmails->filter(function ($email) {
-                return filter_var($email, FILTER_VALIDATE_EMAIL);
-            })->values()->all();
-            
+
+            $validAdminEmails = $adminEmails->filter(fn($email) => filter_var($email, FILTER_VALIDATE_EMAIL))
+                ->values()
+                ->all();
+
             if (!empty($validAdminEmails)) {
                 foreach ($validAdminEmails as $adminEmail) {
                     try {
@@ -2569,8 +2576,8 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
                     } catch (\Exception $mailException) {
                         Log::warning('Failed to send admin logs notification', [
                             'transaction_id' => $transaction->id,
-                            'admin_email' => $adminEmail,
-                            'error' => $mailException->getMessage(),
+                            'admin_email'    => $adminEmail,
+                            'error'          => $mailException->getMessage(),
                         ]);
                     }
                 }
@@ -2579,31 +2586,31 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
                     'transaction_id' => $transaction->id,
                 ]);
             }
-            
+
             return response()->json([
-                'success' => true,
-                'message' => 'Logs purchase successful! Check your transactions for details.',
+                'success'        => true,
+                'message'        => 'Logs purchase successful! Check your transactions for details.',
                 'transaction_id' => $transaction->id,
-                'data' => [
-                    'reference' => $reference,
-                    'product' => $product->name,
-                    'quantity' => $quantity,
-                    'amount' => $amount,
+                'data'           => [
+                    'reference'        => $reference,
+                    'product'          => $product->name,
+                    'quantity'         => $quantity,
+                    'amount'           => $amount,
                     'formatted_amount' => '₦' . number_format($amount, 2),
-                    'new_balance' => $wallet->fresh()->balance,
-                    'formatted_balance' => '₦' . number_format($wallet->fresh()->balance, 2),
+                    'new_balance'      => $wallet->fresh()->balance,
+                    'formatted_balance'=> '₦' . number_format($wallet->fresh()->balance, 2),
                 ],
             ]);
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             Log::error('Error processing logs purchase', [
                 'product_id' => $id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'error'      => $e->getMessage(),
+                'trace'      => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred while processing your request. Please try again.'
