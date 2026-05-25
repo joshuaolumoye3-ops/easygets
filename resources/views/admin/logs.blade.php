@@ -4,140 +4,611 @@
 
 @section('content')
 <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+        --bg:          #080f1c;
+        --bg-2:        #0d1629;
+        --bg-3:        #111e38;
+        --bg-4:        #162340;
+        --border:      rgba(99,152,255,0.10);
+        --border-2:    rgba(99,152,255,0.20);
+        --border-3:    rgba(99,152,255,0.30);
+
+        --blue:        #4f8cff;
+        --blue-dim:    rgba(79,140,255,0.12);
+        --blue-glow:   rgba(79,140,255,0.22);
+        --blue-text:   #93b8ff;
+
+        --violet:      #8b7cf8;
+        --violet-dim:  rgba(139,124,248,0.12);
+        --violet-text: #c4b8fd;
+
+        --emerald:     #34d98b;
+        --emerald-dim: rgba(52,217,139,0.12);
+        --emerald-text:#6ee7b7;
+
+        --amber:       #fbbf24;
+        --amber-dim:   rgba(251,191,36,0.12);
+        --amber-text:  #fcd34d;
+
+        --rose:        #f4566e;
+        --rose-dim:    rgba(244,86,110,0.12);
+        --rose-text:   #fda4af;
+
+        --t1: #eef3ff;
+        --t2: #7a9fd4;
+        --t3: #3a5578;
+
+        --r1: 6px;
+        --r2: 10px;
+        --r3: 14px;
+        --r4: 20px;
+
+        --font: 'Plus Jakarta Sans', sans-serif;
+        --mono: 'JetBrains Mono', monospace;
+
+        --shadow-card: 0 1px 3px rgba(0,0,0,0.4), 0 4px 20px rgba(0,0,0,0.25);
+        --shadow-glow: 0 0 0 1px var(--border-2), 0 8px 32px rgba(79,140,255,0.08);
+    }
+
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--font); background: var(--bg); color: var(--t1); -webkit-font-smoothing: antialiased; min-height: 100vh; }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg-2); }
+    ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-3); }
+
+    .dash { padding-top: 70px; min-height: 100vh; }
+    .inner { padding: 28px 24px; max-width: 1400px; margin: 0 auto; }
+
+    /* ── Page Header ── */
+    .phdr {
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 16px;
+        background: var(--bg-3);
+        border: 1px solid var(--border);
+        border-radius: var(--r4);
+        padding: 18px 22px;
+        margin-bottom: 24px;
+        position: relative; overflow: hidden;
+    }
+    .phdr::before {
+        content: '';
+        position: absolute; top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, var(--violet), var(--blue), transparent);
+        opacity: 0.5;
+    }
+    .phdr-brand h1 { font-size: 18px; font-weight: 800; color: var(--t1); letter-spacing: -0.4px; }
+    .phdr-brand p  { font-size: 11.5px; color: var(--t3); font-weight: 500; margin-top: 3px; }
+    .phdr-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    /* ── Section Cards ── */
+    .tcard {
+        background: var(--bg-3);
+        border: 1px solid var(--border);
+        border-radius: var(--r4);
+        overflow: hidden;
+        margin-bottom: 20px;
+        box-shadow: var(--shadow-card);
+        transition: border-color .25s;
+    }
+    .tcard:hover { border-color: var(--border-2); }
+
+    .tcard-head {
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 12px;
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(135deg, rgba(139,124,248,0.04) 0%, transparent 60%);
+    }
+    .tcard-title { display: flex; align-items: center; gap: 10px; }
+    .tcard-title h3 { font-size: 15px; font-weight: 700; color: var(--t1); letter-spacing: -0.3px; }
+    .count-pill {
+        padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+        background: var(--violet-dim); color: var(--violet-text);
+        border: 1px solid rgba(139,124,248,0.2);
+    }
+
+    /* ── Create Form ── */
+    .form-body { padding: 22px 20px; }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .form-grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .fg { display: flex; flex-direction: column; gap: 6px; }
+    .fl {
+        font-size: 11px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.6px; color: var(--t2);
+    }
+    .fi, .fa, .fs {
+        background: var(--bg-2); border: 1px solid var(--border-2);
+        border-radius: var(--r2); color: var(--t1); font-family: var(--font);
+        transition: border-color .2s, box-shadow .2s;
+        font-size: 13px;
+    }
+    .fi { height: 40px; padding: 0 12px; }
+    .fa { padding: 10px 12px; resize: vertical; min-height: 80px; }
+    .fs { height: 40px; padding: 0 12px; cursor: pointer; appearance: none; -webkit-appearance: none; }
+    .fi::placeholder, .fa::placeholder { color: var(--t3); }
+    .fi:focus, .fa:focus, .fs:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-dim); }
+
+    .form-actions { display: flex; align-items: center; gap: 10px; padding-top: 4px; }
+
+    .btn-primary {
+        height: 40px; padding: 0 20px;
+        background: var(--emerald); color: #fff; border: none;
+        border-radius: var(--r2); font-size: 13px; font-weight: 700; cursor: pointer;
+        font-family: var(--font); display: inline-flex; align-items: center; gap: 7px;
+        transition: background .2s, box-shadow .2s;
+    }
+    .btn-primary:hover { background: #22c77a; box-shadow: 0 4px 14px rgba(52,217,139,0.3); }
+
+    .btn-secondary {
+        height: 40px; padding: 0 16px;
+        background: var(--blue-dim); color: var(--blue-text);
+        border: 1px solid rgba(79,140,255,0.25); border-radius: var(--r2);
+        font-size: 13px; font-weight: 700; cursor: pointer; font-family: var(--font);
+        display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+        transition: background .2s, color .2s, box-shadow .2s;
+    }
+    .btn-secondary:hover { background: var(--blue); color: #fff; box-shadow: 0 4px 14px var(--blue-glow); }
+
+    .btn-danger {
+        height: 34px; padding: 0 14px;
+        background: var(--rose-dim); color: var(--rose-text);
+        border: 1px solid rgba(244,86,110,0.25); border-radius: var(--r2);
+        font-size: 12px; font-weight: 700; cursor: pointer; font-family: var(--font);
+        display: inline-flex; align-items: center; gap: 6px;
+        transition: background .2s, color .2s;
+    }
+    .btn-danger:hover { background: var(--rose); color: #fff; }
+
+    .btn-enable {
+        height: 34px; padding: 0 14px;
+        background: var(--emerald-dim); color: var(--emerald-text);
+        border: 1px solid rgba(52,217,139,0.25); border-radius: var(--r2);
+        font-size: 12px; font-weight: 700; cursor: pointer; font-family: var(--font);
+        display: inline-flex; align-items: center; gap: 6px;
+        transition: background .2s, color .2s;
+    }
+    .btn-enable:hover { background: var(--emerald); color: #fff; }
+
+    .btn-edit {
+        height: 34px; padding: 0 14px;
+        background: var(--violet-dim); color: var(--violet-text);
+        border: 1px solid rgba(139,124,248,0.25); border-radius: var(--r2);
+        font-size: 12px; font-weight: 700; cursor: pointer; font-family: var(--font);
+        display: inline-flex; align-items: center; gap: 6px;
+        transition: background .2s, color .2s;
+    }
+    .btn-edit:hover { background: var(--violet); color: #fff; }
+
+    .btn-ghost {
+        height: 34px; padding: 0 14px;
+        background: transparent; color: var(--t3);
+        border: 1px solid var(--border-2); border-radius: var(--r2);
+        font-size: 12px; font-weight: 700; cursor: pointer; font-family: var(--font);
+        display: inline-flex; align-items: center; gap: 6px;
+        transition: border-color .2s, color .2s, background .2s;
+    }
+    .btn-ghost:hover { border-color: var(--t2); color: var(--t1); }
+
+    /* ── Product List ── */
+    .product-list { display: flex; flex-direction: column; }
+
+    .product-card {
+        border-bottom: 1px solid var(--border);
+        transition: background .15s;
+    }
+    .product-card:last-child { border-bottom: none; }
+    .product-card:hover { background: rgba(79,140,255,0.03); }
+    .product-card.inactive { opacity: 0.6; }
+
+    .product-row {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 16px;
+        align-items: center;
+        padding: 18px 20px;
+    }
+
+    .product-icon {
+        width: 42px; height: 42px; border-radius: var(--r2);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 15px; font-weight: 800; flex-shrink: 0;
+        background: var(--violet-dim); color: var(--violet-text);
+        border: 1px solid rgba(139,124,248,0.2);
+        font-family: var(--mono);
+    }
+
+    .product-info { min-width: 0; }
+    .product-name {
+        font-size: 14px; font-weight: 700; color: var(--t1);
+        margin-bottom: 5px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .product-meta {
+        display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+        font-size: 12px; color: var(--t3);
+    }
+    .product-meta .code {
+        font-family: var(--mono); font-size: 11px; font-weight: 600;
+        color: var(--blue-text); background: var(--blue-dim);
+        border: 1px solid rgba(79,140,255,0.18);
+        padding: 2px 8px; border-radius: var(--r1);
+    }
+    .product-meta .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--t3); flex-shrink: 0; }
+    .product-price {
+        margin-top: 5px; display: inline-flex; align-items: center; gap: 5px;
+        font-size: 13px; font-weight: 700; color: var(--amber-text);
+        font-family: var(--mono);
+    }
+    .product-desc {
+        margin-top: 5px; font-size: 12px; color: var(--t3);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .product-controls {
+        display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
+        flex-shrink: 0;
+    }
+
+    .status-chip {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 4px 11px; border-radius: 20px; font-size: 11.5px; font-weight: 700;
+    }
+    .status-chip .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .chip-on  { background: var(--emerald-dim); color: var(--emerald-text); border: 1px solid rgba(52,217,139,0.25); }
+    .chip-on  .dot { background: var(--emerald); }
+    .chip-off { background: var(--rose-dim);    color: var(--rose-text);    border: 1px solid rgba(244,86,110,0.25); }
+    .chip-off .dot { background: var(--rose); }
+
+    /* ── Edit Panel ── */
+    .edit-panel {
+        display: none;
+        padding: 0 20px 20px;
+        animation: slideDown .18s ease;
+    }
+    .edit-panel.open { display: block; }
+
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+    .edit-inner {
+        background: var(--bg-2);
+        border: 1px solid var(--border-2);
+        border-left: 3px solid var(--violet);
+        border-radius: 0 var(--r3) var(--r3) 0;
+        padding: 18px 20px;
+    }
+    .edit-head {
+        display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
+    }
+    .edit-head h4 { font-size: 13px; font-weight: 700; color: var(--t1); }
+    .edit-head .eicon { color: var(--violet); font-size: 15px; }
+
+    /* ── Country Flag ── */
+    .flag {
+        display: inline-flex; align-items: center; gap: 5px;
+        font-size: 12px; color: var(--t2);
+    }
+
+    /* ── Empty State ── */
+    .empty {
+        padding: 64px 24px; text-align: center;
+        display: flex; flex-direction: column; align-items: center; gap: 12px;
+    }
+    .empty-icon-wrap {
+        width: 60px; height: 60px; border-radius: var(--r3);
+        background: var(--bg-2); border: 1px solid var(--border-2);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 26px; color: var(--t3); margin-bottom: 4px;
+    }
+    .empty h3 { font-size: 15px; font-weight: 700; color: var(--t2); }
+    .empty p  { font-size: 13px; color: var(--t3); max-width: 340px; line-height: 1.6; }
+
+    /* ── Info Footer ── */
+    .info-footer {
+        display: flex; align-items: flex-start; gap: 12px;
+        padding: 14px 20px; background: var(--bg-2);
+        border-top: 1px solid var(--border);
+    }
+    .info-footer-icon {
+        width: 32px; height: 32px; border-radius: var(--r1); flex-shrink: 0;
+        background: var(--amber-dim); border: 1px solid rgba(251,191,36,0.2);
+        display: flex; align-items: center; justify-content: center;
+        color: var(--amber); font-size: 15px;
+    }
+    .info-footer-text { font-size: 12px; color: var(--t3); line-height: 1.6; padding-top: 6px; }
+
+    /* ── Stats Row ── */
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+    .stat-card {
+        background: var(--bg-3); border: 1px solid var(--border);
+        border-radius: var(--r4); padding: 20px;
+        position: relative; overflow: hidden;
+        transition: border-color .25s, transform .25s, box-shadow .25s;
+    }
+    .stat-card:hover { border-color: var(--border-2); transform: translateY(-2px); box-shadow: var(--shadow-glow); }
+    .stat-card .accent-line { position: absolute; top: 0; left: 20px; right: 20px; height: 2px; border-radius: 0 0 4px 4px; }
+    .stat-card.violet .accent-line { background: linear-gradient(90deg, transparent, var(--violet), transparent); }
+    .stat-card.emerald .accent-line { background: linear-gradient(90deg, transparent, var(--emerald), transparent); }
+    .stat-card.amber .accent-line { background: linear-gradient(90deg, transparent, var(--amber), transparent); }
+    .stat-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+    .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.9px; color: var(--t3); }
+    .stat-icon { width: 40px; height: 40px; border-radius: var(--r2); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .stat-card.violet .stat-icon { background: var(--violet-dim); color: var(--violet); }
+    .stat-card.emerald .stat-icon { background: var(--emerald-dim); color: var(--emerald); }
+    .stat-card.amber  .stat-icon { background: var(--amber-dim);  color: var(--amber); }
+    .stat-value { font-size: 26px; font-weight: 800; color: var(--t1); letter-spacing: -0.5px; line-height: 1; margin-bottom: 10px; }
+    .stat-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .stat-card.violet .stat-badge { background: var(--violet-dim); color: var(--violet-text); border: 1px solid rgba(139,124,248,0.2); }
+    .stat-card.emerald .stat-badge { background: var(--emerald-dim); color: var(--emerald-text); border: 1px solid rgba(52,217,139,0.2); }
+    .stat-card.amber  .stat-badge { background: var(--amber-dim);  color: var(--amber-text);  border: 1px solid rgba(251,191,36,0.2); }
+
     .hidden { display: none !important; }
+
+    @media (max-width: 900px) { .stats { grid-template-columns: 1fr 1fr; } .form-grid-4 { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 600px) {
+        .stats { grid-template-columns: 1fr; }
+        .form-grid-2, .form-grid-4 { grid-template-columns: 1fr; }
+        .inner { padding: 16px 14px; }
+        .product-row { grid-template-columns: auto 1fr; }
+        .product-controls { flex-direction: row; align-items: center; flex-wrap: wrap; }
+        .phdr { flex-direction: column; align-items: flex-start; }
+    }
 </style>
+
 <div class="dash">
     <div class="inner">
-        <div class="top-bar">
-            <div class="tb-l">
+
+        {{-- Page Header --}}
+        <div class="phdr">
+            <div class="phdr-brand">
                 <h1>Logs Product Catalog</h1>
                 <p>Manage login and IP access products available to customers.</p>
             </div>
+            <div class="phdr-right">
+                <a href="{{ route('admin.logs.orders') }}" class="btn-secondary">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                    View Orders
+                </a>
+            </div>
         </div>
 
-        <div class="services-panel">
-            <div class="panel-header">
-                <div class="panel-title-group">
-                    <h2 class="panel-title">Add New Logs Product</h2>
-                    <span class="pill">Create / update</span>
+        {{-- Stats --}}
+        @php
+            $totalProducts  = $products->count();
+            $activeProducts = $products->where('is_active', true)->count();
+            $avgPrice       = $products->avg('client_price') ?? 0;
+        @endphp
+        <div class="stats">
+            <div class="stat-card violet">
+                <div class="accent-line"></div>
+                <div class="stat-top">
+                    <div class="stat-label">Total Products</div>
+                    <div class="stat-icon">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                    </div>
+                </div>
+                <div class="stat-value">{{ number_format($totalProducts) }}</div>
+                <span class="stat-badge">All products</span>
+            </div>
+
+            <div class="stat-card emerald">
+                <div class="accent-line"></div>
+                <div class="stat-top">
+                    <div class="stat-label">Active</div>
+                    <div class="stat-icon">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                </div>
+                <div class="stat-value">{{ number_format($activeProducts) }}</div>
+                <span class="stat-badge">Live now</span>
+            </div>
+
+            <div class="stat-card amber">
+                <div class="accent-line"></div>
+                <div class="stat-top">
+                    <div class="stat-label">Avg. Price</div>
+                    <div class="stat-icon">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                </div>
+                <div class="stat-value">₦{{ number_format($avgPrice, 0) }}</div>
+                <span class="stat-badge">Per product</span>
+            </div>
+        </div>
+
+        {{-- Create Product --}}
+        <div class="tcard">
+            <div class="tcard-head">
+                <div class="tcard-title">
+                    <h3>Add New Logs Product</h3>
+                    <span class="count-pill">Create / Update</span>
                 </div>
             </div>
-            <div class="panel-footer" style="display:block;">
-                <form action="{{ route('admin.logs.create') }}" method="POST" class="space-y-4">
+            <div class="form-body">
+                <form action="{{ route('admin.logs.create') }}" method="POST">
                     @csrf
-                    <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px;">
-                        <label class="block text-sm text-slate-200">
-                            Product Name
-                            <input type="text" name="name" required maxlength="255" class="w-full mt-2 px-4 py-3 rounded-xl border border-slate-700 bg-slate-950 text-white" placeholder="Facebook login" />
-                        </label>
-                        <label class="block text-sm text-slate-200">
-                            Country (optional)
-                            <input type="text" name="country" maxlength="80" class="w-full mt-2 px-4 py-3 rounded-xl border border-slate-700 bg-slate-950 text-white" placeholder="United Kingdom" />
-                        </label>
+                    <div class="form-grid-4">
+                        <div class="fg">
+                            <label class="fl" for="name">Product Name</label>
+                            <input class="fi" type="text" id="name" name="name" required maxlength="255" placeholder="Facebook – UK login" />
+                        </div>
+                        <div class="fg">
+                            <label class="fl" for="client_price">Price (NGN)</label>
+                            <input class="fi" type="number" id="client_price" name="client_price" required step="0.01" min="0" placeholder="1500" />
+                        </div>
+                        <div class="fg">
+                            <label class="fl" for="country">Country (optional)</label>
+                            <input class="fi" type="text" id="country" name="country" maxlength="80" placeholder="United Kingdom" />
+                        </div>
+                        <div class="fg">
+                            <label class="fl" for="country_code">Country Code</label>
+                            <input class="fi" type="text" id="country_code" name="country_code" maxlength="2" placeholder="GB" />
+                        </div>
                     </div>
-                    <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px;">
-                        <label class="block text-sm text-slate-200">
-                            Country Code
-                            <input type="text" name="country_code" maxlength="2" class="w-full mt-2 px-4 py-3 rounded-xl border border-slate-700 bg-slate-950 text-white" placeholder="GB" />
-                        </label>
-                        <label class="block text-sm text-slate-200">
-                            Price (NGN)
-                            <input type="number" name="client_price" required step="0.01" min="0" class="w-full mt-2 px-4 py-3 rounded-xl border border-slate-700 bg-slate-950 text-white" placeholder="1500" />
-                        </label>
+                    <div class="fg" style="margin-bottom: 18px;">
+                        <label class="fl" for="description">Description (optional)</label>
+                        <textarea class="fa" id="description" name="description" rows="3" placeholder="Short product details or login type…"></textarea>
                     </div>
-                    <label class="block text-sm text-slate-200">
-                        Description (optional)
-                        <textarea name="description" rows="3" class="w-full mt-2 px-4 py-3 rounded-xl border border-slate-700 bg-slate-950 text-white" placeholder="Short product details or login type."></textarea>
-                    </label>
-                    <button type="submit" class="filter-btn" style="background:#10b981; color:#fff; border:none;">Create Logs Product</button>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            Create Product
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
 
-        <div class="services-panel">
-            <div class="panel-header">
-                <div class="panel-title-group">
-                    <h2 class="panel-title">Existing Logs Products</h2>
-                    <span class="pill">{{ $products->count() }} items</span>
+        {{-- Product List --}}
+        <div class="tcard">
+            <div class="tcard-head">
+                <div class="tcard-title">
+                    <h3>Existing Logs Products</h3>
+                    <span class="count-pill">{{ $products->count() }} items</span>
                 </div>
             </div>
-            <div class="service-list">
+
+            <div class="product-list">
                 @forelse($products as $product)
-                    <div class="service-row {{ !$product->is_active ? 'row-disabled' : '' }}">
-                        <div class="svc-icon purple">L</div>
-                        <div class="svc-info">
-                            <div class="svc-name">{{ $product->name }}</div>
-                            <div class="svc-meta">
-                                <span class="svc-slug">{{ strtoupper($product->product_code) }}</span>
-                                <span>{{ $product->country ?? 'Global' }}</span>
+                    <div class="product-card {{ !$product->is_active ? 'inactive' : '' }}" id="pcard-{{ $product->id }}">
+                        <div class="product-row">
+
+                            {{-- Icon --}}
+                            <div class="product-icon">L</div>
+
+                            {{-- Info --}}
+                            <div class="product-info">
+                                <div class="product-name">{{ $product->name }}</div>
+                                <div class="product-meta">
+                                    <span class="code">{{ strtoupper($product->product_code) }}</span>
+                                    @if($product->country)
+                                        <span class="sep"></span>
+                                        <span class="flag">
+                                            @if($product->country_code)
+                                                <span style="font-size:14px;">{{ strtoupper($product->country_code) }}</span>
+                                            @endif
+                                            {{ $product->country }}
+                                        </span>
+                                    @else
+                                        <span class="sep"></span>
+                                        <span>Global</span>
+                                    @endif
+                                </div>
+                                <div class="product-price">₦{{ number_format($product->client_price, 2) }}</div>
                                 @if($product->description)
-                                    <span>{{ Str::limit($product->description, 50) }}</span>
+                                    <div class="product-desc">{{ Str::limit($product->description, 80) }}</div>
                                 @endif
                             </div>
-                            <p class="svc-desc" style="margin-top: 8px; font-size: 12px; color: #999;">₦{{ number_format($product->client_price, 2) }}</p>
+
+                            {{-- Controls --}}
+                            <div class="product-controls">
+                                <span class="status-chip {{ $product->is_active ? 'chip-on' : 'chip-off' }}">
+                                    <span class="dot"></span>
+                                    {{ $product->is_active ? 'Active' : 'Inactive' }}
+                                </span>
+                                <div style="display:flex; gap:8px;">
+                                    <button
+                                        class="btn-edit"
+                                        onclick="toggleEdit({{ $product->id }})">
+                                        <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                        Edit
+                                    </button>
+                                    <form action="{{ route('admin.products.toggle', ['id' => $product->id]) }}" method="POST" style="margin:0;">
+                                        @csrf
+                                        @if($product->is_active)
+                                            <button type="submit" class="btn-danger">
+                                                <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                                                Disable
+                                            </button>
+                                        @else
+                                            <button type="submit" class="btn-enable">
+                                                <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                Enable
+                                            </button>
+                                        @endif
+                                    </form>
+                                </div>
+                            </div>
                         </div>
-                        <div class="svc-controls" style="flex-direction: column; align-items: flex-end; gap: 8px;">
-                            <span class="status-pill {{ $product->is_active ? 'on' : 'off' }}">
-                                <span class="status-dot"></span>
-                                {{ $product->is_active ? 'Active' : 'Inactive' }}
-                            </span>
-                            <div style="display: flex; gap: 8px;">
-                                <button onclick="document.getElementById('edit-form-{{ $product->id }}').classList.toggle('hidden')" class="filter-btn" style="background:#3b82f6; color:#fff; font-size: 12px; padding: 6px 12px;">Edit</button>
-                                <form action="{{ route('admin.products.toggle', ['id' => $product->id]) }}" method="POST" style="margin:0;">
+
+                        {{-- Inline Edit Form --}}
+                        <div class="edit-panel" id="edit-{{ $product->id }}">
+                            <div class="edit-inner">
+                                <div class="edit-head">
+                                    <svg class="eicon" width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                    <h4>Edit — {{ $product->name }}</h4>
+                                </div>
+                                <form action="{{ route('admin.logs.create') }}" method="POST">
                                     @csrf
-                                    <button type="submit" class="filter-btn" style="background:{{ $product->is_active ? '#ef4444' : '#22c55e' }}; color:#fff; font-size: 12px; padding: 6px 12px;">{{ $product->is_active ? 'Disable' : 'Enable' }}</button>
+                                    <input type="hidden" name="product_id" value="{{ $product->id }}">
+                                    <div class="form-grid-4" style="margin-bottom:14px;">
+                                        <div class="fg">
+                                            <label class="fl">Product Name</label>
+                                            <input class="fi" type="text" name="name" value="{{ $product->name }}" required maxlength="255" />
+                                        </div>
+                                        <div class="fg">
+                                            <label class="fl">Price (NGN)</label>
+                                            <input class="fi" type="number" name="client_price" value="{{ $product->client_price }}" required step="0.01" min="0" />
+                                        </div>
+                                        <div class="fg">
+                                            <label class="fl">Country</label>
+                                            <input class="fi" type="text" name="country" value="{{ $product->country }}" maxlength="80" />
+                                        </div>
+                                        <div class="fg">
+                                            <label class="fl">Country Code</label>
+                                            <input class="fi" type="text" name="country_code" value="{{ $product->country_code }}" maxlength="2" />
+                                        </div>
+                                    </div>
+                                    <div class="fg" style="margin-bottom:14px;">
+                                        <label class="fl">Description</label>
+                                        <textarea class="fa" name="description" rows="2">{{ $product->description }}</textarea>
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="submit" class="btn-primary" style="height:36px; font-size:12.5px;">
+                                            <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            Save Changes
+                                        </button>
+                                        <button type="button" class="btn-ghost" onclick="toggleEdit({{ $product->id }})">
+                                            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            Cancel
+                                        </button>
+                                    </div>
                                 </form>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Edit Form -->
-                    <div id="edit-form-{{ $product->id }}" class="service-row hidden" style="grid-template-columns: 1fr; padding: 18px 22px 22px; background: rgba(255,255,255,0.04); margin-top: -10px; border-radius: 0 0 12px 12px;">
-                        <form action="{{ route('admin.logs.create') }}" method="POST" class="space-y-4">
-                            @csrf
-                            <input type="hidden" name="product_id" value="{{ $product->id }}">
-                            <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px;">
-                                <label class="block text-sm text-slate-200">
-                                    Product Name
-                                    <input type="text" name="name" value="{{ $product->name }}" required maxlength="255" class="w-full mt-2 px-4 py-3 rounded-xl border border-slate-700 bg-slate-950 text-white" />
-                                </label>
-                                <label class="block text-sm text-slate-200">
-                                    Country (optional)
-                                    <input type="text" name="country" value="{{ $product->country }}" maxlength="80" class="w-full mt-2 px-4 py-3 rounded-xl border border-slate-700 bg-slate-950 text-white" />
-                                </label>
-                            </div>
-                            <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px;">
-                                <label class="block text-sm text-slate-200">
-                                    Country Code
-                                    <input type="text" name="country_code" value="{{ $product->country_code }}" maxlength="2" class="w-full mt-2 px-4 py-3 rounded-xl border border-slate-700 bg-slate-950 text-white" />
-                                </label>
-                                <label class="block text-sm text-slate-200">
-                                    Price (NGN)
-                                    <input type="number" name="client_price" value="{{ $product->client_price }}" required step="0.01" min="0" class="w-full mt-2 px-4 py-3 rounded-xl border border-slate-700 bg-slate-950 text-white" />
-                                </label>
-                            </div>
-                            <label class="block text-sm text-slate-200">
-                                Description (optional)
-                                <textarea name="description" rows="3" class="w-full mt-2 px-4 py-3 rounded-xl border border-slate-700 bg-slate-950 text-white">{{ $product->description }}</textarea>
-                            </label>
-                            <div style="display: flex; gap: 8px;">
-                                <button type="submit" class="filter-btn" style="background:#10b981; color:#fff; border:none;">Save Changes</button>
-                                <button type="button" onclick="document.getElementById('edit-form-{{ $product->id }}').classList.add('hidden')" class="filter-btn" style="background:#6b7280; color:#fff; border:none;">Cancel</button>
-                            </div>
-                        </form>
-                    </div>
                 @empty
-                    <div class="empty-state">
-                        <span class="ei">📝</span>
-                        <p>No logs products yet. Create one above to make them available to users.</p>
+                    <div class="empty">
+                        <div class="empty-icon-wrap">
+                            <svg width="26" height="26" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                        </div>
+                        <h3>No logs products yet</h3>
+                        <p>Create a product above and it will appear here. Products are shown to users when browsing available logs access packages.</p>
                     </div>
                 @endforelse
             </div>
-            <div class="panel-footer info-block">
-                <div class="info-icon">💡</div>
-                <div class="info-text">Each logs product can be created with an optional country and an optional description. Use country code to surface the correct flag on the user listing.</div>
+
+            <div class="info-footer">
+                <div class="info-footer-icon">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div class="info-footer-text">
+                    Each product supports an optional country and description. Use the two-letter country code (e.g. <strong style="color:var(--t2);">GB</strong>, <strong style="color:var(--t2);">US</strong>) to display the correct region label. Disabled products are hidden from users but not deleted.
+                </div>
             </div>
         </div>
+
     </div>
 </div>
+
+<script>
+function toggleEdit(id) {
+    const panel = document.getElementById('edit-' + id);
+    if (!panel) return;
+    panel.classList.toggle('open');
+}
+</script>
 @endsection

@@ -415,7 +415,7 @@
                 <p>Review pending orders and fulfil them with login credentials.</p>
             </div>
             <div class="phdr-right">
-                <a href="" style="height:38px; padding:0 14px; display:inline-flex; align-items:center; gap:7px; background:var(--violet-dim); color:var(--violet-text); border:1px solid rgba(139,124,248,0.25); border-radius:var(--r2); font-size:12.5px; font-weight:700; text-decoration:none; white-space:nowrap; transition:background .2s, color .2s, box-shadow .2s;" onmouseover="this.style.background='var(--violet)';this.style.color='#fff';" onmouseout="this.style.background='var(--violet-dim)';this.style.color='var(--violet-text)';">
+                <a href="{{ route('admin.logs.products') }}" style="height:38px; padding:0 14px; display:inline-flex; align-items:center; gap:7px; background:var(--violet-dim); color:var(--violet-text); border:1px solid rgba(139,124,248,0.25); border-radius:var(--r2); font-size:12.5px; font-weight:700; text-decoration:none; white-space:nowrap; transition:background .2s, color .2s, box-shadow .2s;" onmouseover="this.style.background='var(--violet)';this.style.color='#fff';" onmouseout="this.style.background='var(--violet-dim)';this.style.color='var(--violet-text)';">
                     <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H7m0 0l5-5m-5 5l5 5"/></svg>
                     Manage Products
                 </a>
