@@ -46,7 +46,7 @@
             <p class="text-gray-400 text-sm">You've reached the end of the list</p>
         </div>
     </div>
-    <div class="text-center text-xs text-gray-400">Powered by HecksTechie &mdash; Secure logs delivery</div>
+    {{-- <div class="text-center text-xs text-gray-400">Powered by HecksTechie &mdash; Secure logs delivery</div> --}}
 </div>
 
 <script>
