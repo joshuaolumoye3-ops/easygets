@@ -694,7 +694,9 @@ class AdminServiceController extends Controller
         ]);
 
         $transaction = Transaction::where('type', 'logs')->findOrFail($id);
-        $responseData = is_array($transaction->response) ? $transaction->response : json_decode($transaction->response ?? '[]', true) ?: [];
+        $responseData = is_array($transaction->response)
+            ? $transaction->response
+            : (json_decode($transaction->response ?? '[]', true) ?: []);
         $responseData['login_details'] = $request->login_details;
         $responseData['notes'] = $request->notes;
         $responseData['fulfilled_at'] = now()->toDateTimeString();
