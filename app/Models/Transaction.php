@@ -18,6 +18,14 @@ class Transaction extends Model
         'status',
         'response',
         'balance_after', // ADDED: Track balance after transaction
+        'request_id',
+        'service_name',
+        'service_logo',
+        'country_id',
+        'country_name',
+        'country_code',
+        'operator_name',
+        'description',
     ];
 
     /**

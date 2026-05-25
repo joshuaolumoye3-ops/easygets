@@ -15,6 +15,10 @@ use App\Models\Wallet;
 use Illuminate\Support\Str;
 use App\Models\Product;
 use App\Models\Provider;
+use App\Models\Transaction;
+use App\Models\Admin;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\LogsPurchaseAdminNotification;
 
 class CountryController extends Controller
 {
@@ -1890,6 +1894,42 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
         return redirect()->route('confirm.payment');
     }
 
+    public function prepareLogPurchase(Request $request, $product)
+    {
+        try {
+            $product = Product::findOrFail($product);
+
+            $cost = $product->client_price ?? $product->api_price ?? 0;
+            if ($cost <= 0) {
+                return back()->withErrors('Invalid product pricing.');
+            }
+
+            $purchase = [
+                'provider' => 'logs',
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+                'product_description' => $product->description ?? null,
+                'cost' => $cost,
+                'timestamp' => time(),
+                'session_token' => bin2hex(random_bytes(16)),
+            ];
+
+            session(['purchase' => encrypt($purchase)]);
+
+            Log::info('Logs purchase session created', [
+                'user_id' => auth()->id(),
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+                'cost' => $cost,
+            ]);
+
+            return redirect()->route('confirm.payment');
+        } catch (\Exception $e) {
+            Log::error('Error preparing logs purchase', ['error' => $e->getMessage()]);
+            return back()->withErrors('Unable to prepare purchase. Please try again.');
+        }
+    }
+
 
     private function processSmsbus($purchase)
 {
@@ -2147,6 +2187,8 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
                 return $this->process5sim($purchase);
             } elseif ($purchase['provider'] === self::PROVIDER_SMSBUS) {
                 return $this->processSmsbus($purchase);
+            } elseif (isset($purchase['provider']) && $purchase['provider'] === 'logs') {
+                return $this->processLogs($purchase);
             }
 
             // Unknown provider - refund
@@ -2211,6 +2253,72 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
                 'amount' => $amount,
                 'error' => $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Process logs product purchase (creates transaction and notifies admins)
+     */
+    private function processLogs($purchase)
+    {
+        try {
+            $userId = auth()->id();
+            $product = isset($purchase['product_id']) ? Product::find($purchase['product_id']) : null;
+
+            $reference = 'LOGS' . time() . strtoupper(Str::random(8));
+
+            $transaction = Transaction::create([
+                'reference' => $reference,
+                'user_id' => $userId,
+                'type' => 'logs',
+                'service_name' => 'Logs Purchase',
+                'channel' => 'web',
+                'provider' => 'logs',
+                'phone' => null,
+                'recipient' => $product->name ?? ($purchase['product_name'] ?? 'Logs'),
+                'amount' => $purchase['cost'] ?? 0,
+                'status' => 'pending',
+                'response' => ['product' => $product ? $product->toArray() : ($purchase['product_name'] ?? null)],
+                'description' => 'Logs purchase awaiting admin fulfillment',
+            ]);
+
+            // Notify admins
+            $adminEmails = Admin::whereNotNull('email')
+                ->where('email', '<>', '')
+                ->pluck('email')
+                ->filter()
+                ->unique();
+
+            $validAdminEmails = $adminEmails->filter(function ($email) {
+                return filter_var($email, FILTER_VALIDATE_EMAIL);
+            })->values()->all();
+
+            if (!empty($validAdminEmails)) {
+                foreach ($validAdminEmails as $adminEmail) {
+                    try {
+                        Mail::to($adminEmail)->send(new LogsPurchaseAdminNotification($transaction, $product, auth()->user()));
+                    } catch (\Exception $mailException) {
+                        Log::warning('Failed to send admin logs notification', [
+                            'transaction_id' => $transaction->id,
+                            'admin_email' => $adminEmail,
+                            'error' => $mailException->getMessage(),
+                        ]);
+                    }
+                }
+            } else {
+                Log::warning('No valid admin emails found for logs notification', [
+                    'transaction_id' => $transaction->id,
+                    'admin_emails' => $adminEmails->values()->all(),
+                ]);
+            }
+
+            session()->forget('purchase');
+
+            return redirect()->route('history')->with('new_activation', $transaction->id);
+        } catch (\Exception $e) {
+            Log::error('Error processing logs purchase', ['error' => $e->getMessage()]);
+            $this->refundUserBalance($purchase['cost'] ?? 0);
+            return back()->withErrors('An error occurred. Your balance has been refunded.');
         }
     }
 

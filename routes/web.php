@@ -187,6 +187,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/prepare-purchase-provider2', [CountryController::class, 'preparePurchase'])
         ->middleware('auth', 'check.user.not.blocked')->name('prepare.purchase.provider2');
 
+    Route::get('/logs/{product}/prepare', [CountryController::class, 'prepareLogPurchase'])
+        ->middleware('auth', 'check.user.not.blocked')->name('logs.prepare');
+
     // ==================== COMMON ROUTES (BOTH PROVIDERS) ====================
     // Payment confirmation page
     Route::get('/confirm-payment', [CountryController::class, 'showConfirm'])
@@ -293,6 +296,11 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
     Route::get('/esim-transaction', [AdminServiceController::class, 'esimindex'])->name('admin.esim.transaction');
     Route::get('/esim/{id}', [AdminServiceController::class, 'show'])->name('admin.esim.show');
     Route::post('/esim/upload', [AdminServiceController::class, 'upload'])->name('admin.esim.upload');
+
+    Route::get('/logs', [AdminServiceController::class, 'logsIndex'])->name('admin.logs');
+    Route::get('/logs/orders', [AdminServiceController::class, 'logsOrders'])->name('admin.logs.orders');
+    Route::post('/logs/create', [AdminServiceController::class, 'createLogProduct'])->name('admin.logs.create');
+    Route::post('/logs/{id}/fulfill', [AdminServiceController::class, 'fulfillLogOrder'])->name('admin.logs.fulfill');
 
     Route::prefix('esim')->group(function () {
         Route::get('/', [AdminEsimController::class, 'index'])->name('admin.esim.index');

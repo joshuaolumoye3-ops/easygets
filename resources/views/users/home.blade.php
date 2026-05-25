@@ -166,7 +166,7 @@
                 Get OTP
             </button>
             <button onclick="window.location.href='social-boost'" class="bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-700 transition-colors">
-                Socials
+                Social Boosting
             </button>
         </div>
 

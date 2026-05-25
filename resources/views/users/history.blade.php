@@ -17,7 +17,8 @@
     <!-- Tabs -->
     <div class="flex justify-between px-4 mb-6 bg-white py-4">
         <button id="activationsBtn" class="flex-1 text-center py-3 rounded-full font-semibold bg-green-800 text-white mr-2">Activations</button>
-        <button id="socialsBtn" class="flex-1 text-center py-3 rounded-full font-semibold bg-gray-200 text-gray-600">Socials</button>
+        <button id="socialsBtn" class="flex-1 text-center py-3 rounded-full font-semibold bg-gray-200 text-gray-600 mr-2">Socials</button>
+        <button id="logsBtn" class="flex-1 text-center py-3 rounded-full font-semibold bg-gray-200 text-gray-600">Logs</button>
     </div>
 
     <!-- Activations Content -->
@@ -127,6 +128,34 @@
     </div>
 </div>
 
+<!-- Logs Content -->
+<div id="logsContent" class="space-y-3 px-4 transition-all duration-500 ease-in-out hidden">
+    @forelse($logs as $log)
+        <div class="cursor-pointer flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-xl">L</div>
+                <div>
+                    <p class="font-semibold text-gray-800">{{ $log['service_name'] }}</p>
+                    <p class="text-xs text-gray-500 mt-0.5">{{ $log['date'] }}</p>
+                    <p class="text-xs text-gray-400 mt-0.5">{{ $log['amount'] }}</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1 {{ $log['status'] === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' }}">{{ $log['status'] }}</span>
+                @if($log['login_details'])
+                    <div class="mt-2 text-xs text-gray-500">{{ Str::limit($log['login_details'], 60) }}</div>
+                @endif
+            </div>
+        </div>
+    @empty
+        <div class="text-center py-12">
+            <div class="text-6xl mb-4">🗄️</div>
+            <p class="text-gray-500 font-medium">No logs purchases yet</p>
+            <p class="text-sm text-gray-400 mt-1">Buy logs access products from the services list</p>
+        </div>
+    @endforelse
+</div>
+
 <!-- Activation Modal -->
 <div id="activationModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"></div>
@@ -157,6 +186,7 @@ function socialBadgeClass(string $status): string {
 // ─── Data from server ────────────────────────────────────────────────────────
 const ALL_ACTIVATIONS  = @json($activations);
 const ALL_SOCIAL_BOOSTS = @json($socialBoosts);
+const ALL_LOGS = @json($logs ?? []);
 
 // ─── State ───────────────────────────────────────────────────────────────────
 let pollingInterval        = null;
@@ -218,6 +248,45 @@ document.addEventListener('DOMContentLoaded', function () {
         pendingSocials.forEach(b => { socialPollingStatus[b.id] = true; });
         startSocialPolling();
     }
+
+    // Tab switching
+    const activationsBtn = document.getElementById('activationsBtn');
+    const socialsBtn = document.getElementById('socialsBtn');
+    const logsBtn = document.getElementById('logsBtn');
+
+    function showTab(tab) {
+        document.getElementById('activationsContent').classList.add('hidden');
+        document.getElementById('socialsContent').classList.add('hidden');
+        document.getElementById('logsContent').classList.add('hidden');
+
+        activationsBtn.classList.remove('bg-green-800','text-white');
+        activationsBtn.classList.add('bg-gray-200','text-gray-600');
+        socialsBtn.classList.remove('bg-green-800','text-white');
+        socialsBtn.classList.add('bg-gray-200','text-gray-600');
+        logsBtn.classList.remove('bg-green-800','text-white');
+        logsBtn.classList.add('bg-gray-200','text-gray-600');
+
+        if (tab === 'activations') {
+            document.getElementById('activationsContent').classList.remove('hidden');
+            activationsBtn.classList.remove('bg-gray-200','text-gray-600');
+            activationsBtn.classList.add('bg-green-800','text-white');
+        } else if (tab === 'socials') {
+            document.getElementById('socialsContent').classList.remove('hidden');
+            socialsBtn.classList.remove('bg-gray-200','text-gray-600');
+            socialsBtn.classList.add('bg-green-800','text-white');
+        } else if (tab === 'logs') {
+            document.getElementById('logsContent').classList.remove('hidden');
+            logsBtn.classList.remove('bg-gray-200','text-gray-600');
+            logsBtn.classList.add('bg-green-800','text-white');
+        }
+    }
+
+    activationsBtn?.addEventListener('click', () => showTab('activations'));
+    socialsBtn?.addEventListener('click', () => showTab('socials'));
+    logsBtn?.addEventListener('click', () => showTab('logs'));
+
+    // Default to activations
+    showTab('activations');
 });
 
 // ════════════════════════════════════════════════════════════════════════

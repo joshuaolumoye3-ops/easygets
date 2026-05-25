@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class AdminServiceController extends Controller
 {
@@ -625,6 +627,85 @@ class AdminServiceController extends Controller
         );
 
         return redirect()->back()->with('success', 'Product saved/reactivated successfully.');
+    }
+
+    protected function getLogsProvider()
+    {
+        $service = Service::firstOrCreate(
+            ['slug' => 'logs'],
+            ['name' => 'Logs', 'is_active' => true]
+        );
+
+        return Provider::firstOrCreate(
+            ['code' => 'logs'],
+            ['name' => 'Logs Service', 'service_id' => $service->id, 'api_identifier' => 'logs']
+        );
+    }
+
+    public function logsIndex()
+    {
+        $provider = $this->getLogsProvider();
+        $products = $provider->products()->orderByDesc('created_at')->get();
+        return view('admin.logs', compact('products'));
+    }
+
+    public function createLogProduct(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'client_price' => 'required|numeric|min:0.01',
+            'country' => 'nullable|string|max:80',
+            'country_code' => 'nullable|string|max:2',
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+        $provider = $this->getLogsProvider();
+        $productCode = Str::slug($request->name, '-') . '-' . strtoupper(Str::random(4));
+
+        Product::create([
+            'provider_id' => $provider->id,
+            'product_code' => $productCode,
+            'name' => $request->name,
+            'category' => $request->country ?: 'Global',
+            'api_price' => $request->client_price,
+            'client_price' => $request->client_price,
+            'country' => $request->country,
+            'country_code' => strtoupper($request->country_code),
+            'description' => $request->description,
+            'is_active' => true,
+        ]);
+
+        return redirect()->back()->with('success', 'Logs product created successfully.');
+    }
+
+    public function logsOrders()
+    {
+        $transactions = Transaction::where('type', 'logs')
+            ->latest()
+            ->paginate(15);
+        return view('admin.logs-orders', compact('transactions'));
+    }
+
+    public function fulfillLogOrder(Request $request, $id)
+    {
+        $request->validate([
+            'login_details' => 'required|string|max:2000',
+            'notes' => 'nullable|string|max:2000',
+        ]);
+
+        $transaction = Transaction::where('type', 'logs')->findOrFail($id);
+        $responseData = is_array($transaction->response) ? $transaction->response : json_decode($transaction->response ?? '[]', true) ?: [];
+        $responseData['login_details'] = $request->login_details;
+        $responseData['notes'] = $request->notes;
+        $responseData['fulfilled_at'] = now()->toDateTimeString();
+
+        $transaction->update([
+            'status' => 'success',
+            'response' => $responseData,
+            'description' => 'Logs order fulfilled by admin',
+        ]);
+
+        return redirect()->back()->with('success', 'Logs order fulfilled successfully.');
     }
 
     /**

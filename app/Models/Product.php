@@ -18,6 +18,9 @@ class Product extends Model
         'api_price',
         'client_price',
         'is_active',
+        'country',
+        'country_code',
+        'description',
     ];
 
     public function provider()

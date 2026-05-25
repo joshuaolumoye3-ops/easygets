@@ -92,8 +92,35 @@ class HistoryController extends Controller
             'activations' => $activations,
             'socialBoosts' => $socialBoosts,
             'newActivationId' => $newActivationId,
-            'newSocialBoostId' => $newSocialBoostId
+            'newSocialBoostId' => $newSocialBoostId,
+            'logs' => $this->fetchLogsForUser($userId),
         ]);
+    }
+
+    /**
+     * Include logs purchases in user history view (as a simple list)
+     */
+    private function fetchLogsForUser($userId)
+    {
+        $logs = \App\Models\Transaction::where('user_id', $userId)
+            ->where('type', 'logs')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($t) {
+                $response = is_array($t->response) ? $t->response : (json_decode($t->response, true) ?? []);
+                return [
+                    'id' => $t->id,
+                    'reference' => $t->reference,
+                    'service_name' => $t->service_name ?? $t->recipient ?? 'Logs',
+                    'amount' => '₦' . number_format($t->amount ?? 0, 2),
+                    'status' => ucfirst($t->status ?? 'pending'),
+                    'date' => \Carbon\Carbon::parse($t->created_at)->format('M d, Y h:i A'),
+                    'login_details' => $response['login_details'] ?? null,
+                    'notes' => $response['notes'] ?? null,
+                ];
+            });
+
+        return $logs;
     }
 
     // Expire activation if countdown hits zero and SMS not delivered
