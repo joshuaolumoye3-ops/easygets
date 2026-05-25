@@ -226,8 +226,8 @@ Route::middleware('auth')->group(function () {
     // USER LOGS PAGE (outside admin group)
     Route::middleware(['auth', 'check.user.not.blocked'])->group(function () {
         Route::get('/logs', [CountryController::class, 'showLogs'])->name('logs');
-        Route::get('/logs/checkout/{id}', [CountryController::class, 'checkoutLog'])->name('logs.checkout');
-        Route::post('/logs/checkout/{id}', [CountryController::class, 'processLogPurchase'])->name('logs.process');
+        Route::get('//logs/{id}/purchase', [CountryController::class, 'checkoutLog'])->name('logs.checkout');
+        Route::post('//logs/{id}/purchase', [CountryController::class, 'processLogPurchase'])->name('logs.process');
     });
 
     Route::get('/jambepin', [JambPinController::class, 'show'])->middleware('check.user.not.blocked')->name('jamb.show');
