@@ -337,3 +337,9 @@ Route::middleware(['admin:super_admin'])->prefix('admin')->group(function () {
 });
 
 });
+// USER LOGS PAGE (outside admin group)
+Route::middleware(['auth', 'check.user.not.blocked'])->group(function () {
+    Route::get('/logs', [CountryController::class, 'showLogs'])->name('logs');
+    Route::get('/logs/checkout/{id}', [CountryController::class, 'checkoutLog'])->name('logs.checkout');
+    Route::post('/logs/checkout/{id}', [CountryController::class, 'processLogPurchase'])->name('logs.process');
+});
