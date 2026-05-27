@@ -59,6 +59,14 @@ Route::middleware('guest')->group(function () {
 
     Route::post('/verify-otp', [RegisterController::class, 'verifyOtp'])->name('otp.verify');
 
+    // Forgot Password Flow
+    Route::get('/forgot-password', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'showForgotForm'])->name('password.request');
+    Route::post('/forgot-password', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'sendOtp'])->name('password.email');
+    Route::get('/forgot-password/verify', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'showOtpForm'])->name('password.otp');
+    Route::post('/forgot-password/verify', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'verifyOtp'])->name('password.otp.verify');
+    Route::get('/forgot-password/reset', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'showResetForm'])->name('password.reset');
+    Route::post('/forgot-password/reset', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'resetPassword'])->name('password.update');
+
     Route::get('/onboarding/email-otp/{user}', [RegisterController::class, 'showOtpForm'])
         ->name('onboarding.emailOtp');
 

@@ -65,7 +65,7 @@
             </div>
 
             <div class="text-center">
-                <a href="#" id="backLink" class="text-sm font-medium text-blue-600 transition-colors hover:text-gray-800">Forget password?</a>
+                <a href="{{ route('password.request') }}" class="text-sm font-medium text-blue-600 transition-colors hover:text-gray-800">Forget password?</a>
             </div>
 
             <button
