@@ -428,7 +428,14 @@
                 </div>
             </div>
             <div class="form-body">
-                <form action="{{ route('admin.logs.create') }}" method="POST">
+                <!-- Toggle for Automatic/Manual -->
+                <div style="margin-bottom: 18px; display: flex; gap: 18px; align-items: center;">
+                    <label style="font-weight:700; color:var(--t2);">Mode:</label>
+                    <button type="button" id="autoBtn" class="btn-primary" style="height:34px; font-size:13px;">Automatic</button>
+                    <button type="button" id="manualBtn" class="btn-secondary" style="height:34px; font-size:13px;">Manual</button>
+                </div>
+                <!-- Automatic Form -->
+                <form id="autoForm" action="{{ route('admin.logs.create') }}" method="POST">
                     @csrf
                     <div class="form-grid-4">
                         <div class="fg">
@@ -452,12 +459,27 @@
                         <label class="fl" for="description">Description (optional)</label>
                         <textarea class="fa" id="description" name="description" rows="3" placeholder="Short product details or login type…"></textarea>
                     </div>
-                    <div class="form-actions">
+                    <hr style="border:0;border-top:1px solid var(--border-2);margin:18px 0;">
+                    <div style="margin-bottom: 12px;display:flex;align-items:center;gap:10px;">
+                        <h4 style="font-size:14px;font-weight:700;color:var(--t1);margin:0;">Log Details</h4>
+                        <span style="font-size:12px;color:var(--t3);">(Automatic)</span>
+                    </div>
+                    <div id="logDetailsList"></div>
+                    <button type="button" id="addLogBtn" class="btn-edit" style="margin-top:10px;">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Add Log Detail
+                    </button>
+                    <input type="hidden" name="log_details" id="logDetailsInput">
+                    <div class="form-actions" style="margin-top:18px;">
                         <button type="submit" class="btn-primary">
                             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                             Create Product
                         </button>
                     </div>
+                </form>
+                <!-- Manual Form (hidden for now) -->
+                <form id="manualForm" style="display:none;">
+                    <div style="color:var(--t2);font-size:14px;">Manual log creation coming soon…</div>
                 </form>
             </div>
         </div>
@@ -605,6 +627,91 @@
 </div>
 
 <script>
+// --- Automatic/Manual Toggle ---
+document.addEventListener('DOMContentLoaded', function() {
+    const autoBtn = document.getElementById('autoBtn');
+    const manualBtn = document.getElementById('manualBtn');
+    const autoForm = document.getElementById('autoForm');
+    const manualForm = document.getElementById('manualForm');
+    autoBtn.onclick = function() {
+        autoBtn.classList.add('btn-primary');
+        autoBtn.classList.remove('btn-secondary');
+        manualBtn.classList.remove('btn-primary');
+        manualBtn.classList.add('btn-secondary');
+        autoForm.style.display = '';
+        manualForm.style.display = 'none';
+    };
+    manualBtn.onclick = function() {
+        manualBtn.classList.add('btn-primary');
+        manualBtn.classList.remove('btn-secondary');
+        autoBtn.classList.remove('btn-primary');
+        autoBtn.classList.add('btn-secondary');
+        autoForm.style.display = 'none';
+        manualForm.style.display = '';
+    };
+
+    // --- Dynamic Log Details ---
+    let logDetails = [];
+    const logDetailsList = document.getElementById('logDetailsList');
+    const logDetailsInput = document.getElementById('logDetailsInput');
+    const addLogBtn = document.getElementById('addLogBtn');
+
+    function renderLogDetails() {
+        logDetailsList.innerHTML = '';
+        logDetails.forEach((detail, idx) => {
+            const wrap = document.createElement('div');
+            wrap.className = 'tcard';
+            wrap.style = 'margin-bottom:10px;background:var(--bg-2);padding:18px 16px;position:relative;border-radius:var(--r2);border:1px solid var(--border-2);';
+            wrap.innerHTML = `
+                <div style="display:flex;gap:16px;align-items:center;">
+                    <div style="flex:1;">
+                        <div class='fg' style='margin-bottom:8px;'>
+                            <label class='fl'>Username/Email</label>
+                            <input class='fi' type='text' value="${detail.username || ''}" onchange="this.dispatchEvent(new CustomEvent('logEdit',{detail:{idx,field:'username',value:this.value},bubbles:true}))" placeholder='e.g. user@email.com' />
+                        </div>
+                        <div class='fg' style='margin-bottom:8px;'>
+                            <label class='fl'>Password</label>
+                            <input class='fi' type='text' value="${detail.password || ''}" onchange="this.dispatchEvent(new CustomEvent('logEdit',{detail:{idx,field:'password',value:this.value},bubbles:true}))" placeholder='Password' />
+                        </div>
+                        <div class='fg'>
+                            <label class='fl'>Additional Data</label>
+                            <textarea class='fa' rows='2' onchange="this.dispatchEvent(new CustomEvent('logEdit',{detail:{idx,field:'extra',value:this.value},bubbles:true}))" placeholder='Any extra info'>${detail.extra || ''}</textarea>
+                        </div>
+                    </div>
+                    <button type='button' class='btn-danger' style='height:34px;' onclick='this.dispatchEvent(new CustomEvent("logDelete",{detail:{idx},bubbles:true}))'>
+                        <svg width='13' height='13' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M18 6L6 18M6 6l12 12'/></svg>
+                        Delete
+                    </button>
+                </div>
+            `;
+            logDetailsList.appendChild(wrap);
+        });
+        logDetailsInput.value = JSON.stringify(logDetails);
+    }
+
+    addLogBtn.onclick = function(e) {
+        e.preventDefault();
+        logDetails.push({username:'',password:'',extra:''});
+        renderLogDetails();
+    };
+
+    logDetailsList.addEventListener('logEdit', function(e) {
+        const {idx,field,value} = e.detail;
+        logDetails[idx][field] = value;
+        renderLogDetails();
+    });
+    logDetailsList.addEventListener('logDelete', function(e) {
+        const {idx} = e.detail;
+        logDetails.splice(idx,1);
+        renderLogDetails();
+    });
+
+    // On submit, update hidden input
+    autoForm.onsubmit = function() {
+        logDetailsInput.value = JSON.stringify(logDetails);
+    };
+    renderLogDetails();
+});
 function toggleEdit(id) {
     const panel = document.getElementById('edit-' + id);
     if (!panel) return;
