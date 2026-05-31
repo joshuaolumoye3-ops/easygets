@@ -522,19 +522,30 @@
                     <h3>Existing Logs Products</h3>
                     <span class="count-pill">{{ $products->count() }} items</span>
                 </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button type="button" class="btn-secondary" id="filterAll">All</button>
+                    <button type="button" class="btn-secondary" id="filterAutomatic">Automatic</button>
+                    <button type="button" class="btn-secondary" id="filterManual">Manual</button>
+                </div>
             </div>
 
-            <div class="product-list">
+            <div class="product-list" id="productList">
                 @forelse($products as $product)
-                    <div class="product-card {{ !$product->is_active ? 'inactive' : '' }}" id="pcard-{{ $product->id }}">
-                        <div class="product-row">
+                    <div class="product-card {{ !$product->is_active ? 'inactive' : '' }}" id="pcard-{{ $product->id }}" data-mode="{{ $product->mode ?? 'manual' }}">
+                        <div class="product-row" style="cursor:pointer;" onclick="toggleLogDetails({{ $product->id }}, '{{ $product->mode ?? 'manual' }}')">
 
                             {{-- Icon --}}
                             <div class="product-icon">L</div>
 
                             {{-- Info --}}
                             <div class="product-info">
-                                <div class="product-name">{{ $product->name }}</div>
+                                <div class="product-name">{{ $product->name }}
+                                    @if(($product->mode ?? 'manual') === 'automatic')
+                                        <span class="status-chip chip-on" style="margin-left:8px;background:var(--blue-dim);color:var(--blue-text);border:1px solid var(--blue-glow);">Automatic Logs</span>
+                                    @else
+                                        <span class="status-chip chip-off" style="margin-left:8px;background:var(--amber-dim);color:var(--amber-text);border:1px solid var(--amber);">Manual Logs</span>
+                                    @endif
+                                </div>
                                 <div class="product-meta">
                                     <span class="code">{{ strtoupper($product->product_code) }}</span>
                                     @if($product->country)
@@ -632,6 +643,30 @@
                                 </form>
                             </div>
                         </div>
+                        {{-- Automatic Log Details Expandable --}}
+                        @if(($product->mode ?? 'manual') === 'automatic')
+                        <div class="edit-panel" id="details-{{ $product->id }}" style="display:none;background:var(--bg-2);border:1px solid var(--border-2);border-radius:var(--r2);margin:0 20px 18px 20px;padding:18px;">
+                            <h4 style="color:var(--blue-text);font-size:14px;margin-bottom:12px;">Log Details</h4>
+                            <form action="{{ route('admin.logs.updateDetails', $product->id) }}" method="POST">
+                                @csrf
+                                <div id="logDetailsFields-{{ $product->id }}">
+                                    @php
+                                        $details = json_decode($product->log_details ?? '[]', true);
+                                    @endphp
+                                    @foreach($details as $idx => $detail)
+                                    <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">
+                                        <input class="fi" style="width:22%;" type="text" name="log_details[{{ $idx }}][username]" value="{{ $detail['username'] ?? '' }}" placeholder="Username/Email" />
+                                        <input class="fi" style="width:22%;" type="text" name="log_details[{{ $idx }}][password]" value="{{ $detail['password'] ?? '' }}" placeholder="Password" />
+                                        <input class="fi" style="width:40%;" type="text" name="log_details[{{ $idx }}][extra]" value="{{ $detail['extra'] ?? '' }}" placeholder="Additional Data" />
+                                    </div>
+                                    @endforeach
+                                </div>
+                                <div class="form-actions" style="margin-top:10px;">
+                                    <button type="submit" class="btn-primary" style="height:34px;font-size:13px;">Save Log Details</button>
+                                </div>
+                            </form>
+                        </div>
+                        @endif
                     </div>
                 @empty
                     <div class="empty">
@@ -658,6 +693,32 @@
 </div>
 
 <script>
+// --- Product Filter ---
+document.addEventListener('DOMContentLoaded', function() {
+    const filterAll = document.getElementById('filterAll');
+    const filterAutomatic = document.getElementById('filterAutomatic');
+    const filterManual = document.getElementById('filterManual');
+    const productList = document.getElementById('productList');
+    function setFilter(mode) {
+        const cards = productList.querySelectorAll('.product-card');
+        cards.forEach(card => {
+            if (mode === 'all') card.style.display = '';
+            else if (card.getAttribute('data-mode') === mode) card.style.display = '';
+            else card.style.display = 'none';
+        });
+    }
+    filterAll.onclick = function() { setFilter('all'); };
+    filterAutomatic.onclick = function() { setFilter('automatic'); };
+    filterManual.onclick = function() { setFilter('manual'); };
+});
+
+// --- Expand/Collapse Log Details ---
+function toggleLogDetails(id, mode) {
+    if (mode !== 'automatic') return;
+    const panel = document.getElementById('details-' + id);
+    if (!panel) return;
+    panel.style.display = (panel.style.display === 'none' || panel.style.display === '') ? 'block' : 'none';
+}
 // --- Automatic/Manual Toggle ---
 document.addEventListener('DOMContentLoaded', function() {
     const autoBtn = document.getElementById('autoBtn');
