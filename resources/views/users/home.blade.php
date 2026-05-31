@@ -84,6 +84,16 @@
                 <!-- Flutterwave Checkout Form -->
                 <form id="generateAccountForm" action="{{ route('virtual-account.create') }}" method="POST">
                     @csrf
+                    <!-- One-Time Account Warning -->
+                    <div class="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-yellow-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.676-1.36 3.442 0l6.518 11.59c.75 1.334-.213 2.91-1.721 2.91H3.46c-1.508 0-2.47-1.576-1.72-2.91l6.517-11.59zM11 13a1 1 0 10-2 0 1 1 0 002 0zm-1-2a1 1 0 01-1-1V7a1 1 0 112 0v3a1 1 0 01-1 1z" clip-rule="evenodd" />
+                        </svg>
+                        <div>
+                            <p class="font-bold text-yellow-800 mb-1">One-Time Account Notice</p>
+                            <p class="text-yellow-700 text-sm">The account number you are about to generate is for <span class="font-semibold">one-time use only</span>. It cannot be reused for future transactions. You must generate a new account number each time you want to fund your wallet.</p>
+                        </div>
+                    </div>
                     <div class="mb-4">
                         <p class="text-sm text-gray-600 mb-4">
                             Enter the amount you want to add to your wallet. You'll be redirected to Flutterwave's secure checkout page.
@@ -407,6 +417,36 @@
 @include('partials.social-form')
 @include('partials.footer')
 
+@if (Auth::user() && !Auth::user()->pin)
+<!-- Transaction PIN Modal -->
+<div id="pinModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" style="display:none;">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 p-8 relative">
+        <h2 class="text-2xl font-bold text-gray-800 mb-2 text-center">Set Transaction PIN</h2>
+        <p class="text-gray-600 text-center mb-6">For your security, set a 4-digit PIN to authorize transactions.</p>
+        <form id="pinFormModal" action="{{ route('updateProfile.pin') }}" method="POST" class="space-y-6">
+            @csrf
+            <div>
+                <label for="pin_modal" class="block text-sm font-medium text-gray-700 mb-2">Enter 4-Digit PIN</label>
+                <input type="password" id="pin_modal" name="pin" maxlength="4" required autofocus inputmode="numeric" pattern="[0-9]{4}"
+                    class="block w-full text-center text-3xl tracking-widest bg-gray-100 rounded-xl p-4 border focus:ring-2 focus:ring-green-600 focus:outline-none @error('pin') border-red-500 @enderror">
+                @error('pin')
+                    <p class="text-red-500 text-xs mt-2">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
+                <label for="pin_confirmation_modal" class="block text-sm font-medium text-gray-700 mb-2">Confirm PIN</label>
+                <input type="password" id="pin_confirmation_modal" name="pin_confirmation" maxlength="4" required inputmode="numeric" pattern="[0-9]{4}"
+                    class="block w-full text-center text-3xl tracking-widest bg-gray-100 rounded-xl p-4 border focus:ring-2 focus:ring-green-600 focus:outline-none @error('pin_confirmation') border-red-500 @enderror">
+                @error('pin_confirmation')
+                    <p class="text-red-500 text-xs mt-2">{{ $message }}</p>
+                @enderror
+            </div>
+            <button type="submit" class="w-full bg-brand-green text-white text-lg font-semibold py-3 px-4 rounded-xl hover:bg-brand-green focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-600 transition duration-200">Save PIN</button>
+        </form>
+    </div>
+</div>
+@endif
+
 <script>
     function openSocialModal() {
         document.getElementById('socialModal').classList.remove('hidden');
@@ -421,6 +461,36 @@
         const modal = document.getElementById('addFundsModal');
         const closeModalBtn = document.getElementById('closeModalBtn');
         const generateForm = document.getElementById('generateAccountForm');
+
+        // Transaction PIN Modal logic
+        @if (Auth::user() && !Auth::user()->pin)
+        setTimeout(function() {
+            const pinModal = document.getElementById('pinModal');
+            if (pinModal) {
+                pinModal.style.display = 'flex';
+                // Prevent background scroll
+                document.body.style.overflow = 'hidden';
+            }
+        }, 5000); // Show after 5 seconds
+
+        // Prevent closing modal by clicking outside or pressing ESC
+        document.addEventListener('keydown', function(e) {
+            if (document.getElementById('pinModal')?.style.display === 'flex') {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                }
+            }
+        });
+        document.getElementById('pinModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                e.stopPropagation();
+            }
+        });
+        // On submit, allow scroll again
+        document.getElementById('pinFormModal')?.addEventListener('submit', function() {
+            document.body.style.overflow = '';
+        });
+        @endif
 
         // Open modal when Add Funds button is clicked
         if (addFundsBtn) {
