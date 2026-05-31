@@ -437,6 +437,7 @@
                 <!-- Automatic Form -->
                 <form id="autoForm" action="{{ route('admin.logs.create') }}" method="POST">
                     @csrf
+                    <input type="hidden" name="mode" value="automatic">
                     <div class="form-grid-4">
                         <div class="fg">
                             <label class="fl" for="name">Product Name</label>
@@ -461,8 +462,8 @@
                     </div>
                     <hr style="border:0;border-top:1px solid var(--border-2);margin:18px 0;">
                     <div style="margin-bottom: 12px;display:flex;align-items:center;gap:10px;">
-                        <h4 style="font-size:14px;font-weight:700;color:var(--t1);margin:0;">Log Details</h4>
-                        <span style="font-size:12px;color:var(--t3);">(Automatic)</span>
+                        <h4 style="font-size:14px;font-weight:700;color:var(--t1);margin:0;">Log Details <span style="color:var(--rose);font-weight:700;">*</span></h4>
+                        <span style="font-size:12px;color:var(--t3);">(Automatic, at least 1 required)</span>
                     </div>
                     <div id="logDetailsList"></div>
                     <button type="button" id="addLogBtn" class="btn-edit" style="margin-top:10px;">
@@ -470,6 +471,7 @@
                         Add Log Detail
                     </button>
                     <input type="hidden" name="log_details" id="logDetailsInput">
+                    <div id="logDetailsError" style="color:var(--rose);font-size:13px;margin-top:8px;display:none;">At least one log detail is required for automatic logs.</div>
                     <div class="form-actions" style="margin-top:18px;">
                         <button type="submit" class="btn-primary">
                             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -477,9 +479,38 @@
                         </button>
                     </div>
                 </form>
-                <!-- Manual Form (hidden for now) -->
-                <form id="manualForm" style="display:none;">
-                    <div style="color:var(--t2);font-size:14px;">Manual log creation coming soon…</div>
+                <!-- Manual Form -->
+                <form id="manualForm" action="{{ route('admin.logs.create') }}" method="POST" style="display:none;">
+                    @csrf
+                    <input type="hidden" name="mode" value="manual">
+                    <div class="form-grid-4">
+                        <div class="fg">
+                            <label class="fl" for="name_manual">Product Name</label>
+                            <input class="fi" type="text" id="name_manual" name="name" required maxlength="255" placeholder="Facebook – UK login" />
+                        </div>
+                        <div class="fg">
+                            <label class="fl" for="client_price_manual">Price (NGN)</label>
+                            <input class="fi" type="number" id="client_price_manual" name="client_price" required step="0.01" min="0" placeholder="1500" />
+                        </div>
+                        <div class="fg">
+                            <label class="fl" for="country_manual">Country (optional)</label>
+                            <input class="fi" type="text" id="country_manual" name="country" maxlength="80" placeholder="United Kingdom" />
+                        </div>
+                        <div class="fg">
+                            <label class="fl" for="country_code_manual">Country Code</label>
+                            <input class="fi" type="text" id="country_code_manual" name="country_code" maxlength="2" placeholder="GB" />
+                        </div>
+                    </div>
+                    <div class="fg" style="margin-bottom: 18px;">
+                        <label class="fl" for="description_manual">Description (optional)</label>
+                        <textarea class="fa" id="description_manual" name="description" rows="3" placeholder="Short product details or login type…"></textarea>
+                    </div>
+                    <div class="form-actions" style="margin-top:18px;">
+                        <button type="submit" class="btn-primary">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            Create Product
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -662,28 +693,91 @@ document.addEventListener('DOMContentLoaded', function() {
             const wrap = document.createElement('div');
             wrap.className = 'tcard';
             wrap.style = 'margin-bottom:10px;background:var(--bg-2);padding:18px 16px;position:relative;border-radius:var(--r2);border:1px solid var(--border-2);';
-            wrap.innerHTML = `
-                <div style="display:flex;gap:16px;align-items:center;">
-                    <div style="flex:1;">
-                        <div class='fg' style='margin-bottom:8px;'>
-                            <label class='fl'>Username/Email</label>
-                            <input class='fi' type='text' value="${detail.username || ''}" onchange="this.dispatchEvent(new CustomEvent('logEdit',{detail:{idx,field:'username',value:this.value},bubbles:true}))" placeholder='e.g. user@email.com' />
-                        </div>
-                        <div class='fg' style='margin-bottom:8px;'>
-                            <label class='fl'>Password</label>
-                            <input class='fi' type='text' value="${detail.password || ''}" onchange="this.dispatchEvent(new CustomEvent('logEdit',{detail:{idx,field:'password',value:this.value},bubbles:true}))" placeholder='Password' />
-                        </div>
-                        <div class='fg'>
-                            <label class='fl'>Additional Data</label>
-                            <textarea class='fa' rows='2' onchange="this.dispatchEvent(new CustomEvent('logEdit',{detail:{idx,field:'extra',value:this.value},bubbles:true}))" placeholder='Any extra info'>${detail.extra || ''}</textarea>
-                        </div>
-                    </div>
-                    <button type='button' class='btn-danger' style='height:34px;' onclick='this.dispatchEvent(new CustomEvent("logDelete",{detail:{idx},bubbles:true}))'>
-                        <svg width='13' height='13' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M18 6L6 18M6 6l12 12'/></svg>
-                        Delete
-                    </button>
-                </div>
-            `;
+
+            // Create the inner structure
+            const innerDiv = document.createElement('div');
+            innerDiv.style.display = 'flex';
+            innerDiv.style.gap = '16px';
+            innerDiv.style.alignItems = 'center';
+
+            // Left (inputs)
+            const leftDiv = document.createElement('div');
+            leftDiv.style.flex = '1';
+
+            // Username/Email
+            const fgUser = document.createElement('div');
+            fgUser.className = 'fg';
+            fgUser.style.marginBottom = '8px';
+            const labelUser = document.createElement('label');
+            labelUser.className = 'fl';
+            labelUser.textContent = 'Username/Email';
+            const inputUser = document.createElement('input');
+            inputUser.className = 'fi';
+            inputUser.type = 'text';
+            inputUser.value = detail.username || '';
+            inputUser.placeholder = 'e.g. user@email.com';
+            inputUser.addEventListener('input', function() {
+                logDetails[idx].username = this.value;
+                logDetailsInput.value = JSON.stringify(logDetails);
+            });
+            fgUser.appendChild(labelUser);
+            fgUser.appendChild(inputUser);
+
+            // Password
+            const fgPass = document.createElement('div');
+            fgPass.className = 'fg';
+            fgPass.style.marginBottom = '8px';
+            const labelPass = document.createElement('label');
+            labelPass.className = 'fl';
+            labelPass.textContent = 'Password';
+            const inputPass = document.createElement('input');
+            inputPass.className = 'fi';
+            inputPass.type = 'text';
+            inputPass.value = detail.password || '';
+            inputPass.placeholder = 'Password';
+            inputPass.addEventListener('input', function() {
+                logDetails[idx].password = this.value;
+                logDetailsInput.value = JSON.stringify(logDetails);
+            });
+            fgPass.appendChild(labelPass);
+            fgPass.appendChild(inputPass);
+
+            // Extra
+            const fgExtra = document.createElement('div');
+            fgExtra.className = 'fg';
+            const labelExtra = document.createElement('label');
+            labelExtra.className = 'fl';
+            labelExtra.textContent = 'Additional Data';
+            const textareaExtra = document.createElement('textarea');
+            textareaExtra.className = 'fa';
+            textareaExtra.rows = 2;
+            textareaExtra.placeholder = 'Any extra info';
+            textareaExtra.value = detail.extra || '';
+            textareaExtra.addEventListener('input', function() {
+                logDetails[idx].extra = this.value;
+                logDetailsInput.value = JSON.stringify(logDetails);
+            });
+            fgExtra.appendChild(labelExtra);
+            fgExtra.appendChild(textareaExtra);
+
+            leftDiv.appendChild(fgUser);
+            leftDiv.appendChild(fgPass);
+            leftDiv.appendChild(fgExtra);
+
+            // Delete button
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'btn-danger';
+            delBtn.style.height = '34px';
+            delBtn.innerHTML = "<svg width='13' height='13' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M18 6L6 18M6 6l12 12'/></svg> Delete";
+            delBtn.addEventListener('click', function() {
+                logDetails.splice(idx, 1);
+                renderLogDetails();
+            });
+
+            innerDiv.appendChild(leftDiv);
+            innerDiv.appendChild(delBtn);
+            wrap.appendChild(innerDiv);
             logDetailsList.appendChild(wrap);
         });
         logDetailsInput.value = JSON.stringify(logDetails);
@@ -707,8 +801,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // On submit, update hidden input
-    autoForm.onsubmit = function() {
+    autoForm.onsubmit = function(e) {
         logDetailsInput.value = JSON.stringify(logDetails);
+        if (logDetails.length === 0) {
+            document.getElementById('logDetailsError').style.display = 'block';
+            e.preventDefault();
+            return false;
+        } else {
+            document.getElementById('logDetailsError').style.display = 'none';
+        }
     };
     renderLogDetails();
 });
