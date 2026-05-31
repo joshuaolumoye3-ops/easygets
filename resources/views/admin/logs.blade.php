@@ -531,8 +531,8 @@
 
             <div class="product-list" id="productList">
                 @forelse($products as $product)
-                    <div class="product-card {{ !$product->is_active ? 'inactive' : '' }}" id="pcard-{{ $product->id }}" data-mode="{{ $product->mode ?? 'manual' }}">
-                        <div class="product-row" style="cursor:pointer;" onclick="toggleLogDetails({{ $product->id }}, '{{ $product->mode ?? 'manual' }}')">
+                    <div class="product-card {{ !$product->is_active ? 'inactive' : '' }}" id="pcard-{{ $product->id }}" data-mode="{{ $product->mode }}">
+                        <div class="product-row" style="cursor:pointer;" onclick="toggleLogDetails({{ $product->id }}, '{{ $product->mode }}')">
 
                             {{-- Icon --}}
                             <div class="product-icon">L</div>
@@ -540,10 +540,12 @@
                             {{-- Info --}}
                             <div class="product-info">
                                 <div class="product-name">{{ $product->name }}
-                                    @if(($product->mode ?? 'manual') === 'automatic')
+                                    @if($product->mode === 'automatic')
                                         <span class="status-chip chip-on" style="margin-left:8px;background:var(--blue-dim);color:var(--blue-text);border:1px solid var(--blue-glow);">Automatic Logs</span>
-                                    @else
+                                    @elseif($product->mode === 'manual')
                                         <span class="status-chip chip-off" style="margin-left:8px;background:var(--amber-dim);color:var(--amber-text);border:1px solid var(--amber);">Manual Logs</span>
+                                    @else
+                                        <span class="status-chip chip-off" style="margin-left:8px;background:var(--rose-dim);color:var(--rose-text);border:1px solid var(--rose);">Unknown</span>
                                     @endif
                                 </div>
                                 <div class="product-meta">
@@ -644,7 +646,7 @@
                             </div>
                         </div>
                         {{-- Automatic Log Details Expandable --}}
-                        @if(($product->mode ?? 'manual') === 'automatic')
+                        @if($product->mode === 'automatic')
                         <div class="edit-panel" id="details-{{ $product->id }}" style="display:none;background:var(--bg-2);border:1px solid var(--border-2);border-radius:var(--r2);margin:0 20px 18px 20px;padding:18px;">
                             <h4 style="color:var(--blue-text);font-size:14px;margin-bottom:12px;">Log Details</h4>
                             <form action="{{ route('admin.logs.updateDetails', $product->id) }}" method="POST">
