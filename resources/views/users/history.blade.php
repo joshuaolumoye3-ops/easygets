@@ -130,27 +130,29 @@
 
 <!-- Logs Content -->
 <div id="logsContent" class="space-y-3 px-4 transition-all duration-500 ease-in-out hidden">
-    @forelse($logs as $log)
-        <div onclick="openLogsModal({{ $log['id'] }})" class="cursor-pointer flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-xl font-bold text-indigo-600">L</div>
-                <div>
-                    <p class="font-semibold text-gray-800">{{ $log['service_name'] }}</p>
-                    <p class="text-xs text-gray-500 mt-0.5">{{ $log['date'] }}</p>
-                    <p class="text-xs text-gray-400 mt-0.5">{{ $log['amount'] }}</p>
+    @if(!empty($logs) && count($logs) > 0)
+        @foreach($logs as $log)
+            <div onclick="openLogsModal({{ $log['id'] }})" class="cursor-pointer flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-xl font-bold text-indigo-600">L</div>
+                    <div>
+                        <p class="font-semibold text-gray-800">{{ $log['service_name'] ?? 'Logs' }}</p>
+                        <p class="text-xs text-gray-500 mt-0.5">{{ $log['date'] ?? 'N/A' }}</p>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ $log['amount'] ?? '₦0.00' }}</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1 {{ ($log['status'] ?? '') === 'Success' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' }}">{{ $log['status'] ?? 'Pending' }}</span>
                 </div>
             </div>
-            <div class="text-right">
-                <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1 {{ $log['status'] === 'Success' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' }}">{{ $log['status'] }}</span>
-            </div>
-        </div>
-    @empty
+        @endforeach
+    @else
         <div class="text-center py-12">
             <div class="text-6xl mb-4">🗄️</div>
             <p class="text-gray-500 font-medium">No logs purchases yet</p>
             <p class="text-sm text-gray-400 mt-1">Buy logs access products from the services list</p>
         </div>
-    @endforelse
+    @endif
 </div>
 
 <!-- Logs Modal -->
@@ -320,22 +322,28 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 @php
+// Build logs data array safely for JavaScript
 $logsDataArray = [];
-foreach($logs as $log) {
-    $logsDataArray[$log['id']] = [
-        'service_name' => $log['service_name'],
-        'amount' => $log['amount'],
-        'status' => $log['status'],
-        'date' => $log['date'],
-        'login_details' => $log['login_details'] ?? '',
-        'reference' => $log['reference'] ?? '',
-    ];
+if (!empty($logs) && is_array($logs)) {
+    foreach($logs as $log) {
+        if (isset($log['id'])) {
+            $logsDataArray[$log['id']] = [
+                'id' => $log['id'],
+                'service_name' => $log['service_name'] ?? 'Logs',
+                'amount' => $log['amount'] ?? '₦0.00',
+                'status' => $log['status'] ?? 'Pending',
+                'date' => $log['date'] ?? 'N/A',
+                'login_details' => $log['login_details'] ?? '',
+                'reference' => $log['reference'] ?? '',
+            ];
+        }
+    }
 }
 @endphp
 
 <script>
 // ════════════════════════════════════════════════════════════════════════
-// LOGS MODAL
+// LOGS DATA & MODAL
 // ════════════════════════════════════════════════════════════════════════
 
 const logsData = @json($logsDataArray);
