@@ -30,8 +30,8 @@
             </div>
         </div>
 
-        <!-- Products Grid -->
-        <div id="productsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+        <!-- Products List -->
+        <div id="productsContainer" class="space-y-4 mt-6">
             @include('partials.logs-items', ['products' => $products])
         </div>
 
