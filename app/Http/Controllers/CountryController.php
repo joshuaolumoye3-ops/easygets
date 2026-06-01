@@ -2508,6 +2508,27 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
             $quantity = (int) $request->quantity;
             $amount   = $product->client_price * $quantity;
 
+            $assignedDetails = [];
+            $availableCount = 0;
+            $logDetails = json_decode($product->log_details ?? '[]', true);
+
+            if ($product->mode === 'automatic') {
+                $availableDetails = array_values(array_filter($logDetails, function ($item) {
+                    return !($item['sold'] ?? false);
+                }));
+
+                $availableCount = count($availableDetails);
+
+                if ($availableCount < $quantity) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Not enough available log details. Only ' . $availableCount . ' credential set(s) remain.',
+                    ], 400);
+                }
+
+                $assignedDetails = array_slice($availableDetails, 0, $quantity);
+            }
+
             DB::beginTransaction();
 
             $wallet = Wallet::where('user_id', auth()->id())->lockForUpdate()->first();
@@ -2531,6 +2552,35 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
 
             $reference = 'LOGS' . time() . strtoupper(Str::random(8));
 
+            $responseData = [
+                'product' => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'description' => $product->description,
+                    'price' => $product->client_price,
+                ],
+                'quantity' => $quantity,
+            ];
+
+            if ($product->mode === 'automatic') {
+                $loginDetailsText = implode("\n\n", array_map(function ($item, $index) {
+                    $lines = [];
+                    if (!empty($item['username'])) {
+                        $lines[] = 'Username/Email: ' . $item['username'];
+                    }
+                    if (!empty($item['password'])) {
+                        $lines[] = 'Password: ' . $item['password'];
+                    }
+                    if (!empty($item['extra'])) {
+                        $lines[] = 'Extra: ' . $item['extra'];
+                    }
+                    return 'Login Detail ' . ($index + 1) . ':\n' . implode('\n', $lines);
+                }, $assignedDetails, array_keys($assignedDetails)));
+
+                $responseData['assigned_details'] = $assignedDetails;
+                $responseData['login_details'] = $loginDetailsText;
+            }
+
             $transaction = Transaction::create([
                 'reference'    => $reference,
                 'user_id'      => auth()->id(),
@@ -2541,15 +2591,29 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
                 'phone'        => null,
                 'recipient'    => $product->name . ' (x' . $quantity . ')',
                 'amount'       => $amount,
-                'status'       => 'pending',
-                'response'     => json_encode([
-                    'product'  => $product->toArray(),
-                    'quantity' => $quantity,
-                ]),
-                'description'  => 'Logs purchase awaiting admin fulfillment',
+                'status'       => $product->mode === 'automatic' ? 'success' : 'pending',
+                'response'     => json_encode($responseData),
+                'description'  => $product->mode === 'automatic'
+                    ? 'Logs purchase completed automatically'
+                    : 'Logs purchase awaiting admin fulfillment',
             ]);
 
             $wallet->decrement('balance', $amount);
+
+            if ($product->mode === 'automatic' && !empty($assignedDetails)) {
+                $assignedCount = 0;
+                $updatedLogDetails = $logDetails;
+                foreach ($updatedLogDetails as &$detail) {
+                    if (!($detail['sold'] ?? false) && $assignedCount < $quantity) {
+                        $detail['sold'] = true;
+                        $detail['sold_at'] = now()->toDateTimeString();
+                        $detail['sold_transaction_id'] = $transaction->id;
+                        $detail['sold_to_user_id'] = auth()->id();
+                        $assignedCount++;
+                    }
+                }
+                $product->update(['log_details' => json_encode($updatedLogDetails)]);
+            }
 
             DB::commit();
 
@@ -2559,26 +2623,28 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
                 'quantity'       => $quantity,
             ]);
 
-            $adminEmails = Admin::whereNotNull('email')
-                ->where('email', '<>', '')
-                ->pluck('email')
-                ->filter()
-                ->unique();
+            if ($product->mode !== 'automatic') {
+                $adminEmails = Admin::whereNotNull('email')
+                    ->where('email', '<>', '')
+                    ->pluck('email')
+                    ->filter()
+                    ->unique();
 
-            $validAdminEmails = $adminEmails->filter(fn($email) => filter_var($email, FILTER_VALIDATE_EMAIL))
-                ->values()
-                ->all();
+                $validAdminEmails = $adminEmails->filter(fn($email) => filter_var($email, FILTER_VALIDATE_EMAIL))
+                    ->values()
+                    ->all();
 
-            if (!empty($validAdminEmails)) {
-                foreach ($validAdminEmails as $adminEmail) {
-                    try {
-                        Mail::to($adminEmail)->send(new LogsPurchaseAdminNotification($transaction, $product, auth()->user()));
-                    } catch (\Exception $mailException) {
-                        Log::warning('Failed to send admin logs notification', [
-                            'transaction_id' => $transaction->id,
-                            'admin_email'    => $adminEmail,
-                            'error'          => $mailException->getMessage(),
-                        ]);
+                if (!empty($validAdminEmails)) {
+                    foreach ($validAdminEmails as $adminEmail) {
+                        try {
+                            Mail::to($adminEmail)->send(new LogsPurchaseAdminNotification($transaction, $product, auth()->user()));
+                        } catch (\Exception $mailException) {
+                            Log::warning('Failed to send admin logs notification', [
+                                'transaction_id' => $transaction->id,
+                                'admin_email'    => $adminEmail,
+                                'error'          => $mailException->getMessage(),
+                            ]);
+                        }
                     }
                 }
             }

@@ -694,11 +694,19 @@ class AdminServiceController extends Controller
                 return redirect()->back()->with('error', 'Automatic logs require at least one log detail.');
             }
 
-            $filtered = array_values(array_filter($decoded, function ($item) {
+            $filtered = array_values(array_filter(array_map(function ($item) {
+                return [
+                    'username' => trim($item['username'] ?? ''),
+                    'password' => trim($item['password'] ?? ''),
+                    'extra' => trim($item['extra'] ?? ''),
+                    'sold' => false,
+                    'sold_at' => null,
+                    'sold_transaction_id' => null,
+                    'sold_to_user_id' => null,
+                ];
+            }, $decoded), function ($item) {
                 return is_array($item) && (
-                    trim($item['username'] ?? '') !== '' ||
-                    trim($item['password'] ?? '') !== '' ||
-                    trim($item['extra'] ?? '') !== ''
+                    $item['sold'] || trim($item['username']) !== '' || trim($item['password']) !== '' || trim($item['extra']) !== ''
                 );
             }));
 
@@ -755,21 +763,35 @@ class AdminServiceController extends Controller
             'log_details.*.username' => 'nullable|string|max:255',
             'log_details.*.password' => 'nullable|string|max:255',
             'log_details.*.extra' => 'nullable|string|max:1000',
+            'log_details.*.sold' => 'nullable|boolean',
+            'log_details.*.sold_at' => 'nullable|string|max:50',
+            'log_details.*.sold_transaction_id' => 'nullable|integer',
+            'log_details.*.sold_to_user_id' => 'nullable|integer',
         ]);
 
-        $filtered = array_values(array_filter($request->log_details, function ($item) {
-            return is_array($item) && (
-                trim($item['username'] ?? '') !== '' ||
-                trim($item['password'] ?? '') !== '' ||
-                trim($item['extra'] ?? '') !== ''
-            );
-        }));
+        $filtered = [];
+        foreach ($request->log_details as $item) {
+            $sold = filter_var($item['sold'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $detail = [
+                'username' => trim($item['username'] ?? ''),
+                'password' => trim($item['password'] ?? ''),
+                'extra' => trim($item['extra'] ?? ''),
+                'sold' => $sold,
+                'sold_at' => $item['sold_at'] ?? null,
+                'sold_transaction_id' => $item['sold_transaction_id'] ?? null,
+                'sold_to_user_id' => $item['sold_to_user_id'] ?? null,
+            ];
+
+            if ($sold || $detail['username'] !== '' || $detail['password'] !== '' || $detail['extra'] !== '') {
+                $filtered[] = $detail;
+            }
+        }
 
         if (empty($filtered)) {
             return redirect()->back()->with('error', 'Please add at least one log detail entry.');
         }
 
-        $product->update(['log_details' => json_encode($filtered)]);
+        $product->update(['log_details' => json_encode(array_values($filtered))]);
 
         return redirect()->back()->with('success', 'Log details updated successfully.');
     }

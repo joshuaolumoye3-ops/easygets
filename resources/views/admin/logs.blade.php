@@ -649,43 +649,60 @@
                         {{-- Automatic Log Details Expandable --}}
                         @if($product->mode === 'automatic')
                         <div class="edit-panel" id="details-{{ $product->id }}" style="display:none;background:var(--bg-2);border:1px solid var(--border-2);border-radius:var(--r2);margin:0 20px 18px 20px;padding:20px;">
-                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-                                <h4 style="color:var(--blue-text);font-size:15px;margin:0;font-weight:700;">📝 Log Credentials</h4>
-                                <span style="font-size:11px;color:var(--t3);">Manage login details for this automatic log product</span>
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap;">
+                                <div>
+                                    <h4 style="color:var(--blue-text);font-size:15px;margin:0;font-weight:700;">📝 Log Credentials</h4>
+                                    <p style="margin:4px 0 0;font-size:12px;color:var(--t3);">Sold credentials are locked and retained for audit. Add new details below to replenish stock.</p>
+                                </div>
+                                <button type="button" class="btn-edit" onclick="addLogDetailRow({{ $product->id }})" style="height:34px;font-size:13px;">
+                                    <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                    Add New Credential
+                                </button>
                             </div>
                             <form action="{{ route('admin.logs.updateDetails', $product->id) }}" method="POST">
                                 @csrf
-                                <div id="logDetailsFields-{{ $product->id }}" style="display:flex;flex-direction:column;gap:14px;">
-                                    @php
-                                        $details = json_decode($product->log_details ?? '[]', true);
-                                    @endphp
+                                @php
+                                    $details = json_decode($product->log_details ?? '[]', true);
+                                @endphp
+                                <div id="logDetailsFields-{{ $product->id }}" data-next-index="{{ count($details) }}" style="display:flex;flex-direction:column;gap:14px;">
                                     @forelse($details as $idx => $detail)
-                                    <div style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--r2);padding:14px;position:relative;">
-                                        <div style="position:absolute;top:10px;right:10px;">
-                                            <span style="font-size:11px;color:var(--t3);background:var(--bg-2);padding:4px 8px;border-radius:var(--r1);">Entry {{ $idx + 1 }}</span>
-                                        </div>
-                                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-                                            <div class="fg">
-                                                <label class="fl" style="color:var(--blue-text);">👤 Username/Email</label>
-                                                <input class="fi" type="text" name="log_details[{{ $idx }}][username]" value="{{ $detail['username'] ?? '' }}" placeholder="user@example.com" />
+                                        @php $sold = !empty($detail['sold']); @endphp
+                                        <div class="log-detail-entry" data-index="{{ $idx }}" style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--r2);padding:14px;position:relative;">
+                                            <div style="position:absolute;top:10px;right:10px;">
+                                                <span style="font-size:11px;color:{{ $sold ? '#10b981' : '#93b8ff' }};background:var(--bg-2);padding:4px 8px;border-radius:var(--r1);">{{ $sold ? 'Sold' : 'Available' }}</span>
+                                            </div>
+                                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                                                <div class="fg">
+                                                    <label class="fl" style="color:var(--blue-text);">👤 Username/Email</label>
+                                                    <input class="fi" type="text" name="log_details[{{ $idx }}][username]" value="{{ $detail['username'] ?? '' }}" placeholder="user@example.com" {{ $sold ? 'readonly' : '' }} />
+                                                </div>
+                                                <div class="fg">
+                                                    <label class="fl" style="color:var(--rose-text);">🔐 Password</label>
+                                                    <input class="fi" type="text" name="log_details[{{ $idx }}][password]" value="{{ $detail['password'] ?? '' }}" placeholder="Password" {{ $sold ? 'readonly' : '' }} />
+                                                </div>
                                             </div>
                                             <div class="fg">
-                                                <label class="fl" style="color:var(--rose-text);">🔐 Password</label>
-                                                <input class="fi" type="text" name="log_details[{{ $idx }}][password]" value="{{ $detail['password'] ?? '' }}" placeholder="Password" />
+                                                <label class="fl" style="color:var(--amber-text);">ℹ️ Additional Data</label>
+                                                <textarea class="fa" style="min-height:60px;" name="log_details[{{ $idx }}][extra]" placeholder="Security questions, PIN codes, account notes, etc." {{ $sold ? 'readonly' : '' }}>{{ $detail['extra'] ?? '' }}</textarea>
                                             </div>
+                                            <input type="hidden" name="log_details[{{ $idx }}][sold]" value="{{ $sold ? '1' : '0' }}">
+                                            <input type="hidden" name="log_details[{{ $idx }}][sold_at]" value="{{ $detail['sold_at'] ?? '' }}">
+                                            <input type="hidden" name="log_details[{{ $idx }}][sold_transaction_id]" value="{{ $detail['sold_transaction_id'] ?? '' }}">
+                                            <input type="hidden" name="log_details[{{ $idx }}][sold_to_user_id]" value="{{ $detail['sold_to_user_id'] ?? '' }}">
+                                            @if(!$sold)
+                                                <button type="button" class="btn-danger" style="margin-top:12px;" onclick="removeLogDetailRow({{ $product->id }}, {{ $idx }})">
+                                                    <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"/></svg>
+                                                    Delete
+                                                </button>
+                                            @endif
                                         </div>
-                                        <div class="fg">
-                                            <label class="fl" style="color:var(--amber-text);">ℹ️ Additional Data</label>
-                                            <textarea class="fa" style="min-height:60px;" name="log_details[{{ $idx }}][extra]" placeholder="Security questions, PIN codes, account notes, etc.">{{ $detail['extra'] ?? '' }}</textarea>
-                                        </div>
-                                    </div>
                                     @empty
-                                    <div style="padding:20px;text-align:center;color:var(--t3);">
-                                        <p>No log details added yet. Save some credentials above.</p>
-                                    </div>
+                                        <div style="padding:20px;text-align:center;color:var(--t3);">
+                                            <p>No log details added yet. Use the button above to add new credentials.</p>
+                                        </div>
                                     @endforelse
                                 </div>
-                                <div class="form-actions" style="margin-top:16px;gap:10px;">
+                                <div class="form-actions" style="margin-top:16px;gap:10px;flex-wrap:wrap;">
                                     <button type="submit" class="btn-primary" style="height:36px;font-size:13px;">
                                         <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                         Update All Credentials
@@ -909,6 +926,51 @@ function toggleEdit(id) {
     const panel = document.getElementById('edit-' + id);
     if (!panel) return;
     panel.classList.toggle('open');
+}
+
+function addLogDetailRow(productId) {
+    const container = document.getElementById('logDetailsFields-' + productId);
+    if (!container) return;
+
+    const nextIndex = parseInt(container.dataset.nextIndex || '0', 10);
+    const html = `
+        <div class="log-detail-entry" data-index="${nextIndex}" style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--r2);padding:14px;position:relative;">
+            <div style="position:absolute;top:10px;right:10px;">
+                <span style="font-size:11px;color:#93b8ff;background:var(--bg-2);padding:4px 8px;border-radius:var(--r1);">Available</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                <div class="fg">
+                    <label class="fl" style="color:var(--blue-text);">👤 Username/Email</label>
+                    <input class="fi" type="text" name="log_details[${nextIndex}][username]" placeholder="user@example.com" />
+                </div>
+                <div class="fg">
+                    <label class="fl" style="color:var(--rose-text);">🔐 Password</label>
+                    <input class="fi" type="text" name="log_details[${nextIndex}][password]" placeholder="Password" />
+                </div>
+            </div>
+            <div class="fg">
+                <label class="fl" style="color:var(--amber-text);">ℹ️ Additional Data</label>
+                <textarea class="fa" style="min-height:60px;" name="log_details[${nextIndex}][extra]" placeholder="Security questions, PIN codes, account notes, etc."></textarea>
+            </div>
+            <input type="hidden" name="log_details[${nextIndex}][sold]" value="0">
+            <input type="hidden" name="log_details[${nextIndex}][sold_at]" value="">
+            <input type="hidden" name="log_details[${nextIndex}][sold_transaction_id]" value="">
+            <input type="hidden" name="log_details[${nextIndex}][sold_to_user_id]" value="">
+            <button type="button" class="btn-danger" style="margin-top:12px;" onclick="removeLogDetailRow(${productId}, ${nextIndex})">
+                <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"/></svg>
+                Delete
+            </button>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', html);
+    container.dataset.nextIndex = (nextIndex + 1).toString();
+}
+
+function removeLogDetailRow(productId, index) {
+    const container = document.getElementById('logDetailsFields-' + productId);
+    if (!container) return;
+    const row = container.querySelector('[data-index="' + index + '"]');
+    if (row) row.remove();
 }
 </script>
 @endsection
