@@ -648,24 +648,52 @@
                         </div>
                         {{-- Automatic Log Details Expandable --}}
                         @if($product->mode === 'automatic')
-                        <div class="edit-panel" id="details-{{ $product->id }}" style="display:none;background:var(--bg-2);border:1px solid var(--border-2);border-radius:var(--r2);margin:0 20px 18px 20px;padding:18px;">
-                            <h4 style="color:var(--blue-text);font-size:14px;margin-bottom:12px;">Log Details</h4>
+                        <div class="edit-panel" id="details-{{ $product->id }}" style="display:none;background:var(--bg-2);border:1px solid var(--border-2);border-radius:var(--r2);margin:0 20px 18px 20px;padding:20px;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+                                <h4 style="color:var(--blue-text);font-size:15px;margin:0;font-weight:700;">📝 Log Credentials</h4>
+                                <span style="font-size:11px;color:var(--t3);">Manage login details for this automatic log product</span>
+                            </div>
                             <form action="{{ route('admin.logs.updateDetails', $product->id) }}" method="POST">
                                 @csrf
-                                <div id="logDetailsFields-{{ $product->id }}">
+                                <div id="logDetailsFields-{{ $product->id }}" style="display:flex;flex-direction:column;gap:14px;">
                                     @php
                                         $details = json_decode($product->log_details ?? '[]', true);
                                     @endphp
-                                    @foreach($details as $idx => $detail)
-                                    <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">
-                                        <input class="fi" style="width:22%;" type="text" name="log_details[{{ $idx }}][username]" value="{{ $detail['username'] ?? '' }}" placeholder="Username/Email" />
-                                        <input class="fi" style="width:22%;" type="text" name="log_details[{{ $idx }}][password]" value="{{ $detail['password'] ?? '' }}" placeholder="Password" />
-                                        <input class="fi" style="width:40%;" type="text" name="log_details[{{ $idx }}][extra]" value="{{ $detail['extra'] ?? '' }}" placeholder="Additional Data" />
+                                    @forelse($details as $idx => $detail)
+                                    <div style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--r2);padding:14px;position:relative;">
+                                        <div style="position:absolute;top:10px;right:10px;">
+                                            <span style="font-size:11px;color:var(--t3);background:var(--bg-2);padding:4px 8px;border-radius:var(--r1);">Entry {{ $idx + 1 }}</span>
+                                        </div>
+                                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                                            <div class="fg">
+                                                <label class="fl" style="color:var(--blue-text);">👤 Username/Email</label>
+                                                <input class="fi" type="text" name="log_details[{{ $idx }}][username]" value="{{ $detail['username'] ?? '' }}" placeholder="user@example.com" />
+                                            </div>
+                                            <div class="fg">
+                                                <label class="fl" style="color:var(--rose-text);">🔐 Password</label>
+                                                <input class="fi" type="text" name="log_details[{{ $idx }}][password]" value="{{ $detail['password'] ?? '' }}" placeholder="Password" />
+                                            </div>
+                                        </div>
+                                        <div class="fg">
+                                            <label class="fl" style="color:var(--amber-text);">ℹ️ Additional Data</label>
+                                            <textarea class="fa" style="min-height:60px;" name="log_details[{{ $idx }}][extra]" placeholder="Security questions, PIN codes, account notes, etc.">{{ $detail['extra'] ?? '' }}</textarea>
+                                        </div>
                                     </div>
-                                    @endforeach
+                                    @empty
+                                    <div style="padding:20px;text-align:center;color:var(--t3);">
+                                        <p>No log details added yet. Save some credentials above.</p>
+                                    </div>
+                                    @endforelse
                                 </div>
-                                <div class="form-actions" style="margin-top:10px;">
-                                    <button type="submit" class="btn-primary" style="height:34px;font-size:13px;">Save Log Details</button>
+                                <div class="form-actions" style="margin-top:16px;gap:10px;">
+                                    <button type="submit" class="btn-primary" style="height:36px;font-size:13px;">
+                                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                        Update All Credentials
+                                    </button>
+                                    <button type="button" class="btn-ghost" onclick="toggleLogDetails({{ $product->id }}, '{{ $product->mode }}')" style="height:36px;font-size:13px;">
+                                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        Close
+                                    </button>
                                 </div>
                             </form>
                         </div>

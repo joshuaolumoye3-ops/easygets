@@ -651,23 +651,39 @@ class AdminServiceController extends Controller
 
     public function createLogProduct(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'client_price' => 'required|numeric|min:0.01',
-            'country' => 'nullable|string|max:80',
-            'country_code' => 'nullable|string|max:2',
-            'description' => 'nullable|string|max:1000',
-            'mode' => 'required|in:automatic,manual',
-            'log_details' => 'nullable|string',
-            'product_id' => 'nullable|integer',
-        ]);
+        $productId = $request->product_id;
+        
+        // Different validation based on whether creating or updating
+        if ($productId) {
+            // Edit existing product - don't require log_details
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'client_price' => 'required|numeric|min:0.01',
+                'country' => 'nullable|string|max:80',
+                'country_code' => 'nullable|string|max:2',
+                'description' => 'nullable|string|max:1000',
+                'mode' => 'required|in:automatic,manual',
+                'product_id' => 'required|integer',
+            ]);
+        } else {
+            // Create new product - require mode and log_details for automatic
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'client_price' => 'required|numeric|min:0.01',
+                'country' => 'nullable|string|max:80',
+                'country_code' => 'nullable|string|max:2',
+                'description' => 'nullable|string|max:1000',
+                'mode' => 'required|in:automatic,manual',
+                'log_details' => 'nullable|string',
+            ]);
+        }
 
         $provider = $this->getLogsProvider();
-        $productId = $request->product_id;
         $mode = $request->mode;
         $logDetails = null;
 
-        if ($mode === 'automatic') {
+        // Only process log details if provided (for creation or manual mode edits)
+        if (!$productId && $mode === 'automatic') {
             $rawDetails = $request->input('log_details');
             $decoded = [];
             if (!empty($rawDetails)) {
@@ -701,8 +717,12 @@ class AdminServiceController extends Controller
             'country_code' => strtoupper($request->country_code),
             'description' => $request->description,
             'mode' => $mode,
-            'log_details' => $logDetails,
         ];
+        
+        // Only update log_details if provided
+        if ($logDetails !== null) {
+            $sharedData['log_details'] = $logDetails;
+        }
 
         if ($productId) {
             $product = Product::findOrFail($productId);
