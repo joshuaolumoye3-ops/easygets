@@ -3,20 +3,24 @@
 @section('title', 'Buy Logs')
 
 @section('content')
-<div class="max-w-2xl mx-auto py-8 px-4 sm:px-6 lg:px-8 font-[Inter] relative">
-    <button onclick="history.back()" aria-label="Back" class="absolute left-4 top-4 bg-white p-2 rounded-full shadow hover:bg-gray-100 focus:outline-none">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-        </svg>
-    </button>
+<div class="max-w-xl mx-auto py-8 font-[Inter] bg-white mt-0 pt-10">
+    <div class="flex items-center space-x-2 ps-5 mb-6">
+        <a href="javascript:history.back()" class="text-green-800">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+        </a>
+        <h1 class="text-lg font-semibold text-center flex-1">Buy Logs</h1>
+    </div>
+
     <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
         <div class="flex items-center mb-4">
             <div class="bg-brand-green-light rounded-full w-12 h-12 flex items-center justify-center mr-4">
                 <img src="/assets/sim-icon.svg" class="w-7 h-7 text-brand-green" alt="Logs">
             </div>
             <div>
-                <h1 class="text-xl font-bold text-gray-800">Buy Logs</h1>
-                <p class="text-sm text-gray-500">Get premium logs for your needs. Fast, reliable, and secure delivery.</p>
+                <h2 class="text-base font-semibold text-gray-800">Discover Logs</h2>
+                <p class="text-sm text-gray-500">Premium login bundles by country and service. Fast delivery.</p>
             </div>
         </div>
 
