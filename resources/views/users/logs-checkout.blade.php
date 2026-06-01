@@ -178,7 +178,7 @@ function submitPurchase() {
     .then(data => {
         if (data.success) {
             showSuccess(data.message);
-            setTimeout(() => window.location.href = '{{ route("history") }}', 1500);
+            setTimeout(() => window.location.href = '{{ route("history") }}?tab=logs', 1500);
         } else {
             showError(data.message || 'Purchase failed. Please try again.');
             btn.disabled = false;

@@ -131,9 +131,9 @@
 <!-- Logs Content -->
 <div id="logsContent" class="space-y-3 px-4 transition-all duration-500 ease-in-out hidden">
     @forelse($logs as $log)
-        <div class="cursor-pointer flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+        <div onclick="openLogsModal({{ $log['id'] }})" class="cursor-pointer flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
             <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-xl">L</div>
+                <div class="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-xl font-bold text-indigo-600">L</div>
                 <div>
                     <p class="font-semibold text-gray-800">{{ $log['service_name'] }}</p>
                     <p class="text-xs text-gray-500 mt-0.5">{{ $log['date'] }}</p>
@@ -141,10 +141,7 @@
                 </div>
             </div>
             <div class="text-right">
-                <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1 {{ $log['status'] === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' }}">{{ $log['status'] }}</span>
-                @if($log['login_details'])
-                    <div class="mt-2 text-xs text-gray-500">{{ Str::limit($log['login_details'], 60) }}</div>
-                @endif
+                <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1 {{ $log['status'] === 'Success' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' }}">{{ $log['status'] }}</span>
             </div>
         </div>
     @empty
@@ -154,6 +151,33 @@
             <p class="text-sm text-gray-400 mt-1">Buy logs access products from the services list</p>
         </div>
     @endforelse
+</div>
+
+<!-- Logs Modal -->
+<div id="logsModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full max-h-96 overflow-y-auto">
+        <!-- Modal Header -->
+        <div class="sticky top-0 bg-gradient-to-r from-indigo-50 to-indigo-100 border-b border-indigo-200 px-6 py-4 flex items-center justify-between">
+            <h2 class="text-lg font-bold text-gray-800">Login Details</h2>
+            <button onclick="closeLogsModal()" class="text-gray-400 hover:text-gray-600 focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <!-- Modal Content -->
+        <div id="logsModalContent" class="px-6 py-4 space-y-3">
+            <!-- Content will be populated by JS -->
+        </div>
+        <!-- Modal Footer -->
+        <div class="border-t border-gray-200 px-6 py-3 flex gap-2">
+            <button onclick="copyLogsDetails()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                Copy
+            </button>
+            <button onclick="closeLogsModal()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors">
+                Close
+            </button>
+        </div>
+    </div>
 </div>
 
 <!-- Activation Modal -->
@@ -285,9 +309,88 @@ document.addEventListener('DOMContentLoaded', function () {
     socialsBtn?.addEventListener('click', () => showTab('socials'));
     logsBtn?.addEventListener('click', () => showTab('logs'));
 
-    // Default to activations
-    showTab('activations');
+    // Check URL params for tab redirect
+    const tabParam = new URLSearchParams(window.location.search).get('tab');
+    if (tabParam === 'logs') {
+        showTab('logs');
+    } else {
+        showTab('activations');
+    }
 });
+
+// ════════════════════════════════════════════════════════════════════════
+// LOGS MODAL
+// ════════════════════════════════════════════════════════════════════════
+
+const logsData = {
+    @forelse($logs as $log)
+        {{ $log['id'] }}: {
+            service_name: @json($log['service_name']),
+            amount: @json($log['amount']),
+            status: @json($log['status']),
+            date: @json($log['date']),
+            login_details: @json($log['login_details'] ?? ''),
+            reference: @json($log['reference'] ?? ''),
+        },
+    @endforelse
+};
+
+function openLogsModal(id) {
+    const log = logsData[id];
+    if (!log) return;
+
+    const content = document.getElementById('logsModalContent');
+    content.innerHTML = `
+        <div class="space-y-3">
+            <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase">Service</p>
+                <p class="text-sm text-gray-800 mt-1">${log.service_name}</p>
+            </div>
+            <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase">Amount</p>
+                <p class="text-sm text-gray-800 mt-1">${log.amount}</p>
+            </div>
+            <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase">Date</p>
+                <p class="text-sm text-gray-800 mt-1">${log.date}</p>
+            </div>
+            <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase">Status</p>
+                <p class="text-sm mt-1">
+                    <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full ${
+                        log.status === 'Success' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                    }">${log.status}</span>
+                </p>
+            </div>
+            ${log.reference ? `<div>
+                <p class="text-xs font-semibold text-gray-500 uppercase">Reference</p>
+                <p class="text-sm text-gray-800 mt-1 font-mono">${log.reference}</p>
+            </div>` : ''}
+            ${log.login_details ? `<div>
+                <p class="text-xs font-semibold text-gray-500 uppercase">Login Details</p>
+                <div class="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                    <p class="text-sm text-gray-700 font-mono whitespace-pre-wrap break-words">${log.login_details}</p>
+                </div>
+            </div>` : ''}
+        </div>
+    `;
+    document.getElementById('logsModal').classList.remove('hidden');
+    document.getElementById('logsModal').classList.add('flex');
+}
+
+function closeLogsModal() {
+    document.getElementById('logsModal').classList.add('hidden');
+    document.getElementById('logsModal').classList.remove('flex');
+}
+
+function copyLogsDetails() {
+    const content = document.getElementById('logsModalContent').innerText;
+    navigator.clipboard.writeText(content).then(() => {
+        alert('Details copied to clipboard!');
+    }).catch(() => {
+        alert('Failed to copy details');
+    });
+}
 
 // ════════════════════════════════════════════════════════════════════════
 // SOCIAL BOOST POLLING
