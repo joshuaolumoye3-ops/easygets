@@ -610,6 +610,7 @@
                                 <form action="{{ route('admin.logs.create') }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="product_id" value="{{ $product->id }}">
+                                    <input type="hidden" name="mode" value="{{ $product->mode ?? 'manual' }}">
                                     <div class="form-grid-4" style="margin-bottom:14px;">
                                         <div class="fg">
                                             <label class="fl">Product Name</label>

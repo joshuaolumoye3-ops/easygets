@@ -657,43 +657,101 @@ class AdminServiceController extends Controller
             'country' => 'nullable|string|max:80',
             'country_code' => 'nullable|string|max:2',
             'description' => 'nullable|string|max:1000',
+            'mode' => 'required|in:automatic,manual',
+            'log_details' => 'nullable|string',
             'product_id' => 'nullable|integer',
         ]);
 
         $provider = $this->getLogsProvider();
         $productId = $request->product_id;
+        $mode = $request->mode;
+        $logDetails = null;
+
+        if ($mode === 'automatic') {
+            $rawDetails = $request->input('log_details');
+            $decoded = [];
+            if (!empty($rawDetails)) {
+                $decoded = json_decode($rawDetails, true);
+            }
+
+            if (!is_array($decoded) || empty($decoded)) {
+                return redirect()->back()->with('error', 'Automatic logs require at least one log detail.');
+            }
+
+            $filtered = array_values(array_filter($decoded, function ($item) {
+                return is_array($item) && (
+                    trim($item['username'] ?? '') !== '' ||
+                    trim($item['password'] ?? '') !== '' ||
+                    trim($item['extra'] ?? '') !== ''
+                );
+            }));
+
+            if (empty($filtered)) {
+                return redirect()->back()->with('error', 'Automatic logs require at least one valid log detail entry.');
+            }
+
+            $logDetails = json_encode($filtered);
+        }
+
+        $sharedData = [
+            'name' => $request->name,
+            'category' => $request->country ?: 'Global',
+            'client_price' => $request->client_price,
+            'country' => $request->country,
+            'country_code' => strtoupper($request->country_code),
+            'description' => $request->description,
+            'mode' => $mode,
+            'log_details' => $logDetails,
+        ];
 
         if ($productId) {
-            // Update existing product
             $product = Product::findOrFail($productId);
-            $product->update([
-                'name' => $request->name,
-                'category' => $request->country ?: 'Global',
-                'client_price' => $request->client_price,
-                'country' => $request->country,
-                'country_code' => strtoupper($request->country_code),
-                'description' => $request->description,
-            ]);
+            $product->update($sharedData);
             return redirect()->back()->with('success', 'Logs product updated successfully.');
-        } else {
-            // Create new product
-            $productCode = Str::slug($request->name, '-') . '-' . strtoupper(Str::random(4));
-
-            Product::create([
-                'provider_id' => $provider->id,
-                'product_code' => $productCode,
-                'name' => $request->name,
-                'category' => $request->country ?: 'Global',
-                'api_price' => $request->client_price,
-                'client_price' => $request->client_price,
-                'country' => $request->country,
-                'country_code' => strtoupper($request->country_code),
-                'description' => $request->description,
-                'is_active' => true,
-            ]);
-
-            return redirect()->back()->with('success', 'Logs product created successfully.');
         }
+
+        $productCode = Str::slug($request->name, '-') . '-' . strtoupper(Str::random(4));
+
+        Product::create(array_merge([
+            'provider_id' => $provider->id,
+            'product_code' => $productCode,
+            'api_price' => $request->client_price,
+            'is_active' => true,
+        ], $sharedData));
+
+        return redirect()->back()->with('success', 'Logs product created successfully.');
+    }
+
+    public function updateLogDetails(Request $request, $id)
+    {
+        $product = Product::findOrFail($id);
+
+        if ($product->mode !== 'automatic') {
+            return redirect()->back()->with('error', 'Only automatic logs products can save log details.');
+        }
+
+        $request->validate([
+            'log_details' => 'required|array',
+            'log_details.*.username' => 'nullable|string|max:255',
+            'log_details.*.password' => 'nullable|string|max:255',
+            'log_details.*.extra' => 'nullable|string|max:1000',
+        ]);
+
+        $filtered = array_values(array_filter($request->log_details, function ($item) {
+            return is_array($item) && (
+                trim($item['username'] ?? '') !== '' ||
+                trim($item['password'] ?? '') !== '' ||
+                trim($item['extra'] ?? '') !== ''
+            );
+        }));
+
+        if (empty($filtered)) {
+            return redirect()->back()->with('error', 'Please add at least one log detail entry.');
+        }
+
+        $product->update(['log_details' => json_encode($filtered)]);
+
+        return redirect()->back()->with('success', 'Log details updated successfully.');
     }
 
     public function logsOrders()

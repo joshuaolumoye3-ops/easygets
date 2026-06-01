@@ -315,6 +315,7 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
     Route::get('/logs', [AdminServiceController::class, 'logsIndex'])->name('admin.logs');
     Route::get('/logs/orders', [AdminServiceController::class, 'logsOrders'])->name('admin.logs.orders');
     Route::post('/logs/create', [AdminServiceController::class, 'createLogProduct'])->name('admin.logs.create');
+    Route::post('/logs/{id}/details', [AdminServiceController::class, 'updateLogDetails'])->name('admin.logs.updateDetails');
     Route::post('/logs/{id}/fulfill', [AdminServiceController::class, 'fulfillLogOrder'])->name('admin.logs.fulfill');
 
     Route::prefix('esim')->group(function () {

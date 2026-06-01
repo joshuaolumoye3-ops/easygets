@@ -21,6 +21,12 @@ class Product extends Model
         'country',
         'country_code',
         'description',
+        'mode',
+        'log_details',
+    ];
+
+    protected $casts = [
+        'log_details' => 'array',
     ];
 
     public function provider()
