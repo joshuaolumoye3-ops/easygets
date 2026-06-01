@@ -214,6 +214,14 @@ const ALL_ACTIVATIONS  = @json($activations);
 const ALL_SOCIAL_BOOSTS = @json($socialBoosts);
 const ALL_LOGS = @json($logs ?? []);
 
+// Build logsData object for modal access
+const logsData = {};
+if (ALL_LOGS && ALL_LOGS.length > 0) {
+    ALL_LOGS.forEach(log => {
+        logsData[log.id] = log;
+    });
+}
+
 // ─── State ───────────────────────────────────────────────────────────────────
 let pollingInterval        = null;
 let currentActivationId    = null;
@@ -254,6 +262,69 @@ function statusLabel(status) {
         refunded:   'Refunded',
     };
     return map[status] || status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// LOGS MODAL FUNCTIONS
+// ════════════════════════════════════════════════════════════════════════
+function openLogsModal(id) {
+    const log = logsData[id];
+    if (!log) {
+        console.warn('Log not found:', id);
+        return;
+    }
+
+    const content = document.getElementById('logsModalContent');
+    content.innerHTML = `
+        <div class="space-y-3">
+            <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase">Service</p>
+                <p class="text-sm text-gray-800 mt-1">${log.service_name || 'Logs'}</p>
+            </div>
+            <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase">Amount</p>
+                <p class="text-sm text-gray-800 mt-1">${log.amount || '₦0.00'}</p>
+            </div>
+            <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase">Date</p>
+                <p class="text-sm text-gray-800 mt-1">${log.date || 'N/A'}</p>
+            </div>
+            <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase">Status</p>
+                <p class="text-sm mt-1">
+                    <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full ${
+                        log.status === 'Success' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                    }">${log.status || 'Pending'}</span>
+                </p>
+            </div>
+            ${log.reference && log.reference.trim() ? `<div>
+                <p class="text-xs font-semibold text-gray-500 uppercase">Reference</p>
+                <p class="text-sm text-gray-800 mt-1 font-mono break-all">${log.reference}</p>
+            </div>` : ''}
+            ${log.login_details && log.login_details.trim() ? `<div>
+                <p class="text-xs font-semibold text-gray-500 uppercase">Login Details</p>
+                <div class="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                    <p class="text-sm text-gray-700 font-mono whitespace-pre-wrap break-words">${log.login_details}</p>
+                </div>
+            </div>` : ''}
+        </div>
+    `;
+    document.getElementById('logsModal').classList.remove('hidden');
+    document.getElementById('logsModal').classList.add('flex');
+}
+
+function closeLogsModal() {
+    document.getElementById('logsModal').classList.add('hidden');
+    document.getElementById('logsModal').classList.remove('flex');
+}
+
+function copyLogsDetails() {
+    const content = document.getElementById('logsModalContent').innerText;
+    navigator.clipboard.writeText(content).then(() => {
+        alert('Details copied to clipboard!');
+    }).catch(() => {
+        alert('Failed to copy details');
+    });
 }
 
 // ─── DOM ready ───────────────────────────────────────────────────────────────
@@ -320,96 +391,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 </script>
-
-@php
-// Build logs data array safely for JavaScript
-$logsDataArray = [];
-if (!empty($logs) && is_array($logs)) {
-    foreach($logs as $log) {
-        if (isset($log['id'])) {
-            $logsDataArray[$log['id']] = [
-                'id' => $log['id'],
-                'service_name' => $log['service_name'] ?? 'Logs',
-                'amount' => $log['amount'] ?? '₦0.00',
-                'status' => $log['status'] ?? 'Pending',
-                'date' => $log['date'] ?? 'N/A',
-                'login_details' => $log['login_details'] ?? '',
-                'reference' => $log['reference'] ?? '',
-            ];
-        }
-    }
-}
-@endphp
-
-<script>
-// ════════════════════════════════════════════════════════════════════════
-// LOGS DATA & MODAL
-// ════════════════════════════════════════════════════════════════════════
-
-const logsData = @json($logsDataArray);
-
-function openLogsModal(id) {
-    const log = logsData[id];
-    if (!log) return;
-
-    const content = document.getElementById('logsModalContent');
-    content.innerHTML = `
-        <div class="space-y-3">
-            <div>
-                <p class="text-xs font-semibold text-gray-500 uppercase">Service</p>
-                <p class="text-sm text-gray-800 mt-1">${log.service_name}</p>
-            </div>
-            <div>
-                <p class="text-xs font-semibold text-gray-500 uppercase">Amount</p>
-                <p class="text-sm text-gray-800 mt-1">${log.amount}</p>
-            </div>
-            <div>
-                <p class="text-xs font-semibold text-gray-500 uppercase">Date</p>
-                <p class="text-sm text-gray-800 mt-1">${log.date}</p>
-            </div>
-            <div>
-                <p class="text-xs font-semibold text-gray-500 uppercase">Status</p>
-                <p class="text-sm mt-1">
-                    <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-                        log.status === 'Success' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                    }">${log.status}</span>
-                </p>
-            </div>
-            ${log.reference ? `<div>
-                <p class="text-xs font-semibold text-gray-500 uppercase">Reference</p>
-                <p class="text-sm text-gray-800 mt-1 font-mono">${log.reference}</p>
-            </div>` : ''}
-            ${log.login_details ? `<div>
-                <p class="text-xs font-semibold text-gray-500 uppercase">Login Details</p>
-                <div class="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                    <p class="text-sm text-gray-700 font-mono whitespace-pre-wrap break-words">${log.login_details}</p>
-                </div>
-            </div>` : ''}
-        </div>
-    `;
-    document.getElementById('logsModal').classList.remove('hidden');
-    document.getElementById('logsModal').classList.add('flex');
-}
-
-function closeLogsModal() {
-    document.getElementById('logsModal').classList.add('hidden');
-    document.getElementById('logsModal').classList.remove('flex');
-}
-
-function copyLogsDetails() {
-    const content = document.getElementById('logsModalContent').innerText;
-    navigator.clipboard.writeText(content).then(() => {
-        alert('Details copied to clipboard!');
-    }).catch(() => {
-        alert('Failed to copy details');
-    });
-}
-
-// ════════════════════════════════════════════════════════════════════════
-// SOCIAL BOOST POLLING
-// ════════════════════════════════════════════════════════════════════════
-
-function startSocialPolling() {
     if (socialPollingInterval) return;
 
     document.getElementById('socialPollingIndicator')?.classList.remove('hidden');
