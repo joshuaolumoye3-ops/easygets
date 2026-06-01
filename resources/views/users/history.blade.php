@@ -178,7 +178,7 @@
                         </div>
 
                         <div class="log-meta">
-                            <div class="log-name">{{ $log['service_name'] ?? 'Logs' }}</div>
+                            <div class="log-name">{{ $log['product_name'] ?? $log['service_name'] ?? 'Logs' }}</div>
                             <div class="log-sub">
                                 @if(!empty($log['reference']))
                                     <span class="log-ref">{{ $log['reference'] }}</span>
@@ -212,7 +212,7 @@
                                 </svg>
                                 Your Login Details
                             </div>
-                            <pre class="log-creds-body" id="creds-body-{{ $log['id'] }}">{{ $log['login_details'] }}</pre>
+                            <pre class="log-creds-body" id="creds-body-{{ $log['id'] }}">{{ isset($log['login_details']) ? str_replace('\\n', "\n", $log['login_details']) : '' }}</pre>
                             <button
                                 class="log-copy-btn"
                                 id="copy-btn-{{ $log['id'] }}"

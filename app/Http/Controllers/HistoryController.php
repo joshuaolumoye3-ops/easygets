@@ -128,7 +128,9 @@ class HistoryController extends Controller
                 return [
                     'id' => $t->id,
                     'reference' => $t->reference,
+                    // prefer product name from response when available
                     'service_name' => $t->service_name ?? $t->recipient ?? 'Logs',
+                    'product_name' => $response['product']['name'] ?? $response['product_name'] ?? null,
                     'amount' => '₦' . number_format($t->amount ?? 0, 2),
                     'status' => ucfirst($t->status ?? 'pending'),
                     'date' => \Carbon\Carbon::parse($t->created_at)->format('M d, Y h:i A'),
