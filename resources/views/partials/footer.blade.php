@@ -29,7 +29,7 @@
             <span class="text-xs {{ request()->is('dashboard') ? 'font-bold' : 'font-medium' }}">Home</span>
         </a>
 
-        <!-- Nav Item: History -->
+        <!-- Nav Item: Activity -->
         <a href="history"
            class="flex flex-col items-center justify-center text-center w-full
             {{ request()->is('history') ? 'text-brand-green font-bold' : 'text-black hover:text-brand-green transition-colors' }}">
@@ -38,7 +38,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
             <!-- Text -->
-            <span class="text-xs {{ request()->is('history') ? 'font-bold' : 'font-medium' }}">History</span>
+            <span class="text-xs {{ request()->is('history') ? 'font-bold' : 'font-medium' }}">Activity</span>
         </a>
 
         <!-- Nav Item: Profile -->

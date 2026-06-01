@@ -182,8 +182,9 @@
             </div>
         </div>
 
-        <div class="mt-6 text-right">
-            <button id="closeFooter" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">Close</button>
+        <div class="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <button id="viewDetailsBtn" class="hidden w-full sm:w-auto px-4 py-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-200 hover:bg-gray-200 transition text-sm font-semibold">View Details</button>
+            <button id="closeFooter" class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-semibold">Close</button>
         </div>
     </div>
 </div>
@@ -196,14 +197,17 @@
 <script>
 const modal       = document.getElementById('txnModal');
 const imageModal  = document.getElementById('imageModal');
+const viewDetailsBtn = document.getElementById('viewDetailsBtn');
+const historyBaseUrl = '{{ route('history') }}';
 
 // ── open transaction detail ──────────────────────────────────
 document.querySelectorAll('.txn-row').forEach(row => {
     row.addEventListener('click', () => {
         const txn = JSON.parse(row.dataset.transaction);
 
-        const icons    = { airtime:'🌐', data:'🌐', electricity:'💡', betting:'⚽', esim:'📱', payment:'💰' };
+        const icons    = { airtime:'🌐', data:'🌐', electricity:'💡', betting:'⚽', esim:'📱', payment:'💰', logs:'📜', log:'📜', social_boost:'📣', smm:'📣', social:'📣', activation:'🛡️', otp:'🛡️' };
         const statuses = { success:'bg-green-100 text-green-700', pending:'bg-yellow-100 text-yellow-700', failed:'bg-red-100 text-red-700' };
+        const tabMap   = { logs:'logs', log:'logs', social_boost:'socials', smm:'socials', social:'socials', activation:'activations', otp:'activations', esim:'activations' };
 
         document.getElementById('txnIcon').textContent      = icons[txn.type] || '🌐';
         document.getElementById('txnTitle').textContent     = txn.title || txn.type;
@@ -217,6 +221,17 @@ document.querySelectorAll('.txn-row').forEach(row => {
         const statusEl = document.getElementById('txnStatus');
         statusEl.textContent = txn.status;
         statusEl.className   = 'px-2 py-1 rounded-full text-xs ' + (statuses[(txn.status || '').toLowerCase()] || 'bg-gray-100 text-gray-700');
+
+        const detailsTab = tabMap[(txn.type || '').toLowerCase()];
+        if (detailsTab && viewDetailsBtn) {
+            viewDetailsBtn.classList.remove('hidden');
+            viewDetailsBtn.onclick = () => {
+                window.location.href = `${historyBaseUrl}?tab=${detailsTab}`;
+            };
+        } else if (viewDetailsBtn) {
+            viewDetailsBtn.classList.add('hidden');
+            viewDetailsBtn.onclick = null;
+        }
 
         // eSIM details block
         const esimBlock    = document.getElementById('esimDetails');
