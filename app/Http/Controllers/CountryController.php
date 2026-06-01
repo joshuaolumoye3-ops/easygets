@@ -2474,224 +2474,172 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
 
     public function processLogPurchase(Request $request, $id)
     {
+        $request->validate([
+            'pin'      => 'required|array|size:4',
+            'pin.*'    => 'required|string|size:1|regex:/^[0-9]$/',
+            'quantity' => 'required|integer|min:1|max:10',
+        ]);
+    
+        $user = Auth::user();
+        $pin  = implode('', $request->pin);
+    
+        // Verify PIN
+        if (!\Illuminate\Support\Facades\Hash::check($pin, $user->pin)) {
+            return response()->json(['success' => false, 'message' => 'Incorrect PIN. Please try again.']);
+        }
+    
+        $product  = \App\Models\Product::where('is_active', true)->findOrFail($id);
+        $quantity = (int) $request->quantity;
+        $total    = $product->client_price * $quantity;
+    
+        $wallet = $user->wallet;
+        if (!$wallet || $wallet->balance < $total) {
+            return response()->json(['success' => false, 'message' => 'Insufficient wallet balance.']);
+        }
+    
         try {
-            $request->validate([
-                'quantity' => 'required|integer|min:1|max:10',
-                'pin'      => 'required|array|size:4',
-                'pin.*'    => 'required|numeric|digits:1',
-            ]);
-
-            $inputPin = implode('', $request->pin);
-
-            if (!PinHelper::verifyPin($inputPin, auth()->user())) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid PIN. Please try again.'
-                ], 422);
-            }
-
-            $logsService = \App\Models\Service::firstOrCreate(
-                ['slug' => 'logs'],
-                ['name' => 'Logs', 'is_active' => true]
-            );
-
-            $logsProvider = \App\Models\Provider::firstOrCreate(
-                ['code' => 'logs'],
-                ['name' => 'Logs Service', 'service_id' => $logsService->id, 'api_identifier' => 'logs']
-            );
-
-            $product = Product::where('id', $id)
-                ->where('provider_id', $logsProvider->id)
-                ->where('is_active', true)
-                ->firstOrFail();
-
-            $quantity = (int) $request->quantity;
-            $amount   = $product->client_price * $quantity;
-
-            $assignedDetails = [];
-            $availableCount = 0;
-            $logDetails = json_decode($product->log_details ?? '[]', true);
-
-            if ($product->mode === 'automatic') {
-                $availableDetails = array_values(array_filter($logDetails, function ($item) {
-                    return !($item['sold'] ?? false);
-                }));
-
-                $availableCount = count($availableDetails);
-
-                if ($availableCount < $quantity) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Not enough available log details. Only ' . $availableCount . ' credential set(s) remain.',
-                    ], 400);
-                }
-
-                $assignedDetails = array_slice($availableDetails, 0, $quantity);
-            }
-
-            DB::beginTransaction();
-
-            $wallet = Wallet::where('user_id', auth()->id())->lockForUpdate()->first();
-
-            if (!$wallet) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Wallet not found. Please contact support.'
-                ], 400);
-            }
-
-            if ($wallet->balance < $amount) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Insufficient balance. You need ₦' . number_format($amount, 2) .
-                                ' but have ₦' . number_format($wallet->balance, 2)
-                ], 400);
-            }
-
-            $reference = 'LOGS' . time() . strtoupper(Str::random(8));
-
-            $responseData = [
-                'product' => [
-                    'id' => $product->id,
-                    'name' => $product->name,
-                    'description' => $product->description,
-                    'price' => $product->client_price,
-                ],
-                'quantity' => $quantity,
-            ];
-
-            if ($product->mode === 'automatic') {
-                $loginDetailsText = implode("\n\n", array_map(function ($item, $index) {
-                    $lines = [];
-                    if (!empty($item['username'])) {
-                        $lines[] = 'Username/Email: ' . $item['username'];
-                    }
-                    if (!empty($item['password'])) {
-                        $lines[] = 'Password: ' . $item['password'];
-                    }
-                    if (!empty($item['extra'])) {
-                        $lines[] = 'Extra: ' . $item['extra'];
-                    }
-                    return 'Login Detail ' . ($index + 1) . ':\n' . implode('\n', $lines);
-                }, $assignedDetails, array_keys($assignedDetails)));
-
-                $responseData['assigned_details'] = $assignedDetails;
-                $responseData['login_details'] = $loginDetailsText;
-            }
-
-            $transaction = Transaction::create([
-                'reference'    => $reference,
-                'user_id'      => auth()->id(),
-                'type'         => 'logs',
-                'service_name' => 'Logs Purchase',
-                'channel'      => 'web',
-                'provider'     => 'logs',
-                'phone'        => null,
-                'recipient'    => $product->name . ' (x' . $quantity . ')',
-                'amount'       => $amount,
-                'status'       => $product->mode === 'automatic' ? 'success' : 'pending',
-                'response'     => json_encode($responseData),
-                'description'  => $product->mode === 'automatic'
-                    ? 'Logs purchase completed automatically'
-                    : 'Logs purchase awaiting admin fulfillment',
-            ]);
-
-            $wallet->decrement('balance', $amount);
-
-            if ($product->mode === 'automatic' && !empty($assignedDetails)) {
-                $assignedCount = 0;
-                $updatedLogDetails = $logDetails;
-                foreach ($updatedLogDetails as &$detail) {
-                    if (!($detail['sold'] ?? false) && $assignedCount < $quantity) {
-                        $detail['sold'] = true;
-                        $detail['sold_at'] = now()->toDateTimeString();
-                        $detail['sold_transaction_id'] = $transaction->id;
-                        $detail['sold_to_user_id'] = auth()->id();
-                        $assignedCount++;
-                    }
-                }
-                $product->update(['log_details' => json_encode($updatedLogDetails)]);
-            }
-
-            DB::commit();
-
-            Log::info('Logs purchase successful', [
-                'transaction_id' => $transaction->id,
-                'reference'      => $reference,
-                'quantity'       => $quantity,
-            ]);
-
-            if ($product->mode !== 'automatic') {
-                $adminEmails = Admin::whereNotNull('email')
-                    ->where('email', '<>', '')
-                    ->pluck('email')
-                    ->filter()
-                    ->unique();
-
-                $validAdminEmails = $adminEmails->filter(fn($email) => filter_var($email, FILTER_VALIDATE_EMAIL))
-                    ->values()
-                    ->all();
-
-                if (!empty($validAdminEmails)) {
-                    foreach ($validAdminEmails as $adminEmail) {
-                        try {
-                            Mail::to($adminEmail)->send(new LogsPurchaseAdminNotification($transaction, $product, auth()->user()));
-                        } catch (\Exception $mailException) {
-                            Log::warning('Failed to send admin logs notification', [
-                                'transaction_id' => $transaction->id,
-                                'admin_email'    => $adminEmail,
-                                'error'          => $mailException->getMessage(),
-                            ]);
+            \Illuminate\Support\Facades\DB::beginTransaction();
+    
+            // Deduct wallet
+            $wallet->balance -= $total;
+            $wallet->save();
+    
+            $assignedCredentials = [];
+            $mode                = $product->mode ?? 'manual';
+    
+            // ── AUTO-ASSIGN credentials for automatic products ──────────────
+            if ($mode === 'automatic') {
+                $logDetails = is_array($product->log_details)
+                    ? $product->log_details
+                    : (json_decode($product->log_details ?? '[]', true) ?: []);
+    
+                $availableIndexes = [];
+                foreach ($logDetails as $index => $detail) {
+                    if (empty($detail['sold'])) {
+                        $availableIndexes[] = $index;
+                        if (count($availableIndexes) >= $quantity) {
+                            break;
                         }
                     }
                 }
+    
+                if (!empty($availableIndexes)) {
+                    $transactionId = null; // will set after creating transaction
+    
+                    foreach ($availableIndexes as $idx) {
+                        $assignedCredentials[] = [
+                            'username' => $logDetails[$idx]['username'] ?? '',
+                            'password' => $logDetails[$idx]['password'] ?? '',
+                            'extra'    => $logDetails[$idx]['extra']    ?? '',
+                        ];
+                    }
+                }
+                // If availableIndexes is empty → treat as manual (pending)
             }
-
-            return response()->json([
-                'success'        => true,
-                'message'        => 'Logs purchase successful! Check your transactions for details.',
-                'transaction_id' => $transaction->id,
-                'data'           => [
-                    'reference'         => $reference,
-                    'product'           => $product->name,
-                    'quantity'          => $quantity,
-                    'amount'            => $amount,
-                    'formatted_amount'  => '₦' . number_format($amount, 2),
-                    'new_balance'       => $wallet->fresh()->balance,
-                    'formatted_balance' => '₦' . number_format($wallet->fresh()->balance, 2),
+    
+            // ── Build response payload ───────────────────────────────────────
+            $isAutoFulfilled = $mode === 'automatic' && !empty($assignedCredentials);
+            $status          = $isAutoFulfilled ? 'success' : 'pending';
+    
+            $responsePayload = [
+                'product' => [
+                    'id'      => $product->id,
+                    'name'    => $product->name,
+                    'mode'    => $mode,
+                    'country' => $product->country,
                 ],
+                'quantity'         => $quantity,
+                'auto_fulfilled'   => $isAutoFulfilled,
+            ];
+    
+            if ($isAutoFulfilled) {
+                // For single purchase, flatten into login_details string for display
+                // For multiple, store as array and render each on history
+                if ($quantity === 1 && count($assignedCredentials) === 1) {
+                    $cred = $assignedCredentials[0];
+                    $lines = [];
+                    if ($cred['username']) $lines[] = "Username: {$cred['username']}";
+                    if ($cred['password']) $lines[] = "Password: {$cred['password']}";
+                    if ($cred['extra'])    $lines[] = $cred['extra'];
+                    $responsePayload['login_details']   = implode("\n", $lines);
+                    $responsePayload['credentials']     = $assignedCredentials;
+                } else {
+                    // Multiple quantity
+                    $allLines = [];
+                    foreach ($assignedCredentials as $i => $cred) {
+                        $set = ["--- Account " . ($i + 1) . " ---"];
+                        if ($cred['username']) $set[] = "Username: {$cred['username']}";
+                        if ($cred['password']) $set[] = "Password: {$cred['password']}";
+                        if ($cred['extra'])    $set[] = $cred['extra'];
+                        $allLines[] = implode("\n", $set);
+                    }
+                    $responsePayload['login_details'] = implode("\n\n", $allLines);
+                    $responsePayload['credentials']   = $assignedCredentials;
+                }
+            }
+    
+            // ── Create transaction ───────────────────────────────────────────
+            $transaction = \App\Models\Transaction::create([
+                'reference'    => 'LOG-' . strtoupper(\Illuminate\Support\Str::random(12)),
+                'user_id'      => $user->id,
+                'type'         => 'logs',
+                'channel'      => 'Wallet',
+                'provider'     => 'Logs',
+                'service_name' => $product->name,
+                'recipient'    => $product->name,
+                'country_name' => $product->country,
+                'country_code' => $product->country_code,
+                'amount'       => $total,
+                'status'       => $status,
+                'description'  => $isAutoFulfilled
+                    ? 'Logs order auto-fulfilled'
+                    : 'Logs order pending admin fulfilment',
+                'response'     => $responsePayload,
             ]);
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
+    
+            // ── Mark credentials as sold on the product ──────────────────────
+            if ($isAutoFulfilled) {
+                $logDetails = is_array($product->log_details)
+                    ? $product->log_details
+                    : (json_decode($product->log_details ?? '[]', true) ?: []);
+    
+                $soldCount = 0;
+                foreach ($logDetails as &$detail) {
+                    if (empty($detail['sold']) && $soldCount < count($assignedCredentials)) {
+                        $detail['sold']                 = true;
+                        $detail['sold_at']              = now()->toDateTimeString();
+                        $detail['sold_transaction_id']  = $transaction->id;
+                        $detail['sold_to_user_id']      = $user->id;
+                        $soldCount++;
+                    }
+                }
+                unset($detail);
+    
+                $product->log_details = json_encode(array_values($logDetails));
+                $product->save();
+            }
+    
+            \Illuminate\Support\Facades\DB::commit();
+    
             return response()->json([
-                'success' => false,
-                'message' => $e->validator->errors()->first(),
-            ], 422);
-
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Product not found or no longer available.',
-            ], 404);
-
+                'success' => true,
+                'message' => $isAutoFulfilled
+                    ? 'Purchase successful! Your login details are ready.'
+                    : 'Order placed successfully! Your details will be delivered shortly.',
+            ]);
+    
         } catch (\Exception $e) {
-            DB::rollBack();
-
-            Log::error('Error processing logs purchase', [
-                'product_id' => $id,
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Log purchase error', [
                 'error'      => $e->getMessage(),
-                'trace'      => $e->getTraceAsString()
+                'product_id' => $id,
+                'user_id'    => $user->id,
             ]);
-
-            // Return the real error message so you can diagnose it
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(), // ← real error exposed temporarily
-            ], 500);
+    
+            return response()->json(['success' => false, 'message' => 'Purchase failed. Please try again.']);
         }
+
+        
     }
 
-    
 }

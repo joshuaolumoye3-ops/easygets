@@ -108,6 +108,23 @@ class HistoryController extends Controller
             ->get()
             ->map(function ($t) {
                 $response = is_array($t->response) ? $t->response : (json_decode($t->response, true) ?? []);
+
+                // Try to get product country data from response.product.id where available
+                $country = null;
+                $countryCode = null;
+                $productId = $response['product']['id'] ?? null;
+                if ($productId) {
+                    try {
+                        $p = \App\Models\Product::find($productId);
+                        if ($p) {
+                            $country = $p->country ?? null;
+                            $countryCode = $p->country_code ?? null;
+                        }
+                    } catch (\Throwable $e) {
+                        // ignore lookup failures
+                    }
+                }
+
                 return [
                     'id' => $t->id,
                     'reference' => $t->reference,
@@ -117,6 +134,8 @@ class HistoryController extends Controller
                     'date' => \Carbon\Carbon::parse($t->created_at)->format('M d, Y h:i A'),
                     'login_details' => $response['login_details'] ?? null,
                     'notes' => $response['notes'] ?? null,
+                    'country' => $country,
+                    'country_code' => $countryCode,
                 ];
             });
 

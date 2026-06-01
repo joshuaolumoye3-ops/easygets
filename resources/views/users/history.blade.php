@@ -17,11 +17,13 @@
     <!-- Tabs -->
     <div class="flex justify-between px-4 mb-6 bg-white py-4">
         <button id="activationsBtn" class="flex-1 text-center py-3 rounded-full font-semibold bg-green-800 text-white mr-2">Activations</button>
-        <button id="socialsBtn" class="flex-1 text-center py-3 rounded-full font-semibold bg-gray-200 text-gray-600 mr-2">Socials</button>
-        <button id="logsBtn" class="flex-1 text-center py-3 rounded-full font-semibold bg-gray-200 text-gray-600">Logs</button>
+        <button id="socialsBtn"     class="flex-1 text-center py-3 rounded-full font-semibold bg-gray-200 text-gray-600 mr-2">Socials</button>
+        <button id="logsBtn"        class="flex-1 text-center py-3 rounded-full font-semibold bg-gray-200 text-gray-600">Logs</button>
     </div>
 
-    <!-- Activations Content -->
+    <!-- ══════════════════════════════════════════════════════════
+         ACTIVATIONS TAB
+    ══════════════════════════════════════════════════════════ -->
     <div id="activationsContent" class="space-y-3 px-4 transition-all duration-500 ease-in-out">
         <div id="pollingIndicator" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center space-x-2">
             <div class="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
@@ -67,10 +69,11 @@
         @endforelse
     </div>
 
-    <!-- Socials Content -->
+    <!-- ══════════════════════════════════════════════════════════
+         SOCIALS TAB
+    ══════════════════════════════════════════════════════════ -->
     <div id="socialsContent" class="space-y-3 px-4 transition-all duration-500 ease-in-out hidden">
 
-        <!-- Social polling indicator -->
         <div id="socialPollingIndicator" class="hidden bg-purple-50 border border-purple-200 rounded-lg p-3 flex items-center space-x-2">
             <div class="animate-spin rounded-full h-4 w-4 border-2 border-purple-600 border-t-transparent"></div>
             <span class="text-sm text-purple-700 font-medium">Updating order statuses...</span>
@@ -101,7 +104,6 @@
                             <span>Checking...</span>
                         </div>
                     @endif
-                    <!-- progress mini bar -->
                     @if($boost['quantity'] > 0 && $boost['remains'] !== null)
                         @php $pct = max(0, min(100, round(($boost['quantity'] - $boost['remains']) / $boost['quantity'] * 100))); @endphp
                         <div id="social-progress-bar-{{ $boost['id'] }}" class="w-16 mt-1 ml-auto">
@@ -126,68 +128,170 @@
             </div>
         @endforelse
     </div>
-</div>
 
-<!-- Logs Content -->
-<div id="logsContent" class="space-y-3 px-4 transition-all duration-500 ease-in-out hidden">
-    @if(!empty($logs) && count($logs) > 0)
-        @foreach($logs as $log)
-            <div onclick="openLogsModal({{ $log['id'] }})" class="cursor-pointer flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-xl font-bold text-indigo-600">L</div>
-                    <div>
-                        <p class="font-semibold text-gray-800">{{ $log['service_name'] ?? 'Logs' }}</p>
-                        <p class="text-xs text-gray-500 mt-0.5">{{ $log['date'] ?? 'N/A' }}</p>
-                        <p class="text-xs text-gray-400 mt-0.5">{{ $log['amount'] ?? '₦0.00' }}</p>
-                    </div>
+    <!-- ══════════════════════════════════════════════════════════
+         LOGS TAB
+    ══════════════════════════════════════════════════════════ -->
+    <div id="logsContent" class="space-y-3 px-4 transition-all duration-500 ease-in-out hidden">
+
+        @if(empty($logs) || count($logs) === 0)
+            <div class="logs-empty">
+                <div class="logs-empty-icon">
+                    <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                    </svg>
                 </div>
-                <div class="text-right">
-                    <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1 {{ ($log['status'] ?? '') === 'Success' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' }}">{{ $log['status'] ?? 'Pending' }}</span>
-                </div>
+                <h3>No logs orders yet</h3>
+                <p>Once you purchase a logs access package, your credentials and order status will appear here.</p>
+                <a href="{{ route('logs') }}">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Browse Logs Products
+                </a>
             </div>
-        @endforeach
-    @else
-        <div class="text-center py-12">
-            <div class="text-6xl mb-4">🗄️</div>
-            <p class="text-gray-500 font-medium">No logs purchases yet</p>
-            <p class="text-sm text-gray-400 mt-1">Buy logs access products from the services list</p>
-        </div>
-    @endif
-</div>
+        @else
+            @foreach($logs as $log)
+                @php
+                    $isFulfilled = in_array(strtolower($log['status'] ?? ''), ['success', 'completed', 'fulfilled']);
+                    $isPending   = strtolower($log['status'] ?? '') === 'pending';
+                    $hasDetails  = !empty($log['login_details']);
+                @endphp
 
-<!-- Logs Modal -->
-<div id="logsModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full max-h-96 overflow-y-auto">
-        <!-- Modal Header -->
-        <div class="sticky top-0 bg-gradient-to-r from-indigo-50 to-indigo-100 border-b border-indigo-200 px-6 py-4 flex items-center justify-between">
-            <h2 class="text-lg font-bold text-gray-800">Login Details</h2>
-            <button onclick="closeLogsModal()" class="text-gray-400 hover:text-gray-600 focus:outline-none">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-        </div>
-        <!-- Modal Content -->
-        <div id="logsModalContent" class="px-6 py-4 space-y-3">
-            <!-- Content will be populated by JS -->
-        </div>
-        <!-- Modal Footer -->
-        <div class="border-t border-gray-200 px-6 py-3 flex gap-2">
-            <button onclick="copyLogsDetails()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                Copy
-            </button>
-            <button onclick="closeLogsModal()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors">
-                Close
-            </button>
-        </div>
-    </div>
-</div>
+                <div class="log-card" id="log-{{ $log['id'] }}">
 
-<!-- Activation Modal -->
+                    {{-- Header row --}}
+                    <div class="log-card-head">
+                        <div class="log-icon {{ $hasDetails ? 'fulfilled' : '' }}">
+                            @if($hasDetails)
+                                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                                </svg>
+                            @else
+                                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            @endif
+                        </div>
+
+                        <div class="log-meta">
+                            <div class="log-name">{{ $log['service_name'] ?? 'Logs' }}</div>
+                            <div class="log-sub">
+                                @if(!empty($log['reference']))
+                                    <span class="log-ref">{{ $log['reference'] }}</span>
+                                @endif
+                                @if(!empty($log['country']))
+                                    <span class="log-sep"></span>
+                                    <span>{{ $log['country'] }}</span>
+                                @endif
+                                <span class="log-sep"></span>
+                                <span class="log-amt">{{ $log['amount'] ?? '₦0.00' }}</span>
+                                <span class="log-sep"></span>
+                                <span>{{ $log['date'] ?? 'N/A' }}</span>
+                            </div>
+                        </div>
+
+                        <div style="flex-shrink:0;">
+                            <span class="log-status-chip {{ $hasDetails ? 'chip-fulfilled' : ($isPending ? 'chip-pending' : 'chip-failed') }}">
+                                <span class="dot"></span>
+                                {{ $hasDetails ? 'Fulfilled' : ($isPending ? 'Pending' : ucfirst($log['status'] ?? 'Unknown')) }}
+                            </span>
+                        </div>
+                    </div>
+
+                    {{-- Credentials block --}}
+                    @if($hasDetails)
+                        <div class="log-creds" id="creds-wrap-{{ $log['id'] }}">
+                            <div class="log-creds-title">
+                                <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                                </svg>
+                                Your Login Details
+                            </div>
+                            <pre class="log-creds-body" id="creds-body-{{ $log['id'] }}">{{ $log['login_details'] }}</pre>
+                            <button
+                                class="log-copy-btn"
+                                id="copy-btn-{{ $log['id'] }}"
+                                onclick="copyLogCreds({{ $log['id'] }})">
+                                <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                </svg>
+                                Copy
+                            </button>
+                        </div>
+                    @endif
+
+                    {{-- Admin notes block --}}
+                    @if(!empty($log['notes']))
+                        <div class="log-notes">
+                            <div class="log-notes-label">Note from support</div>
+                            {{ $log['notes'] }}
+                        </div>
+                    @endif
+
+                    {{-- Pending / no-credentials state --}}
+                    @if(!$hasDetails)
+                        <div class="log-pending-block">
+                            <div class="log-pending-icon">
+                                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <div class="log-pending-text">
+                                <h4>We're preparing your order</h4>
+                                <p>
+                                    Our team is working on delivering your login credentials.
+                                    This usually takes a few minutes — check back shortly
+                                    or refresh the page to see the latest update.
+                                </p>
+                                <div class="log-pending-steps">
+                                    <span class="log-pending-step done">
+                                        <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                        Payment confirmed
+                                    </span>
+                                    <span class="log-pending-step done">
+                                        <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                        Order received
+                                    </span>
+                                    <span class="log-pending-step" style="color:#fcd34d; border-color:rgba(251,191,36,0.25);">
+                                        <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        Delivering credentials…
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                </div>{{-- .log-card --}}
+            @endforeach
+        @endif
+
+    </div>{{-- #logsContent --}}
+
+</div>{{-- .max-w-md --}}
+
+<!-- ══════════════════════════════════════════════════════════
+     ACTIVATION MODAL
+══════════════════════════════════════════════════════════ -->
 <div id="activationModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"></div>
 </div>
 
-<!-- Social Boost Modal -->
+<!-- ══════════════════════════════════════════════════════════
+     SOCIAL BOOST MODAL
+══════════════════════════════════════════════════════════ -->
 <div id="socialModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"></div>
 </div>
@@ -195,7 +299,6 @@
 @include('partials.footer')
 
 @php
-// Helper used above in the blade loop — inline so no separate file needed
 function socialBadgeClass(string $status): string {
     return match($status) {
         'success', 'completed' => 'bg-green-100 text-green-700',
@@ -208,34 +311,225 @@ function socialBadgeClass(string $status): string {
 }
 @endphp
 
-<script>
-// ─── Data from server ────────────────────────────────────────────────────────
-const ALL_ACTIVATIONS  = @json($activations);
-const ALL_SOCIAL_BOOSTS = @json($socialBoosts);
-const ALL_LOGS = @json($logs ?? []);
+{{-- ══════════════════════════════════════════════════════════
+     STYLES
+══════════════════════════════════════════════════════════ --}}
+<style>
+/* ── Animations ──────────────────────────────────────────── */
+@keyframes spin      { to { transform: rotate(360deg); } }
+@keyframes pulse     { 0%,100%{opacity:1} 50%{opacity:.5} }
+@keyframes slide-in  { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+@keyframes slide-out { from{transform:translateX(0);opacity:1}    to{transform:translateX(100%);opacity:0} }
+@keyframes logPulse  { 0%,100%{opacity:1} 50%{opacity:.35} }
 
-// Build logsData object for modal access
-const logsData = {};
-if (ALL_LOGS && ALL_LOGS.length > 0) {
-    ALL_LOGS.forEach(log => {
-        logsData[log.id] = log;
-    });
+.animate-spin      { animation: spin 1s linear infinite; }
+.animate-pulse     { animation: pulse 2s cubic-bezier(.4,0,.6,1) infinite; }
+.animate-slide-in  { animation: slide-in .3s ease-out; }
+.animate-slide-out { animation: slide-out .3s ease-out; }
+
+/* ── Log cards ───────────────────────────────────────────── */
+.log-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    margin-bottom: 14px;
+    overflow: hidden;
+    transition: border-color .2s, box-shadow .2s;
+}
+.log-card:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
 }
 
-// ─── State ───────────────────────────────────────────────────────────────────
-let pollingInterval        = null;
-let currentActivationId    = null;
-let currentSocialBoostId   = null;
-let globalPollingInterval  = null;
-let socialPollingInterval  = null;
-let activationPollingStatus = {};
+.log-card-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px 14px;
+}
 
-// Track which social boosts we're still polling (stops once success/failed)
-let socialPollingStatus = {};   // { id: true/false }
-// Live data updated by polling — used to refresh open modal
-let socialLiveData = {};        // { id: { remains, start_count, local_status, ... } }
+.log-icon {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+    background: rgba(107,114,128,.08);
+    border: 1px solid rgba(107,114,128,.15);
+    color: #6b7280;
+}
+.log-icon.fulfilled {
+    background: rgba(16,185,129,.1);
+    border-color: rgba(16,185,129,.2);
+    color: #059669;
+}
 
-// ─── Badge CSS helper (mirrors PHP) ──────────────────────────────────────────
+.log-meta { flex: 1; min-width: 0; }
+.log-name {
+    font-size: 14px; font-weight: 700; color: #111827;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: 5px;
+}
+.log-sub {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; color: #9ca3af; flex-wrap: wrap;
+}
+.log-ref {
+    font-family: ui-monospace, monospace; font-size: 11px; font-weight: 600;
+    color: #4f46e5;
+    background: rgba(79,70,229,.08);
+    border: 1px solid rgba(79,70,229,.15);
+    padding: 2px 7px; border-radius: 6px;
+}
+.log-amt   { color: #d97706; font-weight: 700; font-family: ui-monospace, monospace; }
+.log-sep   { width: 3px; height: 3px; border-radius: 50%; background: #d1d5db; flex-shrink: 0; }
+
+/* Status chips */
+.log-status-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 11px; border-radius: 20px;
+    font-size: 11.5px; font-weight: 700; white-space: nowrap;
+}
+.log-status-chip .dot { width: 6px; height: 6px; border-radius: 50%; }
+.chip-fulfilled { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+.chip-fulfilled .dot { background: #10b981; }
+.chip-pending   { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
+.chip-pending   .dot { background: #f59e0b; animation: logPulse 2s infinite; }
+.chip-failed    { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+.chip-failed    .dot { background: #ef4444; }
+
+/* Credentials block */
+.log-creds {
+    margin: 0 18px 16px;
+    background: #f9fafb;
+    border: 1px solid #d1fae5;
+    border-left: 3px solid #10b981;
+    border-radius: 0 10px 10px 0;
+    padding: 14px 16px;
+    position: relative;
+}
+.log-creds-title {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 11px; font-weight: 700;
+    color: #065f46; margin-bottom: 10px;
+    text-transform: uppercase; letter-spacing: 0.6px;
+}
+.log-creds-body {
+    font-family: ui-monospace, monospace;
+    font-size: 12.5px; color: #374151;
+    white-space: pre-wrap; word-break: break-all; line-height: 1.8;
+    margin: 0;
+}
+.log-copy-btn {
+    position: absolute; top: 12px; right: 12px;
+    background: #fff; border: 1px solid #d1d5eb;
+    color: #4f46e5; border-radius: 8px;
+    padding: 5px 11px; font-size: 11.5px; font-weight: 700;
+    cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; gap: 5px;
+    transition: background .2s, color .2s, border-color .2s;
+}
+.log-copy-btn:hover { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+.log-copy-btn.copied {
+    background: #ecfdf5; border-color: #a7f3d0; color: #065f46;
+}
+
+/* Admin notes */
+.log-notes {
+    margin: 0 18px 16px;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 10px;
+    padding: 12px 15px;
+    font-size: 12.5px; color: #92400e; line-height: 1.6;
+}
+.log-notes-label {
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.6px;
+    color: #b45309; margin-bottom: 4px;
+}
+
+/* Pending state */
+.log-pending-block {
+    margin: 0 18px 18px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 18px 20px;
+    display: flex; gap: 14px; align-items: flex-start;
+}
+.log-pending-icon {
+    width: 42px; height: 42px; border-radius: 10px;
+    background: #fffbeb; border: 1px solid #fcd34d;
+    display: flex; align-items: center; justify-content: center;
+    color: #d97706; flex-shrink: 0;
+}
+.log-pending-text h4 {
+    font-size: 14px; font-weight: 700; color: #111827; margin: 0 0 5px;
+}
+.log-pending-text p {
+    font-size: 13px; color: #6b7280; margin: 0; line-height: 1.6;
+}
+.log-pending-steps {
+    display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap;
+}
+.log-pending-step {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11.5px; color: #9ca3af;
+    background: #fff; border: 1px solid #e5e7eb;
+    padding: 4px 10px; border-radius: 20px;
+}
+.log-pending-step.done {
+    color: #065f46; border-color: #a7f3d0; background: #ecfdf5;
+}
+
+/* Logs empty state */
+.logs-empty {
+    padding: 64px 24px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+}
+.logs-empty-icon {
+    width: 64px; height: 64px; border-radius: 14px;
+    background: rgba(79,70,229,.08); border: 1px solid rgba(79,70,229,.18);
+    display: flex; align-items: center; justify-content: center;
+    color: #4f46e5; margin-bottom: 4px;
+}
+.logs-empty h3 { font-size: 16px; font-weight: 700; color: #374151; margin: 0; }
+.logs-empty p  { font-size: 13px; color: #9ca3af; max-width: 280px; line-height: 1.7; margin: 0; }
+.logs-empty a  {
+    display: inline-flex; align-items: center; gap: 7px;
+    height: 38px; padding: 0 18px;
+    background: rgba(79,70,229,.08); color: #4f46e5;
+    border: 1px solid rgba(79,70,229,.2); border-radius: 10px;
+    font-size: 13px; font-weight: 700; text-decoration: none;
+    transition: background .2s, color .2s;
+}
+.logs-empty a:hover { background: #4f46e5; color: #fff; }
+</style>
+
+{{-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════ --}}
+<script>
+// ─── Server data ──────────────────────────────────────────────────────────────
+const ALL_ACTIVATIONS   = @json($activations);
+const ALL_SOCIAL_BOOSTS = @json($socialBoosts);
+const ALL_LOGS          = @json($logs ?? []);
+
+// Build a keyed map for quick O(1) lookup in modal
+const logsData = {};
+ALL_LOGS.forEach(log => { logsData[log.id] = log; });
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let pollingInterval         = null;
+let currentActivationId     = null;
+let currentSocialBoostId    = null;
+let globalPollingInterval   = null;
+let socialPollingInterval   = null;
+let activationPollingStatus = {};   // { activationId: true/false }
+let socialPollingStatus     = {};   // { boostId: true/false }
+let socialLiveData          = {};   // { boostId: latestDataFromApi }
+
+// ─── Badge helpers (mirrors PHP) ─────────────────────────────────────────────
 function badgeClass(status) {
     const map = {
         success:    'bg-green-100 text-green-700',
@@ -261,161 +555,138 @@ function statusLabel(status) {
         cancelled:  'Cancelled',
         refunded:   'Refunded',
     };
-    return map[status] || status.charAt(0).toUpperCase() + status.slice(1);
+    return map[status] || (status ? status.charAt(0).toUpperCase() + status.slice(1) : '');
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// LOGS MODAL FUNCTIONS
-// ════════════════════════════════════════════════════════════════════════
-function openLogsModal(id) {
-    const log = logsData[id];
-    if (!log) {
-        console.warn('Log not found:', id);
-        return;
-    }
-
-    const content = document.getElementById('logsModalContent');
-    content.innerHTML = `
-        <div class="space-y-3">
-            <div>
-                <p class="text-xs font-semibold text-gray-500 uppercase">Service</p>
-                <p class="text-sm text-gray-800 mt-1">${log.service_name || 'Logs'}</p>
-            </div>
-            <div>
-                <p class="text-xs font-semibold text-gray-500 uppercase">Amount</p>
-                <p class="text-sm text-gray-800 mt-1">${log.amount || '₦0.00'}</p>
-            </div>
-            <div>
-                <p class="text-xs font-semibold text-gray-500 uppercase">Date</p>
-                <p class="text-sm text-gray-800 mt-1">${log.date || 'N/A'}</p>
-            </div>
-            <div>
-                <p class="text-xs font-semibold text-gray-500 uppercase">Status</p>
-                <p class="text-sm mt-1">
-                    <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-                        log.status === 'Success' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                    }">${log.status || 'Pending'}</span>
-                </p>
-            </div>
-            ${log.reference && log.reference.trim() ? `<div>
-                <p class="text-xs font-semibold text-gray-500 uppercase">Reference</p>
-                <p class="text-sm text-gray-800 mt-1 font-mono break-all">${log.reference}</p>
-            </div>` : ''}
-            ${log.login_details && log.login_details.trim() ? `<div>
-                <p class="text-xs font-semibold text-gray-500 uppercase">Login Details</p>
-                <div class="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                    <p class="text-sm text-gray-700 font-mono whitespace-pre-wrap break-words">${log.login_details}</p>
-                </div>
-            </div>` : ''}
-        </div>
-    `;
-    document.getElementById('logsModal').classList.remove('hidden');
-    document.getElementById('logsModal').classList.add('flex');
-}
-
-function closeLogsModal() {
-    document.getElementById('logsModal').classList.add('hidden');
-    document.getElementById('logsModal').classList.remove('flex');
-}
-
-function copyLogsDetails() {
-    const content = document.getElementById('logsModalContent').innerText;
-    navigator.clipboard.writeText(content).then(() => {
-        alert('Details copied to clipboard!');
-    }).catch(() => {
-        alert('Failed to copy details');
-    });
-}
-
-// ─── DOM ready ───────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+// DOM READY
+// ═════════════════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function () {
 
-    // --- Activation polling ---
+    // ── Activation background polling ──────────────────────────────────────
     ALL_ACTIVATIONS.forEach(a => {
         if (a.raw_status === 'pending') activationPollingStatus[a.id] = true;
     });
     if (Object.keys(activationPollingStatus).length > 0) startGlobalPolling();
 
-    // --- Social boost auto-polling ---
+    // ── Social boost background polling ───────────────────────────────────
     const pendingSocials = ALL_SOCIAL_BOOSTS.filter(
         b => b.raw_status === 'pending' || b.raw_status === 'processing'
     );
-
     if (pendingSocials.length > 0) {
         pendingSocials.forEach(b => { socialPollingStatus[b.id] = true; });
         startSocialPolling();
     }
 
-    // Tab switching
-    const activationsBtn = document.getElementById('activationsBtn');
-    const socialsBtn = document.getElementById('socialsBtn');
-    const logsBtn = document.getElementById('logsBtn');
+    // ── Tab switching ──────────────────────────────────────────────────────
+    document.getElementById('activationsBtn').addEventListener('click', () => showTab('activations'));
+    document.getElementById('socialsBtn').addEventListener('click',     () => showTab('socials'));
+    document.getElementById('logsBtn').addEventListener('click',        () => showTab('logs'));
 
-    function showTab(tab) {
-        document.getElementById('activationsContent').classList.add('hidden');
-        document.getElementById('socialsContent').classList.add('hidden');
-        document.getElementById('logsContent').classList.add('hidden');
-
-        activationsBtn.classList.remove('bg-green-800','text-white');
-        activationsBtn.classList.add('bg-gray-200','text-gray-600');
-        socialsBtn.classList.remove('bg-green-800','text-white');
-        socialsBtn.classList.add('bg-gray-200','text-gray-600');
-        logsBtn.classList.remove('bg-green-800','text-white');
-        logsBtn.classList.add('bg-gray-200','text-gray-600');
-
-        if (tab === 'activations') {
-            document.getElementById('activationsContent').classList.remove('hidden');
-            activationsBtn.classList.remove('bg-gray-200','text-gray-600');
-            activationsBtn.classList.add('bg-green-800','text-white');
-        } else if (tab === 'socials') {
-            document.getElementById('socialsContent').classList.remove('hidden');
-            socialsBtn.classList.remove('bg-gray-200','text-gray-600');
-            socialsBtn.classList.add('bg-green-800','text-white');
-        } else if (tab === 'logs') {
-            document.getElementById('logsContent').classList.remove('hidden');
-            logsBtn.classList.remove('bg-gray-200','text-gray-600');
-            logsBtn.classList.add('bg-green-800','text-white');
-        }
-    }
-
-    activationsBtn?.addEventListener('click', () => showTab('activations'));
-    socialsBtn?.addEventListener('click', () => showTab('socials'));
-    logsBtn?.addEventListener('click', () => showTab('logs'));
-
-    // Check URL params for tab redirect
+    // ── URL param redirect ─────────────────────────────────────────────────
     const tabParam = new URLSearchParams(window.location.search).get('tab');
-    if (tabParam === 'logs') {
-        showTab('logs');
-    } else {
-        showTab('activations');
-    }
-});
-</script>
-    if (socialPollingInterval) return;
+    if (tabParam === 'logs')    showTab('logs');
+    else if (tabParam === 'socials') showTab('socials');
+    else showTab('activations');
 
+    // ── Modal backdrop click ───────────────────────────────────────────────
+    document.getElementById('activationModal').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeActivationModal();
+    });
+    document.getElementById('socialModal').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeSocialModal();
+    });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ═════════════════════════════════════════════════════════════════════════════
+function showTab(tab) {
+    // Hide all content panels
+    ['activationsContent', 'socialsContent', 'logsContent'].forEach(id => {
+        document.getElementById(id)?.classList.add('hidden');
+    });
+
+    // Reset all buttons to inactive style
+    const btnIds = { activations: 'activationsBtn', socials: 'socialsBtn', logs: 'logsBtn' };
+    Object.values(btnIds).forEach(id => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.classList.remove('bg-green-800', 'bg-purple-600', 'bg-indigo-600', 'text-white');
+        btn.classList.add('bg-gray-200', 'text-gray-600');
+    });
+
+    // Activate selected tab
+    const activeColors = {
+        activations: ['bg-green-800', 'text-white'],
+        socials:     ['bg-green-800', 'text-white'],
+        logs:        ['bg-green-800', 'text-white'],
+    };
+
+    const contentId = tab === 'activations' ? 'activationsContent'
+                    : tab === 'socials'      ? 'socialsContent'
+                    : 'logsContent';
+
+    document.getElementById(contentId)?.classList.remove('hidden');
+
+    const activeBtn = document.getElementById(btnIds[tab]);
+    if (activeBtn) {
+        activeBtn.classList.remove('bg-gray-200', 'text-gray-600');
+        activeColors[tab].forEach(cls => activeBtn.classList.add(cls));
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// LOGS — copy credentials inline (no modal needed)
+// ═════════════════════════════════════════════════════════════════════════════
+function copyLogCreds(id) {
+    const body = document.getElementById('creds-body-' + id);
+    const btn  = document.getElementById('copy-btn-' + id);
+    if (!body || !btn) return;
+
+    navigator.clipboard.writeText(body.innerText).then(function () {
+        btn.classList.add('copied');
+        btn.innerHTML = `<svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+        </svg> Copied!`;
+        setTimeout(function () {
+            btn.classList.remove('copied');
+            btn.innerHTML = `<svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg> Copy`;
+        }, 2500);
+    }).catch(function () {
+        // Fallback: select the text so the user can Ctrl+C
+        const range = document.createRange();
+        range.selectNodeContents(body);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    });
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SOCIAL BOOST POLLING
+// ═════════════════════════════════════════════════════════════════════════════
+function startSocialPolling() {
+    if (socialPollingInterval) return;
     document.getElementById('socialPollingIndicator')?.classList.remove('hidden');
+
+    // Fire once immediately, then every 6 s
+    Object.keys(socialPollingStatus).forEach(id => pollOneSocialBoost(parseInt(id)));
 
     socialPollingInterval = setInterval(() => {
         const stillPending = Object.values(socialPollingStatus).some(v => v);
-        if (!stillPending) {
-            stopSocialPolling();
-            return;
-        }
-
+        if (!stillPending) { stopSocialPolling(); return; }
         Object.entries(socialPollingStatus).forEach(([id, active]) => {
             if (active) pollOneSocialBoost(parseInt(id));
         });
-    }, 6000); // every 6 s — MTP doesn't need hammering
-
-    // Also fire immediately so we don't wait 6 s for first update
-    Object.keys(socialPollingStatus).forEach(id => pollOneSocialBoost(parseInt(id)));
+    }, 6000);
 }
 
 function stopSocialPolling() {
-    if (socialPollingInterval) {
-        clearInterval(socialPollingInterval);
-        socialPollingInterval = null;
-    }
+    if (socialPollingInterval) { clearInterval(socialPollingInterval); socialPollingInterval = null; }
     document.getElementById('socialPollingIndicator')?.classList.add('hidden');
 }
 
@@ -431,27 +702,20 @@ function pollOneSocialBoost(boostId) {
     .then(r => r.json())
     .then(data => {
         if (!data.success || !data.data) return;
-
-        const d          = data.data;
+        const d           = data.data;
         const localStatus = d.local_status;
 
-        // Cache live data for modal refreshing
         socialLiveData[boostId] = d;
 
-        // Stop polling this boost once it reaches a terminal state
         if (['success', 'completed', 'failed', 'cancelled', 'refunded', 'partial'].includes(localStatus)) {
             socialPollingStatus[boostId] = false;
         }
 
-        // Update card badge
         updateSocialCard(boostId, localStatus, d);
 
-        // If this boost's modal is currently open, refresh it
-        if (currentSocialBoostId === boostId) {
-            updateModalStatus(d);
-        }
+        if (currentSocialBoostId === boostId) updateModalStatus(d);
     })
-    .catch(() => {}); // silent — user shouldn't see polling errors
+    .catch(() => {});
 }
 
 function updateSocialCard(boostId, localStatus, data) {
@@ -459,50 +723,44 @@ function updateSocialCard(boostId, localStatus, data) {
     const spinner = document.getElementById(`social-spinner-${boostId}`);
 
     if (badge) {
-        badge.textContent  = statusLabel(localStatus);
-        badge.className    = `inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1 ${badgeClass(localStatus)}`;
+        badge.textContent = statusLabel(localStatus);
+        badge.className   = `inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1 ${badgeClass(localStatus)}`;
     }
 
-    // Hide spinner once terminal
     if (spinner && ['success', 'completed', 'failed', 'cancelled', 'refunded'].includes(localStatus)) {
         spinner.classList.add('hidden');
     }
 
-    // Update mini progress bar if we have remains
     const qty = ALL_SOCIAL_BOOSTS.find(b => b.id === boostId)?.quantity || 0;
     if (qty > 0 && data.remains !== null && data.remains !== undefined) {
-        const remains  = parseInt(data.remains);
-        const pct      = Math.max(0, Math.min(100, Math.round((qty - remains) / qty * 100)));
+        const remains = parseInt(data.remains);
+        const pct     = Math.max(0, Math.min(100, Math.round((qty - remains) / qty * 100)));
 
-        const fill = document.getElementById(`social-progress-fill-${boostId}`);
+        const fill  = document.getElementById(`social-progress-fill-${boostId}`);
         const pctEl = document.getElementById(`social-progress-pct-${boostId}`);
+        const bar   = document.getElementById(`social-progress-bar-${boostId}`);
 
-        if (fill)  fill.style.width   = pct + '%';
-        if (pctEl) pctEl.textContent  = pct + '%';
-
-        // Show bar if it wasn't rendered server-side (remains was null initially)
-        const bar = document.getElementById(`social-progress-bar-${boostId}`);
-        if (bar) bar.classList.remove('hidden');
+        if (fill)  fill.style.width  = pct + '%';
+        if (pctEl) pctEl.textContent = pct + '%';
+        if (bar)   bar.classList.remove('hidden');
     }
 }
 
-// ════════════════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════════════════
 // SOCIAL BOOST MODAL
-// ════════════════════════════════════════════════════════════════════════
-
+// ═════════════════════════════════════════════════════════════════════════════
 function openSocialModal(boostId) {
     currentSocialBoostId = boostId;
     const modal = document.getElementById('socialModal');
     const boost = ALL_SOCIAL_BOOSTS.find(b => b.id === boostId);
     if (!boost) return;
 
-    // Merge any live-polled data we already have
-    const live = socialLiveData[boostId] || {};
-    const remains   = live.remains     ?? boost.remains;
-    const startCount= live.start_count ?? boost.start_count;
-    const rawStatus = live.local_status ?? boost.raw_status;
-    const label     = statusLabel(rawStatus);
-    const qty       = boost.quantity || 0;
+    const live       = socialLiveData[boostId] || {};
+    const remains    = live.remains      ?? boost.remains;
+    const startCount = live.start_count  ?? boost.start_count;
+    const rawStatus  = live.local_status ?? boost.raw_status;
+    const label      = statusLabel(rawStatus);
+    const qty        = boost.quantity || 0;
 
     const pct = (qty > 0 && remains !== null && remains !== undefined)
         ? Math.max(0, Math.min(100, Math.round((qty - parseInt(remains)) / qty * 100)))
@@ -510,7 +768,7 @@ function openSocialModal(boostId) {
 
     const isActive = rawStatus === 'pending' || rawStatus === 'processing';
 
-    const modalContent = `
+    modal.querySelector('.bg-white').innerHTML = `
         <div class="p-6">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-bold text-gray-900">Order Details</h2>
@@ -521,7 +779,6 @@ function openSocialModal(boostId) {
                 </button>
             </div>
 
-            <!-- Service header -->
             <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 mb-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-3">
@@ -539,7 +796,6 @@ function openSocialModal(boostId) {
                 </div>
             </div>
 
-            <!-- Link -->
             ${boost.link ? `
             <div class="bg-gray-50 rounded-xl p-4 mb-4">
                 <p class="text-xs text-gray-500 font-medium uppercase mb-1">Target Link</p>
@@ -551,10 +807,8 @@ function openSocialModal(boostId) {
                         </svg>
                     </button>
                 </div>
-            </div>
-            ` : ''}
+            </div>` : ''}
 
-            <!-- Progress -->
             <div class="bg-white border-2 border-gray-200 rounded-xl p-4 mb-4">
                 <div class="flex items-center justify-between mb-3">
                     <p class="text-xs text-gray-500 font-medium uppercase">Order Progress</p>
@@ -568,7 +822,7 @@ function openSocialModal(boostId) {
                     </button>` : ''}
                 </div>
 
-                <div class="grid grid-cols-2 gap-3 text-sm mb-3" id="modal-progress-grid">
+                <div class="grid grid-cols-2 gap-3 text-sm mb-3">
                     <div>
                         <p class="text-gray-500">Quantity</p>
                         <p class="font-semibold text-gray-900">${qty.toLocaleString()}</p>
@@ -593,12 +847,11 @@ function openSocialModal(boostId) {
                     </div>
                 </div>
 
-                <!-- Progress bar -->
                 <div id="modal-progress-bar">
                     <div class="w-full bg-gray-200 rounded-full h-2.5">
                         <div id="modal-progress-fill"
                              class="h-2.5 rounded-full transition-all duration-500 ${rawStatus === 'success' || rawStatus === 'completed' ? 'bg-green-500' : 'bg-purple-600'}"
-                             style="width: ${pct}%"></div>
+                             style="width:${pct}%"></div>
                     </div>
                     <div class="flex justify-between mt-1">
                         <p class="text-xs text-gray-400">${isActive ? 'In progress...' : label}</p>
@@ -607,7 +860,6 @@ function openSocialModal(boostId) {
                 </div>
             </div>
 
-            <!-- Transaction details -->
             <div class="bg-gray-50 rounded-xl p-4 mb-4">
                 <div class="grid grid-cols-2 gap-3 text-sm">
                     <div>
@@ -630,7 +882,6 @@ function openSocialModal(boostId) {
             </div>
         </div>`;
 
-    modal.querySelector('.bg-white').innerHTML = modalContent;
     modal.classList.remove('hidden');
     modal.classList.add('flex');
 }
@@ -641,7 +892,6 @@ function closeSocialModal() {
     currentSocialBoostId = null;
 }
 
-// Manual refresh button inside modal
 function checkSocialStatus(boostId) {
     const btn = document.getElementById('refresh-status-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Checking...'; }
@@ -671,19 +921,16 @@ function checkSocialStatus(boostId) {
     });
 }
 
-// Update the OPEN modal with fresh data
 function updateModalStatus(d) {
     const localStatus = d.local_status;
     const label       = statusLabel(localStatus);
 
-    // Status badge
     const badge = document.getElementById('modal-status-badge');
     if (badge) {
         badge.textContent = label;
         badge.className   = `px-2 py-1 text-xs font-semibold rounded-full ${badgeClass(localStatus)}`;
     }
 
-    // Counts
     if (d.start_count !== null && d.start_count !== undefined) {
         const el = document.getElementById('modal-start-count');
         if (el) el.textContent = parseInt(d.start_count).toLocaleString();
@@ -692,31 +939,29 @@ function updateModalStatus(d) {
     const boostQty = ALL_SOCIAL_BOOSTS.find(b => b.id === currentSocialBoostId)?.quantity || 0;
 
     if (d.remains !== null && d.remains !== undefined) {
-        const remains  = parseInt(d.remains);
+        const remains   = parseInt(d.remains);
         const delivered = Math.max(0, boostQty - remains);
-        const pct      = boostQty > 0 ? Math.max(0, Math.min(100, Math.round(delivered / boostQty * 100))) : 0;
+        const pct       = boostQty > 0 ? Math.max(0, Math.min(100, Math.round(delivered / boostQty * 100))) : 0;
 
         const remainsEl   = document.getElementById('modal-remains');
         const deliveredEl = document.getElementById('modal-delivered');
         const fill        = document.getElementById('modal-progress-fill');
         const pctEl       = document.getElementById('modal-progress-text');
 
-        if (remainsEl)   remainsEl.textContent   = remains.toLocaleString();
-        if (deliveredEl) deliveredEl.textContent  = delivered.toLocaleString();
-        if (fill)        fill.style.width         = pct + '%';
-        if (pctEl)       pctEl.textContent        = pct + '% complete';
+        if (remainsEl)   remainsEl.textContent  = remains.toLocaleString();
+        if (deliveredEl) deliveredEl.textContent = delivered.toLocaleString();
+        if (fill)        fill.style.width        = pct + '%';
+        if (pctEl)       pctEl.textContent       = pct + '% complete';
 
-        // Turn bar green on completion
         if (fill && (localStatus === 'success' || localStatus === 'completed')) {
             fill.classList.replace('bg-purple-600', 'bg-green-500');
         }
     }
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// ACTIVATION POLLING (unchanged logic)
-// ════════════════════════════════════════════════════════════════════════
-
+// ═════════════════════════════════════════════════════════════════════════════
+// ACTIVATION BACKGROUND POLLING
+// ═════════════════════════════════════════════════════════════════════════════
 function startGlobalPolling() {
     if (globalPollingInterval) return;
     document.getElementById('pollingIndicator')?.classList.remove('hidden');
@@ -741,8 +986,12 @@ function stopGlobalPolling() {
 function checkForSmsBackground(activationId) {
     fetch('/app/history/get-sms', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
-        body: JSON.stringify({ activation_id: activationId })
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+        },
+        body: JSON.stringify({ activation_id: activationId }),
     })
     .then(r => r.json())
     .then(data => {
@@ -760,16 +1009,20 @@ function checkForSmsBackground(activationId) {
 }
 
 function updateActivationCardFrontend(activationId, smsCode, status) {
-    const card = document.querySelector(`[data-activation-id="${activationId}"]`);
+    const card  = document.querySelector(`[data-activation-id="${activationId}"]`);
     if (!card) return;
     const badge = card.querySelector('.otp-status');
     if (!badge) return;
+
     if (status === 'completed') {
         badge.textContent = 'Completed';
-        badge.className = 'otp-status inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1 bg-green-100 text-green-700';
+        badge.className   = 'otp-status inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1 bg-green-100 text-green-700';
     } else if (status === 'expired') {
         badge.textContent = 'Expired';
-        badge.className = 'otp-status inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1 bg-red-100 text-red-700';
+        badge.className   = 'otp-status inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1 bg-red-100 text-red-700';
+    } else if (status === 'cancelled') {
+        badge.textContent = 'Cancelled';
+        badge.className   = 'otp-status inline-block px-2 py-1 text-xs font-semibold rounded-full mt-1 bg-gray-100 text-gray-700';
     }
 }
 
@@ -782,42 +1035,24 @@ function updateOpenModalWithSms(activationId, smsCode) {
                     <p class="text-3xl font-bold text-green-700 tracking-wider">${smsCode}</p>
                     <button onclick="copyToClipboard('${smsCode}', this)" class="text-green-600">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                         </svg>
                     </button>
                 </div>
             </div>`;
         const statusBadge = document.getElementById('statusBadge');
-        if (statusBadge) { statusBadge.textContent = 'Completed'; statusBadge.className = 'px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700'; }
+        if (statusBadge) {
+            statusBadge.textContent = 'Completed';
+            statusBadge.className   = 'px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700';
+        }
     }
     stopPolling();
 }
 
-// ════════════════════════════════════════════════════════════════════════
-// TAB SWITCHING
-// ════════════════════════════════════════════════════════════════════════
-
-document.getElementById('activationsBtn').addEventListener('click', () => switchTab('activations'));
-document.getElementById('socialsBtn').addEventListener('click', () => switchTab('socials'));
-
-function switchTab(tab) {
-    if (tab === 'activations') {
-        document.getElementById('activationsBtn').className = 'flex-1 text-center py-3 rounded-full font-semibold bg-green-800 text-white mr-2';
-        document.getElementById('socialsBtn').className     = 'flex-1 text-center py-3 rounded-full font-semibold bg-gray-200 text-gray-600';
-        document.getElementById('activationsContent').classList.remove('hidden');
-        document.getElementById('socialsContent').classList.add('hidden');
-    } else {
-        document.getElementById('socialsBtn').className     = 'flex-1 text-center py-3 rounded-full font-semibold bg-purple-600 text-white';
-        document.getElementById('activationsBtn').className = 'flex-1 text-center py-3 rounded-full font-semibold bg-gray-200 text-gray-600';
-        document.getElementById('socialsContent').classList.remove('hidden');
-        document.getElementById('activationsContent').classList.add('hidden');
-    }
-}
-
-// ════════════════════════════════════════════════════════════════════════
-// ACTIVATION MODAL (unchanged)
-// ════════════════════════════════════════════════════════════════════════
-
+// ═════════════════════════════════════════════════════════════════════════════
+// ACTIVATION MODAL
+// ═════════════════════════════════════════════════════════════════════════════
 function openActivationModal(arg1, arg2) {
     let activationId = typeof arg1 === 'number' ? arg1 : (typeof arg2 === 'number' ? arg2 : null);
     if (!activationId) return;
@@ -828,7 +1063,7 @@ function openActivationModal(arg1, arg2) {
     const activation = ALL_ACTIVATIONS.find(a => a.id === activationId);
     if (!activation) return;
 
-    const modalContent = `
+    modal.querySelector('.bg-white').innerHTML = `
         <div class="p-6">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-bold text-gray-900">Activation Details</h2>
@@ -838,6 +1073,7 @@ function openActivationModal(arg1, arg2) {
                     </svg>
                 </button>
             </div>
+
             <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 mb-4">
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center space-x-3">
@@ -852,22 +1088,27 @@ function openActivationModal(arg1, arg2) {
                     <img src="https://flagcdn.com/w80/${activation.flag}.png" alt="flag" class="w-12 h-12 rounded-lg object-cover">
                 </div>
             </div>
+
             <div class="bg-gray-50 rounded-xl p-4 mb-4">
                 <p class="text-xs text-gray-500 font-medium uppercase mb-1">Phone Number</p>
                 <div class="flex items-center justify-between">
                     <p class="text-lg font-bold text-gray-900">${activation.number}</p>
                     <button onclick="copyToClipboard('${activation.number}', this)" class="text-green-600">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                         </svg>
                     </button>
                 </div>
             </div>
+
             <div class="bg-white border-2 border-gray-200 rounded-xl p-4 mb-4" id="smsCodeSection">
                 <div class="flex items-center justify-between mb-3">
                     <p class="text-xs text-gray-500 font-medium uppercase">SMS Code</p>
                     <span id="statusBadge" class="px-2 py-1 text-xs font-semibold rounded-full
-                        ${activation.raw_status === 'completed' ? 'bg-green-100 text-green-700' : activation.raw_status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}">
+                        ${activation.raw_status === 'completed' ? 'bg-green-100 text-green-700'
+                          : activation.raw_status === 'pending'  ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-red-100 text-red-700'}">
                         ${activation.status}
                     </span>
                 </div>
@@ -877,7 +1118,8 @@ function openActivationModal(arg1, arg2) {
                             <p class="text-3xl font-bold text-green-700 tracking-wider">${activation.sms_code}</p>
                             <button onclick="copyToClipboard('${activation.sms_code}', this)" class="text-green-600">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                                 </svg>
                             </button>
                         </div>
@@ -896,6 +1138,7 @@ function openActivationModal(arg1, arg2) {
                     </div>
                 `}
             </div>
+
             <div class="bg-gray-50 rounded-xl p-4 mb-4">
                 <div class="grid grid-cols-2 gap-3 text-sm">
                     <div><p class="text-gray-500">Amount</p><p class="font-semibold text-gray-900">${activation.amount}</p></div>
@@ -903,6 +1146,7 @@ function openActivationModal(arg1, arg2) {
                     <div><p class="text-gray-500">Request ID</p><p class="font-semibold text-gray-900 text-xs">${activation.request_id}</p></div>
                 </div>
             </div>
+
             ${activation.raw_status === 'pending' ? `
                 <button onclick="cancelActivation(${activation.id}, this)"
                         class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors">
@@ -910,7 +1154,6 @@ function openActivationModal(arg1, arg2) {
                 </button>` : ''}
         </div>`;
 
-    modal.querySelector('.bg-white').innerHTML = modalContent;
     modal.classList.remove('hidden');
     modal.classList.add('flex');
 
@@ -931,7 +1174,7 @@ function startPolling(activationId, expiresAt) {
     stopPolling();
     updateCountdown(expiresAt);
     window.countdownInterval = setInterval(() => updateCountdown(expiresAt), 1000);
-    pollingInterval = setInterval(() => checkForSms(activationId), 5000);
+    pollingInterval          = setInterval(() => checkForSms(activationId), 5000);
 }
 
 function stopPolling() {
@@ -953,8 +1196,12 @@ function updateCountdown(expiresAt) {
 function checkForSms(activationId) {
     fetch('/app/history/get-sms', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
-        body: JSON.stringify({ activation_id: activationId })
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+        },
+        body: JSON.stringify({ activation_id: activationId }),
     })
     .then(r => r.json())
     .then(data => {
@@ -968,22 +1215,33 @@ function checkForSms(activationId) {
                             <p class="text-3xl font-bold text-green-700 tracking-wider">${data.sms_code}</p>
                             <button onclick="copyToClipboard('${data.sms_code}', this)" class="text-green-600">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                                 </svg>
                             </button>
                         </div>
                     </div>`;
                 const badge = document.getElementById('statusBadge');
-                if (badge) { badge.textContent = 'Completed'; badge.className = 'px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700'; }
+                if (badge) {
+                    badge.textContent = 'Completed';
+                    badge.className   = 'px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700';
+                }
             }
             updateActivationCardFrontend(activationId, data.sms_code, 'completed');
             showToast('SMS received', 'success');
         } else if (data.status === 'expired') {
             stopPolling();
             const smsSection = document.getElementById('smsCodeSection');
-            if (smsSection) smsSection.innerHTML = `<div class="text-center py-4"><p class="text-red-600 font-medium">No SMS received</p><p class="text-sm text-gray-500 mt-1">This activation has expired</p></div>`;
+            if (smsSection) smsSection.innerHTML = `
+                <div class="text-center py-4">
+                    <p class="text-red-600 font-medium">No SMS received</p>
+                    <p class="text-sm text-gray-500 mt-1">This activation has expired</p>
+                </div>`;
             const badge = document.getElementById('statusBadge');
-            if (badge) { badge.textContent = 'Expired'; badge.className = 'px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700'; }
+            if (badge) {
+                badge.textContent = 'Expired';
+                badge.className   = 'px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700';
+            }
             updateActivationCardFrontend(activationId, null, 'expired');
         }
     })
@@ -993,10 +1251,15 @@ function checkForSms(activationId) {
 function cancelActivation(activationId, btnEl) {
     if (!confirm('Cancel this activation? Your balance will be refunded.')) return;
     if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Cancelling...'; }
+
     fetch('/app/history/cancel-activation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
-        body: JSON.stringify({ activation_id: activationId })
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+        },
+        body: JSON.stringify({ activation_id: activationId }),
     })
     .then(r => r.json())
     .then(data => {
@@ -1009,17 +1272,23 @@ function cancelActivation(activationId, btnEl) {
             if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Cancel & Refund'; }
         }
     })
-    .catch(() => { alert('An error occurred'); if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Cancel & Refund'; } });
+    .catch(() => {
+        alert('An error occurred');
+        if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Cancel & Refund'; }
+    });
 }
 
-// ════════════════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════════════════
 // UTILITIES
-// ════════════════════════════════════════════════════════════════════════
-
+// ═════════════════════════════════════════════════════════════════════════════
 function copyToClipboard(text, btnEl) {
     navigator.clipboard.writeText(text).then(() => {
         showToast('Copied!', 'success');
-        if (btnEl) { const orig = btnEl.innerHTML; btnEl.innerHTML = '✓'; setTimeout(() => btnEl.innerHTML = orig, 1500); }
+        if (btnEl) {
+            const orig = btnEl.innerHTML;
+            btnEl.innerHTML = '✓';
+            setTimeout(() => btnEl.innerHTML = orig, 1500);
+        }
     }).catch(() => showToast('Failed to copy', 'error'));
 }
 
@@ -1028,22 +1297,11 @@ function showToast(message, type = 'success') {
     toast.className = `fixed bottom-4 right-4 ${type === 'success' ? 'bg-green-600' : 'bg-red-600'} text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-slide-in text-sm`;
     toast.textContent = message;
     document.body.appendChild(toast);
-    setTimeout(() => { toast.classList.add('animate-slide-out'); setTimeout(() => toast.remove(), 300); }, 3000);
+    setTimeout(() => {
+        toast.classList.add('animate-slide-out');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
-
-// Close modals on backdrop click
-document.getElementById('activationModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeActivationModal(); });
-document.getElementById('socialModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeSocialModal(); });
 </script>
 
-<style>
-@keyframes spin { to { transform: rotate(360deg); } }
-@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.5} }
-@keyframes slide-in { from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1} }
-@keyframes slide-out { from{transform:translateX(0);opacity:1}to{transform:translateX(100%);opacity:0} }
-.animate-spin  { animation: spin 1s linear infinite; }
-.animate-pulse { animation: pulse 2s cubic-bezier(.4,0,.6,1) infinite; }
-.animate-slide-in  { animation: slide-in .3s ease-out; }
-.animate-slide-out { animation: slide-out .3s ease-out; }
-</style>
 @endsection

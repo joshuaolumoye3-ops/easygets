@@ -2,8 +2,17 @@
 <div class="border border-gray-200 rounded-2xl p-3 flex items-center justify-between gap-3 bg-white shadow-xs hover:shadow-md transition">
     <div class="flex items-center gap-3 flex-1 min-w-0">
         <div class="w-12 h-12 rounded-full bg-slate-100 flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-200">
-            @if(!empty($product->country_code))
-                <img src="https://flagcdn.com/w32/{{ strtolower($product->country_code) }}.png" alt="{{ $product->country }} flag" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='/assets/sim-icon.svg'" />
+            @php
+                $flagCode = null;
+                if (!empty($product->country_code)) {
+                    $flagCode = strtolower($product->country_code);
+                } elseif (!empty($product->country)) {
+                    // fallback: use first two letters of country name
+                    $flagCode = strtolower(substr($product->country, 0, 2));
+                }
+            @endphp
+            @if($flagCode)
+                <img src="https://flagcdn.com/w32/{{ $flagCode }}.png" alt="{{ $product->country ?? 'Country' }} flag" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='/assets/sim-icon.svg'" />
             @else
                 <img src="/assets/sim-icon.svg" alt="Country" class="w-6 h-6" />
             @endif
