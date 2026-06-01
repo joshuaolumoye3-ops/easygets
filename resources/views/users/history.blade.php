@@ -317,23 +317,28 @@ document.addEventListener('DOMContentLoaded', function () {
         showTab('activations');
     }
 });
+</script>
 
+@php
+$logsDataArray = [];
+foreach($logs as $log) {
+    $logsDataArray[$log['id']] = [
+        'service_name' => $log['service_name'],
+        'amount' => $log['amount'],
+        'status' => $log['status'],
+        'date' => $log['date'],
+        'login_details' => $log['login_details'] ?? '',
+        'reference' => $log['reference'] ?? '',
+    ];
+}
+@endphp
+
+<script>
 // ════════════════════════════════════════════════════════════════════════
 // LOGS MODAL
 // ════════════════════════════════════════════════════════════════════════
 
-const logsData = {
-    @forelse($logs as $log)
-        {{ $log['id'] }}: {
-            service_name: @json($log['service_name']),
-            amount: @json($log['amount']),
-            status: @json($log['status']),
-            date: @json($log['date']),
-            login_details: @json($log['login_details'] ?? ''),
-            reference: @json($log['reference'] ?? ''),
-        },
-    @endforelse
-};
+const logsData = @json($logsDataArray);
 
 function openLogsModal(id) {
     const log = logsData[id];
