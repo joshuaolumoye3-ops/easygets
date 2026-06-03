@@ -84,6 +84,25 @@
     @endif
 
     <div id="app" class="min-h-screen flex flex-col">
+        @if(!empty($activeAnnouncement))
+            <div class="bg-green-50 border border-green-200 text-green-900 rounded-2xl mx-auto mt-4 mb-6 px-4 py-4 shadow-sm max-w-6xl w-full mx-4 sm:mx-auto">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <p class="text-sm uppercase tracking-[0.2em] text-green-700 font-semibold mb-1">Update</p>
+                        <h2 class="text-lg font-semibold text-green-900">{{ $activeAnnouncement->title }}</h2>
+                        <p class="text-sm text-green-800 mt-1">{{ $activeAnnouncement->body }}</p>
+                    </div>
+                    <div class="text-right text-xs text-green-700">
+                        @if($activeAnnouncement->starts_at)
+                            <div>Starts: {{ $activeAnnouncement->starts_at->format('M d, Y H:i') }}</div>
+                        @endif
+                        @if($activeAnnouncement->ends_at)
+                            <div>Ends: {{ $activeAnnouncement->ends_at->format('M d, Y H:i') }}</div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endif
         <main class="flex-grow">
             @yield('content')
         </main>

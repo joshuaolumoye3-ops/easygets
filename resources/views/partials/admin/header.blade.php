@@ -382,6 +382,9 @@
     
     <div class="navbar-actions">
         @auth('admins')
+            <button class="nav-btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; font-weight: 600; padding: 0.6rem 1.2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35); transition: all 0.3s ease; margin-right: 0.75rem;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(16, 185, 129, 0.55)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.35)'" onclick="document.getElementById('announcementModal').style.display='flex'">
+                + Announcement
+            </button>
             @if(Auth::guard('admins')->user()->role === 'super_admin')
                 <button class="nav-btn" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; font-weight: 600; padding: 0.6rem 1.2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(59, 130, 246, 0.6)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.4)'" onclick="document.getElementById('addAdminModal').style.display='flex'">
                     + Create Admin
@@ -412,6 +415,68 @@
         </button>
     </div>
 </nav>
+
+<!-- Announcement Modal -->
+<div id="announcementModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: #111827; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; width: 100%; max-width: 520px; overflow: hidden; margin: 20px;">
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 22px; position: relative;">
+            <h3 style="color: white; font-size: 22px; font-weight: 700; margin: 0;">Platform Announcement</h3>
+            <p style="color: rgba(255,255,255,0.85); font-size: 14px; margin: 8px 0 0;">Share what’s new with users and control visibility.</p>
+            <button type="button" onclick="document.getElementById('announcementModal').style.display='none'" style="position: absolute; top: 18px; right: 18px; background: rgba(255,255,255,0.18); border: none; color: white; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; font-size: 22px; transition: all 0.3s;">×</button>
+        </div>
+        <form method="POST" action="{{ route('admin.announcements.save') }}" style="padding: 26px; background: #0f172a;">
+            @csrf
+            <div style="margin-bottom: 18px;">
+                <label style="display: block; color: #e2e8f0; font-size: 13px; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.8px; text-transform: uppercase;">Announcement Title</label>
+                <input type="text" name="title" required placeholder="Headline for users" style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(148,163,184,0.2); color: #f8fafc; padding: 14px 16px; border-radius: 12px; font-size: 14px;" />
+            </div>
+            <div style="margin-bottom: 18px;">
+                <label style="display: block; color: #e2e8f0; font-size: 13px; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.8px; text-transform: uppercase;">Details</label>
+                <textarea name="body" required rows="5" placeholder="Describe what’s new or important" style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(148,163,184,0.2); color: #f8fafc; padding: 14px 16px; border-radius: 12px; font-size: 14px;"></textarea>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px;">
+                <div>
+                    <label style="display: block; color: #e2e8f0; font-size: 13px; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.8px; text-transform: uppercase;">Starts at</label>
+                    <input type="datetime-local" name="starts_at" style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(148,163,184,0.2); color: #f8fafc; padding: 12px 14px; border-radius: 12px; font-size: 14px;" />
+                </div>
+                <div>
+                    <label style="display: block; color: #e2e8f0; font-size: 13px; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.8px; text-transform: uppercase;">Ends at</label>
+                    <input type="datetime-local" name="ends_at" style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(148,163,184,0.2); color: #f8fafc; padding: 12px 14px; border-radius: 12px; font-size: 14px;" />
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px;">
+                <label style="display: flex; align-items: center; gap: 10px; color: #e2e8f0; font-size: 14px;">
+                    <input type="checkbox" name="is_active" value="1" style="width: 18px; height: 18px; border-radius: 8px; border: 1px solid rgba(148,163,184,0.4);" />
+                    Show to users now
+                </label>
+                <button type="submit" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 12px 24px; border-radius: 999px; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: 0 12px 30px rgba(16,185,129,0.24); transition: transform 0.2s ease;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">Save Announcement</button>
+            </div>
+
+            @if(!empty($adminAnnouncements) && $adminAnnouncements->count())
+                <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(148,163,184,0.16); border-radius: 14px; padding: 18px;">
+                    <h4 style="color: #f8fafc; font-size: 15px; font-weight: 700; margin-bottom: 12px;">Existing announcements</h4>
+                    <div style="display: grid; gap: 12px;">
+                        @foreach($adminAnnouncements as $announcement)
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(148,163,184,0.18); border-radius: 12px;">
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                        <span style="font-size: 14px; font-weight: 700; color: #f8fafc;">{{ Str::limit($announcement->title, 42) }}</span>
+                                        <span style="font-size: 11px; line-height: 1.2; color: {{ $announcement->is_active ? '#34d399' : '#fbbf24' }}; background: rgba(255,255,255,0.08); padding: 3px 8px; border-radius: 999px;">{{ $announcement->is_active ? 'Live' : 'Draft' }}</span>
+                                    </div>
+                                    <p style="font-size: 13px; color: #cbd5e1;">{{ Str::limit($announcement->body, 70) }}</p>
+                                </div>
+                                <form method="POST" action="{{ route('admin.announcements.toggle', $announcement) }}">
+                                    @csrf
+                                    <button type="submit" style="background: {{ $announcement->is_active ? '#f97316' : '#2563eb' }}; color: white; border: none; padding: 10px 16px; border-radius: 999px; font-weight: 700; font-size: 12px; cursor: pointer;">{{ $announcement->is_active ? 'Deactivate' : 'Activate' }}</button>
+                                </form>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+        </form>
+    </div>
+</div>
 
 <!-- Main Content Wrapper -->
 <div class="main-content-wrapper" id="mainContentWrapper">

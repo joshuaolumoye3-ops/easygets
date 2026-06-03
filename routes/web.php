@@ -318,6 +318,9 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
     Route::post('/logs/{id}/details', [AdminServiceController::class, 'updateLogDetails'])->name('admin.logs.updateDetails');
     Route::post('/logs/{id}/fulfill', [AdminServiceController::class, 'fulfillLogOrder'])->name('admin.logs.fulfill');
 
+    Route::post('/announcements', [AdminController::class, 'saveAnnouncement'])->name('admin.announcements.save');
+    Route::post('/announcements/{announcement}/toggle', [AdminController::class, 'toggleAnnouncement'])->name('admin.announcements.toggle');
+
     Route::prefix('esim')->group(function () {
         Route::get('/', [AdminEsimController::class, 'index'])->name('admin.esim.index');
         Route::post('/refresh-countries', [AdminEsimController::class, 'refreshCountries'])->name('admin.esim.refresh');

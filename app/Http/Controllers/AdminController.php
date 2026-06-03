@@ -16,6 +16,7 @@ use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 use App\Models\Admin;
 use App\Models\AdminTransaction;
+use App\Models\Announcement;
 use App\Helpers\MoreThanPanelHelper;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -130,6 +131,35 @@ class AdminController extends Controller
             'success' => true,
             'users' => $users
         ]);
+    }
+
+    public function saveAnnouncement(Request $request)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'body' => 'required|string',
+            'is_active' => 'nullable|boolean',
+            'starts_at' => 'nullable|date',
+            'ends_at' => 'nullable|date|after_or_equal:starts_at',
+        ]);
+
+        Announcement::create([
+            'title' => $request->title,
+            'body' => $request->body,
+            'is_active' => $request->boolean('is_active'),
+            'starts_at' => $request->starts_at ?: null,
+            'ends_at' => $request->ends_at ?: null,
+            'created_by' => Auth::guard('admins')->id(),
+        ]);
+
+        return back()->with('success', 'Announcement saved successfully.');
+    }
+
+    public function toggleAnnouncement(Announcement $announcement)
+    {
+        $announcement->update(['is_active' => !$announcement->is_active]);
+
+        return back()->with('success', 'Announcement visibility updated.');
     }
 
     public function getSystemStats()
