@@ -136,6 +136,7 @@ class AdminController extends Controller
     public function saveAnnouncement(Request $request)
     {
         $request->validate([
+            'announcement_id' => 'nullable|exists:announcements,id',
             'title' => 'required|string|max:255',
             'body' => 'required|string',
             'is_active' => 'nullable|boolean',
@@ -143,15 +144,24 @@ class AdminController extends Controller
             'ends_at' => 'nullable|date|after_or_equal:starts_at',
         ]);
 
-        Announcement::create([
+        $data = [
             'title' => $request->title,
             'body' => $request->body,
             'is_active' => $request->boolean('is_active'),
             'starts_at' => $request->starts_at ?: null,
             'ends_at' => $request->ends_at ?: null,
             'created_by' => Auth::guard('admins')->id(),
-        ]);
+        ];
 
+        if ($request->announcement_id) {
+            $announcement = Announcement::find($request->announcement_id);
+            if ($announcement) {
+                $announcement->update($data);
+                return back()->with('success', 'Announcement updated successfully.');
+            }
+        }
+
+        Announcement::create($data);
         return back()->with('success', 'Announcement saved successfully.');
     }
 
@@ -160,6 +170,13 @@ class AdminController extends Controller
         $announcement->update(['is_active' => !$announcement->is_active]);
 
         return back()->with('success', 'Announcement visibility updated.');
+    }
+
+    public function destroyAnnouncement(Announcement $announcement)
+    {
+        $announcement->delete();
+
+        return back()->with('success', 'Announcement deleted successfully.');
     }
 
     public function getSystemStats()

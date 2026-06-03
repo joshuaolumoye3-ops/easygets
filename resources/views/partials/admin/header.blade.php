@@ -382,7 +382,7 @@
     
     <div class="navbar-actions">
         @auth('admins')
-            <button class="nav-btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; font-weight: 600; padding: 0.6rem 1.2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35); transition: all 0.3s ease; margin-right: 0.75rem;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(16, 185, 129, 0.55)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.35)'" onclick="document.getElementById('announcementModal').style.display='flex'">
+            <button class="nav-btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; font-weight: 600; padding: 0.6rem 1.2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35); transition: all 0.3s ease; margin-right: 0.75rem;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(16, 185, 129, 0.55)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.35)'" onclick="document.getElementById('announcementModal').style.display='flex'; document.getElementById('announcementForm').reset(); document.getElementById('announcementIdInput').value=''; document.getElementById('announcementSubmitBtn').textContent='Save Announcement'; document.getElementById('cancelAnnouncementEdit').style.display='none';">
                 + Announcement
             </button>
             @if(Auth::guard('admins')->user()->role === 'super_admin')
@@ -424,32 +424,36 @@
             <p style="color: rgba(255,255,255,0.85); font-size: 14px; margin: 8px 0 0;">Share what’s new with users and control visibility.</p>
             <button type="button" onclick="document.getElementById('announcementModal').style.display='none'" style="position: absolute; top: 18px; right: 18px; background: rgba(255,255,255,0.18); border: none; color: white; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; font-size: 22px; transition: all 0.3s;">×</button>
         </div>
-        <form method="POST" action="{{ route('admin.announcements.save') }}" style="padding: 26px; background: #0f172a;">
+        <form method="POST" action="{{ route('admin.announcements.save') }}" id="announcementForm" style="padding: 26px; background: #0f172a;">
             @csrf
+            <input type="hidden" name="announcement_id" id="announcementIdInput" value="" />
             <div style="margin-bottom: 18px;">
                 <label style="display: block; color: #e2e8f0; font-size: 13px; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.8px; text-transform: uppercase;">Announcement Title</label>
-                <input type="text" name="title" required placeholder="Headline for users" style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(148,163,184,0.2); color: #f8fafc; padding: 14px 16px; border-radius: 12px; font-size: 14px;" />
+                <input type="text" name="title" id="announcementTitleInput" required placeholder="Headline for users" style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(148,163,184,0.2); color: #f8fafc; padding: 14px 16px; border-radius: 12px; font-size: 14px;" />
             </div>
             <div style="margin-bottom: 18px;">
                 <label style="display: block; color: #e2e8f0; font-size: 13px; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.8px; text-transform: uppercase;">Details</label>
-                <textarea name="body" required rows="5" placeholder="Describe what’s new or important" style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(148,163,184,0.2); color: #f8fafc; padding: 14px 16px; border-radius: 12px; font-size: 14px;"></textarea>
+                <textarea id="announcementBodyInput" name="body" required rows="5" placeholder="Describe what’s new or important" style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(148,163,184,0.2); color: #f8fafc; padding: 14px 16px; border-radius: 12px; font-size: 14px;"></textarea>
             </div>
             <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px;">
                 <div>
                     <label style="display: block; color: #e2e8f0; font-size: 13px; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.8px; text-transform: uppercase;">Starts at</label>
-                    <input type="datetime-local" name="starts_at" style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(148,163,184,0.2); color: #f8fafc; padding: 12px 14px; border-radius: 12px; font-size: 14px;" />
+                    <input type="datetime-local" name="starts_at" id="announcementStartsAtInput" style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(148,163,184,0.2); color: #f8fafc; padding: 12px 14px; border-radius: 12px; font-size: 14px;" />
                 </div>
                 <div>
                     <label style="display: block; color: #e2e8f0; font-size: 13px; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.8px; text-transform: uppercase;">Ends at</label>
-                    <input type="datetime-local" name="ends_at" style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(148,163,184,0.2); color: #f8fafc; padding: 12px 14px; border-radius: 12px; font-size: 14px;" />
+                    <input type="datetime-local" name="ends_at" id="announcementEndsAtInput" style="width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(148,163,184,0.2); color: #f8fafc; padding: 12px 14px; border-radius: 12px; font-size: 14px;" />
                 </div>
             </div>
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px;">
                 <label style="display: flex; align-items: center; gap: 10px; color: #e2e8f0; font-size: 14px;">
-                    <input type="checkbox" name="is_active" value="1" style="width: 18px; height: 18px; border-radius: 8px; border: 1px solid rgba(148,163,184,0.4);" />
+                    <input type="checkbox" name="is_active" id="announcementActiveInput" value="1" style="width: 18px; height: 18px; border-radius: 8px; border: 1px solid rgba(148,163,184,0.4);" />
                     Show to users now
                 </label>
-                <button type="submit" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 12px 24px; border-radius: 999px; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: 0 12px 30px rgba(16,185,129,0.24); transition: transform 0.2s ease;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">Save Announcement</button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button type="button" id="cancelAnnouncementEdit" style="display: none; background: rgba(255,255,255,0.08); color: #e2e8eb; border: 1px solid rgba(148,163,184,0.3); padding: 12px 22px; border-radius: 999px; font-weight: 700; font-size: 14px; cursor: pointer; transition: transform 0.2s ease;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">Cancel</button>
+                    <button type="submit" id="announcementSubmitBtn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 12px 24px; border-radius: 999px; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: 0 12px 30px rgba(16,185,129,0.24); transition: transform 0.2s ease;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">Save Announcement</button>
+                </div>
             </div>
 
             @if(!empty($adminAnnouncements) && $adminAnnouncements->count())
@@ -465,10 +469,18 @@
                                     </div>
                                     <p style="font-size: 13px; color: #cbd5e1;">{{ Str::limit($announcement->body, 70) }}</p>
                                 </div>
-                                <form method="POST" action="{{ route('admin.announcements.toggle', $announcement) }}">
-                                    @csrf
-                                    <button type="submit" style="background: {{ $announcement->is_active ? '#f97316' : '#2563eb' }}; color: white; border: none; padding: 10px 16px; border-radius: 999px; font-weight: 700; font-size: 12px; cursor: pointer;">{{ $announcement->is_active ? 'Deactivate' : 'Activate' }}</button>
-                                </form>
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <button type="button" class="editAnnouncementBtn" data-id="{{ $announcement->id }}" data-title="{{ htmlspecialchars($announcement->title, ENT_QUOTES, 'UTF-8') }}" data-body="{{ htmlspecialchars($announcement->body, ENT_QUOTES, 'UTF-8') }}" data-active="{{ $announcement->is_active ? '1' : '0' }}" data-starts-at="{{ optional($announcement->starts_at)->format('Y-m-d\TH:i') }}" data-ends-at="{{ optional($announcement->ends_at)->format('Y-m-d\TH:i') }}" style="background: rgba(255,255,255,0.08); color: #e5e7eb; border: 1px solid rgba(148,163,184,0.2); padding: 9px 14px; border-radius: 999px; font-weight: 700; font-size: 12px; cursor: pointer;">Edit</button>
+                                    <form method="POST" action="{{ route('admin.announcements.delete', $announcement) }}" onsubmit="return confirm('Delete this announcement?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" style="background: #ef4444; color: white; border: none; padding: 9px 14px; border-radius: 999px; font-weight: 700; font-size: 12px; cursor: pointer;">Delete</button>
+                                    </form>
+                                    <form method="POST" action="{{ route('admin.announcements.toggle', $announcement) }}">
+                                        @csrf
+                                        <button type="submit" style="background: {{ $announcement->is_active ? '#f97316' : '#2563eb' }}; color: white; border: none; padding: 10px 16px; border-radius: 999px; font-weight: 700; font-size: 12px; cursor: pointer;">{{ $announcement->is_active ? 'Deactivate' : 'Activate' }}</button>
+                                    </form>
+                                </div>
                             </div>
                         @endforeach
                     </div>
@@ -547,6 +559,13 @@
     const topNavbar = document.getElementById('topNavbar');
     const sidebarToggle = document.getElementById('sidebarToggle');
     const sidebarOverlay = document.getElementById('sidebarOverlay');
+    const announcementModal = document.getElementById('announcementModal');
+    const announcementForm = document.getElementById('announcementForm');
+    const announcementIdInput = document.getElementById('announcementIdInput');
+    const announcementTitleInput = document.getElementById('announcementTitleInput');
+    const announcementActiveInput = document.getElementById('announcementActiveInput');
+    const cancelAnnouncementEdit = document.getElementById('cancelAnnouncementEdit');
+    const announcementSubmitBtn = document.getElementById('announcementSubmitBtn');
     const isMobile = () => window.innerWidth <= 1024;
     
     // Toggle sidebar
@@ -589,6 +608,38 @@
                     sidebarOverlay.classList.remove('show');
                 }
             });
+        });
+    }
+
+    const bodyInput = document.getElementById('announcementBodyInput');
+    const startsAtInput = document.getElementById('announcementStartsAtInput');
+    const endsAtInput = document.getElementById('announcementEndsAtInput');
+
+    document.querySelectorAll('.editAnnouncementBtn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            announcementIdInput.value = btn.dataset.id || '';
+            announcementTitleInput.value = btn.dataset.title || '';
+            if (bodyInput) bodyInput.value = btn.dataset.body || '';
+            announcementActiveInput.checked = btn.dataset.active === '1';
+            if (startsAtInput) startsAtInput.value = btn.dataset.startsAt || '';
+            if (endsAtInput) endsAtInput.value = btn.dataset.endsAt || '';
+            if (announcementSubmitBtn) announcementSubmitBtn.textContent = 'Update Announcement';
+            if (cancelAnnouncementEdit) cancelAnnouncementEdit.style.display = 'inline-flex';
+            if (announcementModal) announcementModal.style.display = 'flex';
+        });
+    });
+
+    if (cancelAnnouncementEdit) {
+        cancelAnnouncementEdit.addEventListener('click', () => {
+            announcementIdInput.value = '';
+            announcementTitleInput.value = '';
+            if (bodyInput) bodyInput.value = '';
+            announcementActiveInput.checked = false;
+            if (startsAtInput) startsAtInput.value = '';
+            if (endsAtInput) endsAtInput.value = '';
+            if (announcementSubmitBtn) announcementSubmitBtn.textContent = 'Save Announcement';
+            cancelAnnouncementEdit.style.display = 'none';
+            if (announcementModal) announcementModal.style.display = 'none';
         });
     }
 })();

@@ -103,11 +103,83 @@
                 </div>
             </div>
         @endif
+
+        @if(request()->routeIs('dashboard') && !empty($activeAnnouncement))
+            <div id="userAnnouncementModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/80 px-4 py-6">
+                <div class="relative w-full max-w-3xl rounded-[32px] overflow-hidden shadow-2xl border border-slate-200/20 bg-white">
+                    <div class="bg-gradient-to-r from-emerald-600 to-teal-500 px-6 py-5">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <p class="text-xs uppercase tracking-[0.4em] text-emerald-100 font-semibold">Announcement</p>
+                                <h2 class="mt-3 text-2xl sm:text-3xl font-bold text-white leading-tight">{{ $activeAnnouncement->title }}</h2>
+                            </div>
+                            <button id="closeAnnouncementModal" class="text-white text-3xl leading-none opacity-90 hover:opacity-100 transition">×</button>
+                        </div>
+                    </div>
+                    <div class="p-6 sm:p-8 space-y-5">
+                        <p class="text-sm sm:text-base text-slate-700 leading-7">{{ $activeAnnouncement->body }}</p>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            @if($activeAnnouncement->starts_at)
+                                <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                                    <p class="text-[11px] uppercase tracking-[0.24em] text-slate-500 font-semibold">Starts</p>
+                                    <p class="mt-3 text-sm font-semibold text-slate-900">{{ $activeAnnouncement->starts_at->format('M d, Y H:i') }}</p>
+                                </div>
+                            @endif
+                            @if($activeAnnouncement->ends_at)
+                                <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                                    <p class="text-[11px] uppercase tracking-[0.24em] text-slate-500 font-semibold">Ends</p>
+                                    <p class="mt-3 text-sm font-semibold text-slate-900">{{ $activeAnnouncement->ends_at->format('M d, Y H:i') }}</p>
+                                </div>
+                            @endif
+                        </div>
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                            <button id="dismissAnnouncementModal" class="w-full sm:w-auto rounded-full border border-slate-300 bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200">Dismiss</button>
+                            <a href="{{ route('history') }}" class="w-full sm:w-auto rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-emerald-700 text-center">View activity</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <main class="flex-grow">
             @yield('content')
         </main>
     </div>
 
     @stack('scripts')
+
+    @if(request()->routeIs('dashboard') && !empty($activeAnnouncement))
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const modal = document.getElementById('userAnnouncementModal');
+                const closeBtn = document.getElementById('closeAnnouncementModal');
+                const dismissBtn = document.getElementById('dismissAnnouncementModal');
+
+                if (!modal) return;
+
+                function hideModal() {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    document.body.style.overflow = '';
+                }
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                document.body.style.overflow = 'hidden';
+
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', hideModal);
+                }
+                if (dismissBtn) {
+                    dismissBtn.addEventListener('click', hideModal);
+                }
+                modal.addEventListener('click', function (event) {
+                    if (event.target === modal) {
+                        hideModal();
+                    }
+                });
+            });
+        </script>
+    @endif
 </body>
 </html>

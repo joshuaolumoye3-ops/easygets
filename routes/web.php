@@ -320,6 +320,7 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
 
     Route::post('/announcements', [AdminController::class, 'saveAnnouncement'])->name('admin.announcements.save');
     Route::post('/announcements/{announcement}/toggle', [AdminController::class, 'toggleAnnouncement'])->name('admin.announcements.toggle');
+    Route::delete('/announcements/{announcement}', [AdminController::class, 'destroyAnnouncement'])->name('admin.announcements.delete');
 
     Route::prefix('esim')->group(function () {
         Route::get('/', [AdminEsimController::class, 'index'])->name('admin.esim.index');
