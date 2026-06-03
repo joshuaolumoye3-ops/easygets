@@ -104,7 +104,7 @@
             </div>
         @endif
 
-        @if(request()->routeIs('dashboard') && !empty($activeAnnouncement))
+        @if(!empty($activeAnnouncement))
             <div id="userAnnouncementModal" class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-slate-900/80 px-4 py-6">
                 <div class="relative w-full max-w-3xl max-h-[85vh] overflow-hidden rounded-[32px] shadow-2xl border border-slate-200/20 bg-white">
                     <div class="bg-gradient-to-r from-emerald-600 to-teal-500 px-6 py-5">
@@ -148,7 +148,7 @@
 
     @stack('scripts')
 
-    @if(request()->routeIs('dashboard') && !empty($activeAnnouncement))
+    @if(!empty($activeAnnouncement))
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const modal = document.getElementById('userAnnouncementModal');
