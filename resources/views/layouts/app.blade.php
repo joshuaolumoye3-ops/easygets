@@ -105,8 +105,8 @@
         @endif
 
         @if(request()->routeIs('dashboard') && !empty($activeAnnouncement))
-            <div id="userAnnouncementModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/80 px-4 py-6">
-                <div class="relative w-full max-w-3xl rounded-[32px] overflow-hidden shadow-2xl border border-slate-200/20 bg-white">
+            <div id="userAnnouncementModal" class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-slate-900/80 px-4 py-6">
+                <div class="relative w-full max-w-3xl max-h-[85vh] overflow-hidden rounded-[32px] shadow-2xl border border-slate-200/20 bg-white">
                     <div class="bg-gradient-to-r from-emerald-600 to-teal-500 px-6 py-5">
                         <div class="flex items-start justify-between gap-4">
                             <div>
@@ -116,7 +116,7 @@
                             <button id="closeAnnouncementModal" class="text-white text-3xl leading-none opacity-90 hover:opacity-100 transition">×</button>
                         </div>
                     </div>
-                    <div class="p-6 sm:p-8 space-y-5">
+                    <div class="p-6 sm:p-8 space-y-5 overflow-y-auto max-h-[70vh]">
                         <p class="text-sm sm:text-base text-slate-700 leading-7">{{ $activeAnnouncement->body }}</p>
                         <div class="grid gap-3 sm:grid-cols-2">
                             @if($activeAnnouncement->starts_at)

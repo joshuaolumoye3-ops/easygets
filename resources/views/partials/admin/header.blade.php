@@ -455,9 +455,10 @@
                     <button type="submit" id="announcementSubmitBtn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 12px 24px; border-radius: 999px; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: 0 12px 30px rgba(16,185,129,0.24); transition: transform 0.2s ease;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">Save Announcement</button>
                 </div>
             </div>
+        </form>
 
-            @if(!empty($adminAnnouncements) && $adminAnnouncements->count())
-                <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(148,163,184,0.16); border-radius: 14px; padding: 18px;">
+        @if(!empty($adminAnnouncements) && $adminAnnouncements->count())
+            <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(148,163,184,0.16); border-radius: 14px; padding: 18px; margin-top: 14px;">
                     <h4 style="color: #f8fafc; font-size: 15px; font-weight: 700; margin-bottom: 12px;">Existing announcements</h4>
                     <div style="display: grid; gap: 12px;">
                         @foreach($adminAnnouncements as $announcement)
@@ -486,7 +487,6 @@
                     </div>
                 </div>
             @endif
-        </form>
     </div>
 </div>
 
