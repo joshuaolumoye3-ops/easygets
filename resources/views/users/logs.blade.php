@@ -3,57 +3,71 @@
 @section('title', 'Buy Logs')
 
 @section('content')
-<div class="max-w-xl mx-auto py-8 font-[Inter] bg-white mt-0 pt-10">
-    <div class="flex items-center space-x-2 ps-5 mb-6">
-        <a href="javascript:history.back()" class="text-green-800">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-green-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+<div class="max-w-xl mx-auto py-0 font-[Inter] bg-[#f0f4f8] min-h-screen">
+
+    {{-- Header --}}
+    <div class="flex items-center px-4 pt-8 pb-4 bg-[#f0f4f8]">
+        <a href="javascript:history.back()" class="text-gray-600 mr-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
         </a>
-        <h1 class="text-lg font-semibold text-center flex-1">Buy Logs</h1>
+        <h1 class="text-lg font-semibold text-gray-800 flex-1 text-center pr-5">Buy Logs</h1>
     </div>
 
-    <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
-        <div class="flex items-center mb-4">
-            <div class="bg-brand-green-light rounded-full w-12 h-12 flex items-center justify-center mr-4">
-                <img src="/assets/sim-icon.svg" class="w-7 h-7 text-brand-green" alt="Logs">
-            </div>
-            <div>
-                <h2 class="text-base font-semibold text-gray-800">Discover Logs</h2>
-                <p class="text-sm text-gray-500">Premium login bundles by country and service. Fast delivery.</p>
-            </div>
-        </div>
+    <div class="px-4 pb-8">
 
-        <!-- Search Bar -->
-        <div class="mb-6">
+        {{-- Search Bar --}}
+        <div class="mb-3">
             <div class="relative">
-                <input 
-                    type="text" 
-                    id="searchInput" 
-                    placeholder="Search by name, country, or description..."
-                    class="w-full border border-gray-200 rounded-lg px-4 py-3 pl-10 focus:outline-none focus:ring-2 focus:ring-brand-green text-gray-800 font-medium"
-                >
                 <svg class="absolute left-3 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
+                <input
+                    type="text"
+                    id="searchInput"
+                    placeholder="Search products..."
+                    class="w-full bg-white border border-gray-200 rounded-full px-4 py-3 pl-10 focus:outline-none focus:ring-2 focus:ring-[#00b4a0] text-gray-700 text-sm shadow-sm"
+                >
             </div>
         </div>
 
-        <!-- Products List -->
-        <div id="productsContainer" class="space-y-4 mt-6">
+        {{-- Sort/Filter Row --}}
+        <div class="flex items-center gap-2 mb-4">
+            <div class="flex items-center bg-white border border-gray-200 rounded-full px-3 py-2 shadow-sm cursor-pointer flex-1">
+                <svg class="w-4 h-4 text-gray-500 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18M6 8h12M9 12h6M12 16h0"/>
+                </svg>
+                <select id="sortSelect" class="bg-transparent text-sm text-gray-700 font-medium w-full focus:outline-none cursor-pointer">
+                    <option value="default">Price: Low to High</option>
+                    <option value="price_desc">Price: High to Low</option>
+                    <option value="name_asc">Name: A–Z</option>
+                    <option value="name_desc">Name: Z–A</option>
+                </select>
+            </div>
+        </div>
+
+        {{-- Product Count --}}
+        <p id="productCount" class="text-sm text-gray-500 mb-4">
+            Showing {{ $products->count() }} of {{ $products->total() }} products
+        </p>
+
+        {{-- Products Grid --}}
+        <div id="productsContainer" class="grid grid-cols-2 gap-3">
             @include('partials.logs-items', ['products' => $products])
         </div>
 
-        <!-- Loading Indicator -->
+        {{-- Loading Indicator --}}
         <div id="loadingIndicator" class="hidden text-center py-8">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-brand-green"></div>
-            <p class="text-gray-500 mt-2">Loading more products...</p>
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#00b4a0]"></div>
+            <p class="text-gray-400 text-sm mt-2">Loading more products...</p>
         </div>
 
-        <!-- No More Products -->
-        <div id="endMessage" class="hidden text-center py-8">
+        {{-- End Message --}}
+        <div id="endMessage" class="hidden text-center py-6">
             <p class="text-gray-400 text-sm">You've reached the end of the list</p>
         </div>
+
     </div>
 </div>
 
@@ -63,38 +77,43 @@ let isLoading = false;
 let hasMore = {{ $products->hasMorePages() ? 'true' : 'false' }};
 let searchTimeout = null;
 
-// Search functionality
+// Search
 document.getElementById('searchInput').addEventListener('input', function(e) {
     clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-        performSearch(e.target.value);
-    }, 500); // Debounce search by 500ms
+    searchTimeout = setTimeout(() => performSearch(e.target.value), 500);
+});
+
+// Sort
+document.getElementById('sortSelect').addEventListener('change', function() {
+    performSearch(document.getElementById('searchInput').value);
 });
 
 function performSearch(query) {
     isLoading = true;
     currentPage = 1;
-    
+    const sort = document.getElementById('sortSelect').value;
+
     document.getElementById('loadingIndicator').classList.remove('hidden');
     document.getElementById('endMessage').classList.add('hidden');
-    
-    fetch(`{{ route('logs') }}?search=${encodeURIComponent(query)}&ajax=1`, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
+
+    fetch(`{{ route('logs') }}?search=${encodeURIComponent(query)}&sort=${sort}&ajax=1`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
         if (data.success) {
             document.getElementById('productsContainer').innerHTML = data.html;
             hasMore = data.has_more;
             currentPage = data.next_page || 1;
+            if (data.total !== undefined) {
+                document.getElementById('productCount').textContent =
+                    `Showing ${data.count} of ${data.total} products`;
+            }
         }
         isLoading = false;
         document.getElementById('loadingIndicator').classList.add('hidden');
     })
-    .catch(error => {
-        console.error('Search error:', error);
+    .catch(() => {
         isLoading = false;
         document.getElementById('loadingIndicator').classList.add('hidden');
     });
@@ -103,55 +122,37 @@ function performSearch(query) {
 // Infinite scroll
 window.addEventListener('scroll', function() {
     if (isLoading || !hasMore) return;
-    
-    const scrollPosition = window.innerHeight + window.scrollY;
-    const documentHeight = document.documentElement.scrollHeight;
-    
-    // Load more when user is 200px from bottom
-    if (scrollPosition >= documentHeight - 200) {
+    if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 200) {
         loadMoreProducts();
     }
 });
 
 function loadMoreProducts() {
     if (isLoading || !hasMore) return;
-    
     isLoading = true;
     document.getElementById('loadingIndicator').classList.remove('hidden');
-    
-    const searchQuery = document.getElementById('searchInput').value;
-    const url = `{{ route('logs') }}?page=${currentPage}&search=${encodeURIComponent(searchQuery)}&ajax=1`;
-    
-    fetch(url, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
+
+    const query = document.getElementById('searchInput').value;
+    const sort = document.getElementById('sortSelect').value;
+
+    fetch(`{{ route('logs') }}?page=${currentPage}&search=${encodeURIComponent(query)}&sort=${sort}&ajax=1`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
         if (data.success) {
-            // Append new products
             const container = document.getElementById('productsContainer');
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = data.html;
-            
-            while (tempDiv.firstChild) {
-                container.appendChild(tempDiv.firstChild);
-            }
-            
+            const temp = document.createElement('div');
+            temp.innerHTML = data.html;
+            while (temp.firstChild) container.appendChild(temp.firstChild);
             hasMore = data.has_more;
             currentPage = data.next_page || currentPage;
-            
-            if (!hasMore) {
-                document.getElementById('endMessage').classList.remove('hidden');
-            }
+            if (!hasMore) document.getElementById('endMessage').classList.remove('hidden');
         }
-        
         isLoading = false;
         document.getElementById('loadingIndicator').classList.add('hidden');
     })
-    .catch(error => {
-        console.error('Load more error:', error);
+    .catch(() => {
         isLoading = false;
         document.getElementById('loadingIndicator').classList.add('hidden');
     });

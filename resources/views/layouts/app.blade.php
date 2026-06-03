@@ -105,28 +105,31 @@
         @endif
 
         @if(!empty($activeAnnouncement))
-            <div id="userAnnouncementModal" class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-slate-900/80 px-4 py-6">
-                <div class="relative w-full max-w-3xl max-h-[85vh] overflow-hidden rounded-[32px] shadow-2xl border border-slate-200/20 bg-white">
-                    <div class="bg-gradient-to-r from-emerald-600 to-teal-500 px-6 py-5">
+            <div id="userAnnouncementModal" class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-slate-950/90 px-4 py-6">
+                <div class="relative w-full max-w-3xl max-h-[85vh] overflow-hidden rounded-[32px] shadow-2xl border border-slate-800/70 bg-slate-900 text-white">
+                    <div class="bg-gradient-to-r from-sky-500 via-emerald-500 to-teal-500 px-6 py-6 shadow-lg">
                         <div class="flex items-start justify-between gap-4">
-                            <div>
-                                <p class="text-xs uppercase tracking-[0.4em] text-emerald-100 font-semibold">Announcement</p>
-                                <h2 class="mt-3 text-2xl sm:text-3xl font-bold text-white leading-tight">{{ $activeAnnouncement->title }}</h2>
+                            <div class="max-w-[calc(100%-4rem)]">
+                                <span class="inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-[11px] uppercase tracking-[0.35em] text-sky-100 font-semibold">Announcement</span>
+                                <h2 class="mt-4 text-3xl sm:text-4xl font-extrabold leading-tight">{{ $activeAnnouncement->title }}</h2>
+                                <p class="mt-3 text-sm sm:text-base text-slate-100/90">Important update for your account and services. This announcement is active and visible only while it is current.</p>
                             </div>
-                            <button id="closeAnnouncementModal" class="text-white text-3xl leading-none opacity-90 hover:opacity-100 transition">×</button>
+                            <button id="closeAnnouncementModal" class="text-white text-4xl leading-none opacity-90 hover:opacity-100 transition" aria-label="Close announcement">×</button>
                         </div>
                     </div>
-                    <div class="p-6 sm:p-8 space-y-5 overflow-y-auto max-h-[70vh]">
-                        <p class="text-sm sm:text-base text-slate-700 leading-7">{{ $activeAnnouncement->body }}</p>
-                        <div class="grid gap-3 sm:grid-cols-2">
+                    <div class="p-6 sm:p-8 space-y-6 overflow-y-auto max-h-[70vh] bg-white text-slate-800">
+                        <div class="rounded-[28px] border border-slate-200 bg-slate-50 p-6 shadow-sm">
+                            <p class="text-base leading-8">{{ $activeAnnouncement->body }}</p>
+                        </div>
+                        <div class="grid gap-4 sm:grid-cols-2">
                             @if($activeAnnouncement->starts_at)
-                                <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                                <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                                     <p class="text-[11px] uppercase tracking-[0.24em] text-slate-500 font-semibold">Starts</p>
                                     <p class="mt-3 text-sm font-semibold text-slate-900">{{ $activeAnnouncement->starts_at->format('M d, Y H:i') }}</p>
                                 </div>
                             @endif
                             @if($activeAnnouncement->ends_at)
-                                <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                                <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                                     <p class="text-[11px] uppercase tracking-[0.24em] text-slate-500 font-semibold">Ends</p>
                                     <p class="mt-3 text-sm font-semibold text-slate-900">{{ $activeAnnouncement->ends_at->format('M d, Y H:i') }}</p>
                                 </div>
@@ -134,7 +137,7 @@
                         </div>
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
                             <button id="dismissAnnouncementModal" class="w-full sm:w-auto rounded-full border border-slate-300 bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200">Dismiss</button>
-                            <a href="{{ route('history') }}" class="w-full sm:w-auto rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-emerald-700 text-center">View activity</a>
+                            <a href="{{ route('history') }}" class="w-full sm:w-auto rounded-full bg-gradient-to-r from-emerald-600 to-teal-500 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:from-emerald-700 hover:to-teal-600 text-center">View activity</a>
                         </div>
                     </div>
                 </div>
