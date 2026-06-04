@@ -19,6 +19,9 @@
         </div>
     </header>
 
+    <!-- Announcement Section -->
+    @include('partials.announcement')
+
     <!-- Page-specific content starts here -->
     <div class="p-4 space-y-5">
         <!-- Wallet Balance Card -->
