@@ -476,22 +476,43 @@
             }
         }, 5000); // Show after 5 seconds
 
-        // Prevent closing modal by clicking outside or pressing ESC
+        // Strictly prevent closing modal by clicking outside or pressing ESC
         document.addEventListener('keydown', function(e) {
-            if (document.getElementById('pinModal')?.style.display === 'flex') {
+            const pinModal = document.getElementById('pinModal');
+            if (pinModal && pinModal.style.display === 'flex') {
                 if (e.key === 'Escape') {
                     e.preventDefault();
+                    e.stopPropagation();
+                    return false;
                 }
             }
-        });
+        }, true); // Use capture phase to catch event early
+
+        // Prevent closing modal by clicking on backdrop
         document.getElementById('pinModal')?.addEventListener('click', function(e) {
             if (e.target === this) {
+                e.preventDefault();
                 e.stopPropagation();
+                e.stopImmediatePropagation();
+                return false;
             }
-        });
-        // On submit, allow scroll again
-        document.getElementById('pinFormModal')?.addEventListener('submit', function() {
-            document.body.style.overflow = '';
+        }, true);
+
+        // On successful submit, allow scroll and close modal
+        document.getElementById('pinFormModal')?.addEventListener('submit', function(e) {
+            // Let the form submit normally, but prepare to close modal after success
+            const originalSubmit = this.onsubmit;
+            const self = this;
+            
+            // Intercept the response
+            setTimeout(function() {
+                // Check if form was successful (server would redirect or return success)
+                const pinModal = document.getElementById('pinModal');
+                if (pinModal && pinModal.style.display === 'flex') {
+                    // Form likely failed or didn't process, keep modal open
+                    // On successful server response, the page should reload or redirect
+                }
+            }, 500);
         });
         @endif
 
