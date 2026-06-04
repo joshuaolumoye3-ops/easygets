@@ -153,18 +153,11 @@
             </div>
         @else
             @foreach($logs as $log)
-                @php
-                    $isFulfilled = in_array(strtolower($log['status'] ?? ''), ['success', 'completed', 'fulfilled']);
-                    $isPending   = strtolower($log['status'] ?? '') === 'pending';
-                    $hasDetails  = !empty($log['login_details']);
-                @endphp
-
-                <div class="log-card" id="log-{{ $log['id'] }}">
-
+                <div class="log-card cursor-pointer hover:shadow-md transition-shadow" onclick="openLogsModal({{ $log['id'] }})" id="log-{{ $log['id'] }}">
                     {{-- Header row --}}
                     <div class="log-card-head">
-                        <div class="log-icon {{ $hasDetails ? 'fulfilled' : '' }}">
-                            @if($hasDetails)
+                        <div class="log-icon {{ !empty($log['login_details']) ? 'fulfilled' : '' }}">
+                            @if(!empty($log['login_details']))
                                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                           d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
@@ -195,85 +188,18 @@
                         </div>
 
                         <div style="flex-shrink:0;">
-                            <span class="log-status-chip {{ $hasDetails ? 'chip-fulfilled' : ($isPending ? 'chip-pending' : 'chip-failed') }}">
+                            @php
+                                $hasDetails = !empty($log['login_details']);
+                                $isPending  = strtolower($log['status'] ?? '') === 'pending';
+                                $statusText = $hasDetails ? 'Fulfilled' : ($isPending ? 'Pending' : ucfirst($log['status'] ?? 'Unknown'));
+                                $chipClass  = $hasDetails ? 'chip-fulfilled' : ($isPending ? 'chip-pending' : 'chip-failed');
+                            @endphp
+                            <span class="log-status-chip {{ $chipClass }}">
                                 <span class="dot"></span>
-                                {{ $hasDetails ? 'Fulfilled' : ($isPending ? 'Pending' : ucfirst($log['status'] ?? 'Unknown')) }}
+                                {{ $statusText }}
                             </span>
                         </div>
                     </div>
-
-                    {{-- Credentials block --}}
-                    @if($hasDetails)
-                        <div class="log-creds" id="creds-wrap-{{ $log['id'] }}">
-                            <div class="log-creds-title">
-                                <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
-                                </svg>
-                                Your Login Details
-                            </div>
-                            <pre class="log-creds-body" id="creds-body-{{ $log['id'] }}">{{ isset($log['login_details']) ? str_replace('\\n', "\n", $log['login_details']) : '' }}</pre>
-                            <button
-                                class="log-copy-btn"
-                                id="copy-btn-{{ $log['id'] }}"
-                                onclick="copyLogCreds({{ $log['id'] }})">
-                                <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                                </svg>
-                                Copy
-                            </button>
-                        </div>
-                    @endif
-
-                    {{-- Admin notes block --}}
-                    @if(!empty($log['notes']))
-                        <div class="log-notes">
-                            <div class="log-notes-label">Note from support</div>
-                            {{ $log['notes'] }}
-                        </div>
-                    @endif
-
-                    {{-- Pending / no-credentials state --}}
-                    @if(!$hasDetails)
-                        <div class="log-pending-block">
-                            <div class="log-pending-icon">
-                                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                            </div>
-                            <div class="log-pending-text">
-                                <h4>We're preparing your order</h4>
-                                <p>
-                                    Our team is working on delivering your login credentials.
-                                    This usually takes a few minutes — check back shortly
-                                    or refresh the page to see the latest update.
-                                </p>
-                                <div class="log-pending-steps">
-                                    <span class="log-pending-step done">
-                                        <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                        </svg>
-                                        Payment confirmed
-                                    </span>
-                                    <span class="log-pending-step done">
-                                        <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                        </svg>
-                                        Order received
-                                    </span>
-                                    <span class="log-pending-step" style="color:#fcd34d; border-color:rgba(251,191,36,0.25);">
-                                        <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                        </svg>
-                                        Delivering credentials…
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-
                 </div>{{-- .log-card --}}
             @endforeach
         @endif
@@ -293,6 +219,13 @@
      SOCIAL BOOST MODAL
 ══════════════════════════════════════════════════════════ -->
 <div id="socialModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     LOGS MODAL
+══════════════════════════════════════════════════════════ -->
+<div id="logsModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"></div>
 </div>
 
@@ -334,11 +267,13 @@ function socialBadgeClass(string $status): string {
     border-radius: 16px;
     margin-bottom: 14px;
     overflow: hidden;
-    transition: border-color .2s, box-shadow .2s;
+    transition: border-color .2s, box-shadow .2s, transform .2s;
+    cursor: pointer;
 }
 .log-card:hover {
     border-color: #d1d5db;
-    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    box-shadow: 0 4px 12px rgba(0,0,0,.08);
+    transform: translateY(-2px);
 }
 
 .log-card-head {
@@ -595,6 +530,9 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     document.getElementById('socialModal').addEventListener('click', e => {
         if (e.target === e.currentTarget) closeSocialModal();
+    });
+    document.getElementById('logsModal').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeLogsModal();
     });
 });
 
@@ -919,6 +857,179 @@ function checkSocialStatus(boostId) {
     .finally(() => {
         if (btn) { btn.disabled = false; btn.textContent = 'Refresh'; }
     });
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// LOGS MODAL
+// ═════════════════════════════════════════════════════════════════════════════
+function openLogsModal(logId) {
+    const modal = document.getElementById('logsModal');
+    const log   = logsData[logId];
+    if (!log) return;
+
+    const hasDetails  = !empty(log.login_details);
+    const isPending   = (log.status ?? '').toLowerCase() === 'pending';
+    const statusText  = hasDetails ? 'Fulfilled' : (isPending ? 'Pending' : capitalizeFirst(log.status ?? 'Unknown'));
+    const statusBadge = hasDetails ? 'chip-fulfilled' : (isPending ? 'chip-pending' : 'chip-failed');
+
+    let credentialsHtml = '';
+    if (hasDetails) {
+        const credsFormatted = (log.login_details ?? '').replace(/\\n/g, '\n');
+        credentialsHtml = `
+            <div class="bg-green-50 border-l-4 border-green-500 rounded-lg p-4 mb-4">
+                <div class="flex items-start justify-between mb-3">
+                    <p class="text-xs text-green-700 font-bold uppercase tracking-wider flex items-center gap-2">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                        </svg>
+                        Login Details
+                    </p>
+                    <button onclick="copyLogCredsFromModal(${logId})" class="text-green-600 hover:text-green-700 transition">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                    </button>
+                </div>
+                <pre id="modal-creds-body-${logId}" class="text-sm font-mono bg-white p-3 rounded border border-green-200 overflow-auto max-h-48 text-gray-800" style="white-space: pre-wrap; word-break: break-all;">${escapeHtml(credsFormatted)}</pre>
+            </div>`;
+    }
+
+    let notesHtml = '';
+    if (!empty(log.notes)) {
+        notesHtml = `
+            <div class="bg-amber-50 border-l-4 border-amber-500 rounded-lg p-4 mb-4">
+                <p class="text-xs text-amber-700 font-bold uppercase tracking-wider mb-2">Note from support</p>
+                <p class="text-sm text-amber-900 leading-relaxed">${escapeHtml(log.notes)}</p>
+            </div>`;
+    }
+
+    let pendingHtml = '';
+    if (!hasDetails) {
+        pendingHtml = `
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-5 mb-4">
+                <div class="flex gap-3">
+                    <div class="text-2xl flex-shrink-0">⏱️</div>
+                    <div>
+                        <h4 class="font-bold text-yellow-900 mb-2">We're preparing your order</h4>
+                        <p class="text-sm text-yellow-800 mb-3">
+                            Our team is working on delivering your login credentials. This usually takes a few minutes — check back shortly or refresh the page to see the latest update.
+                        </p>
+                        <div class="space-y-2">
+                            <div class="flex items-center gap-2 text-sm">
+                                <svg width="14" height="14" fill="currentColor" class="text-green-600" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                                <span class="text-green-700 font-medium">Payment confirmed</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm">
+                                <svg width="14" height="14" fill="currentColor" class="text-green-600" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                                <span class="text-green-700 font-medium">Order received</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm">
+                                <div class="animate-spin rounded-full h-3 w-3 border-2 border-yellow-500 border-t-transparent flex-shrink-0"></div>
+                                <span class="text-yellow-800 font-medium">Delivering credentials…</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    modal.querySelector('.bg-white').innerHTML = `
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-900">Log Details</h2>
+                <button onclick="closeLogsModal()" class="text-gray-400 hover:text-gray-600 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="bg-gradient-to-br from-indigo-50 to-blue-100 rounded-xl p-4 mb-6">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-indigo-700 mb-1">Product</p>
+                        <p class="text-lg font-bold text-gray-900">${escapeHtml(log.product_name ?? log.service_name ?? 'Logs')}</p>
+                    </div>
+                    <span class="px-3 py-1 text-xs font-bold rounded-full ${statusBadge}">
+                        <span class="dot" style="display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:5px; vertical-align:middle;"></span>
+                        ${statusText}
+                    </span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="bg-gray-50 rounded-lg p-3">
+                    <p class="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Reference</p>
+                    <p class="text-sm font-semibold text-indigo-700 font-mono">${!empty(log.reference) ? escapeHtml(log.reference) : '—'}</p>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-3">
+                    <p class="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Country</p>
+                    <p class="text-sm font-semibold text-gray-900">${!empty(log.country) ? escapeHtml(log.country) : '—'}</p>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-3">
+                    <p class="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Amount</p>
+                    <p class="text-sm font-semibold text-amber-700 font-mono">${!empty(log.amount) ? escapeHtml(log.amount) : '₦0.00'}</p>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-3">
+                    <p class="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Order Date</p>
+                    <p class="text-sm font-semibold text-gray-900">${!empty(log.date) ? escapeHtml(log.date) : 'N/A'}</p>
+                </div>
+            </div>
+
+            ${pendingHtml}
+
+            ${credentialsHtml}
+
+            ${notesHtml}
+
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p class="text-xs text-blue-800">
+                    <span class="font-semibold">💡 Tip:</span> Keep your credentials safe and never share them with anyone.
+                </p>
+            </div>
+        </div>`;
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeLogsModal() {
+    document.getElementById('logsModal').classList.add('hidden');
+    document.getElementById('logsModal').classList.remove('flex');
+}
+
+function copyLogCredsFromModal(logId) {
+    const body = document.getElementById(`modal-creds-body-${logId}`);
+    if (!body) return;
+
+    navigator.clipboard.writeText(body.innerText).then(() => {
+        showToast('Credentials copied!', 'success');
+    }).catch(() => showToast('Failed to copy', 'error'));
+}
+
+function empty(val) {
+    return !val || (typeof val === 'string' && val.trim() === '') || (Array.isArray(val) && val.length === 0) || (typeof val === 'object' && Object.keys(val).length === 0);
+}
+
+function capitalizeFirst(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
 }
 
 function updateModalStatus(d) {
