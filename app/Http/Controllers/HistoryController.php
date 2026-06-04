@@ -125,6 +125,19 @@ class HistoryController extends Controller
                     }
                 }
 
+                $credentials = [];
+                if (!empty($response['credentials']) && is_array($response['credentials'])) {
+                    $credentials = array_values($response['credentials']);
+                } elseif (!empty($response['login_details'])) {
+                    $credentials = [trim($response['login_details'])];
+                }
+
+                $fulfilledCount = count(array_filter($credentials, function ($value) {
+                    return trim((string)$value) !== '';
+                }));
+
+                $quantity = max(1, intval($response['quantity'] ?? ($fulfilledCount ?: 1)));
+
                 return [
                     'id' => $t->id,
                     'reference' => $t->reference,
@@ -135,6 +148,9 @@ class HistoryController extends Controller
                     'status' => ucfirst($t->status ?? 'pending'),
                     'date' => \Carbon\Carbon::parse($t->created_at)->format('M d, Y h:i A'),
                     'login_details' => $response['login_details'] ?? null,
+                    'credentials' => $credentials,
+                    'quantity' => $quantity,
+                    'fulfilled_count' => $fulfilledCount,
                     'notes' => $response['notes'] ?? null,
                     'country' => $country,
                     'country_code' => $countryCode,

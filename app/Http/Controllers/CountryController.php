@@ -2551,34 +2551,28 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
                 ],
                 'quantity'         => $quantity,
                 'auto_fulfilled'   => $isAutoFulfilled,
+                'credentials'      => [],
+                'fulfilled_count'  => 0,
             ];
-    
+
             if ($isAutoFulfilled) {
-                // For single purchase, flatten into login_details string for display
-                // For multiple, store as array and render each on history
-                if ($quantity === 1 && count($assignedCredentials) === 1) {
-                    $cred = $assignedCredentials[0];
-                    $lines = [];
-                    if ($cred['username']) $lines[] = "Username: {$cred['username']}";
-                    if ($cred['password']) $lines[] = "Password: {$cred['password']}";
-                    if ($cred['extra'])    $lines[] = $cred['extra'];
-                    $responsePayload['login_details']   = implode("\n", $lines);
-                    $responsePayload['credentials']     = $assignedCredentials;
-                } else {
-                    // Multiple quantity
-                    $allLines = [];
-                    foreach ($assignedCredentials as $i => $cred) {
-                        $set = ["--- Account " . ($i + 1) . " ---"];
-                        if ($cred['username']) $set[] = "Username: {$cred['username']}";
-                        if ($cred['password']) $set[] = "Password: {$cred['password']}";
-                        if ($cred['extra'])    $set[] = $cred['extra'];
-                        $allLines[] = implode("\n", $set);
-                    }
-                    $responsePayload['login_details'] = implode("\n\n", $allLines);
-                    $responsePayload['credentials']   = $assignedCredentials;
+                $credentialSets = [];
+                foreach ($assignedCredentials as $i => $cred) {
+                    $set = [];
+                    if (!empty($cred['username'])) $set[] = "Username: {$cred['username']}";
+                    if (!empty($cred['password'])) $set[] = "Password: {$cred['password']}";
+                    if (!empty($cred['extra']))    $set[] = $cred['extra'];
+                    $credentialSets[] = implode("\n", $set);
                 }
+
+                $responsePayload['login_details']  = implode("\n\n", $credentialSets);
+                $responsePayload['credentials']    = $credentialSets;
+                $responsePayload['fulfilled_count'] = count($credentialSets);
+            } else {
+                $responsePayload['credentials']    = array_fill(0, $quantity, '');
+                $responsePayload['fulfilled_count'] = 0;
             }
-    
+
             // ── Create transaction ───────────────────────────────────────────
             $transaction = \App\Models\Transaction::create([
                 'reference'    => 'LOG-' . strtoupper(\Illuminate\Support\Str::random(12)),

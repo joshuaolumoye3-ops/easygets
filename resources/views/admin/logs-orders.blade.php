@@ -530,6 +530,32 @@
                         $status       = strtolower($transaction->status ?? 'pending');
                         $isPending    = $status === 'pending';
                         $isFulfilled  = in_array($status, ['success', 'completed', 'successful']);
+
+                        $credentials = [];
+                        if (!empty($response['credentials']) && is_array($response['credentials'])) {
+                            $credentials = array_values($response['credentials']);
+                        } elseif (!empty($response['login_details'])) {
+                            $credentials = [trim($response['login_details'])];
+                        }
+
+                        $quantity = max(1, intval($response['quantity'] ?? 0));
+                        if ($quantity <= 0) {
+                            $quantity = max(1, count(array_filter($credentials, function ($value) {
+                                return trim((string)$value) !== '';
+                            })) ?: 1);
+                        }
+
+                        $fulfilledCount = count(array_filter($credentials, function ($value) {
+                            return trim((string)$value) !== '';
+                        }));
+                        $partialFill   = $fulfilledCount > 0 && $fulfilledCount < $quantity;
+                        $firstCredential = '';
+                        foreach ($credentials as $cred) {
+                            if (trim((string)$cred) !== '') {
+                                $firstCredential = $cred;
+                                break;
+                            }
+                        }
                     @endphp
 
                     <div class="order-card" id="order-{{ $transaction->id }}">
@@ -555,16 +581,20 @@
                                     @endif
                                     <span class="sep"></span>
                                     <span class="amt">₦{{ number_format($transaction->amount, 2) }}</span>
+                                    @if($quantity > 1)
+                                        <span class="sep"></span>
+                                        <span>{{ $quantity }} items</span>
+                                    @endif
                                     <span class="sep"></span>
                                     <span style="font-size:11.5px;">{{ $transaction->created_at?->format('d M Y, H:i') }}</span>
                                 </div>
                                 @if($transaction->description)
                                     <div class="order-desc">{{ $transaction->description }}</div>
                                 @endif
-                                @if(!empty($response['login_details']))
+                                @if($fulfilledCount > 0)
                                     <div class="login-preview">
                                         <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                                        {{ Str::limit($response['login_details'], 80) }}
+                                        {{ Str::limit(preg_replace('/\s+/', ' ', trim($firstCredential)), 80) }}
                                     </div>
                                 @endif
                             </div>
@@ -573,7 +603,7 @@
                             <div class="order-controls">
                                 <span class="status-chip {{ $isPending ? 'chip-pending' : ($isFulfilled ? 'chip-success' : 'chip-failed') }}">
                                     <span class="dot"></span>
-                                    {{ $isPending ? 'Pending' : ($isFulfilled ? 'Fulfilled' : ucfirst($transaction->status)) }}
+                                    {{ $partialFill ? "Partial ({$fulfilledCount}/{$quantity})" : ($isPending ? 'Pending' : ($isFulfilled ? 'Fulfilled' : ucfirst($transaction->status))) }}
                                 </span>
 
                                 @if($isPending)
@@ -599,15 +629,27 @@
                                     <form action="{{ route('admin.logs.fulfill', ['id' => $transaction->id]) }}" method="POST">
                                         @csrf
                                         <div class="fg">
-                                            <label class="fl" for="login_details_{{ $transaction->id }}">Login Details</label>
-                                            <textarea
-                                                class="fa"
-                                                id="login_details_{{ $transaction->id }}"
-                                                name="login_details"
-                                                rows="4"
-                                                required
-                                                placeholder="Username: john@example.com&#10;Password: ••••••••&#10;IP: 192.168.0.1 | Port: 8080&#10;Platform: Facebook / Netflix / etc."></textarea>
+                                            <p class="fl" style="margin-bottom: 12px;">
+                                                Fill the login details for each purchased log item below. The order remains pending until all {{ $quantity }} entries are completed.
+                                            </p>
                                         </div>
+                                        @for ($i = 1; $i <= $quantity; $i++)
+                                            @php
+                                                $existingDetail = trim((string)($credentials[$i - 1] ?? ''));
+                                            @endphp
+                                            <div class="fg">
+                                                <label class="fl" for="login_details_{{ $transaction->id }}_{{ $i }}">Login Details — Logs Purchase #{{ $i }}</label>
+                                                <textarea
+                                                    class="fa"
+                                                    id="login_details_{{ $transaction->id }}_{{ $i }}"
+                                                    name="login_details[{{ $i - 1 }}]"
+                                                    rows="4"
+                                                    placeholder="Username: john@example.com&#10;Password: ••••••••&#10;IP: 192.168.0.1 | Port: 8080&#10;Platform: Facebook / Netflix / etc.">{{ old('login_details.' . ($i - 1), $existingDetail) }}</textarea>
+                                                @if($existingDetail !== '')
+                                                    <span class="text-xs text-green-300">Existing entry preserved. Leave blank to keep this value.</span>
+                                                @endif
+                                            </div>
+                                        @endfor
                                         <div class="fg">
                                             <label class="fl" for="notes_{{ $transaction->id }}">Support Notes (optional)</label>
                                             <textarea
@@ -616,12 +658,12 @@
                                                 name="notes"
                                                 rows="2"
                                                 placeholder="Any additional notes for the user…"
-                                                style="min-height: 52px; font-family: var(--font);"></textarea>
+                                                style="min-height: 52px; font-family: var(--font);">{{ old('notes', $response['notes'] ?? '') }}</textarea>
                                         </div>
                                         <div class="fulfil-actions">
                                             <button type="submit" class="sbtn-submit">
                                                 <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                                Mark as Fulfilled
+                                                Save and Continue
                                             </button>
                                             <button type="button" class="sbtn-cancel" onclick="toggleFulfil({{ $transaction->id }})">
                                                 <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>

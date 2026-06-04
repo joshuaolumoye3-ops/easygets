@@ -807,25 +807,60 @@ class AdminServiceController extends Controller
     public function fulfillLogOrder(Request $request, $id)
     {
         $request->validate([
-            'login_details' => 'required|string|max:2000',
+            'login_details' => 'required|array',
+            'login_details.*' => 'nullable|string|max:2000',
             'notes' => 'nullable|string|max:2000',
         ]);
 
         $transaction = Transaction::where('type', 'logs')->findOrFail($id);
-        $responseData = is_array($transaction->response) 
-            ? $transaction->response 
+        $responseData = is_array($transaction->response)
+            ? $transaction->response
             : (json_decode($transaction->response ?? '[]', true) ?: []);
-        $responseData['login_details'] = $request->login_details;
+
+        $quantity = max(1, intval($responseData['quantity'] ?? count($responseData['credentials'] ?? []) ?: 1));
+        $existingCredentials = is_array($responseData['credentials']) ? array_values($responseData['credentials']) : [];
+        $credentials = array_pad($existingCredentials, $quantity, '');
+
+        foreach ($request->login_details as $index => $loginDetails) {
+            if (!is_null($loginDetails) && trim($loginDetails) !== '') {
+                $credentials[$index] = trim($loginDetails);
+            }
+        }
+
+        $filledCount = count(array_filter($credentials, function ($value) {
+            return trim((string)$value) !== '';
+        }));
+
+        if ($filledCount === 0 && count(array_filter($existingCredentials, function ($value) {
+            return trim((string)$value) !== '';
+        })) === 0) {
+            return redirect()->back()->with('error', 'Please provide at least one login detail before submitting.');
+        }
+
+        $responseData['credentials'] = $credentials;
+        $responseData['fulfilled_count'] = $filledCount;
         $responseData['notes'] = $request->notes;
-        $responseData['fulfilled_at'] = now()->toDateTimeString();
+        $responseData['login_details'] = implode("\n\n", array_filter(array_map(function ($value) {
+            return trim((string)$value) !== '' ? trim((string)$value) : null;
+        }, $credentials)));
+
+        if ($filledCount === $quantity) {
+            $transaction->update([
+                'status' => 'success',
+                'response' => $responseData,
+                'description' => 'Logs order fulfilled by admin',
+            ]);
+
+            return redirect()->back()->with('success', 'Logs order fulfilled successfully.');
+        }
 
         $transaction->update([
-            'status' => 'success',
+            'status' => 'pending',
             'response' => $responseData,
-            'description' => 'Logs order fulfilled by admin',
+            'description' => 'Logs order partially fulfilled - awaiting remaining credentials',
         ]);
 
-        return redirect()->back()->with('success', 'Logs order fulfilled successfully.');
+        return redirect()->back()->with('success', "Saved ${filledCount} of ${quantity} login detail sets. Order remains pending until all entries are completed.");
     }
 
     /**

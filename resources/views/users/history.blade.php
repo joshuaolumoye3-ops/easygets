@@ -153,11 +153,38 @@
             </div>
         @else
             @foreach($logs as $log)
+                @php
+                    $credentials = [];
+                    if (!empty($log['credentials']) && is_array($log['credentials'])) {
+                        $credentials = array_values($log['credentials']);
+                    } elseif (!empty($log['login_details'])) {
+                        $credentials = [trim($log['login_details'])];
+                    }
+                    $fulfilledCount = count(array_filter($credentials, function ($value) {
+                        return trim((string)$value) !== '';
+                    }));
+                    $quantity = max(1, intval($log['quantity'] ?? ($fulfilledCount ?: 1)));
+                    $isFulfilled = $fulfilledCount === $quantity;
+                    $isPending = strtolower($log['status'] ?? '') === 'pending';
+                    $statusText = $isFulfilled
+                        ? 'Fulfilled'
+                        : ($isPending
+                            ? ($fulfilledCount > 0 ? "Partial ({$fulfilledCount}/{$quantity})" : 'Pending')
+                            : ucfirst($log['status'] ?? 'Unknown'));
+                    $chipClass = $isFulfilled ? 'chip-fulfilled' : ($isPending ? 'chip-pending' : 'chip-failed');
+                    $firstCredential = '';
+                    foreach ($credentials as $cred) {
+                        if (trim((string)$cred) !== '') {
+                            $firstCredential = $cred;
+                            break;
+                        }
+                    }
+                @endphp
                 <div class="log-card cursor-pointer hover:shadow-md transition-shadow" onclick="openLogsModal({{ $log['id'] }})" id="log-{{ $log['id'] }}">
                     {{-- Header row --}}
                     <div class="log-card-head">
-                        <div class="log-icon {{ !empty($log['login_details']) ? 'fulfilled' : '' }}">
-                            @if(!empty($log['login_details']))
+                        <div class="log-icon {{ $hasDetails ? 'fulfilled' : '' }}">
+                            @if($hasDetails)
                                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                           d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
@@ -182,24 +209,28 @@
                                 @endif
                                 <span class="log-sep"></span>
                                 <span class="log-amt">{{ $log['amount'] ?? '₦0.00' }}</span>
+                                @if($quantity > 1)
+                                    <span class="log-sep"></span>
+                                    <span>{{ $fulfilledCount }}/{{ $quantity }} delivered</span>
+                                @endif
                                 <span class="log-sep"></span>
                                 <span>{{ $log['date'] ?? 'N/A' }}</span>
                             </div>
                         </div>
 
                         <div style="flex-shrink:0;">
-                            @php
-                                $hasDetails = !empty($log['login_details']);
-                                $isPending  = strtolower($log['status'] ?? '') === 'pending';
-                                $statusText = $hasDetails ? 'Fulfilled' : ($isPending ? 'Pending' : ucfirst($log['status'] ?? 'Unknown'));
-                                $chipClass  = $hasDetails ? 'chip-fulfilled' : ($isPending ? 'chip-pending' : 'chip-failed');
-                            @endphp
                             <span class="log-status-chip {{ $chipClass }}">
                                 <span class="dot"></span>
                                 {{ $statusText }}
                             </span>
                         </div>
                     </div>
+                    @if($hasDetails)
+                        <div class="login-preview">
+                            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                            {{ Str::limit(preg_replace('/\s+/', ' ', trim($firstCredential)), 80) }}
+                        </div>
+                    @endif
                 </div>{{-- .log-card --}}
             @endforeach
         @endif
@@ -867,33 +898,38 @@ function openLogsModal(logId) {
     const log   = logsData[logId];
     if (!log) return;
 
-    const hasDetails  = !empty(log.login_details);
-    const isPending   = (log.status ?? '').toLowerCase() === 'pending';
-    const statusText  = hasDetails ? 'Fulfilled' : (isPending ? 'Pending' : capitalizeFirst(log.status ?? 'Unknown'));
-    const statusBadge = hasDetails ? 'chip-fulfilled' : (isPending ? 'chip-pending' : 'chip-failed');
+    const credentials = Array.isArray(log.credentials)
+        ? log.credentials.map(item => item ?? '')
+        : (log.login_details ? [log.login_details] : []);
+    const filledCredentials = credentials.filter(item => item && item.trim() !== '');
+    const totalQty = Number(log.quantity || Math.max(1, filledCredentials.length || 1));
+    const hasDetails = filledCredentials.length > 0;
+    const isPending = (log.status ?? '').toLowerCase() === 'pending';
+    const statusText = filledCredentials.length === totalQty ? 'Fulfilled' : (isPending ? 'Pending' : capitalizeFirst(log.status ?? 'Unknown'));
+    const statusBadge = filledCredentials.length === totalQty ? 'chip-fulfilled' : (isPending ? 'chip-pending' : 'chip-failed');
 
     let credentialsHtml = '';
-    if (hasDetails) {
-        const credsFormatted = (log.login_details ?? '').replace(/\\n/g, '\n');
-        credentialsHtml = `
-            <div class="bg-green-50 border-l-4 border-green-500 rounded-lg p-4 mb-4">
-                <div class="flex items-start justify-between mb-3">
-                    <p class="text-xs text-green-700 font-bold uppercase tracking-wider flex items-center gap-2">
-                        <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
-                        </svg>
-                        Login Details
-                    </p>
-                    <button onclick="copyLogCredsFromModal(${logId})" class="text-green-600 hover:text-green-700 transition">
-                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                        </svg>
-                    </button>
-                </div>
-                <pre id="modal-creds-body-${logId}" class="text-sm font-mono bg-white p-3 rounded border border-green-200 overflow-auto max-h-48 text-gray-800" style="white-space: pre-wrap; word-break: break-all;">${escapeHtml(credsFormatted)}</pre>
-            </div>`;
+    if (credentials.length > 0) {
+        credentialsHtml = credentials.map((item, index) => {
+            const trimmed = item ? item.trim() : '';
+            const isFilled = trimmed !== '';
+            return `
+                <div class="bg-white border border-gray-200 rounded-xl p-4 mb-4">
+                    <div class="flex items-start justify-between mb-3">
+                        <p class="text-xs text-slate-500 font-bold uppercase tracking-wider flex items-center gap-2">
+                            Account ${index + 1}
+                        </p>
+                        ${isFilled ? `<button onclick="copyLogCredsFromModal(${logId}, ${index})" class="text-indigo-600 hover:text-indigo-700 transition">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                            </svg> Copy</button>` : '<span class="text-xs text-yellow-700">Pending details</span>'}
+                    </div>
+                    ${isFilled
+                        ? `<pre id="modal-creds-body-${logId}-${index}" class="text-sm font-mono bg-gray-50 p-3 rounded border border-gray-200 overflow-auto max-h-48 text-gray-800" style="white-space: pre-wrap; word-break: break-all;">${escapeHtml(trimmed)}</pre>`
+                        : `<div class="rounded-xl bg-yellow-50 border border-yellow-200 p-4 text-sm text-yellow-900">Pending delivery for this account. Check back once the admin fills it in.</div>`}
+                </div>`;
+        }).join('');
     }
 
     let notesHtml = '';
@@ -1004,8 +1040,8 @@ function closeLogsModal() {
     document.getElementById('logsModal').classList.remove('flex');
 }
 
-function copyLogCredsFromModal(logId) {
-    const body = document.getElementById(`modal-creds-body-${logId}`);
+function copyLogCredsFromModal(logId, index) {
+    const body = document.getElementById(`modal-creds-body-${logId}-${index}`) || document.getElementById(`modal-creds-body-${logId}`);
     if (!body) return;
 
     navigator.clipboard.writeText(body.innerText).then(() => {
