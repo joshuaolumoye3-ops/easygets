@@ -56,11 +56,11 @@
         <div class="flex-1 overflow-y-auto bg-white px-5 py-5 min-h-0">
             <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{{ $activeAnnouncement->body }}</p>
 
-            @if(!empty($activeAnnouncement->created_at))
+            {{-- @if(!empty($activeAnnouncement->created_at))
             <p class="text-xs text-gray-400 mt-4 pt-3 border-t border-gray-100">
                 Posted {{ $activeAnnouncement->created_at->diffForHumans() }}
             </p>
-            @endif
+            @endif --}}
         </div>
 
         {{-- Pinned Footer (never scrolls) --}}
