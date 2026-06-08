@@ -7,7 +7,7 @@
 
     {{-- Header --}}
     <div class="flex items-center px-4 pt-8 pb-4 bg-[#f0f4f8]">
-        <a href="javascript:history.back()" class="text-gray-600 mr-3">
+        <a href="{{ route('dashboard') }}" class="text-gray-600 mr-3">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
