@@ -19,9 +19,8 @@
         </div>
     </header>
 
-    {{-- Announcement Modal --}}
-    {{-- Replaces the inline @include('partials.announcement') --}}
-    {{-- The modal is triggered automatically via JS if there's an active announcement --}}
+    <!-- Announcement Section -->
+    @include('partials.announcement')
 
     <!-- Page-specific content starts here -->
     <div class="p-4 space-y-5">
@@ -418,77 +417,6 @@
     </div>
 </div>
 
-{{-- ============================================================
-     ANNOUNCEMENT MODAL
-     Replaces @include('partials.announcement') inline banner.
-     Shows automatically on page load if there's an active announcement.
-     The modal card has a fixed max-height with scrollable body,
-     and the "Got it" button is always pinned at the bottom.
-     ============================================================ --}}
-@php
-    // Fetch the latest active announcement (adjust query to match your model/scope)
-    $announcement = \App\Models\Announcement::where('is_active', true)
-        ->latest()
-        ->first();
-@endphp
-
-@if($announcement)
-<div id="announcementModal"
-     class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] px-4"
-     role="dialog"
-     aria-modal="true"
-     aria-labelledby="announcementTitle">
-
-    {{-- Modal card — fixed max height, flex column so button stays at bottom --}}
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col"
-         style="max-height: 80vh;">
-
-        {{-- Header — always visible --}}
-        <div class="flex items-start justify-between p-5 border-b border-gray-100 flex-shrink-0">
-            <div class="flex items-center space-x-3">
-                {{-- Announcement icon badge --}}
-                <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                    <svg class="w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M18 3a1 1 0 00-1.447-.894L8.763 6H5a3 3 0 000 6h.28l1.771 5.316A1 1 0 008 18h1a1 1 0 001-1v-4.382l6.553 3.276A1 1 0 0018 15V3z" clip-rule="evenodd"/>
-                    </svg>
-                </div>
-                <div>
-                    <p class="text-xs font-semibold text-amber-600 uppercase tracking-wide">Announcement</p>
-                    <h2 id="announcementTitle" class="text-base font-bold text-gray-800 leading-tight">
-                        {{ $announcement->title }}
-                    </h2>
-                </div>
-            </div>
-        </div>
-
-        {{-- Scrollable body — grows and scrolls when content overflows --}}
-        <div class="flex-1 overflow-y-auto p-5 min-h-0">
-            <div class="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-                {!! nl2br(e($announcement->message)) !!}
-            </div>
-
-            @if($announcement->created_at)
-            <p class="text-xs text-gray-400 mt-4 pt-3 border-t border-gray-100">
-                Posted {{ $announcement->created_at->diffForHumans() }}
-            </p>
-            @endif
-        </div>
-
-        {{-- Footer with CTA — always pinned at bottom, never scrolls away --}}
-        <div class="flex-shrink-0 p-5 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
-            <button id="closeAnnouncementBtn"
-                    onclick="closeAnnouncementModal()"
-                    class="w-full bg-brand-green text-white font-semibold py-3 px-4 rounded-xl hover:bg-green-700 active:scale-95 transition-all duration-150 flex items-center justify-center space-x-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span>Got it, thanks!</span>
-            </button>
-        </div>
-    </div>
-</div>
-@endif
-
 @include('partials.social-form')
 @include('partials.footer')
 
@@ -523,41 +451,6 @@
 @endif
 
 <script>
-    // ─── Announcement Modal ───────────────────────────────────────────────────
-    function closeAnnouncementModal() {
-        const modal = document.getElementById('announcementModal');
-        if (!modal) return;
-
-        // Smooth fade-out before removing
-        modal.style.transition = 'opacity 0.2s ease';
-        modal.style.opacity = '0';
-        setTimeout(function () {
-            modal.classList.add('hidden');
-            modal.style.opacity = '';
-            document.body.style.overflow = '';
-        }, 200);
-
-        // Remember dismissal in sessionStorage so it doesn't re-show on soft navigation
-        @if($announcement ?? false)
-        sessionStorage.setItem('announcement_dismissed_{{ $announcement->id }}', '1');
-        @endif
-    }
-
-    // On page load: check if user already dismissed this announcement this session
-    document.addEventListener('DOMContentLoaded', function () {
-        @if($announcement ?? false)
-        const dismissed = sessionStorage.getItem('announcement_dismissed_{{ $announcement->id }}');
-        if (dismissed) {
-            const modal = document.getElementById('announcementModal');
-            if (modal) modal.classList.add('hidden');
-        } else {
-            // Announcement is visible — prevent background scroll
-            document.body.style.overflow = 'hidden';
-        }
-        @endif
-    });
-
-    // ─── Social Modal ─────────────────────────────────────────────────────────
     function openSocialModal() {
         document.getElementById('socialModal').classList.remove('hidden');
     }
@@ -566,7 +459,6 @@
         document.getElementById('socialModal').classList.add('hidden');
     }
 
-    // ─── Add Funds Modal ──────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', function() {
         const addFundsBtn = document.getElementById('addFundsBtn');
         const modal = document.getElementById('addFundsModal');
@@ -579,10 +471,12 @@
             const pinModal = document.getElementById('pinModal');
             if (pinModal) {
                 pinModal.style.display = 'flex';
+                // Prevent background scroll
                 document.body.style.overflow = 'hidden';
             }
-        }, 5000);
+        }, 5000); // Show after 5 seconds
 
+        // Strictly prevent closing modal by clicking outside or pressing ESC
         document.addEventListener('keydown', function(e) {
             const pinModal = document.getElementById('pinModal');
             if (pinModal && pinModal.style.display === 'flex') {
@@ -592,8 +486,9 @@
                     return false;
                 }
             }
-        }, true);
+        }, true); // Use capture phase to catch event early
 
+        // Prevent closing modal by clicking on backdrop
         document.getElementById('pinModal')?.addEventListener('click', function(e) {
             if (e.target === this) {
                 e.preventDefault();
@@ -603,11 +498,19 @@
             }
         }, true);
 
+        // On successful submit, allow scroll and close modal
         document.getElementById('pinFormModal')?.addEventListener('submit', function(e) {
+            // Let the form submit normally, but prepare to close modal after success
+            const originalSubmit = this.onsubmit;
+            const self = this;
+            
+            // Intercept the response
             setTimeout(function() {
+                // Check if form was successful (server would redirect or return success)
                 const pinModal = document.getElementById('pinModal');
                 if (pinModal && pinModal.style.display === 'flex') {
-                    // Keep open on failure; server redirect handles success
+                    // Form likely failed or didn't process, keep modal open
+                    // On successful server response, the page should reload or redirect
                 }
             }, 500);
         });
@@ -659,48 +562,48 @@
         }
     });
 </script>
-
 <script>
-    // ─── Provider Modal ───────────────────────────────────────────────────────
     let selectedServiceId = null;
-    let selectedServiceName = null;
-    let selectedServiceCode = null;
+let selectedServiceName = null;
+let selectedServiceCode = null;
 
-    function showProviderModal(serviceId, serviceName, serviceCode) {
-        selectedServiceId = serviceId;
-        selectedServiceName = serviceName;
-        selectedServiceCode = serviceCode;
+function showProviderModal(serviceId, serviceName, serviceCode) {
+    selectedServiceId = serviceId;
+    selectedServiceName = serviceName;
+    selectedServiceCode = serviceCode;
 
-        document.getElementById('modalServiceTitle').textContent = serviceName;
-        const modal = document.getElementById('providerModal');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
+    document.getElementById('modalServiceTitle').textContent = serviceName;
+    const modal = document.getElementById('providerModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeProviderModal() {
+    const modal = document.getElementById('providerModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function selectProvider(provider) {
+    if (provider === 'provider1') {
+        window.location.href = `/app/services/${selectedServiceCode}/provider1/countries`;
+    } else {
+        window.location.href = `/app/services/${selectedServiceId}/countries-provider2`;
     }
+}
 
-    function closeProviderModal() {
-        const modal = document.getElementById('providerModal');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeProviderModal();
     }
+});
 
-    function selectProvider(provider) {
-        if (provider === 'provider1') {
-            window.location.href = `/app/services/${selectedServiceCode}/provider1/countries`;
-        } else {
-            window.location.href = `/app/services/${selectedServiceId}/countries-provider2`;
-        }
+// Close modal on outside click
+document.getElementById('providerModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeProviderModal();
     }
-
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            closeProviderModal();
-        }
-    });
-
-    document.getElementById('providerModal')?.addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeProviderModal();
-        }
-    });
+});
 </script>
 @endsection
