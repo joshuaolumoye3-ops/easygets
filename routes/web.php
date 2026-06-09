@@ -53,7 +53,13 @@ Route::middleware('guest')->group(function () {
         return view('auth.login');
     });
 
-    Route::get('/signup', [RegisterController::class, 'showRegisterForm'])->name('signup.form');
+    Route::get('/check-referral', [\App\Http\Controllers\Auth\RegisterController::class, 'checkReferralCode'])
+    ->name('referral.check');
+ 
+    // Optional: pre-fill referral code from URL ?ref=username
+    Route::get('/signup', [\App\Http\Controllers\Auth\RegisterController::class, 'showRegisterForm'])
+        ->name('signup.form')
+        ->middleware('guest');
 
     Route::post('/register', [RegisterController::class, 'register'])->name('register.submit');
 
@@ -105,6 +111,10 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/clear-virtual-account-session', [VirtualAccountController::class, 'clearSession'])
         ->name('virtual-account.clear-session');
+
+    Route::post('/partner/withdraw', [\App\Http\Controllers\PartnerWithdrawalController::class, 'request'])
+    ->middleware('auth', 'check.user.not.blocked')
+    ->name('partner.withdraw');
 
     Route::get('/dashboard', [Controller::class, 'dashboard'])->middleware('check.user.not.blocked')->name('dashboard');
     Route::get('/transactions', [Controller::class, 'transaction'])->middleware('check.user.not.blocked')->name('transaction');
@@ -321,6 +331,37 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
     Route::post('/announcements', [AdminController::class, 'saveAnnouncement'])->name('admin.announcements.save');
     Route::post('/announcements/{announcement}/toggle', [AdminController::class, 'toggleAnnouncement'])->name('admin.announcements.toggle');
     Route::delete('/announcements/{announcement}', [AdminController::class, 'destroyAnnouncement'])->name('admin.announcements.delete');
+
+    Route::get('/referral/users/{userId}',
+    [\App\Http\Controllers\AdminReferralController::class, 'getUserReferralInfo'])
+    ->name('admin.referral.user-info');
+    
+    // Promote / demote
+    Route::post('/referral/users/{userId}/promote',
+        [\App\Http\Controllers\AdminReferralController::class, 'promoteToPartner'])
+        ->name('admin.referral.promote');
+    
+    Route::post('/referral/users/{userId}/demote',
+        [\App\Http\Controllers\AdminReferralController::class, 'demoteFromPartner'])
+        ->name('admin.referral.demote');
+    
+    // Global percentage setting
+    Route::post('/referral/settings/percentage',
+        [\App\Http\Controllers\AdminReferralController::class, 'updateGlobalPercentage'])
+        ->name('admin.referral.settings.percentage');
+    
+    // Withdrawal list + actions
+    Route::get('/referral/withdrawals',
+        [\App\Http\Controllers\AdminReferralController::class, 'withdrawals'])
+        ->name('admin.referral.withdrawals');
+    
+    Route::post('/referral/withdrawals/{id}/approve',
+        [\App\Http\Controllers\AdminReferralController::class, 'approveWithdrawal'])
+        ->name('admin.referral.withdrawals.approve');
+    
+    Route::post('/referral/withdrawals/{id}/decline',
+        [\App\Http\Controllers\AdminReferralController::class, 'declineWithdrawal'])
+        ->name('admin.referral.withdrawals.decline');
 
     Route::prefix('esim')->group(function () {
         Route::get('/', [AdminEsimController::class, 'index'])->name('admin.esim.index');

@@ -1,13 +1,11 @@
 @extends('layouts.app')
-
 @section('title', 'Sign Up')
-
 @section('content')
 
 <div class="flex flex-col items-center justify-center min-h-screen px-4 py-12 bg-white" style="font-family: 'Inter', sans-serif;">
     <div class="w-full max-w-sm mx-auto">
         <div class="flex justify-center mb-6">
-            <img src="easygets-logo.jpg" alt="User avatar" class="w-36 h-36 rounded-full" />
+            <img src="easygets-logo.jpg" alt="Logo" class="w-36 h-36 rounded-full" />
         </div>
 
         <div class="text-center">
@@ -15,58 +13,45 @@
             <p id="step-subtitle" class="mt-2 text-sm text-black font-semibold"></p>
         </div>
 
-        <form id="signupForm"
-              class="mt-8 space-y-6"
-              novalidate
-              action="{{ route('register.submit') }}"
-              method="POST">
+        {{-- Server-side validation errors --}}
+        @if ($errors->any())
+            <div class="mt-4 bg-red-50 border border-red-200 rounded-xl p-4">
+                @foreach ($errors->all() as $error)
+                    <p class="text-red-700 text-sm">• {{ $error }}</p>
+                @endforeach
+            </div>
+        @endif
+
+        <form id="signupForm" class="mt-8 space-y-6" novalidate
+              action="{{ route('register.submit') }}" method="POST">
             @csrf
 
-            <!-- Honeypot field (hidden from real users) -->
+            {{-- Honeypot --}}
             <input type="text" name="website_url" style="display:none;" tabindex="-1" autocomplete="off" />
 
-            <!-- Step 1: Email -->
+            {{-- Step 1: Email --}}
             <div class="step" data-step="0">
                 <div class="flex justify-center">
                     <div class="w-full max-w-xs">
-                        <input
-                            type="email"
-                            name="email"
-                            id="emailInput"
-                            placeholder="Email address"
+                        <input type="email" name="email" id="emailInput" placeholder="Email address"
                             class="step-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
-                            autocomplete="email"
-                        />
-                        <p class="error-text text-xs text-red-600 mt-2 hidden">
-                            Please enter a valid email address.
-                        </p>
+                            autocomplete="email" value="{{ old('email') }}" />
+                        <p class="error-text text-xs text-red-600 mt-2 hidden">Please enter a valid email address.</p>
                     </div>
                 </div>
-
                 <div class="mt-6 text-center text-sm text-gray-700 space-y-2">
-                    <div>
-                        Already Signed Up?
-                        <a href="#" class="text-blue-600 hover:underline">Verify Email</a>
-                    </div>
-                    <div>
-                        Already Have An Account?
-                        <a href="/" class="text-blue-600 hover:underline">Login Here</a>
-                    </div>
+                    <div>Already Signed Up? <a href="#" class="text-blue-600 hover:underline">Verify Email</a></div>
+                    <div>Already Have An Account? <a href="/" class="text-blue-600 hover:underline">Login Here</a></div>
                 </div>
             </div>
 
-            <!-- Step 2: Username -->
+            {{-- Step 2: Username --}}
             <div class="step hidden" data-step="1">
                 <div class="flex justify-center">
                     <div class="w-full max-w-xs">
-                        <input
-                            type="text"
-                            name="username"
-                            id="usernameInput"
-                            placeholder="Username"
+                        <input type="text" name="username" id="usernameInput" placeholder="Username"
                             class="step-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
-                            autocomplete="username"
-                        />
+                            autocomplete="username" value="{{ old('username') }}" />
                         <p class="error-text text-red-600 pt-2 text-xs hidden">Username must be at least 3 characters.</p>
                     </div>
                 </div>
@@ -75,37 +60,20 @@
                 </div>
             </div>
 
-            <!-- Step 3: Contact Info -->
+            {{-- Step 3: Contact Info --}}
             <div class="step hidden" data-step="2">
                 <div class="flex justify-center">
                     <div class="space-y-5 flex flex-col w-full max-w-xs">
-                        <input
-                            type="text"
-                            name="first_name"
-                            id="firstNameInput"
-                            placeholder="First name"
+                        <input type="text" name="first_name" id="firstNameInput" placeholder="First name"
                             class="step-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
-                            autocomplete="given-name"
-                        />
-                        <input
-                            type="text"
-                            name="last_name"
-                            id="lastNameInput"
-                            placeholder="Last name"
+                            autocomplete="given-name" value="{{ old('first_name') }}" />
+                        <input type="text" name="last_name" id="lastNameInput" placeholder="Last name"
                             class="step-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
-                            autocomplete="family-name"
-                        />
-                        <input
-                            type="tel"
-                            name="phone_number"
-                            id="phoneInput"
-                            placeholder="Phone number (optional)"
+                            autocomplete="family-name" value="{{ old('last_name') }}" />
+                        <input type="tel" name="phone_number" id="phoneInput" placeholder="Phone number (optional)"
                             class="step-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
-                            autocomplete="tel"
-                        />
-                        <p class="error-text hidden text-xs text-red-600">
-                            Please fill out first and last name.
-                        </p>
+                            autocomplete="tel" value="{{ old('phone_number') }}" />
+                        <p class="error-text hidden text-xs text-red-600">Please fill out first and last name.</p>
                     </div>
                 </div>
                 <div class="mt-5 text-center">
@@ -113,36 +81,20 @@
                 </div>
             </div>
 
-            <!-- Step 4: Password -->
+            {{-- Step 4: Password --}}
             <div class="step hidden" data-step="3">
                 <div class="flex justify-center">
                     <div class="space-y-3 flex flex-col w-full max-w-xs">
-                        <input
-                            type="password"
-                            name="password"
-                            id="passwordInput"
-                            placeholder="Password"
+                        <input type="password" name="password" id="passwordInput" placeholder="Password"
                             class="step-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
-                            autocomplete="new-password"
-                        />
-                        <input
-                            type="password"
-                            name="password_confirmation"
-                            id="passwordConfirmInput"
-                            placeholder="Confirm Password"
+                            autocomplete="new-password" />
+                        <input type="password" name="password_confirmation" id="passwordConfirmInput" placeholder="Confirm Password"
                             class="step-input w-full px-4 py-3 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
-                            autocomplete="new-password"
-                        />
-                        <p class="error-text text-xs text-red-600 hidden">
-                            Passwords must match and be at least 6 characters long.
-                        </p>
-
+                            autocomplete="new-password" />
+                        <p class="error-text text-xs text-red-600 hidden">Passwords must match and be at least 6 characters.</p>
                         <div class="flex items-center space-x-2 text-sm text-gray-700">
                             <input type="checkbox" id="termsCheckbox" name="terms" class="form-checkbox text-[#03624C] rounded focus:ring-[#03624C]" />
-                            <span>
-                                Accept terms and conditions.
-                                <a href="#" class="text-blue-600 hover:underline">See here</a>
-                            </span>
+                            <span>Accept terms and conditions. <a href="#" class="text-blue-600 hover:underline">See here</a></span>
                         </div>
                     </div>
                 </div>
@@ -151,11 +103,53 @@
                 </div>
             </div>
 
-            <!-- Next / Submit Button -->
+            {{-- Step 5: Referral Code (Optional) --}}
+            <div class="step hidden" data-step="4">
+                <div class="flex justify-center">
+                    <div class="w-full max-w-xs">
+                        <p class="text-sm text-gray-500 mb-3 text-center">
+                            Have a referral code? Enter it below — it's <strong>optional</strong>.
+                        </p>
+
+                        <div class="relative">
+                            <input type="text" name="referral_code" id="referralCodeInput"
+                                placeholder="Enter referral username"
+                                class="step-input w-full px-4 py-3 pr-12 bg-white text-gray-800 rounded-xl placeholder:text-gray-500 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#03624C] transition-all"
+                                autocomplete="off" value="{{ old('referral_code') }}" />
+
+                            {{-- Status indicator --}}
+                            <div id="referralSpinner"
+                                class="hidden absolute right-3 top-1/2 -translate-y-1/2">
+                                <svg class="animate-spin h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                                </svg>
+                            </div>
+                            <div id="referralCheck"
+                                class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-green-600">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            </div>
+                            <div id="referralX"
+                                class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-red-500">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <p id="referralMsg" class="text-xs mt-2 text-center text-gray-500"></p>
+                    </div>
+                </div>
+                <div class="mt-5 text-center">
+                    <a href="#" class="back-link text-sm font-medium text-blue-600 hover:text-gray-800">Back</a>
+                </div>
+            </div>
+
+            {{-- Next / Submit Button --}}
             <div class="pt-2">
-                <button
-                    id="nextBtn"
-                    type="button"
+                <button id="nextBtn" type="button"
                     class="w-full py-3 text-base font-semibold text-white transition-all duration-300 ease-in-out rounded-xl bg-gray-300 cursor-not-allowed"
                     disabled>
                     Next
@@ -167,33 +161,32 @@
 </div>
 
 <style>
-    .step-input {
-        display: block;
-        width: 100%;
-    }
-    .step-input.input-error {
-        border-color: #ef4444;
-        box-shadow: 0 0 0 1px #ef4444;
-    }
+.step-input { display: block; width: 100%; }
+.step-input.input-error { border-color: #ef4444; box-shadow: 0 0 0 1px #ef4444; }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-
+    var CSRF        = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    var BASE        = '{{ url('/') }}';
     var form        = document.getElementById('signupForm');
     var nextBtn     = document.getElementById('nextBtn');
     var subtitle    = document.getElementById('step-subtitle');
     var steps       = Array.from(document.querySelectorAll('.step'));
     var currentStep = 0;
 
+    // Referral check state
+    var referralValid   = null; // null=empty, true=valid, false=invalid
+    var referralTimer   = null;
+    var referralChecked = '';
+
     var subheadings = [
         "Enter your email address",
         "Choose a unique username",
         "Enter your contact information",
-        "Create a secure password"
+        "Create a secure password",
+        "Got a referral code? (optional)"
     ];
-
-    /* ── helpers ─────────────────────────────────────────── */
 
     function isValidEmail(val) {
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
@@ -212,51 +205,116 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function showStep(index) {
         steps.forEach(function (s, i) {
-            if (i === index) {
-                s.classList.remove('hidden');
-            } else {
-                s.classList.add('hidden');
-            }
+            s.classList.toggle('hidden', i !== index);
         });
         subtitle.textContent = subheadings[index];
-        nextBtn.textContent  = (index === steps.length - 1) ? 'Sign Up' : 'Next';
+        // Last step: "Sign Up" — but also allow skipping referral
+        if (index === steps.length - 1) {
+            nextBtn.textContent = 'Create Account';
+        } else {
+            nextBtn.textContent = 'Next';
+        }
         validate();
-
-        // focus the first input of the new step
         var first = steps[index].querySelector('input');
-        if (first) { setTimeout(function(){ first.focus(); }, 50); }
+        if (first) setTimeout(function () { first.focus(); }, 50);
     }
-
-    /* ── validation ──────────────────────────────────────── */
 
     function validate() {
         var ok = false;
 
         if (currentStep === 0) {
-            var email = document.getElementById('emailInput').value;
-            ok = isValidEmail(email);
-
+            ok = isValidEmail(document.getElementById('emailInput').value);
         } else if (currentStep === 1) {
-            var username = document.getElementById('usernameInput').value.trim();
-            ok = username.length >= 3;
-
+            ok = document.getElementById('usernameInput').value.trim().length >= 3;
         } else if (currentStep === 2) {
             var fn = document.getElementById('firstNameInput').value.trim();
             var ln = document.getElementById('lastNameInput').value.trim();
             ok = fn.length > 0 && ln.length > 0;
-
         } else if (currentStep === 3) {
             var pass    = document.getElementById('passwordInput').value;
             var confirm = document.getElementById('passwordConfirmInput').value;
             var terms   = document.getElementById('termsCheckbox').checked;
             ok = pass.length >= 6 && pass === confirm && terms;
+        } else if (currentStep === 4) {
+            // Referral is optional — allow proceed unless there's typed invalid text
+            var code = document.getElementById('referralCodeInput').value.trim();
+            if (!code) {
+                ok = true; // empty = skip
+            } else if (referralValid === true) {
+                ok = true;
+            } else if (referralValid === false) {
+                ok = false; // typed something invalid
+            } else {
+                // still checking or not checked yet
+                ok = false;
+            }
         }
 
         setBtn(ok);
         return ok;
     }
 
-    /* ── button click: advance or submit ─────────────────── */
+    // ── Referral live-check ───────────────────────────────────
+
+    var referralInput = document.getElementById('referralCodeInput');
+    if (referralInput) {
+        referralInput.addEventListener('input', function () {
+            clearTimeout(referralTimer);
+            var code = this.value.trim();
+
+            // Reset indicators
+            document.getElementById('referralSpinner').classList.add('hidden');
+            document.getElementById('referralCheck').classList.add('hidden');
+            document.getElementById('referralX').classList.add('hidden');
+            document.getElementById('referralMsg').textContent = '';
+            document.getElementById('referralMsg').className = 'text-xs mt-2 text-center text-gray-500';
+
+            if (!code) {
+                referralValid = null;
+                validate();
+                return;
+            }
+
+            // Show spinner after short debounce
+            referralTimer = setTimeout(function () {
+                document.getElementById('referralSpinner').classList.remove('hidden');
+                referralValid = null;
+                validate();
+
+                fetch(BASE + '/app/check-referral?code=' + encodeURIComponent(code), {
+                    headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    document.getElementById('referralSpinner').classList.add('hidden');
+                    var msg = document.getElementById('referralMsg');
+                    if (data.valid) {
+                        referralValid = true;
+                        document.getElementById('referralCheck').classList.remove('hidden');
+                        msg.textContent = data.message;
+                        msg.className = 'text-xs mt-2 text-center text-green-600 font-semibold';
+                        referralInput.classList.remove('border-red-400');
+                        referralInput.classList.add('border-green-500');
+                    } else {
+                        referralValid = false;
+                        document.getElementById('referralX').classList.remove('hidden');
+                        msg.textContent = data.message;
+                        msg.className = 'text-xs mt-2 text-center text-red-600';
+                        referralInput.classList.remove('border-green-500');
+                        referralInput.classList.add('border-red-400');
+                    }
+                    validate();
+                })
+                .catch(function () {
+                    document.getElementById('referralSpinner').classList.add('hidden');
+                    referralValid = null;
+                    validate();
+                });
+            }, 500);
+        });
+    }
+
+    // ── Button click ──────────────────────────────────────────
 
     nextBtn.addEventListener('click', function () {
         if (!validate()) return;
@@ -265,12 +323,9 @@ document.addEventListener('DOMContentLoaded', function () {
             currentStep++;
             showStep(currentStep);
         } else {
-            // Final step — refresh token from meta if needed and submit
             var token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
             var csrfInput = form.querySelector('input[name="_token"]');
-            if (token && csrfInput) {
-                csrfInput.value = token;
-            }
+            if (token && csrfInput) csrfInput.value = token;
 
             if (typeof form.requestSubmit === 'function') {
                 form.requestSubmit();
@@ -280,26 +335,31 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    /* ── back links ──────────────────────────────────────── */
+    // ── Back links ────────────────────────────────────────────
 
     document.querySelectorAll('.back-link').forEach(function (link) {
         link.addEventListener('click', function (e) {
             e.preventDefault();
-            if (currentStep > 0) {
-                currentStep--;
-                showStep(currentStep);
-            }
+            if (currentStep > 0) { currentStep--; showStep(currentStep); }
         });
     });
 
-    /* ── live validation on any input / change ───────────── */
+    form.addEventListener('input',  validate);
+    form.addEventListener('change', validate);
 
-    form.addEventListener('input',  function () { validate(); });
-    form.addEventListener('change', function () { validate(); });
+    // ── If server returned referral_code error, go to step 4 ─
 
-    /* ── initialise ──────────────────────────────────────── */
+    @if($errors->has('referral_code'))
+        currentStep = 4;
+    @elseif($errors->has('password') || $errors->has('password_confirmation'))
+        currentStep = 3;
+    @elseif($errors->has('first_name') || $errors->has('last_name'))
+        currentStep = 2;
+    @elseif($errors->has('username'))
+        currentStep = 1;
+    @endif
 
-    showStep(0);
+    showStep(currentStep);
 });
 </script>
 

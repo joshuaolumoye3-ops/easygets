@@ -116,4 +116,80 @@ class User extends Authenticatable
         return $this->hasMany(Transaction::class);
     }
 
+    /** The user who referred this user */
+    public function referrer()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'referred_by');
+    }
+ 
+    /** Users this user has referred */
+    public function referrals()
+    {
+        return $this->hasMany(\App\Models\Referral::class, 'referrer_id');
+    }
+ 
+    /** Referral record where this user is the referred party */
+    public function referralRecord()
+    {
+        return $this->hasOne(\App\Models\Referral::class, 'referred_id');
+    }
+ 
+    /** Earnings this user has generated as a referrer */
+    public function referralEarnings()
+    {
+        return $this->hasMany(\App\Models\ReferralEarning::class, 'referrer_id');
+    }
+ 
+    /** Partner withdrawal requests */
+    public function partnerWithdrawals()
+    {
+        return $this->hasMany(\App\Models\PartnerWithdrawal::class, 'user_id');
+    }
+ 
+    // ── Referral Helpers ──────────────────────────────────────
+ 
+    /** The effective commission rate for this user when they refer someone */
+    public function referralPercentage(): float
+    {
+        if ($this->is_partner && $this->partner_percentage !== null) {
+            return (float) $this->partner_percentage;
+        }
+        return \App\Models\ReferralSetting::globalPercentage();
+    }
+ 
+    /** Credit referral balance */
+    public function creditReferralBalance(float $amount): void
+    {
+        $this->increment('referral_balance', $amount);
+    }
+ 
+    /** Debit referral balance (returns false if insufficient funds) */
+    public function debitReferralBalance(float $amount): bool
+    {
+        if ($this->referral_balance < $amount) {
+            return false;
+        }
+        $this->decrement('referral_balance', $amount);
+        return true;
+    }
+ 
+    /** Promote to partner */
+    public function promoteToPartner(float $percentage, float $minWithdrawal): void
+    {
+        $this->update([
+            'is_partner'             => true,
+            'partner_percentage'     => $percentage,
+            'partner_min_withdrawal' => $minWithdrawal,
+        ]);
+    }
+ 
+    /** Demote from partner back to normal user */
+    public function demoteFromPartner(): void
+    {
+        $this->update([
+            'is_partner'             => false,
+            'partner_percentage'     => null,
+            'partner_min_withdrawal' => null,
+        ]);
+    }
 }
