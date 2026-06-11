@@ -165,18 +165,72 @@
 </div>
 
 <!-- Service Modal -->
-<div id="serviceModal" class="fixed inset-0 z-50 flex items-end justify-center hidden modal-overlay bg-black/60 opacity-0 transition-opacity duration-300">
-    <div id="serviceModalContent" class="rounded-t-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden transform transition-all duration-300 ease-out translate-y-full h-2/3 pb-16">
-        <div class="px-6 py-4 pb-5 bg-brand-green">
-            <h3 id="serviceModalTitle" class="text-lg font-semibold text-white text-center">Choose a Service</h3>   
-            {{-- <p id="serviceModalDescription" class="text-sm text-white/90 mt-2 text-center px-2"></p> --}}
-        </div>
-        <div class="bg-white p-4 h-full overflow-y-auto">
-            <!-- Search input for services -->
-            <div class="mb-3">
-                <input id="serviceSearch" type="search" placeholder="Search services (name, type, category)" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-full placeholder-gray-400 focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none transition duration-200">
+<div id="serviceModal"
+     class="fixed inset-0 z-50 flex items-end justify-center hidden modal-overlay bg-black/60 opacity-0 transition-opacity duration-300">
+ 
+    <div id="serviceModalContent"
+         class="rounded-t-2xl shadow-xl w-full max-w-md mx-auto overflow-hidden transform transition-all duration-300 ease-out translate-y-full flex flex-col"
+         style="height: 75vh; max-height: 75vh;">
+ 
+        {{-- ── Header ── --}}
+        <div class="px-5 pt-5 pb-3 bg-brand-green flex-shrink-0">
+            <h3 id="serviceModalTitle"
+                class="text-base font-bold text-white text-center mb-3 leading-tight">
+                Choose a Service
+            </h3>
+ 
+            {{-- Search bar --}}
+            <div class="relative">
+                {{-- magnifier icon --}}
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+ 
+                <input
+                    id="serviceSearch"
+                    type="search"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="Search by name, type or category…"
+                    class="w-full pl-9 pr-9 py-2.5 rounded-full bg-white text-gray-800 text-sm
+                           placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/60
+                           transition duration-150"
+                />
+ 
+                {{-- clear (×) button — shown only when there is text --}}
+                <button id="serviceSearchClear"
+                        type="button"
+                        aria-label="Clear search"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 hidden
+                               text-gray-400 hover:text-gray-700 transition p-0.5 rounded-full">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                              d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
             </div>
-            <ul id="serviceList" class="space-y-2"></ul>
+ 
+            {{-- result counter --}}
+            <p id="serviceSearchCount"
+               class="text-xs text-white/70 text-center mt-2 min-h-[16px]"></p>
+        </div>
+ 
+        {{-- ── Scrollable list ── --}}
+        <div class="bg-white flex-1 overflow-y-auto overscroll-contain px-3 pb-6">
+            <ul id="serviceList" class="space-y-0 divide-y divide-gray-100"></ul>
+ 
+            {{-- empty-state (hidden until needed) --}}
+            <div id="serviceSearchEmpty"
+                 class="hidden flex flex-col items-center justify-center py-16 text-center select-none">
+                <svg class="w-12 h-12 text-gray-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <p class="text-sm font-semibold text-gray-400">No services found</p>
+                <p class="text-xs text-gray-300 mt-1">Try a different keyword</p>
+            </div>
         </div>
     </div>
 </div>
@@ -236,6 +290,21 @@ document.addEventListener('DOMContentLoaded', function () {
     const serviceList = document.getElementById('serviceList');
     const serviceSearch = document.getElementById('serviceSearch');
     const serviceModalTitle = document.getElementById('serviceModalTitle');
+    const serviceSearchClear = document.getElementById('serviceSearchClear');
+    const serviceSearchEmpty = document.getElementById('serviceSearchEmpty');
+    const serviceSearchCount = document.getElementById('serviceSearchCount');
+ 
+    // live filtering
+    serviceSearch.addEventListener('input', function () {
+        filterServiceList(this.value);
+    });
+ 
+    // clear button
+    serviceSearchClear.addEventListener('click', function () {
+        serviceSearch.value = '';
+        serviceSearch.focus();
+        filterServiceList('');
+    });
     
     const quantityInfo = document.getElementById('quantityInfo');
     const costEstimate = document.getElementById('costEstimate');
@@ -474,91 +543,94 @@ document.addEventListener('DOMContentLoaded', function () {
             showSocialCustomModal('Error', 'Please select a platform first.', 'text-red-600');
             return;
         }
-
+    
         currentServices = window.socialServices[selectedPlatform] || [];
         serviceList.innerHTML = '';
-        serviceModalTitle.textContent = `${selectedPlatform} Services`;
-
+        serviceModalTitle.textContent = selectedPlatform + ' Services';
+    
+        // reset search state every time the modal opens
+        serviceSearch.value = '';
+        serviceSearchClear.classList.add('hidden');
+        serviceSearchEmpty.classList.add('hidden');
+        serviceSearchCount.textContent = '';
+    
         if (currentServices.length === 0) {
-            serviceList.innerHTML = '<li class="text-center text-gray-500 py-4">No services available for this platform</li>';
+            serviceList.innerHTML =
+                '<li class="text-center text-gray-400 py-10 text-sm">No services available for this platform.</li>';
             showModal(serviceModal, serviceModalContent);
             return;
         }
-
+    
         currentServices.forEach(service => {
             const li = document.createElement('li');
-            li.className = 'p-3 rounded-lg cursor-pointer border-b border-gray-200 hover:bg-gray-100 transition duration-150 service-option';
-            li.dataset.serviceId = service.service_id;
-            // searchable fields
-            li.dataset.search = `${service.name} ${service.type} ${service.category || ''}`.toLowerCase();
-            li.dataset.description = getServiceDescription(service, selectedPlatform) || '';
-            
-            // Determine tier based on rate
-            let tierInfo = getTierInfo(service.rate_local);
-            
-            // Create the list item with tier icon
-            const tierIconDiv = document.createElement('div');
-            tierIconDiv.className = 'flex-shrink-0 mt-1';
-            tierIconDiv.innerHTML = `
-                <div class="w-10 h-10 rounded-full ${tierInfo.bgColor} flex items-center justify-center cursor-help tier-icon shadow-md" 
-                     data-tier="${tierInfo.name}"
-                     title="Click for ${tierInfo.name} tier details">
-                    <span class="text-base font-bold ${tierInfo.textColor}">${tierInfo.icon}</span>
-                </div>
-            `;
-            
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'flex-1 min-w-0';
-            contentDiv.innerHTML = `
-                <p class="text-gray-800 font-medium truncate">${service.name}</p>
-                <p class="text-xs text-gray-500 mt-1">${service.type}</p>
-                <p class="text-xs text-gray-500">Min: ${service.min.toLocaleString()} | Max: ${service.max.toLocaleString()}</p>
-            `;
-            
-            const priceDiv = document.createElement('div');
-            priceDiv.className = 'text-right flex-shrink-0';
-            priceDiv.innerHTML = `
-                <p class="text-brand-green font-semibold whitespace-nowrap">₦${service.rate_local.toFixed(2)}/1k</p>
-            `;
-            
-            const wrapper = document.createElement('div');
-            wrapper.className = 'flex justify-between items-start gap-3';
-            wrapper.appendChild(tierIconDiv);
-            wrapper.appendChild(contentDiv);
-            wrapper.appendChild(priceDiv);
-            
-            li.appendChild(wrapper);
-            
-            // Add click listener for tier icon
-            const tierIcon = tierIconDiv.querySelector('.tier-icon');
-            tierIcon.addEventListener('click', (e) => {
+            li.className =
+                'flex items-start gap-3 px-2 py-3 cursor-pointer hover:bg-green-50 ' +
+                'transition duration-150 service-option rounded-lg';
+    
+            // Build a rich searchable string: name + type + category + description
+            const desc = getServiceDescription(service, selectedPlatform) || '';
+            li.dataset.search =
+                [service.name, service.type, service.category || '', desc]
+                    .join(' ')
+                    .toLowerCase();
+            li.dataset.description = desc;
+    
+            const tierInfo = getTierInfo(service.rate_local);
+    
+            // Tier badge
+            const tierBadge = document.createElement('div');
+            tierBadge.className = 'flex-shrink-0 mt-0.5';
+            tierBadge.innerHTML =
+                '<div class="w-9 h-9 rounded-full ' + tierInfo.bgColor + ' flex items-center ' +
+                'justify-center shadow tier-icon cursor-help select-none" ' +
+                'data-tier="' + tierInfo.name + '" title="' + tierInfo.name + ' tier">' +
+                '<span class="text-sm font-bold ' + tierInfo.textColor + '">' + tierInfo.icon + '</span>' +
+                '</div>';
+    
+            // Info
+            const info = document.createElement('div');
+            info.className = 'flex-1 min-w-0';
+            info.innerHTML =
+                '<p class="text-sm font-semibold text-gray-800 leading-snug">' +
+                    escHtml(service.name) +
+                '</p>' +
+                '<p class="text-xs text-gray-400 mt-0.5">' + escHtml(service.type) + '</p>' +
+                '<p class="text-xs text-gray-400">Min: ' + service.min.toLocaleString() +
+                ' &nbsp;|&nbsp; Max: ' + service.max.toLocaleString() + '</p>';
+    
+            // Price
+            const price = document.createElement('div');
+            price.className = 'text-right flex-shrink-0';
+            price.innerHTML =
+                '<p class="text-sm font-bold text-brand-green whitespace-nowrap">' +
+                '₦' + service.rate_local.toFixed(2) + '/1k</p>';
+    
+            const row = document.createElement('div');
+            row.className = 'flex items-start gap-3 w-full';
+            row.appendChild(tierBadge);
+            row.appendChild(info);
+            row.appendChild(price);
+            li.appendChild(row);
+    
+            // Tier icon click
+            tierBadge.querySelector('.tier-icon').addEventListener('click', e => {
                 e.stopPropagation();
                 showTierInfoModal(tierInfo);
             });
-            
-            // Add click listener for service selection (but not on tier icon)
-            li.addEventListener('click', (e) => {
-                if (!e.target.closest('.tier-icon')) {
-                    selectService(service);
-                }
+    
+            // Service selection click
+            li.addEventListener('click', e => {
+                if (!e.target.closest('.tier-icon')) selectService(service);
             });
-            
-            // Instead of placing descriptions inside each list item, show a preview
-            // in the modal header when the user hovers a service.
-            li.addEventListener('mouseenter', () => {
-                const desc = getServiceDescription(service, selectedPlatform);
-                const modalDescEl = document.getElementById('serviceModalDescription');
-                if (modalDescEl) modalDescEl.textContent = desc || '';
-            });
-            li.addEventListener('mouseleave', () => {
-                const modalDescEl = document.getElementById('serviceModalDescription');
-                if (modalDescEl) modalDescEl.textContent = '';
-            });
-
+    
             serviceList.appendChild(li);
         });
-
+    
+        updateSearchCount(currentServices.length, currentServices.length);
         showModal(serviceModal, serviceModalContent);
+    
+        // Focus the search input after the modal slides in
+        setTimeout(() => serviceSearch.focus(), 320);
     }
 
     // Select service
@@ -892,6 +964,51 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+
+
+function filterServiceList(query) {
+    const q = query.trim().toLowerCase();
+    const serviceSearchClear = document.getElementById('serviceSearchClear');
+    const serviceSearchEmpty = document.getElementById('serviceSearchEmpty');
+ 
+    // toggle clear button
+    serviceSearchClear.classList.toggle('hidden', q.length === 0);
+ 
+    const items = document.querySelectorAll('#serviceList li.service-option');
+    let visible = 0;
+ 
+    items.forEach(li => {
+        const hay = (li.dataset.search || '') + ' ' + (li.dataset.description || '').toLowerCase();
+        const show = !q || hay.includes(q);
+        li.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+ 
+    // empty state
+    serviceSearchEmpty.classList.toggle('hidden', visible > 0);
+ 
+    updateSearchCount(visible, items.length);
+}
+ 
+function updateSearchCount(visible, total) {
+    const el = document.getElementById('serviceSearchCount');
+    if (!el) return;
+    if (visible === total) {
+        el.textContent = total + ' service' + (total !== 1 ? 's' : '') + ' available';
+    } else {
+        el.textContent = visible + ' of ' + total + ' matching';
+    }
+}
+ 
+// tiny XSS-safe helper used inside populateServices()
+function escHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
 
 // PIN modal functionality
 document.getElementById('socialPinModalCloseBtn').addEventListener('click', () => {
