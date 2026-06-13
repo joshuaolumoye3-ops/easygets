@@ -2480,40 +2480,40 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
             'pin.*'    => 'required|string|size:1|regex:/^[0-9]$/',
             'quantity' => 'required|integer|min:1|max:10',
         ]);
-    
+
         $user = Auth::user();
         $pin  = implode('', $request->pin);
-    
+
         // Verify PIN
         if (!\Illuminate\Support\Facades\Hash::check($pin, $user->pin)) {
             return response()->json(['success' => false, 'message' => 'Incorrect PIN. Please try again.']);
         }
-    
+
         $product  = \App\Models\Product::where('is_active', true)->findOrFail($id);
         $quantity = (int) $request->quantity;
         $total    = $product->client_price * $quantity;
-    
+
         $wallet = $user->wallet;
         if (!$wallet || $wallet->balance < $total) {
             return response()->json(['success' => false, 'message' => 'Insufficient wallet balance.']);
         }
-    
+
         try {
             \Illuminate\Support\Facades\DB::beginTransaction();
-    
+
             // Deduct wallet
             $wallet->balance -= $total;
             $wallet->save();
-    
+
             $assignedCredentials = [];
             $mode                = $product->mode ?? 'manual';
-    
+
             // ── AUTO-ASSIGN credentials for automatic products ──────────────
             if ($mode === 'automatic') {
                 $logDetails = is_array($product->log_details)
                     ? $product->log_details
                     : (json_decode($product->log_details ?? '[]', true) ?: []);
-    
+
                 $availableIndexes = [];
                 foreach ($logDetails as $index => $detail) {
                     if (empty($detail['sold'])) {
@@ -2523,10 +2523,8 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
                         }
                     }
                 }
-    
+
                 if (!empty($availableIndexes)) {
-                    $transactionId = null; // will set after creating transaction
-    
                     foreach ($availableIndexes as $idx) {
                         $assignedCredentials[] = [
                             'username' => $logDetails[$idx]['username'] ?? '',
@@ -2537,11 +2535,11 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
                 }
                 // If availableIndexes is empty → treat as manual (pending)
             }
-    
+
             // ── Build response payload ───────────────────────────────────────
             $isAutoFulfilled = $mode === 'automatic' && !empty($assignedCredentials);
             $status          = $isAutoFulfilled ? 'success' : 'pending';
-    
+
             $responsePayload = [
                 'product' => [
                     'id'      => $product->id,
@@ -2549,15 +2547,15 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
                     'mode'    => $mode,
                     'country' => $product->country,
                 ],
-                'quantity'         => $quantity,
-                'auto_fulfilled'   => $isAutoFulfilled,
-                'credentials'      => [],
-                'fulfilled_count'  => 0,
+                'quantity'        => $quantity,
+                'auto_fulfilled'  => $isAutoFulfilled,
+                'credentials'     => [],
+                'fulfilled_count' => 0,
             ];
 
             if ($isAutoFulfilled) {
                 $credentialSets = [];
-                foreach ($assignedCredentials as $i => $cred) {
+                foreach ($assignedCredentials as $cred) {
                     $set = [];
                     if (!empty($cred['username'])) $set[] = "Username: {$cred['username']}";
                     if (!empty($cred['password'])) $set[] = "Password: {$cred['password']}";
@@ -2591,38 +2589,78 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
                     : 'Logs order pending admin fulfilment',
                 'response'     => $responsePayload,
             ]);
-    
+
             // ── Mark credentials as sold on the product ──────────────────────
             if ($isAutoFulfilled) {
                 $logDetails = is_array($product->log_details)
                     ? $product->log_details
                     : (json_decode($product->log_details ?? '[]', true) ?: []);
-    
+
                 $soldCount = 0;
                 foreach ($logDetails as &$detail) {
                     if (empty($detail['sold']) && $soldCount < count($assignedCredentials)) {
-                        $detail['sold']                 = true;
-                        $detail['sold_at']              = now()->toDateTimeString();
-                        $detail['sold_transaction_id']  = $transaction->id;
-                        $detail['sold_to_user_id']      = $user->id;
+                        $detail['sold']                = true;
+                        $detail['sold_at']             = now()->toDateTimeString();
+                        $detail['sold_transaction_id'] = $transaction->id;
+                        $detail['sold_to_user_id']     = $user->id;
                         $soldCount++;
                     }
                 }
                 unset($detail);
-    
+
                 $product->log_details = json_encode(array_values($logDetails));
                 $product->save();
             }
-    
+
             \Illuminate\Support\Facades\DB::commit();
-    
+
+            // ── Notify admins (outside transaction — email failure won't rollback) ──
+            try {
+                $adminEmails = \App\Models\Admin::whereNotNull('email')
+                    ->where('email', '<>', '')
+                    ->pluck('email')
+                    ->filter()
+                    ->unique();
+
+                $validAdminEmails = $adminEmails
+                    ->filter(fn($email) => filter_var($email, FILTER_VALIDATE_EMAIL))
+                    ->values()
+                    ->all();
+
+                if (!empty($validAdminEmails)) {
+                    foreach ($validAdminEmails as $adminEmail) {
+                        try {
+                            \Illuminate\Support\Facades\Mail::to($adminEmail)
+                                ->send(new \App\Mail\LogsPurchaseAdminNotification(
+                                    $transaction,
+                                    $product,
+                                    $user
+                                ));
+                        } catch (\Exception $mailException) {
+                            \Illuminate\Support\Facades\Log::warning('Failed to send admin logs notification', [
+                                'transaction_id' => $transaction->id,
+                                'admin_email'    => $adminEmail,
+                                'error'          => $mailException->getMessage(),
+                            ]);
+                        }
+                    }
+                }
+            } catch (\Exception $notifyException) {
+                // Log but never let email failure affect the purchase response
+                \Illuminate\Support\Facades\Log::error('Admin logs notification error', [
+                    'transaction_id' => $transaction->id,
+                    'error'          => $notifyException->getMessage(),
+                ]);
+            }
+            // ── End notify ────────────────────────────────────────────────────
+
             return response()->json([
                 'success' => true,
                 'message' => $isAutoFulfilled
                     ? 'Purchase successful! Your login details are ready.'
                     : 'Order placed successfully! Your details will be delivered shortly.',
             ]);
-    
+
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\DB::rollBack();
             \Illuminate\Support\Facades\Log::error('Log purchase error', [
@@ -2630,11 +2668,9 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
                 'product_id' => $id,
                 'user_id'    => $user->id,
             ]);
-    
+
             return response()->json(['success' => false, 'message' => 'Purchase failed. Please try again.']);
         }
-
-        
     }
 
 }
