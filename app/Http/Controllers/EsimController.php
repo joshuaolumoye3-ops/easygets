@@ -22,7 +22,7 @@ class EsimController extends Controller
 {
     public function index()
     {
-        $dbCountries = EsimCountry::where('is_active', true)
+        $countries = EsimCountry::where('is_active', true)
             ->where('base_price', '>', 0)
             ->whereHas('packages', fn ($q) => $q->where('is_active', true))
             ->withCount(['packages' => fn ($q) => $q->where('is_active', true)])
