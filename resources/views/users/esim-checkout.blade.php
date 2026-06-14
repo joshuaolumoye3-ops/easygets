@@ -8,12 +8,17 @@
 
         <!-- Header -->
         <div class="flex items-center mb-8">
-            <img class="w-8 h-8 mr-3" src="https://flagcdn.com/w40/{{ strtolower($country['code']) }}.png" alt="{{ $country['title'] }}">
+            <a href="{{ url()->previous() }}" class="mr-3 text-gray-500 hover:text-gray-700">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+            </a>
+            <img class="w-8 h-8 rounded mr-3" src="https://flagcdn.com/w40/{{ strtolower($country['code']) }}.png" alt="{{ $country['title'] }}">
             <h1 class="text-xl font-bold text-gray-800">{{ $country['title'] }}</h1>
         </div>
 
         <!-- Plan Summary -->
-        <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
+        <div class="bg-white rounded-xl shadow-sm p-6 mb-5">
             <h2 class="text-lg font-semibold text-gray-800 mb-4">Selected Plan</h2>
             <div class="flex justify-between items-center">
                 <div>
@@ -24,6 +29,16 @@
             </div>
         </div>
 
+        {{-- Description (only shown if admin set one) --}}
+        @if(!empty($country['description']))
+        <div class="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 mb-5">
+            <svg class="w-4 h-4 text-blue-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <p class="text-sm text-blue-700 leading-relaxed">{{ $country['description'] }}</p>
+        </div>
+        @endif
+
         <!-- PIN Input -->
         <form id="checkoutForm" data-action="{{ route('checkout.process', [$country['code'], $package['id']]) }}">
             @csrf
@@ -31,25 +46,25 @@
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Enter Transaction PIN</h2>
                 <div class="flex justify-between space-x-3">
                     @for($i = 0; $i < 4; $i++)
-                        <input type="password" 
+                        <input type="password"
                                inputmode="numeric"
-                               maxlength="1" 
+                               maxlength="1"
                                class="pin-input w-14 h-14 border rounded-lg text-center text-xl font-bold focus:ring-2 focus:ring-blue-500"
-                               data-index="{{ $i }}" 
+                               data-index="{{ $i }}"
                                required />
                     @endfor
                 </div>
                 <p id="errorMsg" class="text-red-600 text-sm mt-3 hidden"></p>
             </div>
 
-            <!-- Checkout Button -->
-            <button type="submit" id="submitBtn" class="w-full py-4 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed">
+            <button type="submit" id="submitBtn"
+                class="w-full py-4 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed">
                 Confirm Purchase
             </button>
         </form>
 
-        <!-- Message Display -->
         <div id="responseMsg" class="hidden mt-6 p-4 rounded-lg text-center"></div>
+
     </div>
 </div>
 
@@ -59,144 +74,83 @@
 </div>
 
 <script>
-    const form = document.getElementById('checkoutForm');
-    const overlay = document.getElementById('loadingOverlay');
+    const form        = document.getElementById('checkoutForm');
+    const overlay     = document.getElementById('loadingOverlay');
     const responseMsg = document.getElementById('responseMsg');
-    const errorMsg = document.getElementById('errorMsg');
-    const submitBtn = document.getElementById('submitBtn');
+    const errorMsg    = document.getElementById('errorMsg');
+    const submitBtn   = document.getElementById('submitBtn');
+    const inputs      = document.querySelectorAll('.pin-input');
 
-    // PIN input auto-focus
-    const inputs = document.querySelectorAll('.pin-input');
-    
     inputs.forEach((input, idx) => {
-        // Only allow numbers
         input.addEventListener('input', (e) => {
             input.value = input.value.replace(/[^0-9]/g, '');
-            
-            // Move forward on input
-            if (input.value && idx < inputs.length - 1) {
-                inputs[idx + 1].focus();
-            }
+            if (input.value && idx < inputs.length - 1) inputs[idx + 1].focus();
         });
-
-        // Move backward on backspace
         input.addEventListener('keydown', (e) => {
-            if (e.key === "Backspace" && !input.value && idx > 0) {
-                inputs[idx - 1].focus();
-            }
+            if (e.key === 'Backspace' && !input.value && idx > 0) inputs[idx - 1].focus();
         });
-
-        // Paste handling - distribute digits across inputs
         input.addEventListener('paste', (e) => {
             e.preventDefault();
-            const pasteData = e.clipboardData.getData('text').replace(/[^0-9]/g, '');
-            const digits = pasteData.split('').slice(0, 4);
-            
-            digits.forEach((digit, i) => {
-                if (inputs[i]) {
-                    inputs[i].value = digit;
-                }
-            });
-            
-            if (digits.length === 4) {
-                inputs[3].focus();
-            }
+            const digits = e.clipboardData.getData('text').replace(/[^0-9]/g, '').split('').slice(0, 4);
+            digits.forEach((d, i) => { if (inputs[i]) inputs[i].value = d; });
+            if (digits.length === 4) inputs[3].focus();
         });
-    }); 
+    });
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         errorMsg.classList.add('hidden');
         responseMsg.classList.add('hidden');
 
-        // Collect PIN values
-        const pinValues = Array.from(inputs).map(input => input.value);
-        
-        // Validate all 4 digits are entered
-        if (pinValues.some(val => !val)) {
-            errorMsg.textContent = "Please enter all 4 digits of your PIN.";
+        const pinValues = Array.from(inputs).map(i => i.value);
+        if (pinValues.some(v => !v)) {
+            errorMsg.textContent = 'Please enter all 4 digits of your PIN.';
             errorMsg.classList.remove('hidden');
             return;
         }
 
-        const url = form.dataset.action;
-        
-        // Build FormData with pin array
         const formData = new FormData();
         formData.append('_token', form.querySelector('[name=_token]').value);
-        pinValues.forEach((value, index) => {
-            formData.append(`pin[${index}]`, value);
-        });
+        pinValues.forEach((v, i) => formData.append(`pin[${i}]`, v));
 
         try {
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Processing...';
+            submitBtn.disabled    = true;
+            submitBtn.textContent = 'Processing…';
             overlay.classList.remove('hidden');
 
-            // Debug: Log what we're sending
-            console.log('Submitting to:', url);
-            console.log('PIN values:', pinValues);
-
             const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-            const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "Accept": "application/json",
-                    "X-Requested-With": "XMLHttpRequest",
-                    "X-CSRF-TOKEN": csrfToken,
-                },
+            const response  = await fetch(form.dataset.action, {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrfToken },
                 credentials: 'same-origin',
-                body: formData
+                body: formData,
             });
 
-            // Debug: Log response status
-            console.log('Response status:', response.status);
-            
-            const result = await response.json();
-            console.log('Response data:', result);
-            
             overlay.classList.add('hidden');
-            submitBtn.disabled = false;
+            submitBtn.disabled    = false;
             submitBtn.textContent = 'Confirm Purchase';
 
-            if (response.status === 419) {
-                errorMsg.textContent = "Your session has expired. Please refresh the page and try again.";
-                errorMsg.classList.remove('hidden');
-                return;
-            }
+            const result = await response.json();
 
             if (response.ok && result.success) {
-                responseMsg.className = "mt-6 p-4 rounded-lg text-center bg-green-100 text-green-800 font-medium";
-                responseMsg.innerHTML = `
-                    <div class="mb-2">${result.message || "eSIM purchase successful!"}</div>
-                    ${result.data ? `<div class="text-sm mt-2">Reference: ${result.data.transaction_reference}</div>` : ''}
-                `;
+                responseMsg.className   = 'mt-6 p-4 rounded-lg text-center bg-green-100 text-green-800 font-medium';
+                responseMsg.innerHTML   = `<div class="mb-2">${result.message || 'eSIM purchase successful!'}</div>${result.data ? `<div class="text-sm mt-2">Reference: ${result.data.transaction_reference}</div>` : ''}`;
                 responseMsg.classList.remove('hidden');
-
-                // Clear PIN inputs
-                inputs.forEach(input => input.value = '');
+                inputs.forEach(i => i.value = '');
                 inputs[0].focus();
-
-                // Redirect to transactions after 3 seconds
-                setTimeout(() => {
-                    window.location.href = '/app/transactions';
-                }, 3000);
+                setTimeout(() => { window.location.href = '/app/transactions'; }, 3000);
             } else {
-                errorMsg.textContent = result.message || "An error occurred. Please try again.";
+                errorMsg.textContent = result.message || 'An error occurred. Please try again.';
                 errorMsg.classList.remove('hidden');
-                
-                // Clear PIN on error
-                inputs.forEach(input => input.value = '');
+                inputs.forEach(i => i.value = '');
                 inputs[0].focus();
             }
-        } catch (err) {
+        } catch(err) {
             overlay.classList.add('hidden');
-            submitBtn.disabled = false;
+            submitBtn.disabled    = false;
             submitBtn.textContent = 'Confirm Purchase';
-            errorMsg.textContent = "Network error. Please check your connection and try again.";
+            errorMsg.textContent  = 'Network error. Please check your connection and try again.';
             errorMsg.classList.remove('hidden');
-            console.error('Error:', err);
         }
     });
 </script>

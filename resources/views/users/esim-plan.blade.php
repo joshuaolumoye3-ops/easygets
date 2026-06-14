@@ -6,7 +6,7 @@
 <div class="bg-slate-50 min-h-screen font-[Inter]">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-        <!-- Header -->
+        <!-- Back -->
         <div class="flex items-center justify-between mb-8">
             <a href="{{ url()->previous() }}" class="flex items-center text-sm text-slate-500 hover:text-slate-800 transition">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -14,35 +14,40 @@
                 </svg>
                 Back
             </a>
-
-            <span class="text-sm font-medium text-slate-500">USD</span>
         </div>
 
         <!-- Country Info -->
-        <div class="bg-white rounded-2xl shadow-sm p-5 mb-8 flex flex-col gap-3">
+        <div class="bg-white rounded-2xl shadow-sm p-5 mb-6 flex flex-col gap-3">
             <div class="flex items-center justify-between flex-wrap gap-3">
                 <div class="flex items-center">
                     <img class="w-8 h-8 rounded-sm mr-3" src="https://flagcdn.com/w40/{{ strtolower($country['code']) }}.png" alt="{{ $country['title'] }}">
                     <h1 class="text-xl font-semibold text-slate-800">{{ $country['title'] }}</h1>
-
                     @if(!empty($country['local_number_available']))
                         <span class="ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
                             Local number available
                         </span>
                     @endif
                 </div>
-
                 <div class="text-sm text-slate-500">
-                    Phone number:
-                    <span class="font-semibold text-slate-800">{{ $features['phone'] }}</span>
+                    Phone: <span class="font-semibold text-slate-800">{{ $features['phone'] }}</span>
                 </div>
             </div>
+
+            {{-- Description (only shown if set by admin) --}}
+            @if(!empty($country['description']))
+            <div class="mt-1 flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                <svg class="w-4 h-4 text-blue-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <p class="text-sm text-blue-700 leading-relaxed">{{ $country['description'] }}</p>
+            </div>
+            @endif
         </div>
 
         <!-- Packages -->
         <div class="mb-10">
             <h2 class="text-lg font-semibold text-slate-800 mb-4">
-                {{ count($packages) }} packages available
+                {{ count($packages) }} {{ Str::plural('package', count($packages)) }} available
             </h2>
 
             <div class="grid grid-cols-2 md:grid-cols-3 gap-5">
@@ -60,17 +65,9 @@
                             </span>
                         @endif
 
-                        <h3 class="text-base font-semibold text-slate-800 mb-1">
-                            {{ $package['title'] }}
-                        </h3>
-
-                        <p class="text-sm text-slate-500 mb-4">
-                            Valid for {{ $package['validity'] }}
-                        </p>
-
-                        <span class="text-lg font-bold text-slate-900">
-                            ₦{{ $package['price'] }}
-                        </span>
+                        <h3 class="text-base font-semibold text-slate-800 mb-1">{{ $package['title'] }}</h3>
+                        <p class="text-sm text-slate-500 mb-4">Valid for {{ $package['validity'] }}</p>
+                        <span class="text-lg font-bold text-slate-900">₦{{ $package['price'] }}</span>
                     </button>
                 @endforeach
             </div>
@@ -79,7 +76,6 @@
         <!-- eSIM Features -->
         <div class="bg-white rounded-2xl shadow-sm p-6 mb-24">
             <h3 class="text-lg font-semibold text-slate-800 mb-5">eSIM features</h3>
-
             <div class="grid grid-cols-2 gap-6 text-sm">
                 <div>
                     <p class="font-medium text-slate-600">Network</p>
@@ -101,17 +97,13 @@
         </div>
 
         <!-- Checkout Bar -->
-        <div id="checkoutBar" class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg">
+        <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg">
             <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
                 <div>
-                    <p id="selectedPrice" class="text-lg font-semibold text-slate-900">
-                        Select a package
-                    </p>
+                    <p id="selectedPrice" class="text-lg font-semibold text-slate-900">Select a package</p>
                     <p id="selectedInfo" class="text-sm text-slate-500"></p>
                 </div>
-
-                <button
-                    id="checkoutBtn"
+                <button id="checkoutBtn"
                     class="px-7 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled>
                     Checkout
@@ -124,28 +116,20 @@
 
 <script>
     const packageButtons = document.querySelectorAll('.package-btn');
-    const checkoutBtn = document.getElementById('checkoutBtn');
-    const selectedPrice = document.getElementById('selectedPrice');
-    const selectedInfo = document.getElementById('selectedInfo');
-
-    let selectedPackage = null;
-    const countryCode = @json($country['code']);
+    const checkoutBtn    = document.getElementById('checkoutBtn');
+    const selectedPrice  = document.getElementById('selectedPrice');
+    const selectedInfo   = document.getElementById('selectedInfo');
+    let selectedPackage  = null;
+    const countryCode    = @json($country['code']);
 
     packageButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             packageButtons.forEach(b => b.classList.remove('border-blue-600', 'ring-1', 'ring-blue-600'));
             btn.classList.add('border-blue-600', 'ring-1', 'ring-blue-600');
-
-            selectedPackage = {
-                id: btn.dataset.id,
-                title: btn.dataset.title,
-                price: btn.dataset.price,
-                validity: btn.dataset.validity
-            };
-
+            selectedPackage = { id: btn.dataset.id, title: btn.dataset.title, price: btn.dataset.price, validity: btn.dataset.validity };
             selectedPrice.textContent = `₦${selectedPackage.price}`;
-            selectedInfo.textContent = `${selectedPackage.title} / ${selectedPackage.validity}`;
-            checkoutBtn.disabled = false;
+            selectedInfo.textContent  = `${selectedPackage.title} / ${selectedPackage.validity}`;
+            checkoutBtn.disabled      = false;
         });
     });
 

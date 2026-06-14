@@ -22,41 +22,28 @@ class EsimController extends Controller
 {
     public function index()
     {
-        // Get active countries from database that have:
-        // 1. A base_price greater than 0
-        // 2. At least one active package
         $dbCountries = EsimCountry::where('is_active', true)
             ->where('base_price', '>', 0)
-            ->whereHas('packages', function($query) {
-                $query->where('is_active', true);
-            })
-            ->withCount(['packages' => function($query) {
-                $query->where('is_active', true);
-            }])
+            ->whereHas('packages', fn ($q) => $q->where('is_active', true))
+            ->withCount(['packages' => fn ($q) => $q->where('is_active', true)])
             ->orderBy('country_name')
             ->get()
-            ->map(function($country) {
-                return [
-                    'id'    => $country->id,
-                    'code'  => $country->country_code,
-                    'title' => $country->country_name,
-                    'price' => $country->base_price,
-                    'flag_url' => $country->flag_url,
-                    'packages_count' => $country->packages_count,
-                    'local_number_available' => (bool) $country->local_number_available,
-                ];
-            })
+            ->map(fn ($country) => [
+                'id'                     => $country->id,
+                'code'                   => $country->country_code,
+                'title'                  => $country->country_name,
+                'price'                  => $country->base_price,
+                'flag_url'               => $country->flag_url,
+                'packages_count'         => $country->packages_count,
+                'local_number_available' => (bool) $country->local_number_available,
+            ])
             ->toArray();
-
-        // If no countries in DB, show empty state
-        $countries = $dbCountries;
 
         return view('users.esim', compact('countries'));
     }
 
     public function plan($code)
     {
-        // Find country by code from database
         $country = EsimCountry::where('country_code', strtoupper($code))
             ->where('is_active', true)
             ->first();
@@ -65,35 +52,31 @@ class EsimController extends Controller
             abort(404, 'Country not found');
         }
 
-        // Get packages for this country
         $packages = $country->packages()
             ->where('is_active', true)
             ->orderBy('validity_days')
             ->orderBy('price')
             ->get()
-            ->map(function($package) {
-                return [
-                    'id' => $package->id,
-                    'title' => $package->plan,
-                    'validity' => $package->validity_days . ' days',
-                    'price' => number_format($package->price, 2),
-                    'badge' => '',
-                    'badgeColor' => '',
-                ];
-            })
+            ->map(fn ($package) => [
+                'id'       => $package->id,
+                'title'    => $package->plan,
+                'validity' => $package->validity_days . ' days',
+                'price'    => number_format($package->price, 2),
+                'badge'    => '',
+                'badgeColor' => '',
+            ])
             ->toArray();
 
-        // If no packages, show message
         if (empty($packages)) {
             return back()->with('error', 'No packages available for this country yet.');
         }
 
-        // Format country data for view
         $countryData = [
-            'id' => $country->id,
-            'code' => $country->country_code,
-            'title' => $country->country_name,
-            'flag_url' => $country->flag_url,
+            'id'                     => $country->id,
+            'code'                   => $country->country_code,
+            'title'                  => $country->country_name,
+            'flag_url'               => $country->flag_url,
+            'description'            => $country->description,          // ← pass through
             'local_number_available' => (bool) $country->local_number_available,
         ];
 
@@ -105,15 +88,14 @@ class EsimController extends Controller
         ];
 
         return view('users.esim-plan', [
-            'country' => $countryData,
+            'country'  => $countryData,
             'packages' => $packages,
-            'features' => $features
+            'features' => $features,
         ]);
     }
 
     public function checkout($code, $packageId)
     {
-        // Get country from database
         $country = EsimCountry::where('country_code', strtoupper($code))
             ->where('is_active', true)
             ->first();
@@ -122,7 +104,6 @@ class EsimController extends Controller
             abort(404, 'Country not found');
         }
 
-        // Get specific package
         $package = EsimPackage::where('id', $packageId)
             ->where('esim_country_id', $country->id)
             ->where('is_active', true)
@@ -132,24 +113,24 @@ class EsimController extends Controller
             abort(404, 'Package not found');
         }
 
-        // Format data for view
         $countryData = [
-            'id' => $country->id,
-            'code' => $country->country_code,
-            'title' => $country->country_name,
-            'flag_url' => $country->flag_url,
+            'id'          => $country->id,
+            'code'        => $country->country_code,
+            'title'       => $country->country_name,
+            'flag_url'    => $country->flag_url,
+            'description' => $country->description,          // ← pass through
         ];
 
         $packageData = [
-            'id' => $package->id,
-            'title' => $package->plan,
+            'id'       => $package->id,
+            'title'    => $package->plan,
             'validity' => $package->validity_days . ' days',
-            'price' => number_format($package->price, 2),
+            'price'    => number_format($package->price, 2),
         ];
 
         return view('users.esim-checkout', [
             'country' => $countryData,
-            'package' => $packageData
+            'package' => $packageData,
         ]);
     }
 
@@ -157,58 +138,39 @@ class EsimController extends Controller
     {
         try {
             $request->validate([
-                'pin' => 'required|array|size:4',
+                'pin'   => 'required|array|size:4',
                 'pin.*' => 'required|numeric|digits:1',
             ]);
         } catch (ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid PIN format. Please enter 4 digits.',
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Invalid PIN format. Please enter 4 digits.'], 422);
         }
 
-        // Combine PIN array into one string
         $inputPin = implode('', $request->pin);
 
         try {
-            // Verify PIN
             PinHelper::verifyPin($inputPin);
         } catch (ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->validator->errors()->first('pin') ?? 'Invalid PIN',
-            ], 422);
+            return response()->json(['success' => false, 'message' => $e->validator->errors()->first('pin') ?? 'Invalid PIN'], 422);
         } catch (\Exception $e) {
             Log::error('PIN verification failed', ['error' => $e->getMessage()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'PIN verification failed. Please try again.',
-            ], 400);
+            return response()->json(['success' => false, 'message' => 'PIN verification failed. Please try again.'], 400);
         }
 
-        // Fetch active country
         $country = EsimCountry::where('country_code', strtoupper($countryCode))
             ->where('is_active', true)
             ->first();
 
         if (!$country) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Country not found or inactive',
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'Country not found or inactive'], 404);
         }
 
-        // Fetch active package
         $package = EsimPackage::where('id', $packageId)
             ->where('esim_country_id', $country->id)
             ->where('is_active', true)
             ->first();
 
         if (!$package) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Package not found or inactive',
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'Package not found or inactive'], 404);
         }
 
         $userId = auth()->id();
@@ -217,15 +179,11 @@ class EsimController extends Controller
         try {
             DB::beginTransaction();
 
-            // Lock wallet to prevent race condition
             $wallet = Wallet::where('user_id', $userId)->lockForUpdate()->first();
 
             if (!$wallet) {
                 DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Wallet not found. Please contact support.',
-                ], 400);
+                return response()->json(['success' => false, 'message' => 'Wallet not found. Please contact support.'], 400);
             }
 
             if ($wallet->balance < $amount) {
@@ -236,99 +194,72 @@ class EsimController extends Controller
                 ], 400);
             }
 
-            // Generate shorter unique transaction reference (max 30 chars)
             $reference = 'ESIM' . time() . strtoupper(Str::random(10));
 
-            // Create transaction record
             $transaction = Transaction::create([
                 'reference' => $reference,
-                'user_id' => $userId,
-                'type' => 'esim',
-                'title' => 'eSIM Purchase',
-                'channel' => 'web',
-                'provider' => $country->country_name,
-                'phone' => null,
+                'user_id'   => $userId,
+                'type'      => 'esim',
+                'title'     => 'eSIM Purchase',
+                'channel'   => 'web',
+                'provider'  => $country->country_name,
+                'phone'     => null,
                 'recipient' => $country->country_name . ' - ' . $package->plan,
-                'amount' => $amount,
-                'status' => 'pending',
-                'response' => json_encode([
-                    'country' => $country->country_name,
-                    'package' => $package->plan,
+                'amount'    => $amount,
+                'status'    => 'pending',
+                'response'  => json_encode([
+                    'country'  => $country->country_name,
+                    'package'  => $package->plan,
                     'validity' => $package->validity_days . ' days',
                 ]),
             ]);
 
-            // Deduct wallet balance
             $wallet->decrement('balance', $amount);
 
             DB::commit();
 
-            Log::info('eSIM purchase successful', [
-                'transaction_id' => $transaction->id,
-                'reference' => $reference,
-            ]);
+            Log::info('eSIM purchase successful', ['transaction_id' => $transaction->id, 'reference' => $reference]);
 
             // Notify admins
-            $adminEmails = Admin::whereNotNull('email')
-                ->where('email', '<>', '')
-                ->pluck('email')
-                ->filter()
-                ->unique();
-
-            $validAdminEmails = $adminEmails->filter(function ($email) {
-                return filter_var($email, FILTER_VALIDATE_EMAIL);
-            })->values()->all();
+            $adminEmails = Admin::whereNotNull('email')->where('email', '<>', '')->pluck('email')->filter()->unique();
+            $validAdminEmails = $adminEmails->filter(fn ($e) => filter_var($e, FILTER_VALIDATE_EMAIL))->values()->all();
 
             if (!empty($validAdminEmails)) {
-                // Send to each admin separately so one bad address doesn't stop others
                 foreach ($validAdminEmails as $adminEmail) {
                     try {
                         Mail::to($adminEmail)->send(new EsimPurchaseAdminNotification($transaction, $country, $package, auth()->user()));
                     } catch (\Exception $mailException) {
-                        Log::warning('Failed to send admin eSIM notification to admin', [
-                            'transaction_id' => $transaction->id,
-                            'admin_email' => $adminEmail,
-                            'error' => $mailException->getMessage(),
-                        ]);
+                        Log::warning('Failed to send admin eSIM notification', ['admin_email' => $adminEmail, 'error' => $mailException->getMessage()]);
                     }
                 }
-            } else {
-                Log::warning('No valid admin emails found for eSIM notification', [
-                    'transaction_id' => $transaction->id,
-                    'admin_emails' => $adminEmails->values()->all(),
-                ]);
             }
 
             return response()->json([
-                'success' => true,
-                'message' => 'eSIM purchase successful! Check your transactions for details.',
+                'success'        => true,
+                'message'        => 'eSIM purchase successful! Check your transactions for details.',
                 'transaction_id' => $transaction->id,
-                'data' => [
+                'data'           => [
                     'transaction_reference' => $reference,
-                    'country' => $country->country_name,
-                    'package' => $package->plan,
-                    'validity' => $package->validity_days . ' days',
-                    'amount' => $amount,
-                    'formatted_amount' => '₦' . number_format($amount, 2),
-                    'new_balance' => $wallet->fresh()->balance,
-                    'formatted_balance' => '₦' . number_format($wallet->fresh()->balance, 2),
+                    'country'               => $country->country_name,
+                    'package'               => $package->plan,
+                    'validity'              => $package->validity_days . ' days',
+                    'amount'                => $amount,
+                    'formatted_amount'      => '₦' . number_format($amount, 2),
+                    'new_balance'           => $wallet->fresh()->balance,
+                    'formatted_balance'     => '₦' . number_format($wallet->fresh()->balance, 2),
                 ],
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('eSIM purchase error', [
-                'user_id' => $userId,
+                'user_id'      => $userId,
                 'country_code' => $countryCode,
-                'package_id' => $packageId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'package_id'   => $packageId,
+                'error'        => $e->getMessage(),
+                'trace'        => $e->getTraceAsString(),
             ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'An error occurred while processing your request. Please try again.',
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'An error occurred while processing your request. Please try again.'], 500);
         }
     }
 }

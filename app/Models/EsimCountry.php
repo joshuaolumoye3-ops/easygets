@@ -13,6 +13,7 @@ class EsimCountry extends Model
         'country_name',
         'country_code',
         'base_price',
+        'description',
         'flag_url',
         'is_active',
         'local_number_available',

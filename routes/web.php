@@ -367,6 +367,7 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
         Route::get('/', [AdminEsimController::class, 'index'])->name('admin.esim.index');
         Route::post('/refresh-countries', [AdminEsimController::class, 'refreshCountries'])->name('admin.esim.refresh');
         Route::post('/seed-countries', [AdminEsimController::class, 'seedSampleCountries'])->name('admin.esim.seed');
+        Route::post('/{id}/description', [AdminEsimController::class, 'updateDescription'])->name('admin.esim.updateDescription');
         Route::post('/{id}/update-price', [AdminEsimController::class, 'updatePrice'])->name('admin.esim.updatePrice');
         Route::post('/{countryId}/packages/save', [AdminEsimController::class, 'savePackage'])->name('admin.esim.savePackage');
         Route::delete('/packages/{id}', [AdminEsimController::class, 'deletePackage'])->name('admin.esim.deletePackage');
