@@ -29,6 +29,12 @@ class User extends Authenticatable
         'is_blocked',
         'blocked_reason',
         'blocked_at',
+        // Referral / partner fields
+        'is_partner',
+        'partner_percentage',
+        'partner_min_withdrawal',
+        'referral_balance',
+        'referred_by',
     ];
 
     /**
@@ -39,6 +45,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'pin',
     ];
 
     /**
@@ -49,68 +56,66 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'blocked_at' => 'datetime',
-            'password' => 'hashed',
-            'is_blocked' => 'boolean',
+            'email_verified_at'      => 'datetime',
+            'blocked_at'             => 'datetime',
+            'password'               => 'hashed',
+            'is_blocked'             => 'boolean',
+            'is_partner'             => 'boolean',
+            'partner_percentage'     => 'decimal:2',
+            'partner_min_withdrawal' => 'decimal:2',
+            'referral_balance'       => 'decimal:2',
         ];
     }
 
-    /**
-     * Scope to get active (non-blocked) users
-     */
+    // ── Scopes ────────────────────────────────────────────────
+
     public function scopeActive($query)
     {
         return $query->where('is_blocked', false);
     }
 
-    /**
-     * Scope to get blocked users
-     */
     public function scopeBlocked($query)
     {
         return $query->where('is_blocked', true);
     }
 
-    /**
-     * Check if user is blocked
-     */
+    public function scopePartners($query)
+    {
+        return $query->where('is_partner', true);
+    }
+
+    // ── Block helpers ─────────────────────────────────────────
+
     public function isBlocked(): bool
     {
         return (bool) $this->is_blocked;
     }
 
-    /**
-     * Block a user
-     */
     public function block(string $reason = null): void
     {
         $this->update([
-            'is_blocked' => true,
+            'is_blocked'     => true,
             'blocked_reason' => $reason,
-            'blocked_at' => now(),
+            'blocked_at'     => now(),
         ]);
     }
 
-    /**
-     * Unblock a user
-     */
     public function unblock(): void
     {
         $this->update([
-            'is_blocked' => false,
+            'is_blocked'     => false,
             'blocked_reason' => null,
-            'blocked_at' => null,
+            'blocked_at'     => null,
         ]);
     }
 
+    // ── Relationships ─────────────────────────────────────────
 
-
-    public function Wallet()
+    public function wallet()
     {
         return $this->hasOne(Wallet::class);
     }
-    
+
     public function transactions()
     {
         return $this->hasMany(Transaction::class);
@@ -121,33 +126,33 @@ class User extends Authenticatable
     {
         return $this->belongsTo(\App\Models\User::class, 'referred_by');
     }
- 
+
     /** Users this user has referred */
     public function referrals()
     {
         return $this->hasMany(\App\Models\Referral::class, 'referrer_id');
     }
- 
+
     /** Referral record where this user is the referred party */
     public function referralRecord()
     {
         return $this->hasOne(\App\Models\Referral::class, 'referred_id');
     }
- 
+
     /** Earnings this user has generated as a referrer */
     public function referralEarnings()
     {
         return $this->hasMany(\App\Models\ReferralEarning::class, 'referrer_id');
     }
- 
+
     /** Partner withdrawal requests */
     public function partnerWithdrawals()
     {
         return $this->hasMany(\App\Models\PartnerWithdrawal::class, 'user_id');
     }
- 
-    // ── Referral Helpers ──────────────────────────────────────
- 
+
+    // ── Referral helpers ──────────────────────────────────────
+
     /** The effective commission rate for this user when they refer someone */
     public function referralPercentage(): float
     {
@@ -156,23 +161,23 @@ class User extends Authenticatable
         }
         return \App\Models\ReferralSetting::globalPercentage();
     }
- 
+
     /** Credit referral balance */
     public function creditReferralBalance(float $amount): void
     {
         $this->increment('referral_balance', $amount);
     }
- 
+
     /** Debit referral balance (returns false if insufficient funds) */
     public function debitReferralBalance(float $amount): bool
     {
-        if ($this->referral_balance < $amount) {
+        if ((float) $this->referral_balance < $amount) {
             return false;
         }
         $this->decrement('referral_balance', $amount);
         return true;
     }
- 
+
     /** Promote to partner */
     public function promoteToPartner(float $percentage, float $minWithdrawal): void
     {
@@ -182,7 +187,7 @@ class User extends Authenticatable
             'partner_min_withdrawal' => $minWithdrawal,
         ]);
     }
- 
+
     /** Demote from partner back to normal user */
     public function demoteFromPartner(): void
     {

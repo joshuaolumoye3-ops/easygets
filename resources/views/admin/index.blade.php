@@ -1032,7 +1032,7 @@
                 });
 
                 try {
-                    const pr   = await fetch(`${BASE}/app/admin/referral/users/${uid}`);
+                    const pr = await fetch(`${BASE}/app/admin/referral/users/${uid}`);
                     const data = await pr.json();
                     if (!data.success) {
                         flash(body, 'Could not load referral data.', 'err');

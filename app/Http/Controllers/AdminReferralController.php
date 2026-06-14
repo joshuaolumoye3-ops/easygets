@@ -61,6 +61,12 @@ class AdminReferralController extends Controller
                 (float) $request->partner_min_withdrawal
             );
 
+            // Verify the save actually worked
+            $user->refresh();
+            if (!$user->is_partner) {
+                throw new \Exception('DB update did not persist — check $fillable on User model.');
+            }
+
             AdminTransaction::create([
                 'admin_id'         => $admin->id,
                 'action'           => 'PROMOTE_PARTNER',
@@ -85,8 +91,11 @@ class AdminReferralController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Promote partner error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Failed to promote user.'], 500);
+            Log::error('Promote partner error: ' . $e->getMessage(), [
+                'user_id' => $userId,
+                'trace'   => $e->getTraceAsString(),
+            ]);
+            return response()->json(['success' => false, 'message' => 'Failed to promote user: ' . $e->getMessage()], 500);
         }
     }
 
@@ -141,30 +150,31 @@ class AdminReferralController extends Controller
             ])->findOrFail($userId);
 
             return response()->json([
-                'success'             => true,
-                'is_partner'          => $user->is_partner,
-                'partner_percentage'  => $user->partner_percentage,
+                'success'                => true,
+                'is_partner'             => (bool) $user->is_partner,
+                'partner_percentage'     => $user->partner_percentage,
                 'partner_min_withdrawal' => $user->partner_min_withdrawal,
-                'referral_balance'    => $user->referral_balance,
-                'referral_code'       => $user->username,
-                'referred_by'         => $user->referrer ? $user->referrer->username : null,
-                'total_referrals'     => $user->referrals->count(),
-                'total_earned'        => $user->referrals->sum('total_earned'),
-                'recent_earnings'     => $user->referralEarnings->map(fn ($e) => [
+                'referral_balance'       => $user->referral_balance,
+                'referral_code'          => $user->username,
+                'referred_by'            => $user->referrer ? $user->referrer->username : null,
+                'total_referrals'        => $user->referrals->count(),
+                'total_earned'           => $user->referrals->sum('total_earned'),
+                'recent_earnings'        => $user->referralEarnings->map(fn ($e) => [
                     'commission'     => $e->commission,
                     'deposit_amount' => $e->deposit_amount,
                     'percentage'     => $e->percentage,
                     'created_at'     => $e->created_at?->format('d M Y'),
                 ]),
-                'recent_withdrawals'  => $user->partnerWithdrawals->map(fn ($w) => [
-                    'amount'    => $w->amount,
-                    'status'    => $w->status,
-                    'reference' => $w->reference,
-                    'created_at'=> $w->created_at?->format('d M Y'),
+                'recent_withdrawals'     => $user->partnerWithdrawals->map(fn ($w) => [
+                    'amount'     => $w->amount,
+                    'status'     => $w->status,
+                    'reference'  => $w->reference,
+                    'created_at' => $w->created_at?->format('d M Y'),
                 ]),
             ]);
 
         } catch (\Exception $e) {
+            Log::error('getUserReferralInfo error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'User not found.'], 404);
         }
     }
@@ -176,9 +186,16 @@ class AdminReferralController extends Controller
         $withdrawals = PartnerWithdrawal::with(['user', 'processedBy'])
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
             ->latest()
-            ->paginate(20);
+            ->paginate((int) $request->get('pp', 10));
 
-        return view('admin.partner-withdrawals', compact('withdrawals'));
+        $stats = [
+            'pending'        => PartnerWithdrawal::where('status', 'pending')->count(),
+            'approved'       => PartnerWithdrawal::where('status', 'approved')->count(),
+            'declined'       => PartnerWithdrawal::where('status', 'declined')->count(),
+            'approved_total' => PartnerWithdrawal::where('status', 'approved')->sum('amount'),
+        ];
+
+        return view('admin.partner-withdrawals', compact('withdrawals', 'stats'));
     }
 
     public function approveWithdrawal(Request $request, $id)
