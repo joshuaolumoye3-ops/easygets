@@ -385,6 +385,8 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
 
     Route::prefix('social')->group(function () {
         Route::get('/services', [SocialBoostController::class, 'adminListServices'])->name('admin.social.services');
+        Route::post('/bulk-percentage', [SocialBoostController::class, 'adminBulkUpdatePercentage'])
+    ->name('admin.social.bulkPercentage');
         Route::get('/refresh', [SocialBoostController::class, 'adminRefreshServices'])->name('admin.social.refresh');
         Route::post('/update-description', [SocialBoostController::class, 'adminUpdateDescription'])->name('admin.social.updateDescription');
     });

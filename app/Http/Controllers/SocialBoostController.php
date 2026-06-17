@@ -786,4 +786,90 @@ class SocialBoostController extends Controller
             return redirect()->route('admin.social.services')->with('error', 'Failed to update description');
         }
     }
+
+    /**
+     * Admin: Bulk-update admin_percentage across ALL services.
+     *
+     * Strategy (scalable to 5,000+ services):
+     *   1. Validate the percentage input.
+     *   2. Update every existing SocialServiceDescription row.
+     *   3. Fetch all service IDs from cache that have NO saved record yet
+     *      and insert them in chunks (avoids memory spikes on huge lists).
+     *   4. Clear the services cache so the updated prices show immediately.
+     */
+    public function adminBulkUpdatePercentage(Request $request)
+    {
+        $validated = $request->validate([
+            'global_percentage' => 'required|numeric|min:0|max:1000',
+        ]);
+    
+        $percentage = intval($validated['global_percentage']);
+    
+        try {
+            DB::beginTransaction();
+    
+            // ── Step 1: Update every row that already exists ──────────────────
+            SocialServiceDescription::query()
+                ->update(['admin_percentage' => $percentage]);
+    
+            // ── Step 2: Find service IDs with no saved record yet ─────────────
+            $services = $this->getCachedServices();
+    
+            if (!empty($services)) {
+                // Collect every service_id string from the API
+                $allApiIds = collect($services)
+                    ->pluck('service')
+                    ->filter()
+                    ->map(fn($id) => (string) $id)
+                    ->unique()
+                    ->values()
+                    ->all();
+    
+                // Which ones already exist in the DB?
+                $existingIds = SocialServiceDescription::whereIn('service_id', $allApiIds)
+                    ->pluck('service_id')
+                    ->all();
+    
+                $missingIds = array_diff($allApiIds, $existingIds);
+    
+                // Insert missing ones in chunks of 500 to stay memory-safe
+                $now = now()->toDateTimeString();
+                foreach (array_chunk($missingIds, 500) as $chunk) {
+                    $rows = array_map(fn($id) => [
+                        'service_id'       => $id,
+                        'admin_percentage' => $percentage,
+                        'description'      => null,
+                        'custom_name'      => null,
+                        'custom_category'  => null,
+                        'created_at'       => $now,
+                        'updated_at'       => $now,
+                    ], $chunk);
+    
+                    DB::table('social_service_descriptions')->insert($rows);
+                }
+            }
+    
+            DB::commit();
+    
+            // ── Step 3: Clear file cache so fresh prices render ───────────────
+            $cachePath = storage_path('app/cache/mtp_services.json');
+            if (file_exists($cachePath)) {
+                unlink($cachePath);
+            }
+    
+            $totalUpdated = SocialServiceDescription::count();
+    
+            return redirect()
+                ->route('admin.social.services')
+                ->with('success', "Global markup set to {$percentage}%. {$totalUpdated} services updated.");
+    
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Bulk percentage update failed', ['error' => $e->getMessage()]);
+    
+            return redirect()
+                ->route('admin.social.services')
+                ->with('error', 'Failed to apply global markup: ' . $e->getMessage());
+        }
+    }
 }
