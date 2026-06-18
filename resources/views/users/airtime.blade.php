@@ -162,16 +162,16 @@
                 Enter your 4-digit PIN
             </label>
             <div class="flex space-x-3 justify-center">
-                <input type="password" maxlength="1"
+                <input type="password" maxlength="1" inputmode="numeric" pattern="[0-9]*"
                        class="pin-input w-12 h-12 text-center border border-gray-300 rounded-lg text-2xl
                               focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition">
-                <input type="password" maxlength="1"
+                <input type="password" maxlength="1" inputmode="numeric" pattern="[0-9]*"
                        class="pin-input w-12 h-12 text-center border border-gray-300 rounded-lg text-2xl
                               focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition">
-                <input type="password" maxlength="1"
+                <input type="password" maxlength="1" inputmode="numeric" pattern="[0-9]*"
                        class="pin-input w-12 h-12 text-center border border-gray-300 rounded-lg text-2xl
                               focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition">
-                <input type="password" maxlength="1"
+                <input type="password" maxlength="1" inputmode="numeric" pattern="[0-9]*"
                        class="pin-input w-12 h-12 text-center border border-gray-300 rounded-lg text-2xl
                               focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition">
             </div>

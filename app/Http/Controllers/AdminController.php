@@ -337,100 +337,84 @@ class AdminController extends Controller
     /**
      * Add funds to user's wallet with admin transaction logging
      */
-public function addFunds(Request $request, $userId)
-{
-    $validator = Validator::make($request->all(), [
-        'amount'      => 'required|numeric|min:0.01',
-        'description' => 'required|string|min:3|max:255'
-    ]);
+    public function addFunds(Request $request, $userId)
+    {
+        $request->validate([
+            'amount'      => 'required|numeric|min:0.01',
+            'description' => 'required|string|max:500',
+        ]);
 
-    if ($validator->fails()) {
-        return response()->json([
-            'success' => false,
-            'message' => $validator->errors()->first()
-        ], 422);
-    }
+        try {
+            DB::beginTransaction();
 
-    try {
-        DB::beginTransaction();
+            $user   = User::findOrFail($userId);
+            $wallet = $user->wallet;
 
-        $user  = User::with('wallet')->findOrFail($userId);
-        $admin = Auth::guard('admins')->user(); // ✅ track the logged-in admin
+            if (!$wallet) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User wallet not found.',
+                ], 404);
+            }
 
-        if (!$admin) {
+            $amount = (float) $request->amount;
+
+            // ── Credit wallet ──────────────────────────────────────────────
+            $wallet->increment('balance', $amount);
+
+            // ── Audit transaction ──────────────────────────────────────────
+            $admin = Auth::guard('admins')->user();
+
+            $transaction = \App\Models\Transaction::create([
+                'user_id'     => $user->id,
+                'reference'   => 'ADMIN_CREDIT_' . strtoupper(\Illuminate\Support\Str::random(10)),
+                'type'        => 'wallet_funding',
+                'channel'     => 'Admin',
+                'provider'    => 'Admin',
+                'amount'      => $amount,
+                'status'      => 'success',
+                'description' => $request->description . ' (Admin: ' . ($admin->username ?? $admin->email ?? 'admin') . ')',
+            ]);
+
+            // ── AdminTransaction log ───────────────────────────────────────
+            \App\Models\AdminTransaction::create([
+                'admin_id'         => $admin->id,
+                'action'           => 'ADD_FUNDS',
+                'amount'           => $amount,
+                'affected_user_id' => $user->id,
+                'description'      => $request->description,
+                'reference'        => $transaction->reference,
+            ]);
+
+            DB::commit();
+
+            // ── Referral commission (outside main transaction so it
+            //    never rolls back the deposit if it fails) ──────────────────
+            app(\App\Services\ReferralService::class)->creditCommissionOnDeposit(
+                $user,
+                $amount,
+                $transaction->id,
+                'admin_credit'
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => '₦' . number_format($amount, 2) . ' added to ' . $user->username . '\'s wallet successfully.',
+                'new_balance' => $wallet->fresh()->balance,
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Admin addFunds error', [
+                'user_id' => $userId,
+                'error'   => $e->getMessage(),
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized: Admin not logged in.'
-            ], 403);
+                'message' => 'Failed to add funds: ' . $e->getMessage(),
+            ], 500);
         }
-
-        // Create wallet if it doesn't exist
-        if (!$user->wallet) {
-            $wallet = Wallet::create([
-                'user_id' => $user->id,
-                'balance' => 0
-            ]);
-            $user->load('wallet');
-        }
-
-        $amount      = $request->amount;
-        $description = $request->description;
-        $reference   = 'ADMIN_ADD_' . strtoupper(Str::random(10));
-
-        // Update wallet balance
-        $oldBalance = $user->wallet->balance;
-        $user->wallet->balance += $amount;
-        $user->wallet->save();
-
-        // Create transaction record for the user
-        Transaction::create([
-            'reference' => $reference,
-            'user_id'   => $user->id,
-            'type'      => 'Admin Credit',
-            'channel'   => 'Admin',
-            'provider'  => 'System',
-            'phone'     => $user->phone_number,
-            'recipient' => $user->username,
-            'amount'    => $amount,
-            'status'    => 'Success',
-            'response'  => $description
-        ]);
-
-        // Create transaction record for the admin
-        AdminTransaction::create([
-            'admin_id'         => $admin->id,
-            'action'           => 'ADD_FUNDS',
-            'amount'           => $amount,
-            'affected_user_id' => $user->id,
-            'description'      => sprintf(
-                'Added ₦%s to %s\'s wallet. Reason: %s. Balance: ₦%s → ₦%s',
-                number_format($amount, 2),
-                $user->username,
-                $description,
-                number_format($oldBalance, 2),
-                number_format($user->wallet->balance, 2)
-            ),
-            'reference'        => $reference,
-        ]);
-
-        DB::commit();
-
-        return response()->json([
-            'success'     => true,
-            'message'     => "₦" . number_format($amount, 2) . " has been successfully added to {$user->username}'s wallet",
-            'new_balance' => number_format($user->wallet->balance, 2)
-        ]);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        \Log::error('Add funds error: ' . $e->getMessage());
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to add funds. Please try again.'
-        ], 500);
     }
-}
 
 
     /**
