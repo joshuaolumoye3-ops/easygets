@@ -243,24 +243,25 @@ class SocialBoostController extends Controller
 
             // Validate request (allow commonly used extra params supported by MTP)
             $validated = $request->validate([
-                'service_id' => 'required|integer',
-                'link' => 'required|url|max:500',
-                'quantity' => 'required|integer|min:1',
-                'pin' => 'required|digits:4',
-                'comments' => 'nullable|string|max:5000',
-                'username' => 'nullable|string|max:100',
-                'usernames' => 'nullable|string|max:5000',
-                'groups' => 'nullable|string|max:8000',
-                'media' => 'nullable|url|max:1000',
-                'keywords' => 'nullable|string|max:1000',
-                'hashtags' => 'nullable|string|max:1000',
-                'runs' => 'nullable|integer|min:1',
-                'interval' => 'nullable|integer|min:1',
-                'answer_number' => 'nullable|string|max:10',
-                'posts' => 'nullable|integer',
-                'delay' => 'nullable|integer',
-                'expiry' => 'nullable|string',
-                'old_posts' => 'nullable|integer',
+                'service_id'          => 'required|integer',
+                'link'                => 'required|url|max:500',
+                'quantity'            => 'required|integer|min:1',
+                'pin'                 => 'required|digits:4',
+                'use_referral_balance' => 'sometimes|boolean',  // ← NEW
+                'comments'            => 'nullable|string|max:5000',
+                'username'            => 'nullable|string|max:100',
+                'usernames'           => 'nullable|string|max:5000',
+                'groups'              => 'nullable|string|max:8000',
+                'media'               => 'nullable|url|max:1000',
+                'keywords'            => 'nullable|string|max:1000',
+                'hashtags'            => 'nullable|string|max:1000',
+                'runs'                => 'nullable|integer|min:1',
+                'interval'            => 'nullable|integer|min:1',
+                'answer_number'       => 'nullable|string|max:10',
+                'posts'               => 'nullable|integer',
+                'delay'               => 'nullable|integer',
+                'expiry'              => 'nullable|string',
+                'old_posts'           => 'nullable|integer',
             ]);
 
             // Verify PIN
@@ -306,15 +307,37 @@ class SocialBoostController extends Controller
                 $adminPercentage
             );
             $costLocal = $costs['cost_local'];
-            $costUsd = $costs['cost_usd'];
+            $costUsd   = $costs['cost_usd'];
 
-            // Check wallet balance
-            if ($wallet->balance < $costLocal) {
+            // ── Referral balance split ────────────────────────────────────────
+            $useReferral = !empty($validated['use_referral_balance'])
+                && \App\Helpers\ReferralBalanceHelper::isEligible($user);
+
+            if ($useReferral) {
+                $split = \App\Helpers\ReferralBalanceHelper::calculate($user, $wallet, $costLocal);
+            } else {
+                $split = [
+                    'referral_deduction' => 0,
+                    'wallet_deduction'   => $costLocal,
+                    'can_proceed'        => true,
+                    'shortfall'          => 0,
+                ];
+            }
+
+            // Check wallet balance (only the wallet portion of the split)
+            if ((float) $wallet->balance < $split['wallet_deduction']) {
+                $referralNote = $split['referral_deduction'] > 0
+                    ? ' (₦' . number_format($split['referral_deduction'], 2) . ' covered by referral balance).'
+                    : '.';
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'Insufficient wallet balance. Required: ₦' . number_format($costLocal, 2) . '. Please fund your wallet.',
+                    'message' => 'Insufficient wallet balance. Required from wallet: ₦'
+                        . number_format($split['wallet_deduction'], 2)
+                        . $referralNote,
                 ], 422);
             }
+            // ─────────────────────────────────────────────────────────────────
 
             // Start transaction
             DB::beginTransaction();
@@ -322,8 +345,8 @@ class SocialBoostController extends Controller
             try {
                 // Prepare order data
                 $orderData = [
-                    'service' => $validated['service_id'],
-                    'link' => $validated['link'],
+                    'service'  => $validated['service_id'],
+                    'link'     => $validated['link'],
                     'quantity' => $validated['quantity'],
                 ];
 
@@ -375,47 +398,48 @@ class SocialBoostController extends Controller
                     throw new \Exception('Invalid response from provider. Please try again.');
                 }
 
-                // Deduct from wallet AFTER successful order
-                $wallet->balance -= $costLocal;
-                $wallet->save();
+                // Deduct from wallet and referral balance AFTER successful order
+                $deducted = \App\Helpers\ReferralBalanceHelper::apply($user, $wallet, $costLocal);
 
                 // Generate reference
                 $reference = 'SB-' . strtoupper(uniqid());
 
                 // Save to transactions table
                 $transactionId = DB::table('transactions')->insertGetId([
-                    'user_id' => $user->id,
-                    'reference' => $reference,
-                    'request_id' => $orderResponse['order'],
-                    'type' => 'social_boost',
+                    'user_id'           => $user->id,
+                    'reference'         => $reference,
+                    'request_id'        => $orderResponse['order'],
+                    'type'              => 'social_boost',
                     // Use friendly provider name
-                    'channel' => 'Easyget Social Package',
-                    'provider' => 'Easyget Social Package',
-                    'service_id' => $validated['service_id'],
-                    'service_name' => $service['name'],
-                    'service_logo' => $this->mtpHelper->getServiceLogo($service['category'], $service['name']),
-                    'amount' => $costLocal,
+                    'channel'           => 'Easyget Social Package',
+                    'provider'          => 'Easyget Social Package',
+                    'service_id'        => $validated['service_id'],
+                    'service_name'      => $service['name'],
+                    'service_logo'      => $this->mtpHelper->getServiceLogo($service['category'], $service['name']),
+                    'amount'            => $costLocal,
                     'original_cost_usd' => $costUsd,
-                    'status' => 'pending',
-                    'description' => "Social Boost: {$service['name']} - " . number_format($validated['quantity']) . " units",
-                    'response' => json_encode([
-                        'link' => $validated['link'],
-                        'quantity' => $validated['quantity'],
-                        'service_type' => $service['type'],
-                        'category' => $service['category'],
-                        'comments' => $validated['comments'] ?? null,
-                        'username' => $validated['username'] ?? null,
-                        'usernames' => $validated['usernames'] ?? null,
-                        'groups' => $validated['groups'] ?? null,
-                        'media' => $validated['media'] ?? null,
-                        'keywords' => $validated['keywords'] ?? null,
-                        'hashtags' => $validated['hashtags'] ?? null,
-                        'min' => $service['min'],
-                        'max' => $service['max'],
-                        'rate_per_k' => $service['rate'],
-                        'refill' => $service['refill'] ?? false,
-                        'cancel' => $service['cancel'] ?? false,
-                        'order_placed_at' => now()->toIso8601String(),
+                    'status'            => 'pending',
+                    'description'       => "Social Boost: {$service['name']} - " . number_format($validated['quantity']) . " units",
+                    'response'          => json_encode([
+                        'link'              => $validated['link'],
+                        'quantity'          => $validated['quantity'],
+                        'service_type'      => $service['type'],
+                        'category'          => $service['category'],
+                        'comments'          => $validated['comments'] ?? null,
+                        'username'          => $validated['username'] ?? null,
+                        'usernames'         => $validated['usernames'] ?? null,
+                        'groups'            => $validated['groups'] ?? null,
+                        'media'             => $validated['media'] ?? null,
+                        'keywords'          => $validated['keywords'] ?? null,
+                        'hashtags'          => $validated['hashtags'] ?? null,
+                        'min'               => $service['min'],
+                        'max'               => $service['max'],
+                        'rate_per_k'        => $service['rate'],
+                        'refill'            => $service['refill'] ?? false,
+                        'cancel'            => $service['cancel'] ?? false,
+                        'referral_deducted' => $deducted['referral_deduction'],
+                        'wallet_deducted'   => $deducted['wallet_deduction'],
+                        'order_placed_at'   => now()->toIso8601String(),
                     ]),
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -426,25 +450,27 @@ class SocialBoostController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'Order placed successfully! Your boost is being processed.',
-                    'data' => [
-                        'transaction_id' => $transactionId,
+                    'data'    => [
+                        'transaction_id'        => $transactionId,
                         'transaction_reference' => $reference,
-                        'mtp_order_id' => $orderResponse['order'],
-                        'service_name' => $service['name'],
-                        'quantity' => number_format($validated['quantity']),
-                        'link' => $validated['link'],
-                        'formatted_amount' => '₦' . number_format($costLocal, 2),
-                        'formatted_balance' => '₦' . number_format($wallet->balance, 2),
-                        'transaction_time' => now()->toIso8601String(),
+                        'mtp_order_id'          => $orderResponse['order'],
+                        'service_name'          => $service['name'],
+                        'quantity'              => number_format($validated['quantity']),
+                        'link'                  => $validated['link'],
+                        'formatted_amount'      => '₦' . number_format($costLocal, 2),
+                        'formatted_balance'     => '₦' . number_format($wallet->balance, 2),
+                        'referral_deducted'     => $deducted['referral_deduction'],  // ← NEW
+                        'wallet_deducted'       => $deducted['wallet_deduction'],    // ← NEW
+                        'transaction_time'      => now()->toIso8601String(),
                     ]
                 ]);
 
             } catch (\Exception $e) {
                 DB::rollBack();
                 Log::error('Social boost purchase failed: ' . $e->getMessage(), [
-                    'user_id' => $user->id,
+                    'user_id'    => $user->id,
                     'service_id' => $validated['service_id'],
-                    'error' => $e->getMessage()
+                    'error'      => $e->getMessage()
                 ]);
                 
                 return response()->json([
@@ -455,9 +481,9 @@ class SocialBoostController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
-                'success' => false,
-                'message' => 'Please check your input and try again.',
-                'errors' => $e->errors(),
+                'success'    => false,
+                'message'    => 'Please check your input and try again.',
+                'errors'     => $e->errors(),
                 'error_type' => 'validation'
             ], 422);
         } catch (\Exception $e) {
@@ -500,9 +526,9 @@ class SocialBoostController extends Controller
                 return response()->json([
                     'success' => true,
                     'data' => [
-                        'status' => ucfirst($transaction->status),
+                        'status'       => ucfirst($transaction->status),
                         'local_status' => $transaction->status,
-                        'message' => 'Order already ' . $transaction->status
+                        'message'      => 'Order already ' . $transaction->status
                     ]
                 ]);
             }
@@ -513,7 +539,7 @@ class SocialBoostController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Unable to fetch order status from provider.',
-                    'status' => 'pending'
+                    'status'  => 'pending'
                 ]);
             }
 
@@ -522,14 +548,14 @@ class SocialBoostController extends Controller
             DB::table('transactions')
                 ->where('id', $transaction->id)
                 ->update([
-                    'status' => $localStatus,
+                    'status'   => $localStatus,
                     'response' => json_encode(array_merge(
                         json_decode($transaction->response, true) ?? [],
                         [
-                            'mtp_status' => $statusResponse['status'] ?? null,
-                            'start_count' => $statusResponse['start_count'] ?? null,
-                            'remains' => $statusResponse['remains'] ?? null,
-                            'charge' => $statusResponse['charge'] ?? null,
+                            'mtp_status'   => $statusResponse['status'] ?? null,
+                            'start_count'  => $statusResponse['start_count'] ?? null,
+                            'remains'      => $statusResponse['remains'] ?? null,
+                            'charge'       => $statusResponse['charge'] ?? null,
                             'last_checked' => now()->toIso8601String(),
                         ]
                     )),
@@ -539,12 +565,12 @@ class SocialBoostController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'status' => $statusResponse['status'],
+                    'status'       => $statusResponse['status'],
                     'local_status' => $localStatus,
-                    'charge' => $statusResponse['charge'] ?? null,
-                    'start_count' => $statusResponse['start_count'] ?? null,
-                    'remains' => $statusResponse['remains'] ?? null,
-                    'currency' => $statusResponse['currency'] ?? 'USD',
+                    'charge'       => $statusResponse['charge'] ?? null,
+                    'start_count'  => $statusResponse['start_count'] ?? null,
+                    'remains'      => $statusResponse['remains'] ?? null,
+                    'currency'     => $statusResponse['currency'] ?? 'USD',
                 ]
             ]);
 
@@ -555,7 +581,7 @@ class SocialBoostController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred while checking status.',
-                'status' => 'pending'
+                'status'  => 'pending'
             ], 500);
         }
     }
@@ -592,7 +618,7 @@ class SocialBoostController extends Controller
                     if (!empty($record->description)) {
                         $formatted['description'] = $record->description;
                     }
-                    $formatted['custom_name'] = $record->custom_name ?? null;
+                    $formatted['custom_name']     = $record->custom_name ?? null;
                     $formatted['custom_category'] = $record->custom_category ?? null;
                     // Persist admin percentage so downstream price calcs can use it
                     $formatted['admin_percentage'] = intval($record->admin_percentage ?? 0);
@@ -603,8 +629,8 @@ class SocialBoostController extends Controller
                         $formatted['category'] = $record->custom_category;
                     }
                 } else {
-                    $formatted['custom_name'] = null;
-                    $formatted['custom_category'] = null;
+                    $formatted['custom_name']      = null;
+                    $formatted['custom_category']  = null;
                     $formatted['admin_percentage'] = 0;
                 }
 
@@ -616,11 +642,11 @@ class SocialBoostController extends Controller
 
                 // Attach client_price and provider percentage (if available)
                 $serviceCode = $service['service'] ?? null;
-                $pricing = $this->mtpHelper->getProductPricing($serviceCode);
+                $pricing     = $this->mtpHelper->getProductPricing($serviceCode);
                 if (!empty($pricing) && isset($pricing['client_price']) && $pricing['client_price'] !== null) {
-                    $clientPriceRaw = $pricing['client_price'];
+                    $clientPriceRaw     = $pricing['client_price'];
                     $providerPercentage = intval($pricing['provider_percentage'] ?? 0);
-                    $finalPerUnit = round($clientPriceRaw * (1 + ($providerPercentage / 100)), 2);
+                    $finalPerUnit       = round($clientPriceRaw * (1 + ($providerPercentage / 100)), 2);
 
                     // base per-unit before admin percentage
                     $basePerUnit = $finalPerUnit;
@@ -628,18 +654,18 @@ class SocialBoostController extends Controller
                     // Apply admin percentage (if any)
                     $adminPct = intval($formatted['admin_percentage'] ?? 0);
                     if ($adminPct > 0) {
-                        $mult = 1 + ($adminPct / 100);
+                        $mult        = 1 + ($adminPct / 100);
                         $basePerUnit = round($basePerUnit * $mult, 2);
                     }
 
-                    $formatted['client_price_raw'] = $clientPriceRaw; // raw database client_price
-                    $formatted['client_price'] = $basePerUnit; // final per-unit price after provider+admin markup
-                    $formatted['percentage_applied'] = $providerPercentage + ($formatted['admin_percentage'] ?? 0);
-                    $formatted['pricing_source'] = 'product_database';
+                    $formatted['client_price_raw']    = $clientPriceRaw;    // raw database client_price
+                    $formatted['client_price']        = $basePerUnit;        // final per-unit price after provider+admin markup
+                    $formatted['percentage_applied']  = $providerPercentage + ($formatted['admin_percentage'] ?? 0);
+                    $formatted['pricing_source']      = 'product_database';
 
                     // Also normalize rate_local/per_unit to reflect final per-unit price
                     $formatted['rate_local_per_unit'] = round($basePerUnit, 4);
-                    $formatted['rate_local'] = round($basePerUnit * 1000, 2);
+                    $formatted['rate_local']          = round($basePerUnit * 1000, 2);
                 } else {
                     // Use API rate as fallback
                     $formatted['pricing_source'] = 'api_rate';
@@ -650,28 +676,28 @@ class SocialBoostController extends Controller
                     // Determine base per-unit from api-calculated value
                     $basePerUnit = $formatted['rate_local_per_unit'] ?? (isset($formatted['rate_local']) ? $formatted['rate_local'] / 1000 : 0);
                     if ($adminPct > 0) {
-                        $mult = 1 + ($adminPct / 100);
+                        $mult        = 1 + ($adminPct / 100);
                         $basePerUnit = round($basePerUnit * $mult, 4);
                     }
 
                     $formatted['rate_local_per_unit'] = $basePerUnit;
-                    $formatted['rate_local'] = round($basePerUnit * 1000, 2);
+                    $formatted['rate_local']          = round($basePerUnit * 1000, 2);
                 }
 
                 $grouped[$category][] = $formatted;
             } catch (\Exception $e) {
                 Log::warning('Failed to format service', [
                     'service_id' => $service['service'] ?? 'unknown',
-                    'error' => $e->getMessage()
+                    'error'      => $e->getMessage()
                 ]);
                 $skipped++;
             }
         }
 
         Log::info('Services grouped', [
-            'total_input' => count($services),
-            'categories' => count($grouped),
-            'skipped' => $skipped,
+            'total_input'   => count($services),
+            'categories'    => count($grouped),
+            'skipped'       => $skipped,
             'category_list' => array_keys($grouped)
         ]);
 
@@ -696,14 +722,14 @@ class SocialBoostController extends Controller
             foreach ($services as $service) {
                 $formatted = $this->mtpHelper->formatServiceForDisplay($service, $this->exchangeRate);
 
-                $svcId = $formatted['service_id'];
+                $svcId                    = $formatted['service_id'];
                 $formatted['description'] = $custom[$svcId]->description ?? null;
 
                 // Allow admin to override the service name, category, and apply admin percentage
                 if (isset($custom[$svcId])) {
-                    $record = $custom[$svcId];
-                    $formatted['custom_name'] = $record->custom_name ?? null;
-                    $formatted['custom_category'] = $record->custom_category ?? null;
+                    $record                        = $custom[$svcId];
+                    $formatted['custom_name']      = $record->custom_name ?? null;
+                    $formatted['custom_category']  = $record->custom_category ?? null;
                     $formatted['admin_percentage'] = intval($record->admin_percentage ?? 0);
 
                     if (!empty($record->custom_name)) {
@@ -714,8 +740,8 @@ class SocialBoostController extends Controller
                         $formatted['category'] = $record->custom_category;
                     }
                 } else {
-                    $formatted['custom_name'] = null;
-                    $formatted['custom_category'] = null;
+                    $formatted['custom_name']      = null;
+                    $formatted['custom_category']  = null;
                     $formatted['admin_percentage'] = 0;
                 }
 
@@ -757,19 +783,19 @@ class SocialBoostController extends Controller
     {
         try {
             $validated = $request->validate([
-                'service_id' => 'required|string',
-                'description' => 'nullable|string',
-                'custom_name' => 'nullable|string|max:255',
-                'custom_category' => 'nullable|string|max:255',
+                'service_id'       => 'required|string',
+                'description'      => 'nullable|string',
+                'custom_name'      => 'nullable|string|max:255',
+                'custom_category'  => 'nullable|string|max:255',
                 'admin_percentage' => 'nullable|numeric|min:0',
             ]);
     
             SocialServiceDescription::updateOrCreate(
                 ['service_id' => $validated['service_id']],
                 [
-                    'description' => $validated['description'] ?? null,
-                    'custom_name' => $validated['custom_name'] ?? null,
-                    'custom_category' => $validated['custom_category'] ?? null,
+                    'description'      => $validated['description'] ?? null,
+                    'custom_name'      => $validated['custom_name'] ?? null,
+                    'custom_category'  => $validated['custom_category'] ?? null,
                     'admin_percentage' => intval($validated['admin_percentage'] ?? 0),
                 ]
             );

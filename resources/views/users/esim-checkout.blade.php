@@ -39,7 +39,13 @@
         </div>
         @endif
 
-        <!-- PIN Input -->
+        {{-- Referral balance toggle --}}
+        @include('partials.referral-balance-toggle', [
+            'referralBalance' => auth()->user()->referral_balance ?? 0,
+            'isPartner'       => auth()->user()->is_partner       ?? false,
+        ])
+
+        <!-- PIN Input form (submit handled by JS) -->
         <form id="checkoutForm" data-action="{{ route('checkout.process', [$country['code'], $package['id']]) }}">
             @csrf
             <div class="bg-white rounded-xl shadow-sm p-6 mb-8">
@@ -49,7 +55,8 @@
                         <input type="password"
                                inputmode="numeric"
                                maxlength="1"
-                               class="pin-input w-14 h-14 border rounded-lg text-center text-xl font-bold focus:ring-2 focus:ring-blue-500"
+                               class="pin-input w-14 h-14 border rounded-lg text-center text-xl font-bold
+                                      focus:ring-2 focus:ring-blue-500 outline-none transition"
                                data-index="{{ $i }}"
                                required />
                     @endfor
@@ -58,7 +65,8 @@
             </div>
 
             <button type="submit" id="submitBtn"
-                class="w-full py-4 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed">
+                class="w-full py-4 bg-blue-600 text-white font-semibold rounded-xl
+                       hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed">
                 Confirm Purchase
             </button>
         </form>
@@ -69,11 +77,19 @@
 </div>
 
 <!-- Loading Overlay -->
-<div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+<div id="loadingOverlay"
+     class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
     <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-600"></div>
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ── Config from Blade ─────────────────────────────────────────────────────
+    const walletBalance = {{ $wallet->balance ?? 0 }};
+    const packagePrice  = {{ (float) str_replace(',', '', $package['price']) }};
+
+    // ── DOM refs ──────────────────────────────────────────────────────────────
     const form        = document.getElementById('checkoutForm');
     const overlay     = document.getElementById('loadingOverlay');
     const responseMsg = document.getElementById('responseMsg');
@@ -81,15 +97,23 @@
     const submitBtn   = document.getElementById('submitBtn');
     const inputs      = document.querySelectorAll('.pin-input');
 
+    // ── Seed the referral hint on load ────────────────────────────────────────
+    if (window.ReferralToggle) ReferralToggle.updateHint(packagePrice);
+
+    document.addEventListener('referralToggleChanged', function () {
+        if (window.ReferralToggle) ReferralToggle.updateHint(packagePrice);
+    });
+
+    // ── PIN input: auto-advance + backspace + paste ───────────────────────────
     inputs.forEach((input, idx) => {
-        input.addEventListener('input', (e) => {
+        input.addEventListener('input', () => {
             input.value = input.value.replace(/[^0-9]/g, '');
             if (input.value && idx < inputs.length - 1) inputs[idx + 1].focus();
         });
-        input.addEventListener('keydown', (e) => {
+        input.addEventListener('keydown', e => {
             if (e.key === 'Backspace' && !input.value && idx > 0) inputs[idx - 1].focus();
         });
-        input.addEventListener('paste', (e) => {
+        input.addEventListener('paste', e => {
             e.preventDefault();
             const digits = e.clipboardData.getData('text').replace(/[^0-9]/g, '').split('').slice(0, 4);
             digits.forEach((d, i) => { if (inputs[i]) inputs[i].value = d; });
@@ -97,11 +121,14 @@
         });
     });
 
-    form.addEventListener('submit', async (e) => {
+    // ── Submit ────────────────────────────────────────────────────────────────
+    form.addEventListener('submit', async function (e) {
         e.preventDefault();
+
         errorMsg.classList.add('hidden');
         responseMsg.classList.add('hidden');
 
+        // Validate PIN
         const pinValues = Array.from(inputs).map(i => i.value);
         if (pinValues.some(v => !v)) {
             errorMsg.textContent = 'Please enter all 4 digits of your PIN.';
@@ -109,21 +136,52 @@
             return;
         }
 
+        // ── Referral-aware balance check ──────────────────────────────────────
+        const split = window.ReferralToggle
+            ? ReferralToggle.getSummary(packagePrice)
+            : { useReferral: false, referralDeduction: 0, walletDeduction: packagePrice };
+
+        if (walletBalance < split.walletDeduction) {
+            const needed = split.walletDeduction.toLocaleString('en-NG', { minimumFractionDigits: 2 });
+            const bal    = walletBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 });
+
+            if (split.useReferral && split.referralDeduction > 0) {
+                errorMsg.textContent =
+                    `Your referral balance covers ₦${split.referralDeduction.toLocaleString('en-NG', { minimumFractionDigits: 2 })},`
+                    + ` but your wallet still needs ₦${needed} (balance: ₦${bal}). Please fund your wallet.`;
+            } else {
+                errorMsg.textContent =
+                    `Insufficient balance. You need ₦${needed} but have ₦${bal}. Please fund your wallet.`;
+            }
+            errorMsg.classList.remove('hidden');
+            return;
+        }
+
+        // ── Build FormData ────────────────────────────────────────────────────
         const formData = new FormData();
         formData.append('_token', form.querySelector('[name=_token]').value);
         pinValues.forEach((v, i) => formData.append(`pin[${i}]`, v));
 
-        try {
-            submitBtn.disabled    = true;
-            submitBtn.textContent = 'Processing…';
-            overlay.classList.remove('hidden');
+        // Append referral flag from the hidden input set by the partial
+        const refInput = document.getElementById('useReferralBalanceInput');
+        if (refInput) formData.append('use_referral_balance', refInput.value);
 
+        // ── Fire request ──────────────────────────────────────────────────────
+        submitBtn.disabled    = true;
+        submitBtn.textContent = 'Processing…';
+        overlay.classList.remove('hidden');
+
+        try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             const response  = await fetch(form.dataset.action, {
-                method: 'POST',
-                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrfToken },
+                method:      'POST',
+                headers: {
+                    'Accept':           'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN':     csrfToken,
+                },
                 credentials: 'same-origin',
-                body: formData,
+                body:        formData,
             });
 
             overlay.classList.add('hidden');
@@ -133,19 +191,41 @@
             const result = await response.json();
 
             if (response.ok && result.success) {
-                responseMsg.className   = 'mt-6 p-4 rounded-lg text-center bg-green-100 text-green-800 font-medium';
-                responseMsg.innerHTML   = `<div class="mb-2">${result.message || 'eSIM purchase successful!'}</div>${result.data ? `<div class="text-sm mt-2">Reference: ${result.data.transaction_reference}</div>` : ''}`;
-                responseMsg.classList.remove('hidden');
+
+                // ── Build success details ─────────────────────────────────────
+                const details = {
+                    'Transaction ID': result.data?.transaction_reference || 'N/A',
+                    'Country':        result.data?.country               || '{{ $country['title'] }}',
+                    'Plan':           result.data?.package               || '{{ $package['title'] }}',
+                    'Validity':       result.data?.validity              || '{{ $package['validity'] }}',
+                    'Amount':         result.data?.formatted_amount      || '₦{{ $package['price'] }}',
+                    'New Balance':    result.data?.formatted_balance     || 'N/A',
+                };
+
+                if (result.data?.referral_deducted > 0) {
+                    details['Referral Used']    = '₦' + parseFloat(result.data.referral_deducted)
+                        .toLocaleString('en-NG', { minimumFractionDigits: 2 });
+                    details['Paid from Wallet'] = '₦' + parseFloat(result.data.wallet_deducted)
+                        .toLocaleString('en-NG', { minimumFractionDigits: 2 });
+                }
+
+                // ── Show success modal ────────────────────────────────────────
+                showSuccessModal({
+                    title:   'eSIM Purchase Successful!',
+                    message: result.message || 'Your eSIM purchase was processed successfully.',
+                    details: details,
+                });
+
                 inputs.forEach(i => i.value = '');
-                inputs[0].focus();
-                setTimeout(() => { window.location.href = '/app/transactions'; }, 3000);
+
             } else {
                 errorMsg.textContent = result.message || 'An error occurred. Please try again.';
                 errorMsg.classList.remove('hidden');
                 inputs.forEach(i => i.value = '');
                 inputs[0].focus();
             }
-        } catch(err) {
+
+        } catch (err) {
             overlay.classList.add('hidden');
             submitBtn.disabled    = false;
             submitBtn.textContent = 'Confirm Purchase';
@@ -153,5 +233,51 @@
             errorMsg.classList.remove('hidden');
         }
     });
+
+    // ── Success modal ─────────────────────────────────────────────────────────
+    function showSuccessModal(data) {
+        const detailsHtml = data.details
+            ? Object.entries(data.details).map(([k, v]) =>
+                `<div class="flex justify-between py-1.5 border-b border-gray-100 last:border-0">
+                    <span class="text-gray-500 text-sm">${escHtml(k)}</span>
+                    <span class="font-semibold text-gray-800 text-sm text-right max-w-[55%]">${escHtml(String(v))}</span>
+                 </div>`).join('')
+            : '';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 px-4';
+        wrapper.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative max-h-screen overflow-y-auto">
+                <button class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-xl font-bold"
+                        onclick="this.closest('.fixed').remove()">✕</button>
+                <div class="text-center mb-4">
+                    <div class="text-5xl mb-3">✅</div>
+                    <h2 class="text-xl font-bold text-gray-800">${escHtml(data.title || 'Success!')}</h2>
+                    <p class="text-gray-500 text-sm mt-1">${escHtml(data.message || '')}</p>
+                </div>
+                ${detailsHtml
+                    ? `<div class="bg-gray-50 rounded-xl p-4 mb-4 space-y-0.5">${detailsHtml}</div>`
+                    : ''}
+                <button class="w-full bg-blue-600 text-white font-semibold py-3 rounded-xl
+                               hover:bg-blue-700 transition"
+                        onclick="window.location.href='/app/transactions'">View Transactions</button>
+            </div>`;
+
+        document.body.appendChild(wrapper);
+        wrapper.addEventListener('click', e => { if (e.target === wrapper) wrapper.remove(); });
+
+        const esc = e => {
+            if (e.key === 'Escape') { wrapper.remove(); document.removeEventListener('keydown', esc); }
+        };
+        document.addEventListener('keydown', esc);
+    }
+
+    function escHtml(str) {
+        return String(str ?? '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+}); // end DOMContentLoaded
 </script>
 @endsection
