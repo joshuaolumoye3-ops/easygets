@@ -2117,98 +2117,138 @@ private function getServiceDetails($serviceIdentifier, $isCode = false): array
     public function process(Request $request)
     {
         try {
-            // Validate PIN
+            // ── Validate PIN + session token + optional referral flag ─────────────
             $request->validate([
-                'pin' => 'required|digits:4',
-                'session_token' => 'required|string'
+                'pin'                  => 'required|digits:4',
+                'session_token'        => 'required|string',
+                'use_referral_balance' => 'sometimes|boolean',
             ]);
-
-            // Get encrypted purchase from session
+    
+            // ── Recover purchase session ──────────────────────────────────────────
             $encryptedPurchase = session('purchase');
-            
+    
             if (!$encryptedPurchase) {
                 Log::warning('No purchase session found during payment', ['user_id' => auth()->id()]);
                 return redirect()->route('services.list')->withErrors('Session expired. Please start again.');
             }
-
+    
             $purchase = decrypt($encryptedPurchase);
-
-            // Verify session token
+    
+            // ── Verify session token ──────────────────────────────────────────────
             if (!isset($purchase['session_token']) || $purchase['session_token'] !== $request->session_token) {
                 Log::warning('Session token mismatch', ['user_id' => auth()->id()]);
                 session()->forget('purchase');
                 return redirect()->route('services.list')->withErrors('Invalid session. Please try again.');
             }
-
-            // Check session timeout (30 minutes)
+    
+            // ── Check session timeout (30 minutes) ────────────────────────────────
             if ((time() - $purchase['timestamp']) > 1800) {
                 Log::info('Purchase session timeout', ['user_id' => auth()->id()]);
                 session()->forget('purchase');
                 return redirect()->route('services.list')->withErrors('Session expired. Please start again.');
             }
-
-            $user = auth()->user();
+    
+            /** @var \App\Models\User $user */
+            $user   = auth()->user();
             $wallet = $user->wallet;
-
+    
             if (!$wallet) {
                 Log::error('User wallet not found', ['user_id' => $user->id]);
                 return back()->withErrors('Wallet not found. Please contact support.');
             }
-
-            // Check balance
-            if ($wallet->balance < $purchase['cost']) {
-                Log::warning('Insufficient balance', [
-                    'user_id' => $user->id,
-                    'required' => $purchase['cost'],
-                    'available' => $wallet->balance
-                ]);
-                return back()->withErrors('Insufficient balance. Please top up your wallet.');
-            }
-
-            // Verify PIN using PinHelper
+    
+            // ── Verify PIN ────────────────────────────────────────────────────────
             if (!PinHelper::verifyPin($request->pin, $user)) {
                 Log::warning('Invalid PIN attempt', ['user_id' => $user->id]);
                 return back()->withErrors('Invalid PIN. Please try again.');
             }
-
-            // Deduct balance
-            DB::transaction(function () use ($wallet, $purchase) {
-                $wallet->balance -= $purchase['cost'];
-                $wallet->save();
-
-                Log::info('Balance deducted', [
-                    'user_id' => $wallet->user_id,
-                    'amount' => $purchase['cost'],
-                    'new_balance' => $wallet->balance
+    
+            $cost = (float) $purchase['cost'];
+    
+            // ── Referral balance split ────────────────────────────────────────────
+            $useReferral = !empty($request->use_referral_balance)
+                && ReferralBalanceHelper::isEligible($user);
+    
+            if ($useReferral) {
+                $split = ReferralBalanceHelper::calculate($user, $wallet, $cost);
+            } else {
+                $split = [
+                    'referral_deduction' => 0,
+                    'wallet_deduction'   => $cost,
+                    'can_proceed'        => true,
+                    'shortfall'          => 0,
+                ];
+            }
+    
+            // ── Balance check ─────────────────────────────────────────────────────
+            if ((float) $wallet->balance < $split['wallet_deduction']) {
+                Log::warning('Insufficient balance', [
+                    'user_id'          => $user->id,
+                    'required'         => $cost,
+                    'wallet_needed'    => $split['wallet_deduction'],
+                    'referral_covered' => $split['referral_deduction'],
+                    'available'        => $wallet->balance,
+                ]);
+    
+                $referralNote = $split['referral_deduction'] > 0
+                    ? ' Your referral balance will cover ₦' . number_format($split['referral_deduction'], 2)
+                    . ', but the wallet still needs ₦' . number_format($split['wallet_deduction'], 2) . '.'
+                    : ' Required: ₦' . number_format($cost, 2) . '.';
+    
+                return back()->withErrors('Insufficient balance.' . $referralNote . ' Please top up your wallet.');
+            }
+    
+            // ── Deduct balances inside a transaction ──────────────────────────────
+            DB::transaction(function () use ($user, $wallet, $cost, $useReferral, &$split) {
+                // Re-run apply() so the fresh DB read inside it guards against races.
+                // We only reach here when the pre-flight check above passed, so the
+                // amounts in $split are correct — but apply() re-reads and re-calculates
+                // for safety.
+                $deducted = ReferralBalanceHelper::apply($user, $wallet, $cost);
+    
+                // Overwrite $split with the actual deducted amounts for logging below.
+                $split['referral_deduction'] = $deducted['referral_deduction'];
+                $split['wallet_deduction']   = $deducted['wallet_deduction'];
+    
+                Log::info('Balances deducted for OTP purchase', [
+                    'user_id'            => $user->id,
+                    'total_cost'         => $cost,
+                    'referral_deducted'  => $deducted['referral_deduction'],
+                    'wallet_deducted'    => $deducted['wallet_deduction'],
+                    'new_wallet_balance' => $wallet->fresh()->balance,
                 ]);
             });
-
-            // Process based on provider
+    
+            // ── Dispatch to provider ──────────────────────────────────────────────
             if ($purchase['provider'] === self::PROVIDER_5SIM) {
                 return $this->process5sim($purchase);
-            } elseif ($purchase['provider'] === self::PROVIDER_SMSBUS) {
+            }
+    
+            if ($purchase['provider'] === self::PROVIDER_SMSBUS) {
                 return $this->processSmsbus($purchase);
-            } elseif (isset($purchase['provider']) && $purchase['provider'] === 'logs') {
+            }
+    
+            if (isset($purchase['provider']) && $purchase['provider'] === 'logs') {
                 return $this->processLogs($purchase);
             }
-
-            // Unknown provider - refund
-            $this->refundUserBalance($purchase['cost']);
+    
+            // Unknown provider — refund
+            $this->refundUserBalance($cost);
             return back()->withErrors('Unknown provider. Balance refunded.');
-
+    
         } catch (\Illuminate\Validation\ValidationException $e) {
             return back()->withErrors($e->validator->errors()->first());
         } catch (\Exception $e) {
             Log::error('Payment processing error', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            
-            // Try to refund if purchase exists
+    
+            // Attempt refund if we know the cost
             if (isset($purchase['cost'])) {
-                $this->refundUserBalance($purchase['cost']);
+                $this->refundUserBalance((float) $purchase['cost']);
             }
-            
+    
             return back()->withErrors('An error occurred processing payment. Please try again.');
         }
     }
