@@ -3,7 +3,7 @@
 @section('title', 'Checkout - {{ $product->name }}')
 
 @section('content')
-<div class="max-w-lg mx-auto py-8 px-4 sm:px-6 lg:px-8 font-[Inter]">
+<div class="max-w-lg mx-auto py-8 px-4 sm:px-6 lg:px_8 font-[Inter]">
     <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
 
         {{-- Header --}}
@@ -59,7 +59,15 @@
                 <span>Total</span>
                 <span class="text-green-600" id="summary-total">₦{{ number_format($product->price, 2) }}</span>
             </div>
+            {{-- Referral split hint (injected by JS when toggle is on) --}}
+            <div id="referral-split-summary" class="hidden mt-2 pt-2 border-t border-gray-100 space-y-1"></div>
         </div>
+
+        {{-- ✅ Referral balance toggle --}}
+        @include('partials.referral-balance-toggle', [
+            'referralBalance' => auth()->user()->referral_balance ?? 0,
+            'isPartner'       => auth()->user()->is_partner       ?? false,
+        ])
 
         {{-- PIN Entry --}}
         <div class="mb-6">
@@ -83,7 +91,7 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
             </svg>
-            Confirm Purchase
+            <span id="buy-btn-text">Confirm Purchase</span>
         </button>
     </div>
 
@@ -93,9 +101,10 @@
 <script>
 const unitPrice = {{ $product->price }};
 const productId = {{ $product->id }};
+const walletBalance = {{ auth()->user()->wallet->balance ?? 0 }};
 
-// Quantity controls
-document.getElementById('qty-minus').addEventListener('click', function() {
+// ── Quantity controls ─────────────────────────────────────────────────────────
+document.getElementById('qty-minus').addEventListener('click', function () {
     const input = document.getElementById('quantity');
     if (parseInt(input.value) > 1) {
         input.value = parseInt(input.value) - 1;
@@ -103,7 +112,7 @@ document.getElementById('qty-minus').addEventListener('click', function() {
     }
 });
 
-document.getElementById('qty-plus').addEventListener('click', function() {
+document.getElementById('qty-plus').addEventListener('click', function () {
     const input = document.getElementById('quantity');
     if (parseInt(input.value) < 10) {
         input.value = parseInt(input.value) + 1;
@@ -111,25 +120,84 @@ document.getElementById('qty-plus').addEventListener('click', function() {
     }
 });
 
-function updateSummary() {
-    const qty = parseInt(document.getElementById('quantity').value);
-    const total = unitPrice * qty;
-    document.getElementById('summary-qty').textContent = qty;
-    document.getElementById('summary-total').textContent = '₦' + total.toLocaleString('en-NG', { minimumFractionDigits: 2 });
+function getTotal() {
+    return unitPrice * parseInt(document.getElementById('quantity').value);
 }
 
-// PIN input auto-advance
-document.querySelectorAll('.pin-digit').forEach(function(input, index, inputs) {
-    input.addEventListener('input', function() {
+function updateSummary() {
+    const qty   = parseInt(document.getElementById('quantity').value);
+    const total = unitPrice * qty;
+
+    document.getElementById('summary-qty').textContent   = qty;
+    document.getElementById('summary-total').textContent = '₦' + total.toLocaleString('en-NG', { minimumFractionDigits: 2 });
+
+    // Update referral hint whenever quantity changes
+    if (window.ReferralToggle) ReferralToggle.updateHint(total);
+    updateReferralSplitSummary(total);
+    updateBtnLabel(total);
+}
+
+// ── Referral split breakdown inside Order Summary ─────────────────────────────
+function updateReferralSplitSummary(total) {
+    const box = document.getElementById('referral-split-summary');
+    if (!box) return;
+
+    const split = window.ReferralToggle
+        ? ReferralToggle.getSummary(total)
+        : { useReferral: false, referralDeduction: 0, walletDeduction: total };
+
+    if (!split.useReferral || split.referralDeduction <= 0) {
+        box.innerHTML = '';
+        box.classList.add('hidden');
+        return;
+    }
+
+    const fmt = (n) => '₦' + n.toLocaleString('en-NG', { minimumFractionDigits: 2 });
+    box.innerHTML = `
+        <div class="flex justify-between text-sm text-green-700">
+            <span>Referral covers</span>
+            <span class="font-semibold">-${fmt(split.referralDeduction)}</span>
+        </div>
+        <div class="flex justify-between text-sm text-gray-600">
+            <span>From wallet</span>
+            <span class="font-semibold">${fmt(split.walletDeduction)}</span>
+        </div>`;
+    box.classList.remove('hidden');
+}
+
+// ── Update button label with split breakdown ──────────────────────────────────
+function updateBtnLabel(total) {
+    const btnText = document.getElementById('buy-btn-text');
+    if (!btnText) return;
+
+    const split = window.ReferralToggle
+        ? ReferralToggle.getSummary(total)
+        : { useReferral: false, referralDeduction: 0, walletDeduction: total };
+
+    if (split.useReferral && split.referralDeduction > 0) {
+        const fmt = (n) => n.toLocaleString('en-NG', { minimumFractionDigits: 2 });
+        btnText.textContent = `Confirm Purchase — ₦${fmt(total)} (₦${fmt(split.walletDeduction)} wallet + ₦${fmt(split.referralDeduction)} referral)`;
+    } else {
+        btnText.textContent = 'Confirm Purchase';
+    }
+}
+
+// ── React to toggle changes ───────────────────────────────────────────────────
+document.addEventListener('referralToggleChanged', function () {
+    const total = getTotal();
+    if (window.ReferralToggle) ReferralToggle.updateHint(total);
+    updateReferralSplitSummary(total);
+    updateBtnLabel(total);
+});
+
+// ── PIN input: auto-advance + backspace ───────────────────────────────────────
+document.querySelectorAll('.pin-digit').forEach(function (input, index, inputs) {
+    input.addEventListener('input', function () {
         this.value = this.value.replace(/[^0-9]/g, '').slice(-1);
-        if (this.value && index < inputs.length - 1) {
-            inputs[index + 1].focus();
-        }
+        if (this.value && index < inputs.length - 1) inputs[index + 1].focus();
     });
-    input.addEventListener('keydown', function(e) {
-        if (e.key === 'Backspace' && !this.value && index > 0) {
-            inputs[index - 1].focus();
-        }
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Backspace' && !this.value && index > 0) inputs[index - 1].focus();
     });
 });
 
@@ -151,28 +219,57 @@ function showSuccess(msg) {
     document.getElementById('error-msg').classList.add('hidden');
 }
 
+// ── Submit ────────────────────────────────────────────────────────────────────
 function submitPurchase() {
     const pin = getPin();
-
     if (pin.some(d => d === '')) {
         showError('Please enter your full 4-digit PIN.');
         return;
     }
 
+    const total = getTotal();
+
+    // ── Client-side referral-aware balance check ──────────────────────────────
+    const split = window.ReferralToggle
+        ? ReferralToggle.getSummary(total)
+        : { useReferral: false, referralDeduction: 0, walletDeduction: total };
+
+    if (walletBalance < split.walletDeduction) {
+        const fmt    = (n) => n.toLocaleString('en-NG', { minimumFractionDigits: 2 });
+        const needed = fmt(split.walletDeduction);
+        const bal    = fmt(walletBalance);
+
+        if (split.useReferral && split.referralDeduction > 0) {
+            showError(
+                `Your referral balance covers ₦${fmt(split.referralDeduction)},`
+                + ` but your wallet still needs ₦${needed} (balance: ₦${bal}). Please fund your wallet.`
+            );
+        } else {
+            showError(`Insufficient balance. You need ₦${needed} but have ₦${bal}. Please fund your wallet.`);
+        }
+        return;
+    }
+
+    // ── Disable button + show spinner ─────────────────────────────────────────
     const btn = document.getElementById('buy-btn');
     btn.disabled = true;
-    btn.innerHTML = `<svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg> Processing...`;
+    btn.innerHTML = `<svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg> Processing...`;
 
+    // ── Fire request ──────────────────────────────────────────────────────────
     fetch(`/app/logs/${productId}/purchase`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            'Content-Type':  'application/json',
+            'X-CSRF-TOKEN':  '{{ csrf_token() }}',
+            'Accept':        'application/json',
         },
         body: JSON.stringify({
-            quantity: parseInt(document.getElementById('quantity').value),
-            pin: pin
-        })
+            quantity:              parseInt(document.getElementById('quantity').value),
+            pin:                   pin,
+            use_referral_balance:  window.ReferralToggle && ReferralToggle.isOn() ? 1 : 0,
+        }),
     })
     .then(r => r.json())
     .then(data => {
@@ -181,18 +278,31 @@ function submitPurchase() {
             setTimeout(() => window.location.href = '{{ route("history") }}?tab=logs', 1500);
         } else {
             showError(data.message || 'Purchase failed. Please try again.');
-            btn.disabled = false;
-            btn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Confirm Purchase`;
-            // Clear PIN on failure
-            document.querySelectorAll('.pin-digit').forEach(i => i.value = '');
-            document.querySelector('.pin-digit').focus();
+            resetBtn();
+            clearPin();
         }
     })
     .catch(() => {
         showError('A network error occurred. Please try again.');
-        btn.disabled = false;
-        btn.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Confirm Purchase`;
+        resetBtn();
     });
+}
+
+function resetBtn() {
+    const btn = document.getElementById('buy-btn');
+    btn.disabled = false;
+    btn.innerHTML = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+        </svg>
+        <span id="buy-btn-text">Confirm Purchase</span>`;
+    // Re-sync label after reset
+    updateBtnLabel(getTotal());
+}
+
+function clearPin() {
+    document.querySelectorAll('.pin-digit').forEach(i => i.value = '');
+    document.querySelector('.pin-digit').focus();
 }
 </script>
 @endsection
