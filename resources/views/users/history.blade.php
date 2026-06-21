@@ -15,10 +15,11 @@
     </div>
 
     <!-- Tabs -->
-    <div class="flex justify-between px-4 mb-6 bg-white py-4">
-        <button id="activationsBtn" class="flex-1 text-center py-3 rounded-full font-semibold bg-green-800 text-white mr-2">Activations</button>
-        <button id="socialsBtn"     class="flex-1 text-center py-3 rounded-full font-semibold bg-gray-200 text-gray-600 mr-2">Socials</button>
-        <button id="logsBtn"        class="flex-1 text-center py-3 rounded-full font-semibold bg-gray-200 text-gray-600">Logs</button>
+    <div class="grid grid-cols-4 gap-1.5 px-4 mb-6 bg-white py-4">
+        <button id="activationsBtn" class="text-center py-2.5 px-1 rounded-full font-semibold text-[11px] sm:text-xs leading-tight whitespace-nowrap bg-green-800 text-white transition-colors">Activations</button>
+        <button id="socialsBtn"     class="text-center py-2.5 px-1 rounded-full font-semibold text-[11px] sm:text-xs leading-tight whitespace-nowrap bg-gray-200 text-gray-600 transition-colors">Socials</button>
+        <button id="logsBtn"        class="text-center py-2.5 px-1 rounded-full font-semibold text-[11px] sm:text-xs leading-tight whitespace-nowrap bg-gray-200 text-gray-600 transition-colors">Logs</button>
+        <button id="esimBtn"        class="text-center py-2.5 px-1 rounded-full font-semibold text-[11px] sm:text-xs leading-tight whitespace-nowrap bg-gray-200 text-gray-600 transition-colors">eSIM</button>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════
@@ -231,6 +232,48 @@
 
     </div>{{-- #logsContent --}}
 
+    <!-- ══════════════════════════════════════════════════════════
+         ESIM TAB
+    ══════════════════════════════════════════════════════════ -->
+    <div id="esimsContent" class="space-y-3 px-4 transition-all duration-500 ease-in-out hidden">
+        @forelse($esims as $esim)
+            <div onclick="openEsimModal({{ $esim['id'] }})"
+                 class="cursor-pointer flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex items-center space-x-3">
+                    @if(!empty($esim['country_code']))
+                        <img src="https://flagcdn.com/w40/{{ $esim['country_code'] }}.png" alt="flag"
+                             class="w-10 h-10 rounded-full object-cover border-2 border-gray-100"
+                             onerror="this.outerHTML='<div class=&quot;w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-lg&quot;>📶</div>'">
+                    @else
+                        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-lg">📶</div>
+                    @endif
+                    <div>
+                        <p class="font-semibold text-gray-800">{{ $esim['country_name'] }}</p>
+                        <p class="text-xs text-gray-500 mt-0.5">
+                            {{ $esim['package'] ?? 'eSIM Plan' }}{{ $esim['validity'] ? ' • ' . $esim['validity'] : '' }}
+                        </p>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ $esim['date'] }}</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-semibold text-gray-900 mb-1">{{ $esim['amount'] }}</p>
+                    <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full {{ esimBadgeClass($esim['raw_status']) }}">
+                        {{ $esim['status'] }}
+                    </span>
+                </div>
+            </div>
+        @empty
+            <div class="text-center py-12">
+                <div class="text-6xl mb-4">📶</div>
+                <p class="text-gray-500 font-medium">No eSIM purchases yet</p>
+                <p class="text-sm text-gray-400 mt-1">Your eSIM orders will appear here</p>
+                <a href="{{ route('esim') }}" class="inline-block mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Browse eSIM Plans
+                </a>
+            </div>
+        @endforelse
+    </div>{{-- #esimsContent --}}
+
 </div>{{-- .max-w-md --}}
 
 <!-- ══════════════════════════════════════════════════════════
@@ -254,6 +297,19 @@
     <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"></div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════
+     ESIM MODAL
+══════════════════════════════════════════════════════════ -->
+<div id="esimModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"></div>
+</div>
+
+<!-- Full-screen image viewer (eSIM QR codes / setup images) -->
+<div id="esimImageModal" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center z-[60]">
+    <button id="closeEsimImageModal" class="absolute top-5 right-5 text-white hover:text-gray-300 text-4xl font-bold">&times;</button>
+    <img id="esimFullScreenImage" src="" alt="" class="max-w-[90%] max-h-[90%] object-contain rounded-lg">
+</div>
+
 @include('partials.footer')
 
 @php
@@ -264,6 +320,17 @@ function socialBadgeClass(string $status): string {
         'pending'              => 'bg-yellow-100 text-yellow-700',
         'partial'              => 'bg-orange-100 text-orange-700',
         'failed'               => 'bg-red-100 text-red-700',
+        default                => 'bg-gray-100 text-gray-700',
+    };
+}
+
+function esimBadgeClass(string $status): string {
+    return match($status) {
+        'success', 'completed' => 'bg-green-100 text-green-700',
+        'pending'              => 'bg-yellow-100 text-yellow-700',
+        'failed'               => 'bg-red-100 text-red-700',
+        'cancelled'            => 'bg-gray-100 text-gray-700',
+        'refunded'             => 'bg-purple-100 text-purple-700',
         default                => 'bg-gray-100 text-gray-700',
     };
 }
@@ -474,10 +541,14 @@ function socialBadgeClass(string $status): string {
 const ALL_ACTIVATIONS   = @json($activations);
 const ALL_SOCIAL_BOOSTS = @json($socialBoosts);
 const ALL_LOGS          = @json($logs ?? []);
+const ALL_ESIMS         = @json($esims ?? []);
 
 // Build a keyed map for quick O(1) lookup in modal
 const logsData = {};
 ALL_LOGS.forEach(log => { logsData[log.id] = log; });
+
+const esimsData = {};
+ALL_ESIMS.forEach(e => { esimsData[e.id] = e; });
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let pollingInterval         = null;
@@ -542,11 +613,13 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('activationsBtn').addEventListener('click', () => showTab('activations'));
     document.getElementById('socialsBtn').addEventListener('click',     () => showTab('socials'));
     document.getElementById('logsBtn').addEventListener('click',        () => showTab('logs'));
+    document.getElementById('esimBtn').addEventListener('click',        () => showTab('esim'));
 
     // ── URL param redirect ─────────────────────────────────────────────────
     const tabParam = new URLSearchParams(window.location.search).get('tab');
     if (tabParam === 'logs')    showTab('logs');
     else if (tabParam === 'socials') showTab('socials');
+    else if (tabParam === 'esim')    showTab('esim');
     else showTab('activations');
 
     // ── Modal backdrop click ───────────────────────────────────────────────
@@ -559,6 +632,13 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('logsModal').addEventListener('click', e => {
         if (e.target === e.currentTarget) closeLogsModal();
     });
+    document.getElementById('esimModal').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeEsimModal();
+    });
+    document.getElementById('closeEsimImageModal').addEventListener('click', closeEsimImageModal);
+    document.getElementById('esimImageModal').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeEsimImageModal();
+    });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -566,12 +646,12 @@ document.addEventListener('DOMContentLoaded', function () {
 // ═════════════════════════════════════════════════════════════════════════════
 function showTab(tab) {
     // Hide all content panels
-    ['activationsContent', 'socialsContent', 'logsContent'].forEach(id => {
+    ['activationsContent', 'socialsContent', 'logsContent', 'esimsContent'].forEach(id => {
         document.getElementById(id)?.classList.add('hidden');
     });
 
     // Reset all buttons to inactive style
-    const btnIds = { activations: 'activationsBtn', socials: 'socialsBtn', logs: 'logsBtn' };
+    const btnIds = { activations: 'activationsBtn', socials: 'socialsBtn', logs: 'logsBtn', esim: 'esimBtn' };
     Object.values(btnIds).forEach(id => {
         const btn = document.getElementById(id);
         if (!btn) return;
@@ -584,10 +664,12 @@ function showTab(tab) {
         activations: ['bg-green-800', 'text-white'],
         socials:     ['bg-green-800', 'text-white'],
         logs:        ['bg-green-800', 'text-white'],
+        esim:        ['bg-green-800', 'text-white'],
     };
 
     const contentId = tab === 'activations' ? 'activationsContent'
                     : tab === 'socials'      ? 'socialsContent'
+                    : tab === 'esim'         ? 'esimsContent'
                     : 'logsContent';
 
     document.getElementById(contentId)?.classList.remove('hidden');
@@ -1098,6 +1180,140 @@ function updateModalStatus(d) {
             fill.classList.replace('bg-purple-600', 'bg-green-500');
         }
     }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ESIM MODAL
+// ═════════════════════════════════════════════════════════════════════════════
+function esimBadgeClassJs(status) {
+    const map = {
+        success:   'bg-green-100 text-green-700',
+        completed: 'bg-green-100 text-green-700',
+        pending:   'bg-yellow-100 text-yellow-700',
+        failed:    'bg-red-100 text-red-700',
+        cancelled: 'bg-gray-100 text-gray-700',
+        refunded:  'bg-purple-100 text-purple-700',
+    };
+    return map[status] || 'bg-gray-100 text-gray-700';
+}
+
+function openEsimModal(id) {
+    const modal = document.getElementById('esimModal');
+    const esim  = esimsData[id];
+    if (!esim) return;
+
+    const upload = esim.esim_upload;
+
+    let detailsHtml = '';
+    if (upload) {
+        let imagesHtml = '';
+        if (Array.isArray(upload.images) && upload.images.length > 0) {
+            imagesHtml = `
+                <div class="mt-3">
+                    <p class="text-xs text-green-700 font-medium uppercase mb-2">QR Code / Images</p>
+                    <div class="flex flex-wrap gap-2">
+                        ${upload.images.map(url => `
+                            <img src="${url}" onclick="openEsimImage('${url.replace(/'/g,"\\'")}')"
+                                 style="width:72px;height:72px;object-fit:cover;border-radius:10px;cursor:pointer;border:1px solid #bbf7d0;"
+                                 onerror="this.style.display='none'">
+                        `).join('')}
+                    </div>
+                </div>`;
+        }
+
+        detailsHtml = `
+            <div class="bg-green-50 border-2 border-green-200 rounded-xl p-4 mb-4">
+                <p class="text-xs text-green-700 font-medium uppercase mb-1">ICCID / Activation Number</p>
+                <div class="flex items-center justify-between gap-2">
+                    <p class="text-sm font-bold text-gray-900 break-all">${upload.number ? escapeHtml(String(upload.number)) : '—'}</p>
+                    ${upload.number ? `<button onclick="copyToClipboard('${String(upload.number).replace(/'/g,"\\'")}', this)" class="text-green-600 flex-shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                    </button>` : ''}
+                </div>
+                ${upload.details ? `
+                    <div class="mt-3 pt-3 border-t border-green-100">
+                        <p class="text-xs text-green-700 font-medium uppercase mb-1">Setup Instructions</p>
+                        <p class="text-sm text-gray-700 whitespace-pre-line leading-relaxed">${escapeHtml(upload.details)}</p>
+                    </div>` : ''}
+                ${imagesHtml}
+            </div>`;
+    } else {
+        detailsHtml = `
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-5 mb-4">
+                <div class="flex gap-3">
+                    <div class="text-2xl flex-shrink-0">⏱️</div>
+                    <div>
+                        <h4 class="font-bold text-yellow-900 mb-2">We're preparing your eSIM</h4>
+                        <p class="text-sm text-yellow-800">
+                            Your activation details (QR code and setup instructions) will appear here once your eSIM is ready. This usually takes a short while — check back soon.
+                        </p>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    modal.querySelector('.bg-white').innerHTML = `
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-900">eSIM Details</h2>
+                <button onclick="closeEsimModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 mb-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        ${esim.country_code
+                            ? `<img src="https://flagcdn.com/w80/${esim.country_code}.png" alt="flag" class="w-12 h-12 rounded-lg object-cover">`
+                            : `<div class="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center text-white text-xl">📶</div>`}
+                        <div>
+                            <p class="font-semibold text-gray-800">${escapeHtml(esim.country_name)}</p>
+                            <p class="text-xs text-gray-600">${escapeHtml(esim.package || 'eSIM Plan')}${esim.validity ? ' • ' + escapeHtml(esim.validity) : ''}</p>
+                        </div>
+                    </div>
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${esimBadgeClassJs(esim.raw_status)}">
+                        ${esim.status}
+                    </span>
+                </div>
+            </div>
+
+            ${detailsHtml}
+
+            <div class="bg-gray-50 rounded-xl p-4">
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div><p class="text-gray-500">Amount</p><p class="font-semibold text-gray-900">${esim.amount}</p></div>
+                    <div><p class="text-gray-500">Date</p><p class="font-semibold text-gray-900 text-xs">${esim.date}</p></div>
+                    <div class="col-span-2"><p class="text-gray-500">Reference</p><p class="font-semibold text-gray-900 text-xs break-all">${esim.reference || '—'}</p></div>
+                </div>
+            </div>
+        </div>`;
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeEsimModal() {
+    document.getElementById('esimModal').classList.add('hidden');
+    document.getElementById('esimModal').classList.remove('flex');
+}
+
+function openEsimImage(url) {
+    document.getElementById('esimFullScreenImage').src = url;
+    const m = document.getElementById('esimImageModal');
+    m.classList.remove('hidden');
+    m.classList.add('flex');
+}
+
+function closeEsimImageModal() {
+    const m = document.getElementById('esimImageModal');
+    m.classList.add('hidden');
+    m.classList.remove('flex');
+    document.getElementById('esimFullScreenImage').src = '';
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

@@ -94,6 +94,7 @@ class HistoryController extends Controller
             'newActivationId' => $newActivationId,
             'newSocialBoostId' => $newSocialBoostId,
             'logs' => $this->fetchLogsForUser($userId),
+            'esims' => $this->fetchEsimsForUser($userId),
         ]);
     }
 
@@ -158,6 +159,117 @@ class HistoryController extends Controller
             });
 
         return $logs;
+    }
+
+    /**
+     * Include eSIM purchases in user history view (as a simple list)
+     */
+    private function fetchEsimsForUser($userId)
+    {
+        $transactions = \App\Models\Transaction::where('user_id', $userId)
+            ->where('type', 'esim')
+            ->with('esimUpload')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        if ($transactions->isEmpty()) {
+            return collect([]);
+        }
+
+        // Decode each transaction's response payload up front
+        $decoded = $transactions->map(function ($t) {
+            $response = is_array($t->response) ? $t->response : (json_decode($t->response, true) ?? []);
+            return ['txn' => $t, 'response' => $response];
+        });
+
+        // Look up any missing country codes in a single query to avoid N+1 lookups
+        $namesNeedingCode = $decoded
+            ->filter(fn ($pair) => empty($pair['response']['country_code'] ?? null))
+            ->map(fn ($pair) => $pair['response']['country'] ?? $pair['txn']->provider ?? null)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $codeMap = [];
+        if ($namesNeedingCode->isNotEmpty()) {
+            $codeMap = \App\Models\EsimCountry::whereIn('country_name', $namesNeedingCode)
+                ->pluck('country_code', 'country_name')
+                ->toArray();
+        }
+
+        return $decoded->map(function ($pair) use ($codeMap) {
+            $t        = $pair['txn'];
+            $response = $pair['response'];
+
+            $countryName = $response['country'] ?? $t->provider ?? 'Unknown';
+            $countryCode = $response['country_code'] ?? ($codeMap[$countryName] ?? null);
+            $packageName = $response['package'] ?? null;
+            $validity    = $response['validity'] ?? null;
+
+            // Build clean, full image URLs (mirrors logic used in the transactions history view)
+            $imageUrls = [];
+            if ($t->esimUpload) {
+                $rawImages = $t->esimUpload->images;
+
+                if (is_string($rawImages)) {
+                    $rawImages = json_decode($rawImages, true) ?? [];
+                }
+                $rawImages = is_array($rawImages) ? $rawImages : [];
+
+                foreach ($rawImages as $img) {
+                    if (empty($img)) continue;
+
+                    // Fix any escaped slashes from old JSON storage
+                    $img = str_replace(['\\/', '\\'], '/', $img);
+                    $img = ltrim($img, '/');
+
+                    if (str_starts_with($img, 'storage/')) {
+                        $relativePath = substr($img, strlen('storage/'));
+                        $imageUrls[] = \Illuminate\Support\Facades\Storage::disk('public')->url($relativePath);
+                    } elseif (str_starts_with($img, 'uploads/')) {
+                        $imageUrls[] = asset($img);
+                    } else {
+                        $imageUrls[] = \Illuminate\Support\Facades\Storage::disk('public')->url($img);
+                    }
+                }
+            }
+
+            // An eSIM is considered "ready" once an admin has uploaded the activation
+            // details (esimUpload), regardless of whatever the raw status column says.
+            $isFulfilled = (bool) $t->esimUpload;
+            $rawStatus   = $isFulfilled ? 'success' : strtolower($t->status ?? 'pending');
+
+            return [
+                'id'           => $t->id,
+                'reference'    => $t->reference,
+                'country_name' => $countryName,
+                'country_code' => $countryCode ? strtolower($countryCode) : null,
+                'package'      => $packageName,
+                'validity'     => $validity,
+                'amount'       => '₦' . number_format($t->amount ?? 0, 2),
+                'status'       => $this->getEsimStatusLabel($rawStatus),
+                'raw_status'   => $rawStatus,
+                'date'         => Carbon::parse($t->created_at)->format('M d, Y h:i A'),
+                'esim_upload'  => $t->esimUpload ? [
+                    'number'  => $t->esimUpload->number,
+                    'details' => $t->esimUpload->details,
+                    'images'  => $imageUrls,
+                ] : null,
+            ];
+        })->values();
+    }
+
+    private function getEsimStatusLabel($status): string
+    {
+        $labels = [
+            'pending'   => 'Preparing',
+            'success'   => 'Ready',
+            'completed' => 'Ready',
+            'failed'    => 'Failed',
+            'cancelled' => 'Cancelled',
+            'refunded'  => 'Refunded',
+        ];
+        return $labels[$status] ?? ucfirst($status);
     }
 
     // Expire activation if countdown hits zero and SMS not delivered
