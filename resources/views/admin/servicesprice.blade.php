@@ -11,7 +11,7 @@
         </h1>
 
         <!-- Bulk Save -->
-        <form action="{{ route('admin.products.save', $provider->id) }}" method="POST"
+        {{-- <form action="{{ route('admin.products.save', $provider->id) }}" method="POST"
             style="margin-bottom:25px; background:#1a1d23; padding:20px; border-radius:14px; color:#fff; box-shadow:0 8px 20px rgba(0,0,0,0.25);">
             @csrf
 
@@ -76,7 +76,7 @@
                     @endif
                 });
             </script>
-        </form>
+        </form> --}}
 
         <!-- Search -->
         <div style="margin-bottom:20px;">
