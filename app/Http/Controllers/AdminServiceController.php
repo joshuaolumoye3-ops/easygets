@@ -486,6 +486,23 @@ class AdminServiceController extends Controller
             );
         } elseif ($provider->api_identifier === 'smsbus') {
             $clientPrices = $request->input('client_price', []);
+            $conversionRate = $request->input('conversion_rate_smsbus', 1500.0);
+            
+            // Save conversion rate product for SMS-Bus
+            Product::updateOrCreate(
+                [
+                    'provider_id' => $provider->id,
+                    'product_code' => 'conversion_rate',
+                ],
+                [
+                    'name' => 'SMS-Bus Conversion Rate (USD to NGN)',
+                    'category' => 'CONVERSION_RATE',
+                    'api_price' => 1.0,
+                    'client_price' => $conversionRate,
+                    'is_active' => true,
+                ]
+            );
+            
             // First, update existing products with provided client prices
             foreach ($clientPrices as $productCode => $clientPrice) {
                 Product::where('provider_id', $provider->id)
@@ -499,12 +516,11 @@ class AdminServiceController extends Controller
             ]);
             if ($response->ok()) {
                 $apiServices = $response->json();
-                $exchangeRate = $this->getExchangeRate();
                 foreach ($apiServices as $service) {
                     $productCode = (string)$service['id'];
                     $apiPrice = (float)$service['price'];
                     $name = $service['name'];
-                    $calculatedClientPrice = $apiPrice * $exchangeRate;
+                    $calculatedClientPrice = $apiPrice * $conversionRate;
                     $clientPrice = $clientPrices[$productCode] ?? $calculatedClientPrice;
                     Product::updateOrCreate(
                         [
@@ -522,6 +538,23 @@ class AdminServiceController extends Controller
             }
         } elseif ($provider->api_identifier === '5sim') {
             $clientPrices = $request->input('client_price', []);
+            $conversionRate = $request->input('conversion_rate_5sim', 1600.0);
+            
+            // Save conversion rate product for 5sim
+            Product::updateOrCreate(
+                [
+                    'provider_id' => $provider->id,
+                    'product_code' => 'conversion_rate',
+                ],
+                [
+                    'name' => '5sim Conversion Rate (RUB to NGN)',
+                    'category' => 'CONVERSION_RATE',
+                    'api_price' => 1.0,
+                    'client_price' => $conversionRate,
+                    'is_active' => true,
+                ]
+            );
+            
             // First, update existing products with provided client prices
             foreach ($clientPrices as $productCode => $clientPrice) {
                 Product::where('provider_id', $provider->id)
@@ -532,7 +565,6 @@ class AdminServiceController extends Controller
             $response = Http::get('https://5sim.net/v1/guest/products');
             if ($response->ok()) {
                 $apiProducts = $response->json();
-                $exchangeRate = $this->get5simExchangeRate();
                 foreach ($apiProducts as $productCode => $productData) {
                     $name = $productData['name'] ?? $productCode;
                     $minPrice = null;
@@ -548,7 +580,7 @@ class AdminServiceController extends Controller
                     }
                     if ($minPrice !== null) {
                         $apiPrice = $minPrice;
-                        $calculatedClientPrice = $apiPrice * $exchangeRate;
+                        $calculatedClientPrice = $apiPrice * $conversionRate;
                         $clientPrice = $clientPrices[$productCode] ?? $calculatedClientPrice;
                         Product::updateOrCreate(
                             [
@@ -567,6 +599,23 @@ class AdminServiceController extends Controller
             }
         } elseif ($provider->api_identifier === 'smsbower') {
             $clientPrices = $request->input('client_price', []);
+            $conversionRate = $request->input('conversion_rate_smsbower', 1500.0);
+            
+            // Save conversion rate product for SMSBower
+            Product::updateOrCreate(
+                [
+                    'provider_id' => $provider->id,
+                    'product_code' => 'conversion_rate',
+                ],
+                [
+                    'name' => 'SMSBower Conversion Rate (USD to NGN)',
+                    'category' => 'CONVERSION_RATE',
+                    'api_price' => 1.0,
+                    'client_price' => $conversionRate,
+                    'is_active' => true,
+                ]
+            );
+            
             // First, update existing products with provided client prices
             foreach ($clientPrices as $productCode => $clientPrice) {
                 Product::where('provider_id', $provider->id)
@@ -575,7 +624,6 @@ class AdminServiceController extends Controller
             }
             // Then, fetch from API and create/update products
             $services = \App\Helpers\SmsBowerHelper::getServices();
-            $exchangeRate = $this->getExchangeRate();
             
             if (!empty($services)) {
                 foreach ($services as $service) {
@@ -601,7 +649,7 @@ class AdminServiceController extends Controller
                     
                     if ($minPrice !== null && $minPrice > 0) {
                         $apiPrice = $minPrice;
-                        $calculatedClientPrice = $apiPrice * $exchangeRate;
+                        $calculatedClientPrice = $apiPrice * $conversionRate;
                         $clientPrice = $clientPrices[$serviceCode] ?? $calculatedClientPrice;
                         
                         Product::updateOrCreate(
