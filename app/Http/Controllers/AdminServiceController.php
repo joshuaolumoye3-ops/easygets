@@ -482,6 +482,7 @@ class AdminServiceController extends Controller
                     'category'     => 'OTP',
                     'api_price'    => 0,
                     'client_price' => $clientPrice,
+                    'is_active'    => true,
                 ]
             );
         } elseif ($provider->api_identifier === 'smsbus') {
@@ -507,7 +508,10 @@ class AdminServiceController extends Controller
             foreach ($clientPrices as $productCode => $clientPrice) {
                 Product::where('provider_id', $provider->id)
                     ->where('product_code', $productCode)
-                    ->update(['client_price' => $clientPrice]);
+                    ->update([
+                        'client_price' => $clientPrice,
+                        'is_active'    => $provider->status === 'active',
+                    ]);
             }
             // Then, fetch from API and create/update products
             $token = env('SMSBUS_TOKEN');
@@ -532,6 +536,7 @@ class AdminServiceController extends Controller
                             'category' => 'OTP',
                             'api_price' => $apiPrice,
                             'client_price' => $clientPrice,
+                            'is_active' => true,
                         ]
                     );
                 }
@@ -559,7 +564,10 @@ class AdminServiceController extends Controller
             foreach ($clientPrices as $productCode => $clientPrice) {
                 Product::where('provider_id', $provider->id)
                     ->where('product_code', $productCode)
-                    ->update(['client_price' => $clientPrice]);
+                    ->update([
+                        'client_price' => $clientPrice,
+                        'is_active'    => $provider->status === 'active',
+                    ]);
             }
             // Then, fetch from API and create/update products
             $response = Http::get('https://5sim.net/v1/guest/products');
@@ -592,6 +600,7 @@ class AdminServiceController extends Controller
                                 'category' => 'OTP',
                                 'api_price' => $apiPrice,
                                 'client_price' => $clientPrice,
+                                'is_active' => true,
                             ]
                         );
                     }
@@ -620,7 +629,10 @@ class AdminServiceController extends Controller
             foreach ($clientPrices as $productCode => $clientPrice) {
                 Product::where('provider_id', $provider->id)
                     ->where('product_code', $productCode)
-                    ->update(['client_price' => $clientPrice]);
+                    ->update([
+                        'client_price' => $clientPrice,
+                        'is_active'    => $provider->status === 'active',
+                    ]);
             }
             // Then, fetch from API and create/update products
             $services = \App\Helpers\SmsBowerHelper::getServices();
@@ -662,6 +674,7 @@ class AdminServiceController extends Controller
                                 'category' => 'OTP',
                                 'api_price' => $apiPrice,
                                 'client_price' => $clientPrice,
+                                'is_active' => true,
                             ]
                         );
                     }
@@ -983,6 +996,13 @@ class AdminServiceController extends Controller
         $provider = Provider::findOrFail($providerId);
         $provider->status = $provider->status === 'active' ? 'inactive' : 'active';
         $provider->save();
+
+        $isActive = $provider->status === 'active';
+
+        foreach ($provider->products as $product) {
+            $product->is_active = $isActive;
+            $product->save();
+        }
 
         $message = $provider->status === 'active' 
             ? $provider->name . ' activated successfully.' 
