@@ -565,6 +565,60 @@ class AdminServiceController extends Controller
                     }
                 }
             }
+        } elseif ($provider->api_identifier === 'smsbower') {
+            $clientPrices = $request->input('client_price', []);
+            // First, update existing products with provided client prices
+            foreach ($clientPrices as $productCode => $clientPrice) {
+                Product::where('provider_id', $provider->id)
+                    ->where('product_code', $productCode)
+                    ->update(['client_price' => $clientPrice]);
+            }
+            // Then, fetch from API and create/update products
+            $services = \App\Helpers\SmsBowerHelper::getServices();
+            $exchangeRate = $this->getExchangeRate();
+            
+            if (!empty($services)) {
+                foreach ($services as $service) {
+                    $serviceCode = $service['code'] ?? null;
+                    $serviceName = $service['name'] ?? 'Unknown Service';
+                    
+                    if (!$serviceCode) continue;
+                    
+                    // Get prices for this service across all countries
+                    $prices = \App\Helpers\SmsBowerHelper::getPrices($serviceCode);
+                    $minPrice = null;
+                    
+                    if (is_array($prices)) {
+                        foreach ($prices as $countryId => $countryPrices) {
+                            if (is_array($countryPrices) && isset($countryPrices[$serviceCode])) {
+                                $cost = (float)($countryPrices[$serviceCode]['cost'] ?? 0);
+                                if ($cost > 0 && ($minPrice === null || $cost < $minPrice)) {
+                                    $minPrice = $cost;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if ($minPrice !== null && $minPrice > 0) {
+                        $apiPrice = $minPrice;
+                        $calculatedClientPrice = $apiPrice * $exchangeRate;
+                        $clientPrice = $clientPrices[$serviceCode] ?? $calculatedClientPrice;
+                        
+                        Product::updateOrCreate(
+                            [
+                                'provider_id' => $provider->id,
+                                'product_code' => $serviceCode,
+                            ],
+                            [
+                                'name' => $serviceName,
+                                'category' => 'OTP',
+                                'api_price' => $apiPrice,
+                                'client_price' => $clientPrice,
+                            ]
+                        );
+                    }
+                }
+            }
         }
 
         return redirect()->back()->with('success', 'All plans saved successfully.');
