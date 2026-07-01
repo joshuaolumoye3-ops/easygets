@@ -58,7 +58,7 @@
                     </div>
                     <div>
                         <p class="text-xs text-gray-600">Selected Service</p>
-                        <p class="font-bold text-gray-800">Provider 2</p>
+                        <p class="font-bold text-gray-800">Provider 3</p>
                     </div>
                 </div>
                 <span id="countryCount" class="text-xs font-semibold text-green-700 bg-green-100 px-3 py-1 rounded-full">

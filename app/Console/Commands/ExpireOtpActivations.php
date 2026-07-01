@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use App\Helpers\SmsBowerHelper;
 
 class ExpireOtpActivations extends Command
 {
@@ -58,7 +59,11 @@ class ExpireOtpActivations extends Command
                     ->withHeaders(['Authorization' => "Bearer {$token}", 'Accept' => 'application/json'])
                     ->withOptions(['verify' => false])
                     ->get("https://5sim.net/v1/user/cancel/{$activation->request_id}");
+            } elseif ($provider === 'provider2') {
+                // SMSBower
+                SmsBowerHelper::cancelActivation((string) $activation->request_id);
             } else {
+                // provider3 = SMS-Bus
                 $token = env('SMSBUS_TOKEN');
                 Http::timeout(10)
                     ->withOptions(['verify' => false])
@@ -160,9 +165,10 @@ class ExpireOtpActivations extends Command
 
     private function normalizeProvider(?string $channel): string
     {
-        $p = strtolower($channel ?? 'provider2');
-        if (in_array($p, ['sms-bus', 'smsbus'], true)) return 'provider2';
-        if ($p === '5sim')                               return 'provider1';
-        return $p;
+        $p = strtolower($channel ?? 'provider3');
+        if ($p === 'provider1' || $p === '5sim') return 'provider1';
+        if ($p === 'provider2') return 'provider2';
+        if (in_array($p, ['provider3', 'sms-bus', 'smsbus'], true)) return 'provider3';
+        return 'provider3'; // safe legacy default
     }
 }

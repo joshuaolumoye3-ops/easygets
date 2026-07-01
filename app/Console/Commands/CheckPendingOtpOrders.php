@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Transaction;
+use App\Helpers\SmsBowerHelper;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -33,9 +34,11 @@ class CheckPendingOtpOrders extends Command
             $provider = $this->normalizeProvider($txn->channel);
 
             try {
-                $result = $provider === 'provider1'
-                    ? $this->check5sim($txn)
-                    : $this->checkSmsBus($txn);
+                $result = match ($provider) {
+                    'provider1' => $this->check5sim($txn),
+                    'provider2' => $this->checkSmsBower($txn),
+                    default     => $this->checkSmsBus($txn),
+                };
 
                 if ($result['updated'])  $updated++;
                 if ($result['refunded']) $refunded++;
@@ -62,6 +65,9 @@ class CheckPendingOtpOrders extends Command
         $this->newLine();
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // PROVIDER 1 — 5sim
+    // ═══════════════════════════════════════════════════════════
     private function check5sim(Transaction $txn): array
     {
         $token    = env('FIVESIM_TOKEN');
@@ -78,7 +84,6 @@ class CheckPendingOtpOrders extends Command
         $data      = $response->json();
         $apiStatus = $data['status'] ?? 'UNKNOWN';
 
-        // SMS received
         if (!empty($data['sms']) && is_array($data['sms'])) {
             foreach ($data['sms'] as $sms) {
                 if (!empty($sms['code'])) {
@@ -99,7 +104,6 @@ class CheckPendingOtpOrders extends Command
             }
         }
 
-        // Terminal states — refund
         if (in_array($apiStatus, ['CANCELED', 'TIMEOUT'], true)) {
             $ok = $this->autoRefund($txn, 'expired', "5sim {$apiStatus} auto-refund [activation #{$txn->id}]");
             $this->line("↩ [ID: {$txn->id}] {$apiStatus} — refund " . ($ok ? 'OK ✓' : 'FAILED ✗'));
@@ -117,6 +121,43 @@ class CheckPendingOtpOrders extends Command
         return ['updated' => false, 'refunded' => false];
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // PROVIDER 2 — SMSBower (shown to users as "Provider 2")
+    // ═══════════════════════════════════════════════════════════
+    private function checkSmsBower(Transaction $txn): array
+    {
+        $statusResponse = SmsBowerHelper::getStatus((string) $txn->request_id);
+
+        $code = SmsBowerHelper::parseSmsCode($statusResponse);
+        if ($code !== null) {
+            $txn->sms_code = $code;
+            $txn->status   = 'completed';
+            $txn->save();
+
+            try {
+                SmsBowerHelper::finishActivation((string) $txn->request_id);
+            } catch (\Exception $e) {
+                Log::warning('Failed to finish Provider 2 order', ['error' => $e->getMessage()]);
+            }
+
+            $this->info("✓ [ID: {$txn->id}] SMS: {$code}");
+            return ['updated' => true, 'refunded' => false];
+        }
+
+        if ($statusResponse === 'STATUS_CANCEL') {
+            $ok = $this->autoRefund($txn, 'expired', "Provider 2 cancelled auto-refund [activation #{$txn->id}]");
+            $this->line("↩ [ID: {$txn->id}] CANCELLED — refund " . ($ok ? 'OK ✓' : 'FAILED ✗'));
+            return ['updated' => true, 'refunded' => $ok];
+        }
+
+        // STATUS_WAIT_CODE, STATUS_WAIT_RETRY (no code parsed), or unexpected string
+        $this->line("⧖ [ID: {$txn->id}] Waiting — Provider 2: {$statusResponse}");
+        return ['updated' => false, 'refunded' => false];
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // PROVIDER 3 — SMS-Bus (was "Provider 2")
+    // ═══════════════════════════════════════════════════════════
     private function checkSmsBus(Transaction $txn): array
     {
         $token    = env('SMSBUS_TOKEN');
@@ -163,7 +204,6 @@ class CheckPendingOtpOrders extends Command
         try {
             DB::transaction(function () use ($txn, $status, $description) {
 
-                // Re-read with row lock
                 $current = DB::table('transactions')
                     ->where('id', $txn->id)
                     ->lockForUpdate()
@@ -174,8 +214,6 @@ class CheckPendingOtpOrders extends Command
                     return;
                 }
 
-                // Idempotency: look for existing refund by activation ID in description
-                // (avoids JSON_EXTRACT which can fail if response column has non-JSON data)
                 $alreadyRefunded = DB::table('transactions')
                     ->where('type', 'credit')
                     ->where('channel', 'Refund')
@@ -192,12 +230,10 @@ class CheckPendingOtpOrders extends Command
                     return;
                 }
 
-                // Update activation status
                 DB::table('transactions')
                     ->where('id', $txn->id)
                     ->update(['status' => $status, 'updated_at' => now()]);
 
-                // Lock wallet
                 $wallet = DB::table('wallets')
                     ->where('user_id', $txn->user_id)
                     ->lockForUpdate()
@@ -207,12 +243,10 @@ class CheckPendingOtpOrders extends Command
                     throw new \Exception("Wallet not found for user_id: {$txn->user_id}");
                 }
 
-                // Credit wallet
                 DB::table('wallets')
                     ->where('user_id', $txn->user_id)
                     ->increment('balance', $txn->amount);
 
-                // Build refund record using only guaranteed columns
                 $refundData = [
                     'reference'   => 'REF_' . strtoupper(Str::random(10)),
                     'user_id'     => $txn->user_id,
@@ -225,7 +259,6 @@ class CheckPendingOtpOrders extends Command
                     'updated_at'  => now(),
                 ];
 
-                // Safely add optional columns
                 $this->addIfColumnExists($refundData, 'provider',      $txn->service_name ?? $txn->provider ?? 'System');
                 $this->addIfColumnExists($refundData, 'phone',         $txn->phone ?? null);
                 $this->addIfColumnExists($refundData, 'recipient',     null);
@@ -255,7 +288,6 @@ class CheckPendingOtpOrders extends Command
         }
     }
 
-    /** Add a key=>value to $data only if the column exists in the transactions table */
     private function addIfColumnExists(array &$data, string $column, $value): void
     {
         static $columns = null;
@@ -267,11 +299,20 @@ class CheckPendingOtpOrders extends Command
         }
     }
 
+    /**
+     * Channel values written at purchase time:
+     *  - '5sim'/'provider1'          -> provider1
+     *  - 'provider2'                 -> provider2 (SMSBower)
+     *  - 'provider3'/'sms-bus'/'smsbus' -> provider3 (SMS-Bus)
+     */
     private function normalizeProvider(?string $channel): string
     {
-        $p = strtolower($channel ?? 'provider2');
-        if (in_array($p, ['sms-bus', 'smsbus'], true)) return 'provider2';
-        if ($p === '5sim')                               return 'provider1';
-        return $p;
+        $p = strtolower($channel ?? 'provider3');
+
+        if ($p === 'provider1' || $p === '5sim') return 'provider1';
+        if ($p === 'provider2') return 'provider2';
+        if (in_array($p, ['provider3', 'sms-bus', 'smsbus'], true)) return 'provider3';
+
+        return 'provider3'; // safe legacy default
     }
 }

@@ -189,21 +189,24 @@ Route::middleware('auth')->group(function () {
     Route::post('/prepare-purchase/provider1', [CountryController::class, 'preparePurchase5sim'])
         ->middleware('auth', 'check.user.not.blocked')->name('prepare.purchase.provider1');
 
-    // ==================== PROVIDER2 (SMS-BUS) PROVIDER ROUTES ====================
-    // Step 1: Show countries for a service
-    Route::get('/services/{serviceId}/countries-provider2', [CountryController::class, 'showCountries'])
+    // ==================== PROVIDER2 (SMSBower) ROUTES ====================
+    Route::get('/services/{serviceCode}/countries-provider2', [CountryController::class, 'showCountriesSmsBower'])
         ->middleware('check.user.not.blocked')->name('services.provider2.countries');
 
-    // For AJAX loading (optional)
-    Route::get('/services/{serviceId}/countries-provider2/load', [CountryController::class, 'showCountries']);
+    Route::post('/prepare-purchase-provider2', [CountryController::class, 'preparePurchaseSmsBower'])
+        ->middleware('auth', 'check.user.not.blocked')->name('prepare.purchase.smsbower');
 
-    // Step 2: Get prices for a country
-    Route::get('/services/{serviceId}/countries-provider2/{countryId}/prices', [CountryController::class, 'getPrices'])
-        ->middleware('check.user.not.blocked')->name('countries.provider2.prices');
+    // ==================== PROVIDER3 (SMS-Bus) ROUTES ====================
+    Route::get('/services/{serviceId}/countries-provider3', [CountryController::class, 'showCountries'])
+        ->middleware('check.user.not.blocked')->name('services.provider3.countries');
 
-    // Step 3: Prepare purchase (creates session)
-    Route::post('/prepare-purchase-provider2', [CountryController::class, 'preparePurchase'])
-        ->middleware('auth', 'check.user.not.blocked')->name('prepare.purchase.provider2');
+    Route::get('/services/{serviceId}/countries-provider3/load', [CountryController::class, 'showCountries']);
+
+    Route::get('/services/{serviceId}/countries-provider3/{countryId}/prices', [CountryController::class, 'getPrices'])
+        ->middleware('check.user.not.blocked')->name('countries.provider3.prices');
+
+    Route::post('/prepare-purchase-provider3', [CountryController::class, 'preparePurchase'])
+        ->middleware('auth', 'check.user.not.blocked')->name('prepare.purchase.provider3');
 
     Route::get('/logs/{product}/prepare', [CountryController::class, 'prepareLogPurchase'])
         ->middleware('auth', 'check.user.not.blocked')->name('logs.prepare');

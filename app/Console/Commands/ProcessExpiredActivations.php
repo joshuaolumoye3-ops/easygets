@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use App\Helpers\SmsBowerHelper;
 
 class ProcessExpiredActivations extends Command
 {
@@ -113,11 +114,39 @@ class ProcessExpiredActivations extends Command
     private function checkStatus($activation, string $provider): array
     {
         try {
-            return $provider === 'provider1'
-                ? $this->checkStatus5sim($activation)
-                : $this->checkStatusSmsBus($activation);
+            return match ($provider) {
+                'provider1' => $this->checkStatus5sim($activation),
+                'provider2' => $this->checkStatusSmsBower($activation),
+                default     => $this->checkStatusSmsBus($activation),
+            };
         } catch (\Exception $e) {
             Log::warning('checkStatus failed — assuming valid', ['id' => $activation->id, 'error' => $e->getMessage()]);
+            return ['valid' => true, 'sms_received' => false];
+        }
+    }
+
+    private function checkStatusSmsBower($activation): array
+    {
+        try {
+            $statusResponse = SmsBowerHelper::getStatus((string) $activation->request_id);
+
+            $code = SmsBowerHelper::parseSmsCode($statusResponse);
+            if ($code !== null) {
+                DB::table('transactions')
+                    ->where('id', $activation->id)
+                    ->where('status', 'pending')
+                    ->update(['sms_code' => $code, 'status' => 'completed', 'updated_at' => now()]);
+                return ['valid' => true, 'sms_received' => true];
+            }
+
+            if ($statusResponse === 'STATUS_CANCEL') {
+                return ['valid' => false, 'sms_received' => false];
+            }
+
+            // STATUS_WAIT_CODE / STATUS_WAIT_RETRY (no code) → still active
+            return ['valid' => true, 'sms_received' => false];
+        } catch (\Exception $e) {
+            Log::warning('checkStatusSmsBower failed — assuming valid', ['id' => $activation->id, 'error' => $e->getMessage()]);
             return ['valid' => true, 'sms_received' => false];
         }
     }
@@ -193,6 +222,16 @@ class ProcessExpiredActivations extends Command
                 return ['success' => $response->successful()];
             }
 
+            if ($provider === 'provider2') {
+                $ok = SmsBowerHelper::cancelActivation((string) $activation->request_id);
+                if (!$ok) {
+                    // some accounts/plans reply differently but still cancel — force it
+                    SmsBowerHelper::setStatus((string) $activation->request_id, 8);
+                }
+                return ['success' => true];
+            }
+
+            // provider3 = SMS-Bus
             $token    = env('SMSBUS_TOKEN');
             $response = Http::timeout(15)
                 ->withOptions(['verify' => false])
@@ -206,7 +245,6 @@ class ProcessExpiredActivations extends Command
             }
 
             $code = $response->json()['code'] ?? null;
-            // 200 = cancelled, 50103 = already closed (still treat as success)
             return ['success' => in_array($code, [200, 50103], true), 'reason' => $response->json()['message'] ?? ''];
 
         } catch (\Exception $e) {
@@ -304,9 +342,10 @@ class ProcessExpiredActivations extends Command
 
     private function normalizeProvider(?string $channel): string
     {
-        $p = strtolower($channel ?? 'provider2');
-        if (in_array($p, ['sms-bus', 'smsbus'], true)) return 'provider2';
-        if ($p === '5sim')                               return 'provider1';
-        return $p;
-    }
+        $p = strtolower($channel ?? 'provider3');
+        if ($p === 'provider1' || $p === '5sim') return 'provider1';
+        if ($p === 'provider2') return 'provider2';
+        if (in_array($p, ['provider3', 'sms-bus', 'smsbus'], true)) return 'provider3';
+        return 'provider3';
+}
 }
