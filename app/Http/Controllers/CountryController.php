@@ -22,7 +22,6 @@ use App\Models\Admin;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\LogsPurchaseAdminNotification;
 use App\Helpers\ReferralBalanceHelper;
-use App\Helpers\OtpProviderResponseHelper;
 
 class CountryController extends Controller
 {
@@ -718,37 +717,108 @@ class CountryController extends Controller
             }
 
             DB::transaction(function () use ($user, $wallet, $cost, &$split) {
-                $deducted                = ReferralBalanceHelper::apply($user, $wallet, $cost);
-                $split['referral_deduction'] = $deducted['referral_deduction'];
-                $split['wallet_deduction']   = $deducted['wallet_deduction'];
+                $deducted                     = ReferralBalanceHelper::apply($user, $wallet, $cost);
+                $split['referral_deduction']  = $deducted['referral_deduction'];
+                $split['wallet_deduction']    = $deducted['wallet_deduction'];
             });
 
             if ($purchase['provider'] === self::PROVIDER_5SIM) {
-                return $this->process5sim($purchase);
+                return $this->process5sim($purchase, $split);
             }
 
             if ($purchase['provider'] === self::PROVIDER_SMSBOWER) {
-                return $this->processSmsBower($purchase);
+                return $this->processSmsBower($purchase, $split);
             }
 
             if ($purchase['provider'] === self::PROVIDER_SMSBUS) {
-                return $this->processSmsbus($purchase);
+                return $this->processSmsbus($purchase, $split);
             }
 
             if (isset($purchase['provider']) && $purchase['provider'] === 'logs') {
-                return $this->processLogs($purchase);
+                return $this->processLogs($purchase, $split);
             }
 
-            $this->refundUserBalance($cost);
+            $this->refundPurchase($purchase, $split, 'Unknown provider');
             return back()->withErrors('Unknown provider. Balance refunded.');
+
         } catch (\Illuminate\Validation\ValidationException $e) {
             return back()->withErrors($e->validator->errors()->first());
         } catch (\Exception $e) {
-            Log::error('Payment processing error', ['error' => $e->getMessage()]);
-            if (isset($purchase['cost'])) {
-                $this->refundUserBalance((float) $purchase['cost']);
+            Log::error('Payment processing error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            if (isset($purchase) && isset($purchase['cost'])) {
+                $this->refundPurchase(
+                    $purchase,
+                    $split ?? ['wallet_deduction' => $purchase['cost'], 'referral_deduction' => 0],
+                    'Payment processing exception'
+                );
             }
             return back()->withErrors('An error occurred processing payment. Please try again.');
+        }
+    }
+
+    /**
+     * Reverses a failed purchase, crediting BOTH the wallet portion and the
+     * referral-balance portion that were originally deducted — restoring the
+     * user to exactly the balance they had before the purchase attempt.
+     */
+    private function refundPurchase(array $purchase, array $split, string $reason): void
+    {
+        try {
+            $user = auth()->user();
+            if (!$user) return;
+
+            $wallet = $user->wallet;
+            if (!$wallet) return;
+
+            $walletAmount   = (float) ($split['wallet_deduction']   ?? $purchase['cost'] ?? 0);
+            $referralAmount = (float) ($split['referral_deduction'] ?? 0);
+
+            if ($walletAmount <= 0 && $referralAmount <= 0) {
+                return;
+            }
+
+            DB::transaction(function () use ($user, $wallet, $walletAmount, $referralAmount, $reason) {
+                if ($walletAmount > 0) {
+                    DB::table('wallets')->where('user_id', $user->id)->increment('balance', $walletAmount);
+                }
+
+                if ($referralAmount > 0) {
+                    if (method_exists(ReferralBalanceHelper::class, 'refund')) {
+                        // Preferred: let the helper reverse whatever it deducted from.
+                        ReferralBalanceHelper::refund($user, $referralAmount);
+                    } elseif (\Illuminate\Support\Facades\Schema::hasColumn('users', 'referral_balance')) {
+                        DB::table('users')->where('id', $user->id)->increment('referral_balance', $referralAmount);
+                    } else {
+                        // Last resort so the user isn't shortchanged — log loudly so it's caught.
+                        DB::table('wallets')->where('user_id', $user->id)->increment('balance', $referralAmount);
+                        Log::warning('refundPurchase: no referral refund method/column found, credited wallet instead', [
+                            'user_id' => $user->id,
+                            'amount'  => $referralAmount,
+                        ]);
+                    }
+                }
+
+                DB::table('transactions')->insert([
+                    'reference'   => 'REF_' . strtoupper(Str::random(10)),
+                    'user_id'     => $user->id,
+                    'type'        => 'credit',
+                    'channel'     => 'Refund',
+                    'provider'    => 'System',
+                    'amount'      => $walletAmount + $referralAmount,
+                    'status'      => 'success',
+                    'description' => $reason . ' — refund [wallet: ₦' . number_format($walletAmount, 2)
+                                    . ', referral: ₦' . number_format($referralAmount, 2) . ']',
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ]);
+            });
+        } catch (\Exception $e) {
+            Log::error('refundPurchase FAILED — manual intervention needed', [
+                'user_id'  => auth()->id(),
+                'purchase' => $purchase,
+                'split'    => $split,
+                'error'    => $e->getMessage(),
+            ]);
         }
     }
 
@@ -759,35 +829,30 @@ class CountryController extends Controller
     /**
      * Process SMSBower purchase (new provider2)
      */
-    private function processSmsBower(array $purchase)
+    private function processSmsBower(array $purchase, array $split = [])
     {
         if (!env('SMSBOWER_API_KEY')) {
-            $this->refundUserBalance($purchase['cost']);
+            $this->refundPurchase($purchase, $split, 'SMSBOWER_API_KEY not configured');
             Log::error('SMSBOWER_API_KEY not configured');
             return back()->withErrors('Service configuration error. Balance refunded.');
         }
 
         try {
-            Log::info('SMSBower purchase attempt', [
-                'user_id'    => auth()->id(),
-                'service'    => $purchase['service'],
-                'country_id' => $purchase['country_id'],
-            ]);
+            $result = SmsBowerHelper::buyNumber($purchase['service'], $purchase['country_id']);
 
-            $buyResult = SmsBowerHelper::buyNumber($purchase['service'], $purchase['country_id']);
-            $parsed = OtpProviderResponseHelper::extractActivationData($buyResult, 'smsbower');
-
-            if (empty($parsed['request_id']) || empty($parsed['phone'])) {
-                $this->refundUserBalance($purchase['cost']);
-                Log::error('SMSBower buyNumber failed or empty response', ['result' => $buyResult]);
+            if (!$result || empty($result['id']) || empty($result['phone'])) {
+                Log::error('SMSBower buyNumber failed or empty response', [
+                    'service' => $purchase['service'], 'country_id' => $purchase['country_id'], 'result' => $result,
+                ]);
+                $this->refundPurchase($purchase, $split, 'SMSBower purchase failed');
                 return back()->withErrors('Failed to purchase number. Your balance has been refunded.');
             }
 
             $activationId = DB::table('transactions')->insertGetId([
                 'user_id'      => auth()->id(),
                 'reference'    => 'ACT_' . strtoupper(Str::random(10)),
-                'request_id'   => $parsed['request_id'],
-                'phone'        => $parsed['phone'],
+                'request_id'   => (string) $result['id'],
+                'phone'        => $result['phone'],
                 'service_id'   => $purchase['service'],
                 'service_name' => $purchase['service_name'],
                 'service_logo' => null,
@@ -798,7 +863,7 @@ class CountryController extends Controller
                 'original_cost_usd' => $purchase['original_cost_usd'] ?? null,
                 'status'       => 'pending',
                 'type'         => 'activation',
-                'channel'      => 'provider2',   // shown as "Provider 2" to users
+                'channel'      => 'provider2',
                 'provider'     => 'Provider 2',
                 'sms_code'     => null,
                 'expires_at'   => now()->addMinutes(20),
@@ -808,28 +873,20 @@ class CountryController extends Controller
                 'updated_at'   => now(),
             ]);
 
-            Log::info('SMSBower purchase successful', [
-                'user_id'       => auth()->id(),
-                'activation_id' => $activationId,
-                'smsbower_id'   => $result['id'],
-                'phone'         => $result['phone'],
-            ]);
-
             session()->forget('purchase');
-
             return redirect()->route('history')->with('new_activation', $activationId);
         } catch (\Exception $e) {
-            $this->refundUserBalance($purchase['cost']);
             Log::error('SMSBower purchase exception', ['error' => $e->getMessage()]);
+            $this->refundPurchase($purchase, $split, 'SMSBower purchase exception');
             return back()->withErrors('An error occurred. Your balance has been refunded.');
         }
     }
 
-    private function process5sim(array $purchase)
+    private function process5sim(array $purchase, array $split = [])
     {
         $token = env('FIVESIM_TOKEN');
         if (!$token) {
-            $this->refundUserBalance($purchase['cost']);
+            $this->refundPurchase($purchase, $split, '5sim token missing');
             return back()->withErrors('Service configuration error. Balance refunded.');
         }
 
@@ -847,22 +904,28 @@ class CountryController extends Controller
             $responseData = $response->json();
 
             if ($response->failed()) {
-                $this->refundUserBalance($purchase['cost']);
+                Log::error('5sim buy failed', [
+                    'url' => $url, 'status' => $response->status(), 'body' => $response->body(),
+                ]);
+                $this->refundPurchase($purchase, $split, '5sim purchase failed');
                 $errorMsg = is_array($responseData) && isset($responseData['message'])
                     ? $responseData['message']
                     : substr($response->body(), 0, 250);
                 return back()->withErrors('Failed to purchase number. ' . $errorMsg . ' Your balance has been refunded.');
             }
 
-            $parsed = OtpProviderResponseHelper::extractActivationData($responseData, '5sim');
-            if (empty($parsed['request_id']) || empty($parsed['phone'])) {
-                $this->refundUserBalance($purchase['cost']);
+            $data = $responseData ?? [];
+            if (!isset($data['id']) || !isset($data['phone'])) {
+                Log::error('5sim buy returned unexpected payload', [
+                    'url' => $url, 'status' => $response->status(), 'body' => $response->body(),
+                ]);
+                $this->refundPurchase($purchase, $split, '5sim invalid response');
                 return back()->withErrors('Invalid response from service. Your balance has been refunded.');
             }
 
             $transactionId = DB::table('transactions')->insertGetId([
                 'reference'    => 'ACT_' . strtoupper(Str::random(10)),
-                'request_id'   => $parsed['request_id'],
+                'request_id'   => (string) $data['id'],
                 'user_id'      => auth()->id(),
                 'type'         => 'activation',
                 'channel'      => 'provider1',
@@ -874,7 +937,7 @@ class CountryController extends Controller
                 'country_name' => $purchase['country_name'],
                 'country_code' => $this->getCountryCodeFrom5simCountry($purchase['country']),
                 'operator_name'=> $purchase['operator_name'] ?? null,
-                'phone'        => $parsed['phone'],
+                'phone'        => $data['phone'] ?? null,
                 'sms_code'     => null,
                 'amount'       => $purchase['cost'],
                 'original_cost_usd' => $purchase['original_cost_usd'] ?? null,
@@ -889,16 +952,17 @@ class CountryController extends Controller
             session()->forget('purchase');
             return redirect()->route('history')->with('new_activation', $transactionId);
         } catch (\Exception $e) {
-            $this->refundUserBalance($purchase['cost']);
+            Log::error('5sim purchase exception', ['error' => $e->getMessage()]);
+            $this->refundPurchase($purchase, $split, '5sim purchase exception');
             return back()->withErrors('An error occurred. Your balance has been refunded.');
         }
     }
 
-    private function processSmsbus(array $purchase)
+    private function processSmsbus(array $purchase, array $split = [])
     {
         $token = env('SMSBUS_TOKEN');
         if (!$token) {
-            $this->refundUserBalance($purchase['cost']);
+            $this->refundPurchase($purchase, $split, 'SMSBUS token missing');
             return back()->withErrors('Service configuration error. Balance refunded.');
         }
 
@@ -908,28 +972,33 @@ class CountryController extends Controller
                     'project_id' => $purchase['service'],
                     'country_id' => $purchase['country_id'],
                     'token'      => $token,
-                    'reuse'      => false,
+                    'reuse'      => 0,
                 ]);
 
             $data = $response->json();
+            $code = isset($data['code']) ? (int) $data['code'] : null; // loose-cast: avoid string/int mismatch
 
-            if ($response->failed() || !isset($data['code']) || $data['code'] !== 200) {
-                $this->refundUserBalance($purchase['cost']);
+            if ($response->failed() || $code !== 200) {
+                Log::error('SMS-Bus get/number failed', [
+                    'status' => $response->status(), 'body' => $response->body(),
+                    'project_id' => $purchase['service'], 'country_id' => $purchase['country_id'],
+                ]);
+                $this->refundPurchase($purchase, $split, 'SMS-Bus purchase failed');
                 $errorMessage = $data['message'] ?? 'Failed to purchase number';
                 return back()->withErrors($errorMessage . '. Your balance has been refunded.');
             }
 
-            $parsed = OtpProviderResponseHelper::extractActivationData($data, 'smsbus');
-            if (empty($parsed['request_id']) || empty($parsed['phone'])) {
-                $this->refundUserBalance($purchase['cost']);
+            if (!isset($data['data']['request_id']) || !isset($data['data']['number'])) {
+                Log::error('SMS-Bus get/number returned unexpected payload', ['body' => $response->body()]);
+                $this->refundPurchase($purchase, $split, 'SMS-Bus invalid response');
                 return back()->withErrors('Invalid response from service. Your balance has been refunded.');
             }
 
             $activationId = DB::table('transactions')->insertGetId([
                 'user_id'      => auth()->id(),
                 'reference'    => 'ACT_' . strtoupper(Str::random(10)),
-                'request_id'   => $parsed['request_id'],
-                'phone'        => $parsed['phone'],
+                'request_id'   => $data['data']['request_id'],
+                'phone'        => $data['data']['number'],
                 'service_id'   => $purchase['service'],
                 'service_name' => $purchase['service_name'],
                 'service_logo' => $purchase['service_logo'] ?? null,
@@ -940,7 +1009,7 @@ class CountryController extends Controller
                 'original_cost_usd' => $purchase['original_cost_usd'] ?? null,
                 'status'       => 'pending',
                 'type'         => 'activation',
-                'channel'      => 'provider3',   // shown as "Provider 3" to users
+                'channel'      => 'provider3',
                 'provider'     => 'Provider 3',
                 'sms_code'     => null,
                 'expires_at'   => now()->addMinutes(20),
@@ -953,7 +1022,8 @@ class CountryController extends Controller
             session()->forget('purchase');
             return redirect()->route('history')->with('new_activation', $activationId);
         } catch (\Exception $e) {
-            $this->refundUserBalance($purchase['cost']);
+            Log::error('SMS-Bus purchase exception', ['error' => $e->getMessage()]);
+            $this->refundPurchase($purchase, $split, 'SMS-Bus purchase exception');
             return back()->withErrors('An error occurred. Your balance has been refunded.');
         }
     }
