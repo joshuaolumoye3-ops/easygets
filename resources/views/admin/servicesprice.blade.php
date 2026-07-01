@@ -198,7 +198,6 @@
                                             method="POST"
                                             onsubmit="return confirm('Deactivate this product?');">
                                             @csrf
-                                            @method('DELETE')
 
                                             <button type="submit"
                                                 style="background:#ef4444; border:none; padding:6px 10px; border-radius:6px; color:#fff; font-size:12px;">

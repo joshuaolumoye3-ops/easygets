@@ -320,7 +320,7 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
     Route::post('/providers/{provider}/products/save', [AdminServiceController::class, 'saveProducts'])->name('admin.products.save');
     Route::post('/providers/{provider}/products/create', [AdminServiceController::class, 'createProduct'])->name('admin.products.create');
     Route::post('/providers/{provider}/markup', [AdminServiceController::class, 'applyMarkup'])->name('admin.providers.markup');
-    Route::delete('/products/{id}', [AdminServiceController::class, 'destroy'])->name('admin.products.delete');
+    Route::match(['post', 'delete'], '/products/{id}', [AdminServiceController::class, 'destroy'])->name('admin.products.delete');
     Route::post('/products/{id}/toggle', [AdminServiceController::class, 'toggleActive'])->name('admin.products.toggle');
     Route::get('/esim-transaction', [AdminServiceController::class, 'esimindex'])->name('admin.esim.transaction');
     Route::get('/esim/{id}', [AdminServiceController::class, 'show'])->name('admin.esim.show');

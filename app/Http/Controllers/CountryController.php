@@ -30,6 +30,19 @@ class CountryController extends Controller
     const PROVIDER_SMSBUS  = 'smsbus';   // now provider3 (was provider2)
     const PROVIDER_SMSBOWER = 'smsbower'; // new provider2
 
+    private function providerIsAvailable(?Provider $provider): bool
+    {
+        if (!$provider) {
+            return false;
+        }
+
+        if ($provider->status !== 'active') {
+            return false;
+        }
+
+        return $provider->products()->where('is_active', true)->exists();
+    }
+
     // ═══════════════════════════════════════════════════════════
     // SERVICES LIST PAGE (unchanged – shows SMS-Bus services)
     // ═══════════════════════════════════════════════════════════
@@ -123,7 +136,7 @@ class CountryController extends Controller
             ]);
         }
 
-        // Check provider status from database
+        // Check provider availability from database and active products
         $fivesimProvider = Provider::where('api_identifier', '5sim')->first();
         $smsbowerProvider = Provider::where('api_identifier', 'smsbower')->first();
         $smsbusProvider = Provider::where('api_identifier', 'smsbus')->first();
@@ -133,9 +146,9 @@ class CountryController extends Controller
             'products'     => $paginated,
             'nextPage'     => $hasMorePages ? 2 : null,
             'isSearching'  => $isSearching,
-            'hasFivesim'   => !empty(env('FIVESIM_TOKEN')) && ($fivesimProvider && $fivesimProvider->status === 'active'),
-            'hasSmsBower'  => !empty(env('SMSBOWER_API_KEY')) && ($smsbowerProvider && $smsbowerProvider->status === 'active'),
-            'hasSmsbus'    => !empty(env('SMSBUS_TOKEN')) && ($smsbusProvider && $smsbusProvider->status === 'active'),
+            'hasFivesim'   => !empty(env('FIVESIM_TOKEN')) && $this->providerIsAvailable($fivesimProvider),
+            'hasSmsBower'  => !empty(env('SMSBOWER_API_KEY')) && $this->providerIsAvailable($smsbowerProvider),
+            'hasSmsbus'    => !empty(env('SMSBUS_TOKEN')) && $this->providerIsAvailable($smsbusProvider),
         ]);
     }
 
