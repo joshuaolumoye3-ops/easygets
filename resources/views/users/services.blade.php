@@ -210,6 +210,7 @@
             @endif
 
             {{-- Provider 3: SMS-Bus (was provider2) --}}
+            @if($hasSmsbus ?? false)
             <button onclick="selectProvider('provider3')"
                     class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all duration-200">
                 <div class="flex items-center space-x-4">
@@ -228,6 +229,20 @@
                     </svg>
                 </div>
             </button>
+            @else
+            <button disabled class="w-full p-5 border-2 border-gray-200 rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-gray-400 rounded-lg flex items-center justify-center text-white font-bold text-lg">EG3</div>
+                    <div class="flex-1 text-left">
+                        <h3 class="font-bold text-gray-600">Provider 3 (Currently not available)</h3>
+                        <div class="flex items-center space-x-2 mt-1">
+                            <span class="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
+                            <span class="text-xs text-gray-500">Currently not available — contact admin</span>
+                        </div>
+                    </div>
+                </div>
+            </button>
+            @endif
 
         </div>
 

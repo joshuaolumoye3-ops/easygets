@@ -123,13 +123,19 @@ class CountryController extends Controller
             ]);
         }
 
+        // Check provider status from database
+        $fivesimProvider = Provider::where('api_identifier', '5sim')->first();
+        $smsbowerProvider = Provider::where('api_identifier', 'smsbower')->first();
+        $smsbusProvider = Provider::where('api_identifier', 'smsbus')->first();
+
         return view('users.services', [
             'popular'      => $isSearching ? collect([]) : $popular,
             'products'     => $paginated,
             'nextPage'     => $hasMorePages ? 2 : null,
             'isSearching'  => $isSearching,
-            'hasFivesim'   => !empty(env('FIVESIM_TOKEN')),
-            'hasSmsBower'  => !empty(env('SMSBOWER_API_KEY')),
+            'hasFivesim'   => !empty(env('FIVESIM_TOKEN')) && ($fivesimProvider && $fivesimProvider->status === 'active'),
+            'hasSmsBower'  => !empty(env('SMSBOWER_API_KEY')) && ($smsbowerProvider && $smsbowerProvider->status === 'active'),
+            'hasSmsbus'    => !empty(env('SMSBUS_TOKEN')) && ($smsbusProvider && $smsbusProvider->status === 'active'),
         ]);
     }
 
