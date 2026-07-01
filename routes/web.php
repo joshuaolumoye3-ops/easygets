@@ -314,6 +314,7 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
     
     Route::get('/services', [AdminServiceController::class, 'index'])->name('admin.services');
     Route::get('/services/{service}/providers', [AdminServiceController::class, 'providers'])->name('admin.providers');
+    Route::post('/providers/{provider}/toggle', [AdminServiceController::class, 'toggleProvider'])->name('admin.providers.toggle');
     Route::get('/providers/{provider}/products', [AdminServiceController::class, 'products'])->name('admin.products');
     Route::post('/products/{id}/update', [AdminServiceController::class, 'updateProduct'])->name('admin.products.update');
     Route::post('/providers/{provider}/products/save', [AdminServiceController::class, 'saveProducts'])->name('admin.products.save');

@@ -978,6 +978,18 @@ class AdminServiceController extends Controller
         return redirect()->back()->with('success', $message);
     }
 
+    public function toggleProvider($providerId)
+    {
+        $provider = Provider::findOrFail($providerId);
+        $provider->status = $provider->status === 'active' ? 'inactive' : 'active';
+        $provider->save();
+
+        $message = $provider->status === 'active' 
+            ? $provider->name . ' activated successfully.' 
+            : $provider->name . ' deactivated successfully.';
+        return redirect()->back()->with('success', $message);
+    }
+
     public function applyMarkup(Request $request, $providerId)
     {
         $provider = Provider::findOrFail($providerId);
