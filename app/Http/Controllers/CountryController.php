@@ -22,6 +22,7 @@ use App\Models\Admin;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\LogsPurchaseAdminNotification;
 use App\Helpers\ReferralBalanceHelper;
+use App\Helpers\OtpProviderResponseHelper;
 
 class CountryController extends Controller
 {
@@ -773,19 +774,20 @@ class CountryController extends Controller
                 'country_id' => $purchase['country_id'],
             ]);
 
-            $result = SmsBowerHelper::buyNumber($purchase['service'], $purchase['country_id']);
+            $buyResult = SmsBowerHelper::buyNumber($purchase['service'], $purchase['country_id']);
+            $parsed = OtpProviderResponseHelper::extractActivationData($buyResult, 'smsbower');
 
-            if (!$result || empty($result['id']) || empty($result['phone'])) {
+            if (empty($parsed['request_id']) || empty($parsed['phone'])) {
                 $this->refundUserBalance($purchase['cost']);
-                Log::error('SMSBower buyNumber failed or empty response', ['result' => $result]);
+                Log::error('SMSBower buyNumber failed or empty response', ['result' => $buyResult]);
                 return back()->withErrors('Failed to purchase number. Your balance has been refunded.');
             }
 
             $activationId = DB::table('transactions')->insertGetId([
                 'user_id'      => auth()->id(),
                 'reference'    => 'ACT_' . strtoupper(Str::random(10)),
-                'request_id'   => (string) $result['id'],
-                'phone'        => $result['phone'],
+                'request_id'   => $parsed['request_id'],
+                'phone'        => $parsed['phone'],
                 'service_id'   => $purchase['service'],
                 'service_name' => $purchase['service_name'],
                 'service_logo' => null,
@@ -852,15 +854,15 @@ class CountryController extends Controller
                 return back()->withErrors('Failed to purchase number. ' . $errorMsg . ' Your balance has been refunded.');
             }
 
-            $data = $responseData ?? [];
-            if (!isset($data['id']) || !isset($data['phone'])) {
+            $parsed = OtpProviderResponseHelper::extractActivationData($responseData, '5sim');
+            if (empty($parsed['request_id']) || empty($parsed['phone'])) {
                 $this->refundUserBalance($purchase['cost']);
                 return back()->withErrors('Invalid response from service. Your balance has been refunded.');
             }
 
             $transactionId = DB::table('transactions')->insertGetId([
                 'reference'    => 'ACT_' . strtoupper(Str::random(10)),
-                'request_id'   => (string) $data['id'],
+                'request_id'   => $parsed['request_id'],
                 'user_id'      => auth()->id(),
                 'type'         => 'activation',
                 'channel'      => 'provider1',
@@ -872,7 +874,7 @@ class CountryController extends Controller
                 'country_name' => $purchase['country_name'],
                 'country_code' => $this->getCountryCodeFrom5simCountry($purchase['country']),
                 'operator_name'=> $purchase['operator_name'] ?? null,
-                'phone'        => $data['phone'] ?? null,
+                'phone'        => $parsed['phone'],
                 'sms_code'     => null,
                 'amount'       => $purchase['cost'],
                 'original_cost_usd' => $purchase['original_cost_usd'] ?? null,
@@ -917,7 +919,8 @@ class CountryController extends Controller
                 return back()->withErrors($errorMessage . '. Your balance has been refunded.');
             }
 
-            if (!isset($data['data']['request_id']) || !isset($data['data']['number'])) {
+            $parsed = OtpProviderResponseHelper::extractActivationData($data, 'smsbus');
+            if (empty($parsed['request_id']) || empty($parsed['phone'])) {
                 $this->refundUserBalance($purchase['cost']);
                 return back()->withErrors('Invalid response from service. Your balance has been refunded.');
             }
@@ -925,8 +928,8 @@ class CountryController extends Controller
             $activationId = DB::table('transactions')->insertGetId([
                 'user_id'      => auth()->id(),
                 'reference'    => 'ACT_' . strtoupper(Str::random(10)),
-                'request_id'   => $data['data']['request_id'],
-                'phone'        => $data['data']['number'],
+                'request_id'   => $parsed['request_id'],
+                'phone'        => $parsed['phone'],
                 'service_id'   => $purchase['service'],
                 'service_name' => $purchase['service_name'],
                 'service_logo' => $purchase['service_logo'] ?? null,
