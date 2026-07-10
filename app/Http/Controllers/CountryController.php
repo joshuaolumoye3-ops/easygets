@@ -157,13 +157,24 @@ class CountryController extends Controller
     // ═══════════════════════════════════════════════════════════
 
     /**
+     * Show rank selection (Gold/Silver/Bronze/All) for SMSBower (provider2)
+     */
+    public function showRankSmsBower(string $serviceCode)
+    {
+        return view('users.rank-smsbower', [
+            'serviceCode' => $serviceCode,
+        ]);
+    }
+
+    /**
      * Show countries available for a service on SMSBower (provider2)
      */
     public function showCountriesSmsBower(Request $request, string $serviceCode)
     {
         try {
             $exchangeRate = $this->getSmsBowerExchangeRate();
-            $countries    = SmsBowerHelper::getCountriesForService($serviceCode, $exchangeRate);
+            $rank         = $request->input('rank'); // null | 'gold' | 'silver' | 'bronze' | 'all'
+            $countries    = SmsBowerHelper::getCountriesForService($serviceCode, $exchangeRate, $rank);
 
             $search = $request->input('search', '');
             if ($search) {
@@ -184,6 +195,7 @@ class CountryController extends Controller
                 'countries'    => collect($countries),
                 'serviceCode'  => $serviceCode,
                 'exchangeRate' => $exchangeRate,
+                'rank'         => $rank,
             ]);
         } catch (\Exception $e) {
             Log::error('SMSBower countries error', ['service' => $serviceCode, 'error' => $e->getMessage()]);
@@ -192,6 +204,7 @@ class CountryController extends Controller
                 'countries'    => collect([]),
                 'serviceCode'  => $serviceCode,
                 'exchangeRate' => $this->getSmsBowerExchangeRate(),
+                'rank'         => null,
             ])->withErrors('Unable to load countries. Please try again.');
         }
     }

@@ -294,7 +294,7 @@
         if (provider === 'provider1') {
             window.location.href = `/app/services/${selectedServiceCode}/provider1/countries`;
         } else if (provider === 'provider2') {
-            window.location.href = `/app/services/${selectedServiceCode}/countries-provider2`;
+            window.location.href = `/app/services/${selectedServiceCode}/provider2/rank`;
         } else {
             // provider3 = SMS-Bus (old provider2)
             window.location.href = `/app/services/${selectedServiceId}/countries-provider3`;

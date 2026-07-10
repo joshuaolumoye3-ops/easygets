@@ -243,7 +243,7 @@ class SmsBowerHelper
     // Get countries with prices for a specific service
     // Used by the countries listing page
     // ──────────────────────────────────────────────
-    public static function getCountriesForService(string $serviceCode, float $exchangeRate): array
+    public static function getCountriesForService(string $serviceCode, float $exchangeRate, ?string $rank = null): array
     {
         $cacheKey = "smsbower_countries_{$serviceCode}";
 
@@ -267,6 +267,9 @@ class SmsBowerHelper
 
             if ($count <= 0 || $costUsd <= 0) continue;
 
+            $itemRank = self::bucketRank($count);
+            if ($rank !== null && $rank !== 'all' && $itemRank !== $rank) continue;
+
             // Resolve country name + ISO code
             $meta = $countryMeta[$countryId] ?? null;
             $name = $meta['eng'] ?? "Country {$countryId}";
@@ -283,11 +286,13 @@ class SmsBowerHelper
                 'cost_usd'    => $costUsd,
                 'cost'        => $costNgn,
                 'total_count' => $count,
+                'rank'        => $itemRank,
                 'flag_url'    => "https://flagcdn.com/w80/{$isoCode}.png",
             ];
         }
 
-        usort($countries, fn ($a, $b) => $b['total_count'] <=> $a['total_count']);
+        // Sort by price ascending, then by volume descending — no rank label shown per-item
+        usort($countries, fn ($a, $b) => $a['cost_usd'] <=> $b['cost_usd'] ?: $b['total_count'] <=> $a['total_count']);
 
         return $countries;
     }
@@ -363,5 +368,17 @@ class SmsBowerHelper
         }
 
         return 'un';
+    }
+
+    // ──────────────────────────────────────────────
+    // Bucket a country's numeric availability count into a rank tier.
+    // Not SMSBower's real delivery-rate ranking — that isn't exposed
+    // via API — this is a volume-based approximation of it.
+    // ──────────────────────────────────────────────
+    public static function bucketRank(int $count): string
+    {
+        if ($count >= 2000) return 'gold';
+        if ($count >= 1000) return 'silver';
+        return 'bronze';
     }
 }

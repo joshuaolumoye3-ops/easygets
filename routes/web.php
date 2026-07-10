@@ -190,6 +190,9 @@ Route::middleware('auth')->group(function () {
         ->middleware('auth', 'check.user.not.blocked')->name('prepare.purchase.provider1');
 
     // ==================== PROVIDER2 (SMSBower) ROUTES ====================
+    Route::get('/services/{serviceCode}/provider2/rank', [CountryController::class, 'showRankSmsBower'])
+        ->middleware('check.user.not.blocked')->name('services.provider2.rank');
+
     Route::get('/services/{serviceCode}/countries-provider2', [CountryController::class, 'showCountriesSmsBower'])
         ->middleware('check.user.not.blocked')->name('services.provider2.countries');
 
