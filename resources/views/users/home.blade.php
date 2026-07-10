@@ -326,6 +326,7 @@
         </div>
 
         {{-- Provider Selection Modal --}}
+        {{-- Provider Selection Modal --}}
         <div id="providerModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
             <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
                 <div class="bg-gradient-to-r from-green-600 to-green-700 p-6">
@@ -724,14 +725,9 @@ function showProviderModal(serviceId, serviceName, serviceCode) {
 }
 function closeProviderModal() { var m = document.getElementById('providerModal'); m.classList.add('hidden'); m.classList.remove('flex'); }
 function selectProvider(provider) {
-    closeProviderModal();
-    if (provider === 'provider1') {
-        window.location.href = '/app/services/' + selectedServiceCode + '/provider1/countries';
-    } else if (provider === 'provider2') {
-        window.location.href = '/app/services/' + selectedServiceCode + '/provider2/rank';
-    } else {
-        window.location.href = '/app/services/' + selectedServiceId + '/countries-provider3';
-    }
+    window.location.href = provider === 'provider1'
+        ? '/app/services/' + selectedServiceCode + '/provider1/countries'
+        : '/app/services/' + selectedServiceId + '/countries-provider2';
 }
 function openSocialModal()  { document.getElementById('socialModal').classList.remove('hidden'); }
 function closeSocialModal() { document.getElementById('socialModal').classList.add('hidden'); }
