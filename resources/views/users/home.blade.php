@@ -340,6 +340,9 @@
                     </div>
                 </div>
                 <div class="p-6 space-y-4">
+
+                    {{-- Provider 1 --}}
+                    @if($hasFivesim ?? false)
                     <button onclick="selectProvider('provider1')"
                             class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-200">
                         <div class="flex items-center space-x-4">
@@ -354,6 +357,23 @@
                             <svg class="w-5 h-5 text-gray-400 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                         </div>
                     </button>
+                    @else
+                    <button disabled class="w-full p-5 border-2 border-gray-200 rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-gray-400 rounded-lg flex items-center justify-center text-white font-bold text-lg">EG1</div>
+                            <div class="flex-1 text-left">
+                                <h3 class="font-bold text-gray-600">Provider 1 (Unavailable)</h3>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <span class="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
+                                    <span class="text-xs text-gray-500">Not configured — contact admin</span>
+                                </div>
+                            </div>
+                        </div>
+                    </button>
+                    @endif
+
+                    {{-- Provider 2 --}}
+                    @if($hasSmsBower ?? false)
                     <button onclick="selectProvider('provider2')"
                             class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all duration-200">
                         <div class="flex items-center space-x-4">
@@ -368,9 +388,55 @@
                             <svg class="w-5 h-5 text-gray-400 group-hover:text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                         </div>
                     </button>
+                    @else
+                    <button disabled class="w-full p-5 border-2 border-gray-200 rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-gray-400 rounded-lg flex items-center justify-center text-white font-bold text-lg">EG2</div>
+                            <div class="flex-1 text-left">
+                                <h3 class="font-bold text-gray-600">Provider 2 (Unavailable)</h3>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <span class="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
+                                    <span class="text-xs text-gray-500">Not configured — contact admin</span>
+                                </div>
+                            </div>
+                        </div>
+                    </button>
+                    @endif
+
+                    {{-- Provider 3 --}}
+                    @if($hasSmsbus ?? false)
+                    <button onclick="selectProvider('provider3')"
+                            class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all duration-200">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md">EG3</div>
+                            <div class="flex-1 text-left">
+                                <h3 class="font-bold text-gray-800 group-hover:text-purple-700">Provider 3</h3>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <span class="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
+                                    <span class="text-xs text-gray-600">Wide country coverage</span>
+                                </div>
+                            </div>
+                            <svg class="w-5 h-5 text-gray-400 group-hover:text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </div>
+                    </button>
+                    @else
+                    <button disabled class="w-full p-5 border-2 border-gray-200 rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 bg-gray-400 rounded-lg flex items-center justify-center text-white font-bold text-lg">EG3</div>
+                            <div class="flex-1 text-left">
+                                <h3 class="font-bold text-gray-600">Provider 3 (Currently not available)</h3>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <span class="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
+                                    <span class="text-xs text-gray-500">Currently not available — contact admin</span>
+                                </div>
+                            </div>
+                        </div>
+                    </button>
+                    @endif
+
                 </div>
                 <div class="bg-gray-50 px-6 py-4 border-t border-gray-100">
-                    <p class="text-xs text-gray-600 text-center">Both providers offer secure SMS verification services</p>
+                    <p class="text-xs text-gray-600 text-center">All providers offer secure SMS verification services</p>
                 </div>
             </div>
         </div>
@@ -658,9 +724,14 @@ function showProviderModal(serviceId, serviceName, serviceCode) {
 }
 function closeProviderModal() { var m = document.getElementById('providerModal'); m.classList.add('hidden'); m.classList.remove('flex'); }
 function selectProvider(provider) {
-    window.location.href = provider === 'provider1'
-        ? '/app/services/' + selectedServiceCode + '/provider1/countries'
-        : '/app/services/' + selectedServiceId + '/countries-provider2';
+    closeProviderModal();
+    if (provider === 'provider1') {
+        window.location.href = '/app/services/' + selectedServiceCode + '/provider1/countries';
+    } else if (provider === 'provider2') {
+        window.location.href = '/app/services/' + selectedServiceCode + '/provider2/rank';
+    } else {
+        window.location.href = '/app/services/' + selectedServiceId + '/countries-provider3';
+    }
 }
 function openSocialModal()  { document.getElementById('socialModal').classList.remove('hidden'); }
 function closeSocialModal() { document.getElementById('socialModal').classList.add('hidden'); }
