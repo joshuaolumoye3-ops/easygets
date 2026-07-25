@@ -135,45 +135,70 @@ class AdminDashboard extends Controller
         $exchangeRate    = config('services.exchange_rate', 1500);
 
         $services = Service::orderBy('name')->get();
-        $txProviders = Transaction::select('provider')
-            ->whereNotNull('provider')
-            ->distinct()
-            ->orderBy('provider')
-            ->pluck('provider');
+
+        // Maps a service slug to the value actually stored in transactions.type.
+        // Kept in one place so the provider-list scoping below and the
+        // transaction filter further down stay in sync.
+        $serviceTypeMap = [
+            'social-boost' => 'social_boost',
+            'cabletv'      => 'cable',
+            'otp'          => 'activation', // OTP purchases (Provider 1/2/3) are stored as type=activation, not "esim"
+        ];
+
+        // Resolve the selected service (if any) up front so the "All Providers"
+        // dropdown can be scoped to only that service's own providers.
+        $selectedService = null;
+        if ($txService !== '') {
+            $selectedService = $services->firstWhere('slug', $txService);
+            if (!$selectedService && is_numeric($txService)) {
+                $selectedService = $services->firstWhere('id', intval($txService));
+            }
+        }
+
+        if ($selectedService) {
+            $mappedType = $serviceTypeMap[$selectedService->slug] ?? $selectedService->slug;
+
+            // Scoped providers — e.g. Airtime → MTN/Glo/Airtel/9mobile,
+            // Cable TV → GOtv/DStv/Startimes, OTP → Provider 1/2/3.
+            $txProviders = Transaction::select('provider')
+                ->whereNotNull('provider')
+                ->where(function ($q) use ($mappedType, $selectedService) {
+                    $q->where('type', $mappedType)
+                    ->orWhere('service_name', 'like', "%{$selectedService->name}%");
+                })
+                ->distinct()
+                ->orderBy('provider')
+                ->pluck('provider');
+        } else {
+            // No service selected — show every provider platform-wide (unchanged default state)
+            $txProviders = Transaction::select('provider')
+                ->whereNotNull('provider')
+                ->distinct()
+                ->orderBy('provider')
+                ->pluck('provider');
+        }
 
         $txQuery = Transaction::with('user')->latest();
         if ($txSearch !== '') {
             $txQuery->where(function ($q) use ($txSearch) {
                 $q->where('type',      'like', "%{$txSearch}%")
-                  ->orWhere('status',  'like', "%{$txSearch}%")
-                  ->orWhere('reference', 'like', "%{$txSearch}%")
-                  ->orWhereHas('user', function ($uq) use ($txSearch) {
-                      $uq->where('username', 'like', "%{$txSearch}%")
-                         ->orWhere('email',  'like', "%{$txSearch}%");
-                  });
+                ->orWhere('status',  'like', "%{$txSearch}%")
+                ->orWhere('reference', 'like', "%{$txSearch}%")
+                ->orWhereHas('user', function ($uq) use ($txSearch) {
+                    $uq->where('username', 'like', "%{$txSearch}%")
+                        ->orWhere('email',  'like', "%{$txSearch}%");
+                });
             });
         }
 
         if ($txService !== '') {
-            $service = $services->firstWhere('slug', $txService);
-            if (!$service && is_numeric($txService)) {
-                $service = $services->firstWhere('id', intval($txService));
-            }
+            if ($selectedService) {
+                $txServiceLabel  = $selectedService->name;
+                $transactionType = $serviceTypeMap[$selectedService->slug] ?? $selectedService->slug;
 
-            if (!empty($service)) {
-                $txServiceLabel = $service->name;
-
-                $serviceTypeMap = [
-                    'social-boost' => 'social_boost',
-                    'cabletv'      => 'cable',
-                    'otp'          => 'esim',
-                ];
-
-                $transactionType = $serviceTypeMap[$service->slug] ?? $service->slug;
-
-                $txQuery->where(function ($q) use ($transactionType, $service) {
+                $txQuery->where(function ($q) use ($transactionType, $selectedService) {
                     $q->where('type', $transactionType)
-                      ->orWhere('service_name', 'like', "%{$service->name}%");
+                    ->orWhere('service_name', 'like', "%{$selectedService->name}%");
                 });
             } else {
                 // Fallback to raw stored service_id values for legacy entries
