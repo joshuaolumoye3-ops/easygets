@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Helpers\PinHelper;
 use Illuminate\Validation\ValidationException;
+use App\Models\Provider;
 
 class Controller
 {
@@ -49,7 +50,7 @@ class Controller
         // Fetch SMS services for Quick Pick
         $token = env('SMSBUS_TOKEN');
         $cacheKey = 'smsbus_services';
-        
+
         $smsServices = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($token) {
             try {
                 $response = Http::timeout(30)
@@ -65,23 +66,40 @@ class Controller
                     }
                 }
             } catch (\Exception $e) {
-                Log ::error('SMS-Bus API Error in dashboard', ['error' => $e->getMessage()]);
+                Log::error('SMS-Bus API Error in dashboard', ['error' => $e->getMessage()]);
             }
-            
+
             return collect([]);
         });
 
-        // Map Quick Pick services
         $quickPickServices = [
             'facebook' => $smsServices->firstWhere('code', 'fb'),
             'whatsapp' => $smsServices->firstWhere('code', 'wa'),
             'telegram' => $smsServices->firstWhere('code', 'tg'),
-            'google' => $smsServices->firstWhere('code', 'google'),
+            'google'   => $smsServices->firstWhere('code', 'google'),
         ];
 
         $wallet = $user->wallet()->with('virtualAccounts')->first();
 
-        return view('users.home', compact('latestTransactions', 'wallet', 'categories', 'admin_rate', 'quickPickServices'));
+        // ── Provider availability (mirrors CountryController::showServices) ──
+        $providerIsAvailable = function (?Provider $provider): bool {
+            if (!$provider) return false;
+            if ($provider->status !== 'active') return false;
+            return $provider->products()->where('is_active', true)->exists();
+        };
+
+        $fivesimProvider  = Provider::where('api_identifier', '5sim')->first();
+        $smsbowerProvider = Provider::where('api_identifier', 'smsbower')->first();
+        $smsbusProvider   = Provider::where('api_identifier', 'smsbus')->first();
+
+        $hasFivesim  = !empty(env('FIVESIM_TOKEN'))    && $providerIsAvailable($fivesimProvider);
+        $hasSmsBower = !empty(env('SMSBOWER_API_KEY')) && $providerIsAvailable($smsbowerProvider);
+        $hasSmsbus   = !empty(env('SMSBUS_TOKEN'))     && $providerIsAvailable($smsbusProvider);
+
+        return view('users.home', compact(
+            'latestTransactions', 'wallet', 'categories', 'admin_rate', 'quickPickServices',
+            'hasFivesim', 'hasSmsBower', 'hasSmsbus'
+        ));
     }
 
     public function transaction()

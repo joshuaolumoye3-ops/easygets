@@ -725,9 +725,14 @@ function showProviderModal(serviceId, serviceName, serviceCode) {
 }
 function closeProviderModal() { var m = document.getElementById('providerModal'); m.classList.add('hidden'); m.classList.remove('flex'); }
 function selectProvider(provider) {
-    window.location.href = provider === 'provider1'
-        ? '/app/services/' + selectedServiceCode + '/provider1/countries'
-        : '/app/services/' + selectedServiceId + '/countries-provider2';
+    if (provider === 'provider1') {
+        window.location.href = '/app/services/' + selectedServiceCode + '/provider1/countries';
+    } else if (provider === 'provider2') {
+        window.location.href = '/app/services/' + selectedServiceCode + '/provider2/rank';
+    } else {
+        // provider3 = SMS-Bus
+        window.location.href = '/app/services/' + selectedServiceId + '/countries-provider3';
+    }
 }
 function openSocialModal()  { document.getElementById('socialModal').classList.remove('hidden'); }
 function closeSocialModal() { document.getElementById('socialModal').classList.add('hidden'); }
