@@ -287,28 +287,39 @@ class AdminDashboard extends Controller
             $txDateLabel = 'All time';
         }
 
-        // Calculate selected-period totals but only consider successful/completed transactions
+        // Calculate selected-period totals — successful status AND a genuine
+        // purchase type, so refund credits / admin wallet adjustments never inflate this.
         $successfulStatusRaw = "LOWER(COALESCE(status, '')) IN ('success','completed')";
-        $transactionsTotalAmount = (clone $txQuery)->whereRaw($successfulStatusRaw)->sum('amount');
-        $transactionsTotalCount  = (clone $txQuery)->whereRaw($successfulStatusRaw)->count();
+        $revenueTypes = $this->revenueTransactionTypes();
+
+        $transactionsTotalAmount = (clone $txQuery)
+            ->whereRaw($successfulStatusRaw)
+            ->whereIn('type', $revenueTypes)
+            ->sum('amount');
+
+        $transactionsTotalCount = (clone $txQuery)
+            ->whereRaw($successfulStatusRaw)
+            ->whereIn('type', $revenueTypes)
+            ->count();
 
         // Note: detailed profit/gain calculations removed for accuracy and performance.
 
         $transactions            = $txQuery->paginate($txPP)->withQueryString();
 
         // ── Stats (computed from the full dataset, not paginated) ──────
-        $allTransactions    = Transaction::with('user')->get();
+        $allTransactions   = Transaction::with('user')->get();
         $successfulStatuses = ['success', 'completed'];
-        $excludeStatuses    = ['failed', 'expired', 'refunded', 'cancelled'];
+        $revenueTypes       = $this->revenueTransactionTypes();
 
-        $successfulTx = $allTransactions->filter(
-            fn($t) => in_array(strtolower($t->status ?? ''), $successfulStatuses)
-        );
+        // A transaction only counts toward revenue/profit if it's BOTH successful
+        // AND a genuine purchase type — this is what keeps refund credits (type=credit)
+        // and admin wallet adjustments (Admin Credit/Admin Debit) out of the totals.
+        $isRevenueTx = fn($t) =>
+            in_array(strtolower(trim($t->status ?? '')), $successfulStatuses)
+            && in_array(strtolower(trim($t->type ?? '')), $revenueTypes);
 
-        $turnoverTx = $allTransactions->filter(
-            fn($t) => in_array(strtolower($t->status ?? ''), $successfulStatuses)
-                   && !in_array(strtolower($t->status ?? ''), $excludeStatuses)
-        );
+        $successfulTx = $allTransactions->filter($isRevenueTx);
+        $turnoverTx   = $successfulTx;
 
         $exchangeRate    = config('services.exchange_rate', 1500);
         $totalProfit     = 0.0;
@@ -402,21 +413,28 @@ class AdminDashboard extends Controller
         $todayProfit     = 0.0;
         $thisWeekProfit  = 0.0;
         $thisMonthProfit = 0.0;
+        $revenueTypes    = $this->revenueTransactionTypes();
 
         $todayTx = Transaction::whereDate('created_at', today())
-            ->whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->get();
+            ->whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")
+            ->whereIn('type', $revenueTypes)
+            ->get();
         foreach ($todayTx as $t) {
             $todayProfit += round(floatval($t->amount) - $this->estimateProviderCost($t, $exchangeRate), 2);
         }
 
         $weekTx = Transaction::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
-            ->whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->get();
+            ->whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")
+            ->whereIn('type', $revenueTypes)
+            ->get();
         foreach ($weekTx as $t) {
             $thisWeekProfit += round(floatval($t->amount) - $this->estimateProviderCost($t, $exchangeRate), 2);
         }
 
         $monthTx = Transaction::whereMonth('created_at', now()->month)
-            ->whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->get();
+            ->whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")
+            ->whereIn('type', $revenueTypes)
+            ->get();
         foreach ($monthTx as $t) {
             $thisMonthProfit += round(floatval($t->amount) - $this->estimateProviderCost($t, $exchangeRate), 2);
         }
@@ -428,16 +446,16 @@ class AdminDashboard extends Controller
                 'new_this_month' => User::whereMonth('created_at', now()->month)->count(),
             ],
             'transactions' => [
-                'total'        => Transaction::whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->count(),
-                'total_amount' => Transaction::whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->sum('amount'),
-                'successful'   => Transaction::whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->count(),
+                'total'        => Transaction::whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->whereIn('type', $revenueTypes)->count(),
+                'total_amount' => Transaction::whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->whereIn('type', $revenueTypes)->sum('amount'),
+                'successful'   => Transaction::whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->whereIn('type', $revenueTypes)->count(),
                 'pending'      => Transaction::whereRaw("LOWER(COALESCE(status, '')) = 'pending'")->count(),
                 'failed'       => Transaction::whereRaw("LOWER(COALESCE(status, '')) = 'failed'")->count(),
             ],
             'revenue' => [
-                'today'      => Transaction::whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->whereDate('created_at', today())->sum('amount'),
-                'this_week'  => Transaction::whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->sum('amount'),
-                'this_month' => Transaction::whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->whereMonth('created_at', now()->month)->sum('amount'),
+                'today'      => Transaction::whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->whereIn('type', $revenueTypes)->whereDate('created_at', today())->sum('amount'),
+                'this_week'  => Transaction::whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->whereIn('type', $revenueTypes)->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->sum('amount'),
+                'this_month' => Transaction::whereRaw("LOWER(COALESCE(status, '')) IN ('success','completed')")->whereIn('type', $revenueTypes)->whereMonth('created_at', now()->month)->sum('amount'),
             ],
             'profit' => [
                 'today'     => round($todayProfit,    2),
@@ -480,6 +498,19 @@ class AdminDashboard extends Controller
         }
 
         return 0.0;
+    }
+
+    /**
+     * Transaction `type` values that represent genuine service purchases.
+     * Wallet-only entries — refund credits, admin manual credits/debits —
+     * are deliberately excluded so they're never counted as revenue or profit.
+     */
+    private function revenueTransactionTypes(): array
+    {
+        return [
+            'airtime', 'data', 'cable', 'electricity', 'betting',
+            'activation', 'esim', 'social_boost', 'logs', 'jamb', 'jamb_pin',
+        ];
     }
 
     public function deleteUser($id)
