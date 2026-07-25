@@ -263,13 +263,13 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/jamb/purchase', [JambPinController::class, 'purchase'])->middleware('check.user.not.blocked')->name('jamb.purchase');
 
-    Route::get('/betting', [BettingController::class, 'show'])->middleware('check.user.not.blocked')->name('bettinng.show');
+    // Route::get('/betting', [BettingController::class, 'show'])->middleware('check.user.not.blocked')->name('bettinng.show');
 
-    Route::post('/fund-bet', [BettingController::class, 'fund_account'])->middleware('check.user.not.blocked')->name('fund_bet');
+    // Route::post('/fund-bet', [BettingController::class, 'fund_account'])->middleware('check.user.not.blocked')->name('fund_bet');
 
-    Route::post('/betting/verify-customer', [BettingController::class, 'verifyCustomer'])->middleware('check.user.not.blocked')->name('betting.verify-customer');
+    // Route::post('/betting/verify-customer', [BettingController::class, 'verifyCustomer'])->middleware('check.user.not.blocked')->name('betting.verify-customer');
 
-    Route::post('/clubkonnect/callback', [BettingController::class, 'handleCallback'])->middleware('check.user.not.blocked')->name('clubkonnect.callback');
+    // Route::post('/clubkonnect/callback', [BettingController::class, 'handleCallback'])->middleware('check.user.not.blocked')->name('clubkonnect.callback');
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 });

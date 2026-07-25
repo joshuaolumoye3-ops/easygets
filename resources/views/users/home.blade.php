@@ -461,10 +461,10 @@
                     <div class="bg-brand-green-light rounded-full w-14 h-14 flex items-center justify-center"><img src="assets/tv.svg" class="w-8 h-8" alt=""></div>
                     <span class="text-xs font-medium text-gray-700">TV/Cable</span>
                 </a>
-                <a href="betting" class="flex flex-col items-center space-y-2">
+                <!-- <a href="betting" class="flex flex-col items-center space-y-2">
                     <div class="bg-brand-green-light rounded-full w-14 h-14 flex items-center justify-center"><img src="assets/ball.svg" class="w-8 h-8" alt=""></div>
                     <span class="text-xs font-medium text-gray-700">Betting</span>
-                </a>
+                </a> -->
                 <a href="esim" class="flex flex-col items-center space-y-2">
                     <div class="bg-brand-green-light rounded-full w-14 h-14 flex items-center justify-center"><img src="assets/e-sim.svg" class="w-8 h-8" alt=""></div>
                     <span class="text-xs font-medium text-gray-700">eSim</span>
