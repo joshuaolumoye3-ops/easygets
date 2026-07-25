@@ -199,6 +199,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/prepare-purchase-provider2', [CountryController::class, 'preparePurchaseSmsBower'])
         ->middleware('auth', 'check.user.not.blocked')->name('prepare.purchase.smsbower');
 
+    Route::get('/services/{serviceCode}/countries-provider2/{countryId}/offers', [CountryController::class, 'showOffersSmsBower'])
+        ->middleware('check.user.not.blocked')->name('services.provider2.offers');
+
     // ==================== PROVIDER3 (SMS-Bus) ROUTES ====================
     Route::get('/services/{serviceId}/countries-provider3', [CountryController::class, 'showCountries'])
         ->middleware('check.user.not.blocked')->name('services.provider3.countries');

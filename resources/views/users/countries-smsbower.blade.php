@@ -58,22 +58,28 @@
         <!-- Countries List -->
         <div>
             <h2 class="text-xl font-bold text-gray-800 mb-4">Available Countries</h2>
+
             <div id="countryList" class="space-y-3">
                 @forelse ($countries as $country)
                     <button
                         onclick="buyNow('{{ addslashes($country['country_id']) }}', '{{ addslashes($country['title']) }}', '{{ $country['code'] }}')"
                         class="w-full block group country-item"
                         data-country-name="{{ strtolower($country['title']) }}">
+
                         <div class="flex items-center justify-between p-4 bg-white border-2 border-gray-100 rounded-xl hover:border-green-500 hover:bg-green-50/50 transition-all duration-200 group-hover:shadow-md">
                             <div class="flex items-center space-x-4 flex-1">
-                                <img class="w-12 h-12 rounded-full object-cover shadow-sm"
-                                     src="https://flagcdn.com/w80/{{ $country['code'] }}.png"
-                                     onerror="this.src='https://via.placeholder.com/48?text={{ strtoupper(substr($country['title'],0,1)) }}'"
-                                     alt="{{ $country['title'] }}">
+                                <img
+                                    class="w-12 h-12 rounded-full object-cover shadow-sm"
+                                    src="https://flagcdn.com/w80/{{ $country['code'] }}.png"
+                                    onerror="this.src='https://via.placeholder.com/48?text={{ strtoupper(substr($country['title'],0,1)) }}'"
+                                    alt="{{ $country['title'] }}"
+                                >
+
                                 <div class="flex-1">
                                     <span class="font-semibold text-gray-800 group-hover:text-green-700 transition country-name block">
                                         {{ $country['title'] }}
                                     </span>
+
                                     <div class="flex items-center space-x-3 mt-1">
                                         <span class="text-xs text-gray-500">
                                             Available: {{ number_format($country['total_count']) }}
@@ -81,6 +87,7 @@
                                     </div>
                                 </div>
                             </div>
+
                             <div class="text-right flex-shrink-0 ml-4">
                                 <div class="flex items-center space-x-2">
                                     <div>
@@ -88,6 +95,7 @@
                                             ₦{{ number_format($country['cost'], 2) }}
                                         </p>
                                     </div>
+
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-green-600 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                                     </svg>
@@ -100,8 +108,10 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
                         </svg>
+
                         <p class="text-gray-500 font-medium mb-2">No countries available</p>
                         <p class="text-sm text-gray-400 mb-4">This service may not be available yet</p>
+
                         <a href="{{ route('services.list') }}" class="inline-block px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition">
                             ← Back to services
                         </a>
@@ -114,6 +124,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
+
                 <p class="text-gray-500 font-medium mb-2">No countries found</p>
                 <p class="text-sm text-gray-400">Try adjusting your search</p>
             </div>
@@ -121,27 +132,20 @@
     </div>
 </div>
 
-<!-- Hidden Purchase Form -->
-<form id="purchaseForm" action="{{ route('prepare.purchase.smsbower') }}" method="POST" class="hidden">
-    @csrf
-    <input type="hidden" name="service"      value="{{ $serviceCode }}">
-    <input type="hidden" name="country"      id="formCountry">
-    <input type="hidden" name="country_name" id="formCountryName">
-    <input type="hidden" name="country_code" id="formCountryCode">
-</form>
-
 <script>
+    const serviceCode = "{{ $serviceCode }}";
+
     function buyNow(countryId, countryName, countryCode) {
-        document.getElementById('formCountry').value     = countryId;
-        document.getElementById('formCountryName').value = countryName;
-        document.getElementById('formCountryCode').value = countryCode;
-        document.getElementById('purchaseForm').submit();
+        const url = `/app/services/${serviceCode}/countries-provider2/${countryId}/offers`
+            + `?country_name=${encodeURIComponent(countryName)}&country_code=${encodeURIComponent(countryCode)}`;
+
+        window.location.href = url;
     }
 
     document.getElementById('searchInput').addEventListener('input', function () {
-        const filter  = this.value.toLowerCase().trim();
-        const items   = document.querySelectorAll('.country-item');
-        let visible   = 0;
+        const filter = this.value.toLowerCase().trim();
+        const items = document.querySelectorAll('.country-item');
+        let visible = 0;
 
         items.forEach(item => {
             const name = item.getAttribute('data-country-name');
@@ -156,8 +160,23 @@
 </script>
 
 <style>
-.country-item { animation: fadeIn 0.3s ease-in; }
-@keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-.country-item:hover { transform: translateY(-2px); }
+.country-item {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.country-item:hover {
+    transform: translateY(-2px);
+}
 </style>
 @endsection

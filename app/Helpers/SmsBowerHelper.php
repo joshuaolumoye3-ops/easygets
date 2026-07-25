@@ -118,7 +118,7 @@ class SmsBowerHelper
     // Buy a number (getNumber)
     // Returns: ['id' => ..., 'phone' => ...] or null
     // ──────────────────────────────────────────────
-    public static function buyNumber(string $service, string $country, ?float $maxPrice = null): ?array
+    public static function buyNumber(string $service, string $country, ?float $maxPrice = null, ?string $providerIds = null): ?array
     {
         $params = [
             'api_key' => self::apiKey(),
@@ -129,6 +129,9 @@ class SmsBowerHelper
         if ($maxPrice !== null) {
             $params['maxPrice'] = $maxPrice;
         }
+        if ($providerIds !== null) {
+            $params['providerIds'] = $providerIds;
+        }
 
         try {
             $response = Http::timeout(30)->get(self::BASE_URL, $params);
@@ -138,7 +141,6 @@ class SmsBowerHelper
                 Log::info('SmsBower buyNumber response', ['body' => $body]);
 
                 if (str_starts_with($body, 'ACCESS_NUMBER:')) {
-                    // Format: ACCESS_NUMBER:$activationId:$phoneNumber
                     $parts = explode(':', $body);
                     if (count($parts) >= 3) {
                         return [
@@ -295,6 +297,71 @@ class SmsBowerHelper
         usort($countries, fn ($a, $b) => $a['cost_usd'] <=> $b['cost_usd'] ?: $b['total_count'] <=> $a['total_count']);
 
         return $countries;
+    }
+
+    // ──────────────────────────────────────────────
+    // Get itemized price list (per-provider listings) for a service+country
+    // Format: { country: { service: { providerId: { count, price, provider_id } } } }
+    // ──────────────────────────────────────────────
+    public static function getPricesV3(?string $service = null, ?string $country = null): array
+    {
+        $params = [
+            'api_key' => self::apiKey(),
+            'action'  => 'getPricesV3',
+        ];
+        if ($service) $params['service'] = $service;
+        if ($country !== null) $params['country'] = $country;
+
+        try {
+            $response = Http::timeout(30)->get(self::BASE_URL, $params);
+            if ($response->successful()) {
+                $data = $response->json();
+                if (is_array($data)) return $data;
+            }
+        } catch (\Exception $e) {
+            Log::error('SmsBower getPricesV3 error', ['error' => $e->getMessage()]);
+        }
+
+        return [];
+    }
+
+    // ──────────────────────────────────────────────
+    // Build the "pick a number" list for a specific country: one row per
+    // distinct provider listing, each with its own count/price.
+    // ──────────────────────────────────────────────
+    public static function getOffersForCountry(string $serviceCode, string $countryId, float $exchangeRate): array
+    {
+        $cacheKey = "smsbower_offers_{$serviceCode}_{$countryId}";
+
+        $raw = Cache::remember($cacheKey, 120, function () use ($serviceCode, $countryId) {
+            return self::getPricesV3($serviceCode, $countryId);
+        });
+
+        $countryData = $raw[$countryId] ?? null;
+        $svcData     = $countryData[$serviceCode] ?? null;
+
+        if (!$svcData) return [];
+
+        $offers = [];
+        foreach ($svcData as $key => $info) {
+            $count = (int) ($info['count'] ?? 0);
+            $price = (float) ($info['price'] ?? 0);
+            if ($count <= 0 || $price <= 0) continue;
+
+            $offers[] = [
+                'provider_id' => (string) ($info['provider_id'] ?? $key),
+                'count'       => $count,
+                'cost_usd'    => $price,
+                'cost'        => round($price * $exchangeRate, 2),
+                // Not returned by the API — approximated the same way we bucket
+                // country-level rank elsewhere (bronze/silver/gold by volume).
+                'rank'        => self::bucketRank($count),
+            ];
+        }
+
+        usort($offers, fn ($a, $b) => $a['cost_usd'] <=> $b['cost_usd']);
+
+        return $offers;
     }
 
     // ──────────────────────────────────────────────

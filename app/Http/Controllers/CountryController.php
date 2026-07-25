@@ -68,6 +68,7 @@ class CountryController extends Controller
 
                 if ($response->successful()) {
                     $data = $response->json('data');
+
                     if (is_array($data) && !empty($data)) {
                         $products = collect($data)->values();
                         Cache::put($cacheKey, $products, now()->addMinutes(30));
@@ -79,59 +80,115 @@ class CountryController extends Controller
                     throw new \Exception('API returned status: ' . $response->status());
                 }
             } catch (\Exception $e) {
-                Log::error('SMS-Bus API Error', ['error' => $e->getMessage()]);
+                Log::error('SMS-Bus API Error', [
+                    'error' => $e->getMessage()
+                ]);
+
                 $products = Cache::get($backupCacheKey);
+
                 if (!$products || $products->isEmpty()) {
                     $products = $this->getMockServices();
                 }
             }
         }
 
-        $iconMap  = $this->getServiceIconMap();
+        $iconMap = $this->getServiceIconMap();
+
         $products = $products->map(function ($product) use ($iconMap) {
-            $code    = strtolower($product['code']);
+            $code = strtolower($product['code']);
             $iconUrl = $iconMap[$code] ?? null;
+
             if (!$iconUrl) {
                 $initials = strtoupper(substr($product['title'], 0, 2));
-                $colors   = ['10b981', '3b82f6', '8b5cf6', 'f59e0b', 'ef4444', '06b6d4'];
-                $color    = $colors[crc32($code) % count($colors)];
-                $iconUrl  = "https://ui-avatars.com/api/?name={$initials}&background={$color}&color=ffffff&size=96&format=svg";
+                $colors = ['10b981', '3b82f6', '8b5cf6', 'f59e0b', 'ef4444', '06b6d4'];
+                $color = $colors[crc32($code) % count($colors)];
+
+                $iconUrl = "https://ui-avatars.com/api/?name={$initials}&background={$color}&color=ffffff&size=96&format=svg";
             }
-            $product['icon_url']       = $iconUrl;
+
+            $product['icon_url'] = $iconUrl;
             $product['large_icon_url'] = $iconUrl;
+
             return $product;
         });
 
-        $popularCodes = ['wa', 'fb', 'tg', 'google', 'ig'];
-        $popular      = $products->filter(fn ($p) => in_array(strtolower($p['code']), $popularCodes));
+        // Bring in any SMSBower services that aren't already in the SMS-Bus list,
+        // so they show up in "All Services" and are searchable — Provider 2 only.
+        if (!empty(env('SMSBOWER_API_KEY'))) {
+            $smsBowerServices = Cache::remember('smsbower_services_list', 3600, function () {
+                return SmsBowerHelper::getServices();
+            });
 
-        $search      = $request->input('search');
+            $existingCodes = $products
+                ->pluck('code')
+                ->map(fn($c) => strtolower($c))
+                ->flip();
+
+            $extra = collect($smsBowerServices)
+                ->filter(fn($s) => isset($s['code']) && !isset($existingCodes[strtolower($s['code'])]))
+                ->map(function ($s) use ($iconMap) {
+                    $code = strtolower($s['code']);
+                    $iconUrl = $iconMap[$code] ?? null;
+
+                    if (!$iconUrl) {
+                        $initials = strtoupper(substr($s['name'] ?? $code, 0, 2));
+                        $colors = ['10b981', '3b82f6', '8b5cf6', 'f59e0b', 'ef4444', '06b6d4'];
+                        $color = $colors[crc32($code) % count($colors)];
+
+                        $iconUrl = "https://ui-avatars.com/api/?name={$initials}&background={$color}&color=ffffff&size=96&format=svg";
+                    }
+
+                    return [
+                        'id' => 'sb_' . $code,
+                        'title' => $s['name'] ?? ucfirst($code),
+                        'code' => $code,
+                        'icon_url' => $iconUrl,
+                        'large_icon_url' => $iconUrl,
+                    ];
+                })
+                ->values();
+
+            $products = $products->concat($extra)->values();
+        }
+
+        $popularCodes = ['wa', 'fb', 'tg', 'google', 'ig'];
+
+        $popular = $products->filter(
+            fn($p) => in_array(strtolower($p['code']), $popularCodes)
+        );
+
+        $search = $request->input('search');
         $isSearching = !empty($search);
 
         if ($isSearching) {
             $products = $products->filter(function ($p) use ($search) {
                 return str_contains(strtolower($p['title']), strtolower($search)) ||
-                       str_contains(strtolower($p['code']), strtolower($search));
+                    str_contains(strtolower($p['code']), strtolower($search));
             });
+
             $others = $products;
         } else {
-            $others = $products->reject(fn ($p) => in_array(strtolower($p['code']), $popularCodes));
+            $others = $products->reject(
+                fn($p) => in_array(strtolower($p['code']), $popularCodes)
+            );
         }
 
-        $perPage  = 30;
-        $page     = $request->input('page', 1);
-        $offset   = ($page - 1) * $perPage;
-        $paginated     = $others->slice($offset, $perPage)->values();
-        $hasMorePages  = $others->count() > ($page * $perPage);
+        $perPage = 30;
+        $page = $request->input('page', 1);
+        $offset = ($page - 1) * $perPage;
+
+        $paginated = $others->slice($offset, $perPage)->values();
+        $hasMorePages = $others->count() > ($page * $perPage);
 
         if ($request->ajax() || $request->input('ajax') == '1') {
             $html = $this->buildServiceItemsHtml($paginated);
+
             return response()->json([
-                'html'         => $html,
-                'next_page'    => $hasMorePages ? $page + 1 : null,
-                'has_more'     => $hasMorePages,
+                'html' => $html,
+                'next_page' => $hasMorePages ? $page + 1 : null,
+                'has_more' => $hasMorePages,
                 'current_page' => $page,
-                'total'        => $others->count(),
+                'total' => $others->count(),
                 'is_searching' => $isSearching,
             ]);
         }
@@ -142,14 +199,44 @@ class CountryController extends Controller
         $smsbusProvider = Provider::where('api_identifier', 'smsbus')->first();
 
         return view('users.services', [
-            'popular'      => $isSearching ? collect([]) : $popular,
-            'products'     => $paginated,
-            'nextPage'     => $hasMorePages ? 2 : null,
-            'isSearching'  => $isSearching,
-            'hasFivesim'   => !empty(env('FIVESIM_TOKEN')) && $this->providerIsAvailable($fivesimProvider),
-            'hasSmsBower'  => !empty(env('SMSBOWER_API_KEY')) && $this->providerIsAvailable($smsbowerProvider),
-            'hasSmsbus'    => !empty(env('SMSBUS_TOKEN')) && $this->providerIsAvailable($smsbusProvider),
+            'popular' => $isSearching ? collect([]) : $popular,
+            'products' => $paginated,
+            'nextPage' => $hasMorePages ? 2 : null,
+            'isSearching' => $isSearching,
+            'hasFivesim' => !empty(env('FIVESIM_TOKEN')) && $this->providerIsAvailable($fivesimProvider),
+            'hasSmsBower' => !empty(env('SMSBOWER_API_KEY')) && $this->providerIsAvailable($smsbowerProvider),
+            'hasSmsbus' => !empty(env('SMSBUS_TOKEN')) && $this->providerIsAvailable($smsbusProvider),
         ]);
+    }
+
+    public function showOffersSmsBower(Request $request, string $serviceCode, string $countryId)
+    {
+        try {
+            $exchangeRate = $this->getSmsBowerExchangeRate();
+            $offers       = SmsBowerHelper::getOffersForCountry($serviceCode, $countryId, $exchangeRate);
+
+            $countryMeta = Cache::remember('smsbower_country_meta', 3600, fn () => SmsBowerHelper::getCountries());
+            $meta        = $countryMeta[$countryId] ?? null;
+
+            $countryName = $request->query('country_name') ?: ($meta['eng'] ?? "Country {$countryId}");
+            $countryCode = $request->query('country_code') ?: SmsBowerHelper::countryIdToIso($countryId, $countryName);
+
+            $serviceDetails = $this->getSmsBowerServiceDetails($serviceCode);
+
+            return view('users.offers-smsbower', [
+                'offers'      => $offers,
+                'serviceCode' => $serviceCode,
+                'serviceName' => $serviceDetails['name'],
+                'countryId'   => $countryId,
+                'countryName' => $countryName,
+                'countryCode' => strtolower($countryCode),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('SMSBower offers error', ['service' => $serviceCode, 'country' => $countryId, 'error' => $e->getMessage()]);
+
+            return redirect()->route('services.provider2.countries', ['serviceCode' => $serviceCode])
+                ->withErrors('Unable to load number listings. Please try again.');
+        }
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -216,60 +303,77 @@ class CountryController extends Controller
     {
         $request->validate([
             'service'      => 'required|string',
-            'country'      => 'required|string', // numeric country ID from SMSBower
+            'country'      => 'required|string',
             'country_name' => 'required|string',
             'country_code' => 'required|string',
+            'provider_id'  => 'nullable|string',
         ]);
 
-        $serviceCode = $request->service;
-        $countryId   = $request->country;
+        $serviceCode  = $request->service;
+        $countryId    = $request->country;
+        $providerId   = $request->provider_id;
         $exchangeRate = $this->getSmsBowerExchangeRate();
 
-        // Get price from SMSBower
-        $cacheKey = "smsbower_price_{$serviceCode}_{$countryId}";
-        $priceData = Cache::remember($cacheKey, 180, function () use ($serviceCode, $countryId) {
-            $prices = SmsBowerHelper::getPrices($serviceCode, $countryId);
-            // Response: { countryId: { serviceCode: { cost, count } } }
-            return $prices[$countryId][$serviceCode] ?? null;
-        });
+        if ($providerId) {
+            // Priced off the exact listing the user picked
+            $offers = SmsBowerHelper::getOffersForCountry($serviceCode, $countryId, $exchangeRate);
+            $offer  = collect($offers)->firstWhere('provider_id', $providerId);
 
-        if (!$priceData || empty($priceData['cost'])) {
-            return back()->withErrors('No pricing available for this service in this country.');
+            if (!$offer) {
+                return back()->withErrors('This number listing is no longer available. Please pick another.');
+            }
+
+            $costUsd = $offer['cost_usd'];
+            $costNgn = $offer['cost'];
+            $count   = $offer['count'];
+        } else {
+            // Fallback: old aggregate-price behavior (kept for backward compatibility)
+            $cacheKey  = "smsbower_price_{$serviceCode}_{$countryId}";
+            $priceData = Cache::remember($cacheKey, 180, function () use ($serviceCode, $countryId) {
+                $prices = SmsBowerHelper::getPrices($serviceCode, $countryId);
+                return $prices[$countryId][$serviceCode] ?? null;
+            });
+
+            if (!$priceData || empty($priceData['cost'])) {
+                return back()->withErrors('No pricing available for this service in this country.');
+            }
+
+            $costUsd = (float) $priceData['cost'];
+            $costNgn = round($costUsd * $exchangeRate, 2);
+            $count   = $priceData['count'] ?? 0;
         }
-
-        $costUsd = (float) $priceData['cost'];
-        $costNgn = round($costUsd * $exchangeRate, 2);
 
         if ($costNgn <= 0) {
             return back()->withErrors('Invalid pricing. Please try again.');
         }
 
-        // Get service name
         $serviceDetails = $this->getSmsBowerServiceDetails($serviceCode);
 
         $purchase = [
-            'provider'           => self::PROVIDER_SMSBOWER,
-            'country_id'         => $countryId,
-            'country_name'       => $request->country_name,
-            'country_code'       => strtolower($request->country_code),
-            'service'            => $serviceCode,
-            'service_name'       => $serviceDetails['name'],
-            'cost'               => $costNgn,
-            'original_cost_usd'  => $costUsd,
-            'exchange_rate'      => $exchangeRate,
-            'total_count'        => $priceData['count'] ?? 0,
-            'timestamp'          => time(),
-            'session_token'      => bin2hex(random_bytes(16)),
+            'provider'          => self::PROVIDER_SMSBOWER,
+            'country_id'        => $countryId,
+            'country_name'      => $request->country_name,
+            'country_code'      => strtolower($request->country_code),
+            'service'           => $serviceCode,
+            'service_name'      => $serviceDetails['name'],
+            'cost'              => $costNgn,
+            'original_cost_usd' => $costUsd,
+            'exchange_rate'     => $exchangeRate,
+            'total_count'       => $count,
+            'provider_id'       => $providerId, // used by processSmsBower to buy this exact listing
+            'timestamp'         => time(),
+            'session_token'     => bin2hex(random_bytes(16)),
         ];
 
         session(['purchase' => encrypt($purchase)]);
 
         Log::info('SMSBower purchase session created', [
-            'user_id'     => auth()->id(),
-            'service'     => $serviceCode,
-            'country_id'  => $countryId,
-            'usd_cost'    => $costUsd,
-            'ngn_cost'    => $costNgn,
+            'user_id'    => auth()->id(),
+            'service'    => $serviceCode,
+            'country_id' => $countryId,
+            'provider_id'=> $providerId,
+            'usd_cost'   => $costUsd,
+            'ngn_cost'   => $costNgn,
         ]);
 
         return redirect()->route('confirm.payment');
@@ -851,7 +955,7 @@ class CountryController extends Controller
         }
 
         try {
-            $result = SmsBowerHelper::buyNumber($purchase['service'], $purchase['country_id']);
+            $result = SmsBowerHelper::buyNumber($purchase['service'], $purchase['country_id'], null, $purchase['provider_id'] ?? null);
 
             if (!$result || empty($result['id']) || empty($result['phone'])) {
                 Log::error('SMSBower buyNumber failed or empty response', [
