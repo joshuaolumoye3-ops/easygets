@@ -71,7 +71,7 @@
                 <p class="text-xs text-gray-500 mb-4">Create a permanent account number in your name. Fund it anytime, as many times as you like.</p>
 
                 <div class="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-lg">
-                    <p class="text-xs text-yellow-800">Your BVN is required for identity verification (regulatory requirement for issuing a dedicated bank account). NIN is optional. We never store your full BVN/NIN — only the last 4 digits, for support reference.</p>
+                    <p class="text-xs text-yellow-800">Choose either your BVN or your NIN to verify your identity. One of them is required, and we never store your full details — only the last 4 digits, for support reference.</p>
                 </div>
 
                 <form action="{{ route('korapay.dedicated-account.store') }}" method="POST" class="space-y-4">
@@ -83,20 +83,29 @@
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green">
                         @error('account_name')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                     </div>
-                    <div>
+                    <div class="flex gap-2">
+                        <button type="button" id="useBvnBtn" class="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold transition-colors bg-brand-green text-white shadow-sm">
+                            Use BVN
+                        </button>
+                        <button type="button" id="useNinBtn" class="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold transition-colors bg-white text-gray-700 hover:bg-gray-50">
+                            Use NIN
+                        </button>
+                    </div>
+                    <div id="dedicatedBvnGroup" class="space-y-2">
                         <label class="block text-sm font-medium text-gray-700 mb-2">BVN <span class="text-red-500">*</span></label>
-                        <input type="text" name="bvn" required maxlength="11" inputmode="numeric" pattern="[0-9]{11}"
+                        <input type="text" id="dedicatedBvnInput" name="bvn" maxlength="11" inputmode="numeric" pattern="[0-9]{11}" value="{{ old('bvn') }}"
                                placeholder="11-digit Bank Verification Number"
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green">
                         @error('bvn')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                     </div>
-                    <div>
+                    <div id="dedicatedNinGroup" class="space-y-2 hidden">
                         <label class="block text-sm font-medium text-gray-700 mb-2">NIN <span class="text-gray-400 text-xs">(optional)</span></label>
-                        <input type="text" name="nin" maxlength="11" inputmode="numeric" pattern="[0-9]{11}"
+                        <input type="text" id="dedicatedNinInput" name="nin" maxlength="11" inputmode="numeric" pattern="[0-9]{11}" value="{{ old('nin') }}"
                                placeholder="11-digit National Identity Number"
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green">
                         @error('nin')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                     </div>
+                    <input type="hidden" id="dedicatedIdMethod" value="{{ old('nin') ? 'nin' : (old('bvn') ? 'bvn' : 'bvn') }}">
                     <button type="submit"
                             class="w-full bg-brand-green text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors">
                         Create Dedicated Account
@@ -128,4 +137,42 @@ function switchFundTab(tab) {
         btnOnetime.classList.remove('text-brand-green', 'border-brand-green');
     }
 }
+
+function initDedicatedIdentitySwitcher() {
+    var dedicatedIdentityMode = @json(old('nin') ? 'nin' : (old('bvn') ? 'bvn' : 'bvn'));
+    var dedicatedBvnBtn = document.getElementById('useBvnBtn');
+    var dedicatedNinBtn = document.getElementById('useNinBtn');
+    var dedicatedBvnGroup = document.getElementById('dedicatedBvnGroup');
+    var dedicatedNinGroup = document.getElementById('dedicatedNinGroup');
+    var dedicatedBvnInput = document.getElementById('dedicatedBvnInput');
+    var dedicatedNinInput = document.getElementById('dedicatedNinInput');
+    var dedicatedIdMethod = document.getElementById('dedicatedIdMethod');
+
+    function setDedicatedIdentityMode(mode) {
+        var isBvn = mode === 'bvn';
+        if (dedicatedBvnBtn) dedicatedBvnBtn.className = 'flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold transition-colors ' + (isBvn ? 'bg-brand-green text-white shadow-sm' : 'bg-white text-gray-700 hover:bg-gray-50');
+        if (dedicatedNinBtn) dedicatedNinBtn.className = 'flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold transition-colors ' + (!isBvn ? 'bg-brand-green text-white shadow-sm' : 'bg-white text-gray-700 hover:bg-gray-50');
+        if (dedicatedBvnGroup) dedicatedBvnGroup.classList.toggle('hidden', !isBvn);
+        if (dedicatedNinGroup) dedicatedNinGroup.classList.toggle('hidden', isBvn);
+        if (dedicatedBvnInput) {
+            dedicatedBvnInput.disabled = !isBvn;
+            dedicatedBvnInput.required = isBvn;
+            if (!isBvn) dedicatedBvnInput.value = '';
+        }
+        if (dedicatedNinInput) {
+            dedicatedNinInput.disabled = isBvn;
+            dedicatedNinInput.required = !isBvn;
+            if (isBvn) dedicatedNinInput.value = '';
+        }
+        if (dedicatedIdMethod) dedicatedIdMethod.value = mode;
+    }
+
+    if (dedicatedBvnBtn && dedicatedNinBtn) {
+        dedicatedBvnBtn.addEventListener('click', function () { setDedicatedIdentityMode('bvn'); });
+        dedicatedNinBtn.addEventListener('click', function () { setDedicatedIdentityMode('nin'); });
+        setDedicatedIdentityMode(dedicatedIdentityMode || 'bvn');
+    }
+}
+
+window.addEventListener('DOMContentLoaded', initDedicatedIdentitySwitcher);
 </script>

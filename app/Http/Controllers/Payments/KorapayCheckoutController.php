@@ -83,6 +83,25 @@ class KorapayCheckoutController extends Controller
             return redirect()->route('dashboard')->with('error', 'Missing transaction reference.');
         }
 
+        // ── Ownership check: only the transaction's own user gets a status
+        //    message. Anyone else hitting this URL with a reference that
+        //    isn't theirs gets a generic response — no confirmation either
+        //    way, and no processing triggered on their behalf. ──────────
+        $transaction = \App\Models\Transaction::where('reference', $reference)->first();
+
+        if ($transaction && $transaction->user_id !== Auth::id()) {
+            return redirect()->route('dashboard')->with('error', 'We could not find that transaction on your account.');
+        }
+
+        // ── Don't re-flash "success" every time this URL is revisited
+        //    (back button, browser history, etc). Track per-reference in
+        //    session so the message only shows once per browser session. ──
+        $alreadyNotified = session('korapay_notified_refs', []);
+
+        if (in_array($reference, $alreadyNotified, true)) {
+            return redirect()->route('dashboard');
+        }
+
         $verified = $this->korapay->verifyCharge($reference);
 
         if (!$verified['success']) {
@@ -91,6 +110,8 @@ class KorapayCheckoutController extends Controller
         }
 
         $status = $verified['data']['status'] ?? null;
+        $alreadyNotified[] = $reference;
+        session(['korapay_notified_refs' => array_slice($alreadyNotified, -20)]); // keep it small
 
         if ($status === 'success') {
             // Safe to call even if the webhook already processed this — see PaymentProcessor.

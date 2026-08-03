@@ -37,10 +37,14 @@ class DedicatedAccountController extends Controller
 
         $validated = $request->validate([
             'account_name' => 'required|string|max:100',
-            'bvn'          => 'required|digits:11',
-            // Korapay currently requires BVN; NIN is supplementary, not a substitute.
+            'bvn'          => 'nullable|digits:11',
+            // One of BVN or NIN must be supplied, depending on the user's choice.
             'nin'          => 'nullable|digits:11',
         ]);
+
+        if (empty($validated['bvn']) && empty($validated['nin'])) {
+            return back()->withErrors(['bvn' => 'Please provide either your BVN or your NIN.'])->withInput();
+        }
 
         $wallet = Wallet::firstOrCreate(['user_id' => $user->id]);
 
@@ -53,7 +57,7 @@ class DedicatedAccountController extends Controller
                 'name'  => trim("{$user->first_name} {$user->last_name}"),
                 'email' => $user->email,
             ],
-            'bvn' => $validated['bvn'],
+            'bvn' => $validated['bvn'] ?? null,
             'nin' => $validated['nin'] ?? null,
         ]);
 
@@ -75,8 +79,8 @@ class DedicatedAccountController extends Controller
             'account_name'       => $data['account_name'],
             'currency'           => $data['currency'] ?? 'NGN',
             'status'             => 'active',
-            'bvn_last4'          => substr($validated['bvn'], -4),
-            'nin_last4'          => isset($validated['nin']) ? substr($validated['nin'], -4) : null,
+            'bvn_last4'          => !empty($validated['bvn']) ? substr($validated['bvn'], -4) : null,
+            'nin_last4'          => !empty($validated['nin']) ? substr($validated['nin'], -4) : null,
         ]);
 
         return redirect()->route('dashboard')->with('success', 'Your dedicated account has been created! You can now fund your wallet anytime by transferring to it.');

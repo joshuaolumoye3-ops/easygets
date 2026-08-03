@@ -98,11 +98,11 @@ Route::middleware('guest')->group(function () {
 
 
 
-Route::post('/webhook/monnify', [MonnifyWebhookController::class, 'handle'])
-    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+// Route::post('/webhook/monnify', [MonnifyWebhookController::class, 'handle'])
+//     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
-Route::post('/flutterwave/webhook', [FlutterwaveWebhookController::class, 'handle'])
-    ->name('flutterwave.webhook');
+// Route::post('/flutterwave/webhook', [FlutterwaveWebhookController::class, 'handle'])
+//     ->name('flutterwave.webhook');
 
 Route::post('/webhook/korapay', [KorapayWebhookController::class, 'handle'])
     ->name('korapay.webhook')
@@ -110,14 +110,14 @@ Route::post('/webhook/korapay', [KorapayWebhookController::class, 'handle'])
 
 
 Route::middleware('auth')->group(function () {
-    Route::post('/virtual-account/create', [VirtualAccountController::class, 'createAccount'])
-        ->name('virtual-account.create');
+//     Route::post('/virtual-account/create', [VirtualAccountController::class, 'createAccount'])
+//         ->name('virtual-account.create');
 
-    Route::get('/flutterwave/callback', [VirtualAccountController::class, 'handleCallback'])
-        ->name('flutterwave.callback');
+    // Route::get('/flutterwave/callback', [VirtualAccountController::class, 'handleCallback'])
+    //     ->name('flutterwave.callback');
 
-    Route::post('/clear-virtual-account-session', [VirtualAccountController::class, 'clearSession'])
-        ->name('virtual-account.clear-session');
+    // Route::post('/clear-virtual-account-session', [VirtualAccountController::class, 'clearSession'])
+        // ->name('virtual-account.clear-session');
 
     Route::post('/partner/withdraw', [\App\Http\Controllers\PartnerWithdrawalController::class, 'request'])
     ->middleware('auth', 'check.user.not.blocked')
