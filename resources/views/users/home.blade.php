@@ -163,6 +163,18 @@
         </div>
         @endif
 
+        @if(session('info'))
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 shadow-sm">
+            <div class="flex items-start">
+                <svg class="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                <div class="flex-1"><p class="text-sm font-medium text-blue-800">{{ session('info') }}</p></div>
+                <button onclick="this.parentElement.parentElement.remove()" class="text-blue-500 hover:text-blue-700 ml-2 flex-shrink-0">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                </button>
+            </div>
+        </div>
+        @endif
+
         @if(session('error'))
         <div class="bg-red-50 border border-red-200 rounded-xl p-4 shadow-sm">
             <div class="flex items-start">
@@ -175,46 +187,115 @@
         </div>
         @endif
 
-        {{-- ── Add Funds Modal ─────────────────────────────── --}}
-        <div id="addFundsModal" class="fixed inset-0 bg-black/50 hidden justify-center items-center z-50">
-            <div class="bg-white p-6 rounded-xl w-full max-w-md relative mx-4 shadow-2xl">
-                <button id="closeModalBtn" class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-xl font-bold leading-none">✕</button>
-                <h2 class="text-lg font-bold mb-4 text-gray-800">Add Funds to Wallet</h2>
-                <form id="generateAccountForm" action="{{ route('virtual-account.create') }}" method="POST">
-                    @csrf
-                    <div class="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg flex items-start space-x-3">
-                        <svg class="w-6 h-6 text-yellow-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.676-1.36 3.442 0l6.518 11.59c.75 1.334-.213 2.91-1.721 2.91H3.46c-1.508 0-2.47-1.576-1.72-2.91l6.517-11.59zM11 13a1 1 0 10-2 0 1 1 0 002 0zm-1-2a1 1 0 01-1-1V7a1 1 0 112 0v3a1 1 0 01-1 1z" clip-rule="evenodd"/></svg>
-                        <div>
-                            <p class="font-bold text-yellow-800 mb-1">One-Time Account Notice</p>
-                            <p class="text-yellow-700 text-sm">The account number generated is for <span class="font-semibold">one-time use only</span>. Generate a new one each time.</p>
-                        </div>
-                    </div>
-                    <div class="mb-4">
-                        <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">Amount (₦)</label>
-                        <input type="number" id="amount" name="amount" required min="100" step="0.01"
-                               placeholder="Enter amount e.g. 1000"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green">
-                        <p class="text-xs text-gray-500 mt-1">Minimum amount: ₦100</p>
-                    </div>
-                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                        <div class="flex items-start space-x-2">
-                            <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
-                            <div>
-                                <p class="text-sm text-blue-800 font-semibold mb-1">How it works:</p>
-                                <ul class="text-xs text-blue-700 space-y-1">
-                                    <li>• Redirected to Flutterwave's secure payment page</li>
-                                    <li>• Pay with card, bank transfer, or USSD</li>
-                                    <li>• Wallet credited automatically</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                    <button type="submit" id="generateBtn"
-                            class="w-full bg-brand-green text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                        Proceed to Payment
+        {{-- ═══════════════════════════════════════════════════ --}}
+        {{-- ADD FUNDS MODAL — Korapay: one-time checkout + dedicated account --}}
+        {{-- ═══════════════════════════════════════════════════ --}}
+        <div id="addFundsModal" class="fixed inset-0 bg-black/50 hidden justify-center items-center z-50 p-4">
+            <div class="bg-white rounded-xl w-full max-w-md relative shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+                <button id="closeModalBtn" class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-xl font-bold leading-none z-10">✕</button>
+
+                {{-- Tabs --}}
+                <div class="flex border-b border-gray-100 flex-shrink-0">
+                    <button type="button" onclick="switchFundTab('onetime')" id="tabBtnOnetime"
+                            class="flex-1 py-3 text-sm font-bold text-brand-green border-b-2 border-brand-green transition-colors">
+                        One-time Payment
                     </button>
-                </form>
+                    <button type="button" onclick="switchFundTab('dedicated')" id="tabBtnDedicated"
+                            class="flex-1 py-3 text-sm font-bold text-gray-400 border-b-2 border-transparent transition-colors">
+                        My Dedicated Account
+                    </button>
+                </div>
+
+                <div class="overflow-y-auto">
+                    {{-- ── Tab 1: One-time checkout ─────────────────────────────── --}}
+                    <div id="tabOnetime" class="p-6">
+                        <h2 class="text-lg font-bold mb-4 text-gray-800">Fund via One-time Payment</h2>
+                        <form id="korapayCheckoutForm" action="{{ route('korapay.checkout.initiate') }}" method="POST">
+                            @csrf
+                            <div class="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start space-x-2">
+                                <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                                <div>
+                                    <p class="text-sm text-blue-800 font-semibold mb-1">How it works:</p>
+                                    <ul class="text-xs text-blue-700 space-y-1">
+                                        <li>• Redirected to Korapay's secure payment page</li>
+                                        <li>• Pay with card, bank transfer, or USSD</li>
+                                        <li>• Wallet credited automatically once confirmed</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">Amount (₦)</label>
+                                <input type="number" id="amount" name="amount" required min="100" step="0.01"
+                                       placeholder="Enter amount e.g. 1000"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green">
+                                <p class="text-xs text-gray-500 mt-1">Minimum amount: ₦100</p>
+                            </div>
+                            <button type="submit" id="checkoutSubmitBtn"
+                                    class="w-full bg-brand-green text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                Proceed to Payment
+                            </button>
+                        </form>
+                    </div>
+
+                    {{-- ── Tab 2: Dedicated (permanent) account ─────────────────── --}}
+                    <div id="tabDedicated" class="p-6 hidden">
+                        @if ($dedicatedAccount ?? null)
+                            <h2 class="text-lg font-bold mb-1 text-gray-800">Your Dedicated Account</h2>
+                            <p class="text-xs text-gray-500 mb-4">Transfer to this account anytime — your wallet is credited automatically.</p>
+                            <div class="rounded-xl p-4 space-y-2" style="background:linear-gradient(135deg,#03624C,#065f46);">
+                                <p class="text-xs" style="color:rgba(255,255,255,0.6);">Bank</p>
+                                <p class="font-bold text-white">{{ $dedicatedAccount->bank_name }}</p>
+                                <p class="text-xs mt-2" style="color:rgba(255,255,255,0.6);">Account Number</p>
+                                <p id="dedicatedAccNumber" class="font-mono font-extrabold text-2xl text-yellow-300 tracking-wide">{{ $dedicatedAccount->account_number }}</p>
+                                <p class="text-xs mt-2" style="color:rgba(255,255,255,0.6);">Account Name</p>
+                                <p class="font-semibold text-white">{{ $dedicatedAccount->account_name }}</p>
+                            </div>
+                            <button type="button" id="copyDedicatedBtn"
+                                    onclick="copyDedicatedAccountNumber()"
+                                    class="w-full mt-4 py-2.5 rounded-lg font-semibold text-sm border border-gray-300 text-gray-700 hover:bg-gray-50">
+                                📋 Copy Account Number
+                            </button>
+                            <p class="text-xs text-gray-400 text-center mt-3">Deposits usually reflect within a few minutes.</p>
+                        @else
+                            <h2 class="text-lg font-bold mb-1 text-gray-800">Get Your Dedicated Account</h2>
+                            <p class="text-xs text-gray-500 mb-4">Create a permanent account number in your name. Fund it anytime, as many times as you like.</p>
+
+                            <div class="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-lg">
+                                <p class="text-xs text-yellow-800">Your BVN is required for identity verification (a regulatory requirement for issuing a dedicated bank account). NIN is optional. We never store your full BVN/NIN — only the last 4 digits, for support reference.</p>
+                            </div>
+
+                            <form id="dedicatedAccountForm" action="{{ route('korapay.dedicated-account.store') }}" method="POST" class="space-y-4">
+                                @csrf
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Name on Account</label>
+                                    <input type="text" name="account_name" required maxlength="100"
+                                           value="{{ old('account_name', trim(Auth::user()->first_name . ' ' . Auth::user()->last_name)) }}"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green">
+                                    @error('account_name')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">BVN <span class="text-red-500">*</span></label>
+                                    <input type="text" name="bvn" required maxlength="11" inputmode="numeric" pattern="[0-9]{11}"
+                                           placeholder="11-digit Bank Verification Number"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green">
+                                    @error('bvn')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">NIN <span class="text-gray-400 text-xs">(optional)</span></label>
+                                    <input type="text" name="nin" maxlength="11" inputmode="numeric" pattern="[0-9]{11}"
+                                           placeholder="11-digit National Identity Number"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green">
+                                    @error('nin')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
+                                </div>
+                                <button type="submit" id="dedicatedSubmitBtn"
+                                        class="w-full bg-brand-green text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center">
+                                    Create Dedicated Account
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -325,7 +406,6 @@
             </div>
         </div>
 
-        {{-- Provider Selection Modal --}}
         {{-- Provider Selection Modal --}}
         <div id="providerModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
             <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
@@ -461,10 +541,6 @@
                     <div class="bg-brand-green-light rounded-full w-14 h-14 flex items-center justify-center"><img src="assets/tv.svg" class="w-8 h-8" alt=""></div>
                     <span class="text-xs font-medium text-gray-700">TV/Cable</span>
                 </a>
-                <!-- <a href="betting" class="flex flex-col items-center space-y-2">
-                    <div class="bg-brand-green-light rounded-full w-14 h-14 flex items-center justify-center"><img src="assets/ball.svg" class="w-8 h-8" alt=""></div>
-                    <span class="text-xs font-medium text-gray-700">Betting</span>
-                </a> -->
                 <a href="esim" class="flex flex-col items-center space-y-2">
                     <div class="bg-brand-green-light rounded-full w-14 h-14 flex items-center justify-center"><img src="assets/e-sim.svg" class="w-8 h-8" alt=""></div>
                     <span class="text-xs font-medium text-gray-700">eSim</span>
@@ -618,26 +694,85 @@ function copyReferralLink() {
     }
 }
 
-// ── Add Funds modal ───────────────────────────────────────
+// ── Copy dedicated account number ─────────────────────────
+function copyDedicatedAccountNumber() {
+    var el  = document.getElementById('dedicatedAccNumber');
+    var btn = document.getElementById('copyDedicatedBtn');
+    if (!el || !btn) return;
+    var number = el.textContent.trim();
+    var orig = btn.textContent;
+    var reset = function () { setTimeout(function () { btn.textContent = orig; }, 2000); };
+
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(number).then(function () {
+            btn.textContent = '✅ Copied!'; reset();
+        });
+    } else {
+        var ta = document.createElement('textarea');
+        ta.value = number; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = '✅ Copied!'; reset();
+    }
+}
+
+// ── Add Funds modal (open/close + tab switching) ──────────
+function switchFundTab(tab) {
+    var onetime      = document.getElementById('tabOnetime');
+    var dedicated     = document.getElementById('tabDedicated');
+    var btnOnetime    = document.getElementById('tabBtnOnetime');
+    var btnDedicated  = document.getElementById('tabBtnDedicated');
+
+    if (tab === 'onetime') {
+        onetime.classList.remove('hidden'); dedicated.classList.add('hidden');
+        btnOnetime.classList.add('text-brand-green', 'border-brand-green');
+        btnOnetime.classList.remove('text-gray-400', 'border-transparent');
+        btnDedicated.classList.add('text-gray-400', 'border-transparent');
+        btnDedicated.classList.remove('text-brand-green', 'border-brand-green');
+    } else {
+        dedicated.classList.remove('hidden'); onetime.classList.add('hidden');
+        btnDedicated.classList.add('text-brand-green', 'border-brand-green');
+        btnDedicated.classList.remove('text-gray-400', 'border-transparent');
+        btnOnetime.classList.add('text-gray-400', 'border-transparent');
+        btnOnetime.classList.remove('text-brand-green', 'border-brand-green');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     var addFundsBtn   = document.getElementById('addFundsBtn');
     var modal         = document.getElementById('addFundsModal');
     var closeModalBtn = document.getElementById('closeModalBtn');
-    var generateForm  = document.getElementById('generateAccountForm');
+    var checkoutForm  = document.getElementById('korapayCheckoutForm');
+    var dedicatedForm = document.getElementById('dedicatedAccountForm');
 
     if (addFundsBtn) addFundsBtn.addEventListener('click', function () { modal.classList.remove('hidden'); modal.classList.add('flex'); });
     if (closeModalBtn) closeModalBtn.addEventListener('click', function () { modal.classList.add('hidden'); modal.classList.remove('flex'); });
     if (modal) modal.addEventListener('click', function (e) { if (e.target === modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); } });
 
-    if (generateForm) {
-        generateForm.addEventListener('submit', function () {
-            var btn = document.getElementById('generateBtn');
+    if (checkoutForm) {
+        checkoutForm.addEventListener('submit', function () {
+            var btn = document.getElementById('checkoutSubmitBtn');
             var amt = document.getElementById('amount').value;
             if (!amt || amt < 100) return;
             btn.disabled = true;
             btn.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Redirecting…';
         });
     }
+
+    if (dedicatedForm) {
+        dedicatedForm.addEventListener('submit', function () {
+            var btn = document.getElementById('dedicatedSubmitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Creating account…';
+        });
+    }
+
+    // If validation errors were returned for the dedicated-account form,
+    // reopen the modal directly on the dedicated tab so the user sees them.
+    @if ($errors->has('bvn') || $errors->has('nin') || $errors->has('account_name'))
+        modal.classList.remove('hidden'); modal.classList.add('flex');
+        switchFundTab('dedicated');
+    @endif
 
     // ── PIN modal ─────────────────────────────────────────
     @if (Auth::user() && !Auth::user()->pin)

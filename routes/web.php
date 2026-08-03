@@ -26,6 +26,9 @@ use App\Http\Controllers\VirtualAccountController;
 use App\Http\Controllers\AdminDashboard;
 use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\OtpController;
+use App\Http\Controllers\Payments\KorapayCheckoutController;
+use App\Http\Controllers\Payments\KorapayWebhookController;
+use App\Http\Controllers\Payments\DedicatedAccountController;
 
 Route::prefix('app')->group(function () {
 
@@ -101,6 +104,10 @@ Route::post('/webhook/monnify', [MonnifyWebhookController::class, 'handle'])
 Route::post('/flutterwave/webhook', [FlutterwaveWebhookController::class, 'handle'])
     ->name('flutterwave.webhook');
 
+Route::post('/webhook/korapay', [KorapayWebhookController::class, 'handle'])
+    ->name('korapay.webhook')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+
 
 Route::middleware('auth')->group(function () {
     Route::post('/virtual-account/create', [VirtualAccountController::class, 'createAccount'])
@@ -115,6 +122,20 @@ Route::middleware('auth')->group(function () {
     Route::post('/partner/withdraw', [\App\Http\Controllers\PartnerWithdrawalController::class, 'request'])
     ->middleware('auth', 'check.user.not.blocked')
     ->name('partner.withdraw');
+
+    // One-time checkout
+    Route::post('/korapay/checkout', [KorapayCheckoutController::class, 'initiate'])
+        ->middleware('check.user.not.blocked')
+        ->name('korapay.checkout.initiate');
+
+    Route::get('/korapay/callback', [KorapayCheckoutController::class, 'callback'])
+        ->name('korapay.callback');
+
+    // Dedicated (permanent) account — throttled: max 5 attempts/day per user,
+    // since this endpoint accepts BVN/NIN and should not be hammerable.
+    Route::post('/korapay/dedicated-account', [DedicatedAccountController::class, 'store'])
+        ->middleware(['check.user.not.blocked', 'throttle:5,1440'])
+        ->name('korapay.dedicated-account.store');
 
     Route::get('/dashboard', [Controller::class, 'dashboard'])->middleware('check.user.not.blocked')->name('dashboard');
     Route::get('/transactions', [Controller::class, 'transaction'])->middleware('check.user.not.blocked')->name('transaction');
