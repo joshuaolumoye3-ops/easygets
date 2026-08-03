@@ -99,7 +99,7 @@
                         @error('bvn')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                     </div>
                     <div id="dedicatedNinGroup" class="space-y-2 hidden">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">NIN <span class="text-gray-400 text-xs">(optional)</span></label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">NIN <span class="text-red-500">*</span></label>
                         <input type="text" id="dedicatedNinInput" name="nin" maxlength="11" inputmode="numeric" pattern="[0-9]{11}" value="{{ old('nin') }}"
                                placeholder="11-digit National Identity Number"
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green">
