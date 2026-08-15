@@ -11,8 +11,8 @@
             <h3 class="text-lg font-bold text-gray-800 mb-2">Choose a Provider</h3>
             <p class="text-sm text-gray-600 mb-4">Pick which panel should fulfill your boost.</p>
             <div class="space-y-3">
-                @foreach($providers as $slug =&gt; $label)
-                    <a href="{{ route('social-boost.index', ['provider' =&gt; $slug]) }}" class="flex items-center justify-between w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-green-50 transition">
+                @foreach($providers as $slug => $label)
+                    <a href="{{ route('social-boost.index', ['provider' => $slug]) }}" class="flex items-center justify-between w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-green-50 transition">
                         <span class="text-sm font-medium text-gray-800">{{ $label }}</span>
                         <span class="text-sm text-brand-green font-semibold">Select →</span>
                     </a>
