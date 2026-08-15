@@ -714,7 +714,7 @@
 
     {{-- ── Global Markup Panel ──────────────────────────────────────── --}}
     @php
-        $currentGlobal = \App\Models\SocialServiceDescription::avg('admin_percentage');
+        $currentGlobal = \App\Models\SocialServiceDescription::where('provider', $selectedProvider)->avg('admin_percentage');
         $currentGlobal = $currentGlobal ? round($currentGlobal) : 0;
     @endphp
 
