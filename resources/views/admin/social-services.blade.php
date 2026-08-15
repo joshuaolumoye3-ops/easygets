@@ -686,7 +686,13 @@
     @if(!empty($providers))
         <div class="mb-6">
             @foreach($providers as $slug => $meta)
-                <a href="{{ route('admin.social.services', ['provider' => $meta['route']]) }}" class="inline-block px-3 py-2 mr-2 mb-2 bg-gray-800 text-sm text-white rounded-lg hover:bg-gray-700">{{ $meta['label'] }}</a>
+                <a
+                    href="{{ route('admin.social.services', ['provider' => $meta['route']]) }}"
+                    class="inline-block px-3 py-2 mr-2 mb-2 text-sm rounded-lg transition {{ $selectedProvider === $slug ? 'bg-blue-600 text-white ring-1 ring-blue-400' : 'bg-gray-800 text-white hover:bg-gray-700' }}"
+                    @if($selectedProvider === $slug) aria-current="page" @endif
+                >
+                    {{ $meta['label'] }}
+                </a>
             @endforeach
         </div>
     @endif
