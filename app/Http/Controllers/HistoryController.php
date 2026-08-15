@@ -71,7 +71,7 @@ class HistoryController extends Controller
                     'service_name'     => $boost->service_name ?? $boost->provider ?? 'Social Boost',
                     'service_logo'     => $boost->service_logo ?? '🚀',
                     'category'         => $responseData['category'] ?? 'Social Media',
-                        'provider_label'   => $responseData['provider_label'] ?? 'MoreThanPanel',
+                        'provider_label'   => $responseData['provider_label'] ?? 'Provider 1',
                         'smm_provider'     => $responseData['smm_provider'] ?? 'morethanpanel',
                     'link'             => $responseData['link'] ?? $boost->account ?? null,
                     'quantity'         => $responseData['quantity'] ?? 0,
