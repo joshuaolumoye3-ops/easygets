@@ -685,8 +685,8 @@
     {{-- ── Provider Tabs (filter by provider) ─────────────────────────── --}}
     @if(!empty($providers))
         <div class="mb-6">
-            @foreach($providers as $slug =&gt; $meta)
-                <a href="{{ route('admin.social.services', ['provider' =&gt; $slug]) }}" class="inline-block px-3 py-2 mr-2 mb-2 bg-gray-800 text-sm text-white rounded-lg hover:bg-gray-700">{{ $meta['label'] }}</a>
+            @foreach($providers as $slug => $meta)
+                <a href="{{ route('admin.social.services', ['provider' => $meta['route']]) }}" class="inline-block px-3 py-2 mr-2 mb-2 bg-gray-800 text-sm text-white rounded-lg hover:bg-gray-700">{{ $meta['label'] }}</a>
             @endforeach
         </div>
     @endif
@@ -1074,7 +1074,7 @@ function refreshServices(btn) {
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
         </svg> Refreshing…`;
     }
-    window.location.href = "{{ route('admin.social.refresh', ['provider' => $selectedProvider]) }}";
+    window.location.href = "{{ route('admin.social.refresh', ['provider' => $selectedProviderRoute]) }}";
 }
 
 // ─── Global bulk markup ──────────────────────────────────────────────

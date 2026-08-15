@@ -18,9 +18,25 @@ class SocialBoostController extends Controller
 
     /** slug => ['label' => ..., 'helper' => FQCN] */
     protected const PROVIDERS = [
-        'morethanpanel' => ['label' => 'Provider 1', 'cache' => 'mtp_services.json'],
-        'fivesmm'       => ['label' => 'Provider 2', 'cache' => 'fivesmm_services.json'],
+        'morethanpanel' => ['label' => 'Provider 1', 'cache' => 'mtp_services.json', 'route' => 'provider1'],
+        'fivesmm'       => ['label' => 'Provider 2', 'cache' => 'fivesmm_services.json', 'route' => 'provider2'],
     ];
+
+    /** Internal slug → URL slug (e.g. 'morethanpanel' → 'provider1') */
+    private function routeSlug(string $internal): string
+    {
+        return self::PROVIDERS[$internal]['route'] ?? $internal;
+    }
+
+    /** URL slug → internal slug (e.g. 'provider1' → 'morethanpanel') */
+    private function internalSlug(?string $route): ?string
+    {
+        if (!$route) return null;
+        foreach (self::PROVIDERS as $internal => $meta) {
+            if ($meta['route'] === $route) return $internal;
+        }
+        return null;
+    }
 
     protected function helperFor(string $slug)
     {
@@ -48,82 +64,93 @@ class SocialBoostController extends Controller
     }
 
     public function index(Request $request)
-    {
-        $user   = Auth::user();
-        $wallet = $user->wallet ?? null;
+{
+    $user   = Auth::user();
+    $wallet = $user->wallet ?? null;
 
-        $providers = $this->activeProviders();
+    $activeInternal = $this->activeProviders(); // [internal_slug => label], active-only
 
-        if (empty($providers)) {
-            return view('users.social-boost', [
-                'wallet' => $wallet,
-                'groupedServices' => [],
-                'exchangeRate' => $this->exchangeRate,
-                'providers' => [],
-                'selectedProvider' => null,
-                'error' => 'No social boost providers are currently active. Please contact support.',
-            ]);
-        }
-
-        $selectedProvider = $request->query('provider');
-
-        // Invalid or inactive provider requested → force re-selection
-        if ($selectedProvider && !isset($providers[$selectedProvider])) {
-            $selectedProvider = null;
-        }
-
-        // Auto-select if only one provider is active
-        if (!$selectedProvider && count($providers) === 1) {
-            $selectedProvider = array_key_first($providers);
-        }
-
-        if (!$selectedProvider) {
-            // No provider chosen yet — render page with the picker modal, no services loaded
-            return view('users.social-boost', [
-                'wallet' => $wallet,
-                'groupedServices' => [],
-                'exchangeRate' => $this->exchangeRate,
-                'providers' => $providers,
-                'selectedProvider' => null,
-            ]);
-        }
-
-        try {
-            $services = $this->getCachedServices($selectedProvider);
-
-            if (!is_array($services) || empty($services)) {
-                return view('users.social-boost', [
-                    'wallet' => $wallet,
-                    'groupedServices' => [],
-                    'exchangeRate' => $this->exchangeRate,
-                    'providers' => $providers,
-                    'selectedProvider' => $selectedProvider,
-                    'error' => 'Unable to load services from ' . self::PROVIDERS[$selectedProvider]['label'] . '. Please try again later.',
-                ]);
-            }
-
-            $groupedServices = $this->groupServices($services, $selectedProvider);
-
-            return view('users.social-boost', [
-                'wallet' => $wallet,
-                'groupedServices' => $groupedServices,
-                'exchangeRate' => $this->exchangeRate,
-                'providers' => $providers,
-                'selectedProvider' => $selectedProvider,
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Social boost index error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-
-            return view('users.social-boost', [
-                'wallet' => $wallet,
-                'groupedServices' => [],
-                'exchangeRate' => $this->exchangeRate,
-                'providers' => $providers,
-                'selectedProvider' => $selectedProvider,
-                'error' => 'An error occurred while loading services. Please try again.',
-            ]);
-        }
+    // Route-slug-keyed list for the view (picker links, "Switch" label, etc.)
+    $providers = [];
+    foreach ($activeInternal as $internal => $label) {
+        $providers[$this->routeSlug($internal)] = $label;
     }
+
+    if (empty($providers)) {
+        return view('users.social-boost', [
+            'wallet' => $wallet,
+            'groupedServices' => [],
+            'exchangeRate' => $this->exchangeRate,
+            'providers' => [],
+            'selectedProvider' => null,
+            'selectedProviderRoute' => null,
+            'error' => 'No social boost providers are currently active. Please contact support.',
+        ]);
+    }
+
+    $routeParam       = $request->query('provider'); // e.g. 'provider1'
+    $selectedProvider = $this->internalSlug($routeParam); // translate → 'morethanpanel'
+
+    if ($selectedProvider && !isset($activeInternal[$selectedProvider])) {
+        $selectedProvider = null;
+    }
+
+    if (!$selectedProvider && count($activeInternal) === 1) {
+        $selectedProvider = array_key_first($activeInternal);
+    }
+
+    $selectedProviderRoute = $selectedProvider ? $this->routeSlug($selectedProvider) : null;
+
+    if (!$selectedProvider) {
+        return view('users.social-boost', [
+            'wallet' => $wallet,
+            'groupedServices' => [],
+            'exchangeRate' => $this->exchangeRate,
+            'providers' => $providers,
+            'selectedProvider' => null,
+            'selectedProviderRoute' => null,
+        ]);
+    }
+
+    try {
+        $services = $this->getCachedServices($selectedProvider);
+
+        if (!is_array($services) || empty($services)) {
+            return view('users.social-boost', [
+                'wallet' => $wallet,
+                'groupedServices' => [],
+                'exchangeRate' => $this->exchangeRate,
+                'providers' => $providers,
+                'selectedProvider' => $selectedProvider,
+                'selectedProviderRoute' => $selectedProviderRoute,
+                'error' => 'Unable to load services from ' . self::PROVIDERS[$selectedProvider]['label'] . '. Please try again later.',
+            ]);
+        }
+
+        $groupedServices = $this->groupServices($services, $selectedProvider);
+
+        return view('users.social-boost', [
+            'wallet' => $wallet,
+            'groupedServices' => $groupedServices,
+            'exchangeRate' => $this->exchangeRate,
+            'providers' => $providers,
+            'selectedProvider' => $selectedProvider,
+            'selectedProviderRoute' => $selectedProviderRoute,
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Social boost index error', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
+        return view('users.social-boost', [
+            'wallet' => $wallet,
+            'groupedServices' => [],
+            'exchangeRate' => $this->exchangeRate,
+            'providers' => $providers,
+            'selectedProvider' => $selectedProvider,
+            'selectedProviderRoute' => $selectedProviderRoute,
+            'error' => 'An error occurred while loading services. Please try again.',
+        ]);
+    }
+}
 
     private function getCachedServices(string $providerSlug)
     {
@@ -494,7 +521,7 @@ class SocialBoostController extends Controller
 
     public function adminListServices(Request $request)
     {
-        $providerSlug = $request->query('provider', 'morethanpanel');
+        $providerSlug = $this->internalSlug($request->query('provider')) ?? 'morethanpanel';
         if (!isset(self::PROVIDERS[$providerSlug])) $providerSlug = 'morethanpanel';
 
         try {
@@ -525,32 +552,36 @@ class SocialBoostController extends Controller
             }
 
             return view('admin.social-services', [
-                'services'         => $formattedServices,
-                'providers'        => self::PROVIDERS,
-                'selectedProvider' => $providerSlug,
+                'services'             => $formattedServices,
+                'providers'            => self::PROVIDERS,
+                'selectedProvider'     => $providerSlug,
+                'selectedProviderRoute' => $this->routeSlug($providerSlug),
             ]);
         } catch (\Exception $e) {
             Log::error('Admin list services error', ['error' => $e->getMessage()]);
             return view('admin.social-services', [
                 'services' => [], 'providers' => self::PROVIDERS, 'selectedProvider' => $providerSlug,
+                'selectedProviderRoute' => $this->routeSlug($providerSlug),
             ])->with('error', 'Failed to load services');
         }
     }
 
     public function adminRefreshServices(Request $request)
     {
-        $providerSlug = $request->query('provider', 'morethanpanel');
+        $providerSlug = $this->internalSlug($request->query('provider')) ?? 'morethanpanel';
         if (!isset(self::PROVIDERS[$providerSlug])) $providerSlug = 'morethanpanel';
+
+        $routeSlug = $this->routeSlug($providerSlug);
 
         try {
             $cachePath = storage_path('app/cache/' . self::PROVIDERS[$providerSlug]['cache']);
             if (file_exists($cachePath)) unlink($cachePath);
             $this->getCachedServices($providerSlug);
 
-            return redirect()->route('admin.social.services', ['provider' => $providerSlug])->with('success', 'Services refreshed successfully');
+            return redirect()->route('admin.social.services', ['provider' => $routeSlug])->with('success', 'Services refreshed successfully');
         } catch (\Exception $e) {
             Log::error('Admin refresh services error', ['error' => $e->getMessage()]);
-            return redirect()->route('admin.social.services', ['provider' => $providerSlug])->with('error', 'Failed to refresh services');
+            return redirect()->route('admin.social.services', ['provider' => $routeSlug])->with('error', 'Failed to refresh services');
         }
     }
 
@@ -579,7 +610,7 @@ class SocialBoostController extends Controller
             $cachePath = storage_path('app/cache/' . self::PROVIDERS[$validated['provider']]['cache']);
             if (file_exists($cachePath)) unlink($cachePath);
 
-            return redirect()->route('admin.social.services', ['provider' => $validated['provider']])->with('success', 'Description updated successfully');
+            return redirect()->route('admin.social.services', ['provider' => $this->routeSlug($validated['provider'])])->with('success', 'Description updated successfully');
         } catch (\Exception $e) {
             Log::error('Admin update description error', ['error' => $e->getMessage()]);
             return redirect()->back()->with('error', 'Failed to update description');
@@ -629,12 +660,12 @@ class SocialBoostController extends Controller
 
             $totalUpdated = SocialServiceDescription::where('provider', $providerSlug)->count();
 
-            return redirect()->route('admin.social.services', ['provider' => $providerSlug])
+            return redirect()->route('admin.social.services', ['provider' => $this->routeSlug($providerSlug)])
                 ->with('success', "Global markup set to {$percentage}% for " . self::PROVIDERS[$providerSlug]['label'] . ". {$totalUpdated} services updated.");
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Bulk percentage update failed', ['error' => $e->getMessage()]);
-            return redirect()->route('admin.social.services', ['provider' => $providerSlug])->with('error', 'Failed to apply global markup: ' . $e->getMessage());
+            return redirect()->route('admin.social.services', ['provider' => $this->routeSlug($providerSlug)])->with('error', 'Failed to apply global markup: ' . $e->getMessage());
         }
     }
 }

@@ -36,7 +36,7 @@
         @if(!empty($selectedProvider))
             <div class="text-sm text-gray-600 mb-6 text-center">
                 <span class="font-medium">Provider:</span>
-                <span class="font-semibold">{{ $providers[$selectedProvider] ?? $selectedProvider }}</span>
+                <span class="font-semibold">{{ $providers[$selectedProviderRoute] ?? $selectedProviderRoute }}</span>
                 <a href="{{ route('social-boost.index') }}" class="underline ml-3">Switch</a>
             </div>
         @endif
