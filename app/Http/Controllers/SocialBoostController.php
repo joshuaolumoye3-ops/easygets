@@ -19,7 +19,7 @@ class SocialBoostController extends Controller
     /** slug => ['label' => ..., 'helper' => FQCN] */
     protected const PROVIDERS = [
         'morethanpanel' => ['label' => 'MoreThanPanel', 'cache' => 'mtp_services.json'],
-        'fivesmm'       => ['label' => '5SMM',          'cache' => 'fivesmm_services.json'],
+        'fivesmm'       => ['label' => 'Provider 2',    'cache' => 'fivesmm_services.json'],
     ];
 
     protected function helperFor(string $slug)
