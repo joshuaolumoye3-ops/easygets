@@ -682,6 +682,15 @@
         </div>
     </div>
 
+    {{-- ── Provider Tabs (filter by provider) ─────────────────────────── --}}
+    @if(!empty($providers))
+        <div class="mb-6">
+            @foreach($providers as $slug =&gt; $meta)
+                <a href="{{ route('admin.social.services', ['provider' =&gt; $slug]) }}" class="inline-block px-3 py-2 mr-2 mb-2 bg-gray-800 text-sm text-white rounded-lg hover:bg-gray-700">{{ $meta['label'] }}</a>
+            @endforeach
+        </div>
+    @endif
+
     {{-- ── Alert Messages ───────────────────────────────────────────── --}}
     @if(session('success'))
         <div class="alert alert-success">
@@ -737,6 +746,7 @@
                 onsubmit="return handleBulkSubmit(event)"
             >
                 @csrf
+                <input type="hidden" name="provider" id="globalProviderInput" value="{{ $selectedProvider ?? '' }}">
                 <div class="gmp-input-wrap">
                     <input
                         type="number"
@@ -974,6 +984,7 @@
         <div class="modal-body">
             <form id="descriptionForm" method="POST" action="{{ route('admin.social.updateDescription') }}">
                 @csrf
+                <input type="hidden" name="provider" id="modalProviderInput" value="{{ $selectedProvider ?? '' }}">
                 <input type="hidden" name="service_id" id="modalServiceId">
 
                 <div class="form-group">
@@ -1063,7 +1074,7 @@ function refreshServices(btn) {
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
         </svg> Refreshing…`;
     }
-    window.location.href = "{{ route('admin.social.refresh') }}";
+    window.location.href = "{{ route('admin.social.refresh', ['provider' => $selectedProvider]) }}";
 }
 
 // ─── Global bulk markup ──────────────────────────────────────────────

@@ -65,6 +65,10 @@ return [
         // See https://developers.korapay.com/docs/virtual-bank-accounts-ngn for the
         // current list of supported banks/codes. Use "000" only in sandbox.
         'default_bank_code' => env('KORAPAY_DEFAULT_BANK_CODE', '035'),
-    ]
+    ],
+    'fivesmm' => [
+        'api_url' => env('FIVESMM_API_URL', 'https://5smm.com/api/v2'),
+        'api_key' => env('FIVESMM_API_KEY'),
+    ],
 
 ];

@@ -71,6 +71,8 @@ class HistoryController extends Controller
                     'service_name'     => $boost->service_name ?? $boost->provider ?? 'Social Boost',
                     'service_logo'     => $boost->service_logo ?? '🚀',
                     'category'         => $responseData['category'] ?? 'Social Media',
+                        'provider_label'   => $responseData['provider_label'] ?? 'MoreThanPanel',
+                        'smm_provider'     => $responseData['smm_provider'] ?? 'morethanpanel',
                     'link'             => $responseData['link'] ?? $boost->account ?? null,
                     'quantity'         => $responseData['quantity'] ?? 0,
                     'start_count'      => $responseData['start_count'] ?? null,
@@ -329,14 +331,18 @@ class HistoryController extends Controller
                 return response()->json(['success' => false, 'message' => 'Order ID not found', 'status' => $transaction->status]);
             }
 
-            $statusResponse = $this->mtpHelper->getOrderStatus($transaction->request_id);
+            $responseData = json_decode($transaction->response, true) ?? [];
+            $providerSlug = $responseData['smm_provider'] ?? 'morethanpanel';
+            $helper       = $providerSlug === 'fivesmm' ? new \App\Helpers\FiveSmmHelper() : $this->mtpHelper;
+
+            $statusResponse = $helper->getOrderStatus($transaction->request_id);
 
             if (!$statusResponse || isset($statusResponse['error'])) {
                 return response()->json(['success' => false, 'message' => $statusResponse['error'] ?? 'Unable to fetch status', 'status' => $transaction->status]);
             }
 
             $mtpStatus   = $statusResponse['status'] ?? 'Pending';
-            $localStatus = $this->mtpHelper->mapStatus($mtpStatus);
+            $localStatus = $helper->mapStatus($mtpStatus);
             if ($localStatus === 'completed') $localStatus = 'success';
 
             DB::table('transactions')->where('id', $transaction->id)->update([

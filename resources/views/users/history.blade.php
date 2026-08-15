@@ -90,7 +90,7 @@
                     </div>
                     <div>
                         <p class="font-semibold text-gray-800">{{ $boost['service_name'] }}</p>
-                        <p class="text-xs text-gray-500 mt-0.5">{{ $boost['category'] }} • {{ number_format($boost['quantity']) }}</p>
+                        <p class="text-xs text-gray-500 mt-0.5">{{ $boost['category'] }} • {{ number_format($boost['quantity']) }} • {{ $boost['provider_label'] }}</p>
                         <p class="text-xs text-gray-400 mt-0.5">{{ $boost['date'] }}</p>
                     </div>
                 </div>
@@ -832,7 +832,7 @@ function openSocialModal(boostId) {
                         </div>
                         <div>
                             <p class="font-semibold text-gray-800">${boost.service_name}</p>
-                            <p class="text-xs text-gray-500">${boost.category}</p>
+                            <p class="text-xs text-gray-500">${boost.category} · via ${boost.provider_label || 'MoreThanPanel'}</p>
                         </div>
                     </div>
                     <span id="modal-status-badge" class="px-2 py-1 text-xs font-semibold rounded-full ${badgeClass(rawStatus)}">

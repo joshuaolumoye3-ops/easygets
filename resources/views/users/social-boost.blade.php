@@ -4,6 +4,23 @@
 
 @section('content')
 <div class="max-w-xl mx-auto py-8 font-[Inter] bg-white mt-16 md:mt-0 pt-0">
+
+@if(!isset($selectedProvider) || (!$selectedProvider && !empty($providers)))
+    <div id="providerPickerModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-2">Choose a Provider</h3>
+            <p class="text-sm text-gray-600 mb-4">Pick which panel should fulfill your boost.</p>
+            <div class="space-y-3">
+                @foreach($providers as $slug =&gt; $label)
+                    <a href="{{ route('social-boost.index', ['provider' =&gt; $slug]) }}" class="flex items-center justify-between w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-green-50 transition">
+                        <span class="text-sm font-medium text-gray-800">{{ $label }}</span>
+                        <span class="text-sm text-brand-green font-semibold">Select →</span>
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    </div>
+@endif
     <div class="container mx-auto px-4 py-8 max-w-md w-full">
 
         <!-- Header -->
@@ -15,6 +32,14 @@
             </a>
             <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Social Media Boost</h1>
         </div>
+
+        @if(!empty($selectedProvider))
+            <div class="text-sm text-gray-600 mb-6 text-center">
+                <span class="font-medium">Provider:</span>
+                <span class="font-semibold">{{ $providers[$selectedProvider] ?? $selectedProvider }}</span>
+                <a href="{{ route('social-boost.index') }}" class="underline ml-3">Switch</a>
+            </div>
+        @endif
 
         <!-- Tier Legend -->
         <div class="mb-6 bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-4 border border-gray-200">
@@ -71,6 +96,7 @@
         <!-- Social Boost Form -->
         <form id="socialBoostForm" method="POST" class="space-y-8">
             @csrf
+            <input type="hidden" name="provider" id="providerInput" value="{{ $selectedProvider ?? '' }}">
 
             <!-- Selected service description -->
             <div id="selectedServiceDescription" class="hidden text-sm text-gray-700 bg-gray-50 p-3 rounded-lg"></div>

@@ -196,13 +196,9 @@
 
                 {{-- Tabs --}}
                 <div class="flex border-b border-gray-100 flex-shrink-0">
-                    <button type="button" onclick="switchFundTab('onetime')" id="tabBtnOnetime"
-                            class="flex-1 py-3 text-sm font-bold text-brand-green border-b-2 border-brand-green transition-colors">
+                    <button type="button" id="tabBtnOnetime"
+                            class="flex-1 py-3 text-sm font-bold text-brand-green border-b-2 border-brand-green transition-colors cursor-default">
                         One-time Payment
-                    </button>
-                    <button type="button" onclick="switchFundTab('dedicated')" id="tabBtnDedicated"
-                            class="flex-1 py-3 text-sm font-bold text-gray-400 border-b-2 border-transparent transition-colors">
-                        My Dedicated Account
                     </button>
                 </div>
 
@@ -238,72 +234,6 @@
                         </form>
                     </div>
 
-                    {{-- ── Tab 2: Dedicated (permanent) account ─────────────────── --}}
-                    <div id="tabDedicated" class="p-6 hidden">
-                        @if ($dedicatedAccount ?? null)
-                            <h2 class="text-lg font-bold mb-1 text-gray-800">Your Dedicated Account</h2>
-                            <p class="text-xs text-gray-500 mb-4">Transfer to this account anytime — your wallet is credited automatically.</p>
-                            <div class="rounded-xl p-4 space-y-2" style="background:linear-gradient(135deg,#03624C,#065f46);">
-                                <p class="text-xs" style="color:rgba(255,255,255,0.6);">Bank</p>
-                                <p class="font-bold text-white">{{ $dedicatedAccount->bank_name }}</p>
-                                <p class="text-xs mt-2" style="color:rgba(255,255,255,0.6);">Account Number</p>
-                                <p id="dedicatedAccNumber" class="font-mono font-extrabold text-2xl text-yellow-300 tracking-wide">{{ $dedicatedAccount->account_number }}</p>
-                                <p class="text-xs mt-2" style="color:rgba(255,255,255,0.6);">Account Name</p>
-                                <p class="font-semibold text-white">{{ $dedicatedAccount->account_name }}</p>
-                            </div>
-                            <button type="button" id="copyDedicatedBtn"
-                                    onclick="copyDedicatedAccountNumber()"
-                                    class="w-full mt-4 py-2.5 rounded-lg font-semibold text-sm border border-gray-300 text-gray-700 hover:bg-gray-50">
-                                📋 Copy Account Number
-                            </button>
-                            <p class="text-xs text-gray-400 text-center mt-3">Deposits usually reflect within a few minutes.</p>
-                        @else
-                            <h2 class="text-lg font-bold mb-1 text-gray-800">Get Your Dedicated Account</h2>
-                            <p class="text-xs text-gray-500 mb-4">Create a permanent account number in your name. Fund it anytime, as many times as you like.</p>
-
-                            <div class="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-lg">
-                                <p class="text-xs text-yellow-800">Choose either your BVN or your NIN to verify your identity. One of them is required, and we never store your full details — only the last 4 digits, for support reference.</p>
-                            </div>
-
-                            <form id="dedicatedAccountForm" action="{{ route('korapay.dedicated-account.store') }}" method="POST" class="space-y-4">
-                                @csrf
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Name on Account</label>
-                                    <input type="text" name="account_name" required maxlength="100"
-                                           value="{{ old('account_name', trim(Auth::user()->first_name . ' ' . Auth::user()->last_name)) }}"
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green">
-                                    @error('account_name')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
-                                </div>
-                                <div class="flex gap-2">
-                                    <button type="button" id="useBvnBtn" class="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold transition-colors bg-brand-green text-white shadow-sm">
-                                        Use BVN
-                                    </button>
-                                    <button type="button" id="useNinBtn" class="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold transition-colors bg-white text-gray-700 hover:bg-gray-50">
-                                        Use NIN
-                                    </button>
-                                </div>
-                                <div id="dedicatedBvnGroup" class="space-y-2">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">BVN <span class="text-red-500">*</span></label>
-                                    <input type="text" id="dedicatedBvnInput" name="bvn" maxlength="11" inputmode="numeric" pattern="[0-9]{11}" value="{{ old('bvn') }}"
-                                           placeholder="11-digit Bank Verification Number"
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green">
-                                    @error('bvn')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
-                                </div>
-                                <div id="dedicatedNinGroup" class="space-y-2 hidden">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">NIN <span class="text-red-500">*</span></label>
-                                    <input type="text" id="dedicatedNinInput" name="nin" maxlength="11" inputmode="numeric" pattern="[0-9]{11}" value="{{ old('nin') }}"
-                                           placeholder="11-digit National Identity Number"
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green">
-                                    @error('nin')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
-                                </div>
-                                <input type="hidden" id="dedicatedIdMethod" value="{{ old('nin') ? 'nin' : (old('bvn') ? 'bvn' : 'bvn') }}">
-                                <button type="submit" id="dedicatedSubmitBtn"
-                                        class="w-full bg-brand-green text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center">
-                                    Create Dedicated Account
-                                </button>
-                            </form>
-                        @endif
-                    </div>
                 </div>
             </div>
         </div>
@@ -727,23 +657,15 @@ function copyDedicatedAccountNumber() {
 
 // ── Add Funds modal (open/close + tab switching) ──────────
 function switchFundTab(tab) {
-    var onetime      = document.getElementById('tabOnetime');
-    var dedicated     = document.getElementById('tabDedicated');
-    var btnOnetime    = document.getElementById('tabBtnOnetime');
-    var btnDedicated  = document.getElementById('tabBtnDedicated');
+    if (tab !== 'onetime') return;
 
-    if (tab === 'onetime') {
-        onetime.classList.remove('hidden'); dedicated.classList.add('hidden');
+    var onetime = document.getElementById('tabOnetime');
+    var btnOnetime = document.getElementById('tabBtnOnetime');
+
+    if (onetime) onetime.classList.remove('hidden');
+    if (btnOnetime) {
         btnOnetime.classList.add('text-brand-green', 'border-brand-green');
         btnOnetime.classList.remove('text-gray-400', 'border-transparent');
-        btnDedicated.classList.add('text-gray-400', 'border-transparent');
-        btnDedicated.classList.remove('text-brand-green', 'border-brand-green');
-    } else {
-        dedicated.classList.remove('hidden'); onetime.classList.add('hidden');
-        btnDedicated.classList.add('text-brand-green', 'border-brand-green');
-        btnDedicated.classList.remove('text-gray-400', 'border-transparent');
-        btnOnetime.classList.add('text-gray-400', 'border-transparent');
-        btnOnetime.classList.remove('text-brand-green', 'border-brand-green');
     }
 }
 
@@ -752,7 +674,6 @@ document.addEventListener('DOMContentLoaded', function () {
     var modal         = document.getElementById('addFundsModal');
     var closeModalBtn = document.getElementById('closeModalBtn');
     var checkoutForm  = document.getElementById('korapayCheckoutForm');
-    var dedicatedForm = document.getElementById('dedicatedAccountForm');
 
     if (addFundsBtn) addFundsBtn.addEventListener('click', function () { modal.classList.remove('hidden'); modal.classList.add('flex'); });
     if (closeModalBtn) closeModalBtn.addEventListener('click', function () { modal.classList.add('hidden'); modal.classList.remove('flex'); });
@@ -767,55 +688,6 @@ document.addEventListener('DOMContentLoaded', function () {
             btn.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Redirecting…';
         });
     }
-
-    if (dedicatedForm) {
-        dedicatedForm.addEventListener('submit', function () {
-            var btn = document.getElementById('dedicatedSubmitBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Creating account…';
-        });
-    }
-
-    var dedicatedIdentityMode = @json(old('nin') ? 'nin' : (old('bvn') ? 'bvn' : 'bvn'));
-    var dedicatedBvnBtn = document.getElementById('useBvnBtn');
-    var dedicatedNinBtn = document.getElementById('useNinBtn');
-    var dedicatedBvnGroup = document.getElementById('dedicatedBvnGroup');
-    var dedicatedNinGroup = document.getElementById('dedicatedNinGroup');
-    var dedicatedBvnInput = document.getElementById('dedicatedBvnInput');
-    var dedicatedNinInput = document.getElementById('dedicatedNinInput');
-    var dedicatedIdMethod = document.getElementById('dedicatedIdMethod');
-
-    function setDedicatedIdentityMode(mode) {
-        var isBvn = mode === 'bvn';
-        if (dedicatedBvnBtn) dedicatedBvnBtn.className = 'flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold transition-colors ' + (isBvn ? 'bg-brand-green text-white shadow-sm' : 'bg-white text-gray-700 hover:bg-gray-50');
-        if (dedicatedNinBtn) dedicatedNinBtn.className = 'flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold transition-colors ' + (!isBvn ? 'bg-brand-green text-white shadow-sm' : 'bg-white text-gray-700 hover:bg-gray-50');
-        if (dedicatedBvnGroup) dedicatedBvnGroup.classList.toggle('hidden', !isBvn);
-        if (dedicatedNinGroup) dedicatedNinGroup.classList.toggle('hidden', isBvn);
-        if (dedicatedBvnInput) {
-            dedicatedBvnInput.disabled = !isBvn;
-            dedicatedBvnInput.required = isBvn;
-            if (!isBvn) dedicatedBvnInput.value = '';
-        }
-        if (dedicatedNinInput) {
-            dedicatedNinInput.disabled = isBvn;
-            dedicatedNinInput.required = !isBvn;
-            if (isBvn) dedicatedNinInput.value = '';
-        }
-        if (dedicatedIdMethod) dedicatedIdMethod.value = mode;
-    }
-
-    if (dedicatedBvnBtn && dedicatedNinBtn) {
-        dedicatedBvnBtn.addEventListener('click', function () { setDedicatedIdentityMode('bvn'); });
-        dedicatedNinBtn.addEventListener('click', function () { setDedicatedIdentityMode('nin'); });
-        setDedicatedIdentityMode(dedicatedIdentityMode || 'bvn');
-    }
-
-    // If validation errors were returned for the dedicated-account form,
-    // reopen the modal directly on the dedicated tab so the user sees them.
-    @if ($errors->has('bvn') || $errors->has('nin') || $errors->has('account_name'))
-        modal.classList.remove('hidden'); modal.classList.add('flex');
-        switchFundTab('dedicated');
-    @endif
 
     // ── PIN modal ─────────────────────────────────────────
     @if (Auth::user() && !Auth::user()->pin)
