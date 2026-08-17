@@ -760,20 +760,22 @@ class SocialBoostController extends Controller
             $rows = [];
             $now = now()->toDateTimeString();
 
+            $seen = [];
             foreach ($services as $service) {
                 $formatted = $helper->formatServiceForDisplay($service, $this->exchangeRate);
                 $name = $formatted['name'] ?? '';
                 if ($name === null) continue;
+                $svcId = (string)($formatted['service_id'] ?? ($service['service'] ?? ''));
+                if (!$svcId) continue;
+
                 if (stripos($name, $search) !== false) {
-                    $svcId = (string)($formatted['service_id'] ?? ($service['service'] ?? ''));
-                    if (!$svcId) continue;
                     $newName = str_ireplace($search, $replace, $name);
 
                     // Truncate safely by bytes to avoid MySQL errors
                     $safeName = mb_strcut($newName, 0, 191, 'UTF-8');
                     $safeCategory = isset($formatted['category']) ? mb_strcut($formatted['category'], 0, 191, 'UTF-8') : null;
 
-                    $rows[] = [
+                    $rows[$svcId] = [
                         'service_id' => $svcId,
                         'provider' => $providerSlug,
                         'custom_name' => $safeName,
@@ -783,8 +785,44 @@ class SocialBoostController extends Controller
                         'created_at' => $now,
                         'updated_at' => $now,
                     ];
+                    $seen[$svcId] = true;
                 }
             }
+
+            // Also include matches that already exist in the DB but may not be present in the API payload
+            $dbMatches = SocialServiceDescription::where('provider', $providerSlug)
+                ->where(function ($q) use ($search) {
+                    $like = '%' . str_replace('%', '\\%', $search) . '%';
+                    $q->where('custom_name', 'like', $like)
+                      ->orWhere('custom_category', 'like', $like)
+                      ->orWhere('description', 'like', $like)
+                      ->orWhere('service_id', 'like', $like);
+                })->get();
+
+            foreach ($dbMatches as $rec) {
+                $svcId = (string)$rec->service_id;
+                if (isset($seen[$svcId])) continue; // already captured from API
+
+                // Determine the base name to run replacement on: prefer `custom_name`, fall back to service_id
+                $baseName = $rec->custom_name ?? $rec->custom_category ?? $rec->description ?? $svcId;
+                $newName = str_ireplace($search, $replace, $baseName);
+                $safeName = mb_strcut($newName, 0, 191, 'UTF-8');
+                $safeCategory = $rec->custom_category ? mb_strcut($rec->custom_category, 0, 191, 'UTF-8') : null;
+
+                $rows[$svcId] = [
+                    'service_id' => $svcId,
+                    'provider' => $providerSlug,
+                    'custom_name' => $safeName,
+                    'description' => $rec->description ?? null,
+                    'custom_category' => $safeCategory,
+                    'admin_percentage' => intval($rec->admin_percentage ?? 0),
+                    'created_at' => $rec->created_at ? $rec->created_at->toDateTimeString() : $now,
+                    'updated_at' => $now,
+                ];
+            }
+
+            // Reindex rows numerically for caching/processing
+            $rows = array_values($rows);
 
             $total = count($rows);
             if ($total === 0) {
