@@ -697,12 +697,16 @@ class SocialBoostController extends Controller
                     $svcId = (string)($formatted['service_id'] ?? ($service['service'] ?? ''));
                     if (!$svcId) continue;
                     $newName = str_ireplace($search, $replace, $name);
+                    // Ensure values fit DB column sizes (varchar 255)
+                    $safeName = \Illuminate\Support\Str::limit($newName, 255, '');
+                    $safeCategory = isset($formatted['category']) ? \Illuminate\Support\Str::limit($formatted['category'], 255, '') : null;
+
                     $rows[] = [
                         'service_id' => $svcId,
                         'provider' => $providerSlug,
-                        'custom_name' => $newName,
+                        'custom_name' => $safeName,
                         'description' => $formatted['description'] ?? null,
-                        'custom_category' => $formatted['category'] ?? null,
+                        'custom_category' => $safeCategory,
                         'admin_percentage' => intval($formatted['admin_percentage'] ?? 0),
                         'created_at' => $now,
                         'updated_at' => $now,
