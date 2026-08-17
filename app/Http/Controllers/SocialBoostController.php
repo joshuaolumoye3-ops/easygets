@@ -11,6 +11,8 @@ use App\Helpers\MoreThanPanelHelper;
 use App\Helpers\FiveSmmHelper;
 use App\Models\SocialServiceDescription;
 use App\Models\Provider as ProviderModel;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class SocialBoostController extends Controller
 {
@@ -736,6 +738,104 @@ class SocialBoostController extends Controller
         } catch (\Exception $e) {
             Log::error('Bulk replace names failed', ['error' => $e->getMessage()]);
             return redirect()->route('admin.social.services', ['provider' => $this->routeSlug($providerSlug)])->with('error', 'Failed to perform replace: ' . $e->getMessage());
+        }
+    }
+
+    public function adminBulkReplaceStart(Request $request)
+    {
+        $validated = $request->validate([
+            'provider'     => 'required|string|in:' . implode(',', array_keys(self::PROVIDERS)),
+            'search_term'  => 'required|string|max:255',
+            'replace_with' => 'required|string|max:255',
+        ]);
+
+        $providerSlug = $validated['provider'];
+        $search = $validated['search_term'];
+        $replace = $validated['replace_with'];
+
+        try {
+            $services = $this->getCachedServices($providerSlug);
+            $helper = $this->helperFor($providerSlug);
+
+            $rows = [];
+            $now = now()->toDateTimeString();
+
+            foreach ($services as $service) {
+                $formatted = $helper->formatServiceForDisplay($service, $this->exchangeRate);
+                $name = $formatted['name'] ?? '';
+                if ($name === null) continue;
+                if (stripos($name, $search) !== false) {
+                    $svcId = (string)($formatted['service_id'] ?? ($service['service'] ?? ''));
+                    if (!$svcId) continue;
+                    $newName = str_ireplace($search, $replace, $name);
+
+                    // Truncate safely by bytes to avoid MySQL errors
+                    $safeName = mb_strcut($newName, 0, 191, 'UTF-8');
+                    $safeCategory = isset($formatted['category']) ? mb_strcut($formatted['category'], 0, 191, 'UTF-8') : null;
+
+                    $rows[] = [
+                        'service_id' => $svcId,
+                        'provider' => $providerSlug,
+                        'custom_name' => $safeName,
+                        'description' => $formatted['description'] ?? null,
+                        'custom_category' => $safeCategory,
+                        'admin_percentage' => intval($formatted['admin_percentage'] ?? 0),
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                }
+            }
+
+            $total = count($rows);
+            if ($total === 0) {
+                return response()->json(['success' => true, 'total' => 0, 'jobId' => null]);
+            }
+
+            $jobId = 'replace_job_' . Str::random(8) . '_' . time();
+            Cache::put($jobId, $rows, 3600);
+
+            return response()->json(['success' => true, 'total' => $total, 'jobId' => $jobId]);
+        } catch (\Exception $e) {
+            Log::error('Bulk replace start failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Failed to start replace job: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function adminBulkReplaceProcess(Request $request)
+    {
+        $validated = $request->validate([
+            'jobId' => 'required|string',
+            'chunk' => 'nullable|integer|min:1|max:1000',
+        ]);
+
+        $jobId = $validated['jobId'];
+        $chunkSize = $validated['chunk'] ?? 100;
+
+        $rows = Cache::get($jobId, []);
+        if (empty($rows)) {
+            return response()->json(['success' => true, 'done' => true, 'processed' => 0, 'remaining' => 0]);
+        }
+
+        $toProcess = array_splice($rows, 0, $chunkSize);
+        try {
+            DB::table('social_service_descriptions')->upsert(
+                $toProcess,
+                ['provider', 'service_id'],
+                ['custom_name', 'description', 'custom_category', 'admin_percentage', 'updated_at']
+            );
+
+            $remaining = count($rows);
+            Cache::put($jobId, $rows, 3600);
+
+            if ($remaining === 0) {
+                Cache::forget($jobId);
+                return response()->json(['success' => true, 'done' => true, 'processed' => count($toProcess), 'remaining' => 0]);
+            }
+
+            return response()->json(['success' => true, 'done' => false, 'processed' => count($toProcess), 'remaining' => $remaining]);
+        } catch (\Exception $e) {
+            Log::error('Bulk replace process failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Chunk upsert failed: ' . $e->getMessage()], 500);
         }
     }
 }

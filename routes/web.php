@@ -419,6 +419,8 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
         Route::post('/bulk-percentage', [SocialBoostController::class, 'adminBulkUpdatePercentage'])
     ->name('admin.social.bulkPercentage');
         Route::post('/replace-names', [SocialBoostController::class, 'adminBulkReplaceNames'])->name('admin.social.replaceNames');
+        Route::post('/replace-names/start', [SocialBoostController::class, 'adminBulkReplaceStart'])->name('admin.social.replaceNames.start');
+        Route::post('/replace-names/process', [SocialBoostController::class, 'adminBulkReplaceProcess'])->name('admin.social.replaceNames.process');
         Route::get('/refresh', [SocialBoostController::class, 'adminRefreshServices'])->name('admin.social.refresh');
         Route::post('/update-description', [SocialBoostController::class, 'adminUpdateDescription'])->name('admin.social.updateDescription');
     });

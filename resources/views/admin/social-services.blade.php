@@ -875,13 +875,16 @@
         <input type="text" id="nameSearchInput" placeholder="Find substring in service names (e.g. 'monarch')" class="form-input" style="max-width:360px;" oninput="previewNameMatches()">
         <input type="text" id="nameReplaceInput" placeholder="Replace with (e.g. 'easyget')" class="form-input" style="max-width:240px;">
         <button class="gmp-btn" onclick="previewNameMatches()">Preview Matches</button>
-        <form id="replaceForm" method="POST" action="{{ route('admin.social.replaceNames') }}" style="display:inline-block;margin:0;">
-            @csrf
-            <input type="hidden" name="provider" value="{{ $selectedProvider ?? '' }}">
-            <input type="hidden" name="search_term" id="replaceFormSearch">
-            <input type="hidden" name="replace_with" id="replaceFormReplace">
-            <button type="button" class="gmp-btn" style="background:linear-gradient(135deg,#10b981 0%,#059669 100%);" onclick="applyReplace()">Apply Replace</button>
-        </form>
+        <div id="replaceControls" style="display:inline-block;margin:0;">
+            <input type="hidden" id="replaceProvider" value="{{ $selectedProvider ?? '' }}">
+            <button type="button" class="gmp-btn" style="background:linear-gradient(135deg,#10b981 0%,#059669 100%);" onclick="startReplaceJob()">Apply Replace</button>
+        </div>
+        <div id="replaceProgress" style="display:none;width:100%;max-width:560px;margin-left:12px;">
+            <div style="height:10px;background:#0f172a;border-radius:6px;border:1px solid #334155;overflow:hidden;">
+                <div id="replaceProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,#10b981,#3b82f6);"></div>
+            </div>
+            <div style="font-size:13px;color:#94a3b8;margin-top:6px;">Processed <span id="replaceProcessed">0</span> / <span id="replaceTotal">0</span> (<span id="replacePercent">0</span>%)</div>
+        </div>
         <div id="previewCount" style="color:#94a3b8;font-size:13px;margin-left:8px;">Matches: 0</div>
     </div>
 
@@ -1168,17 +1171,74 @@ function previewNameMatches() {
     document.getElementById('tableCountBadge').textContent = document.getElementById('visibleCount').textContent + ' services';
 }
 
-function applyReplace() {
+async function startReplaceJob() {
     const search = document.getElementById('nameSearchInput').value.trim();
     const replace = document.getElementById('nameReplaceInput').value.trim();
+    const provider = document.getElementById('replaceProvider').value || '';
     if (!search) { alert('Enter a search term to replace.'); return; }
-    if (!replace) { if(!confirm('Replace with an empty string? This will remove the match from names. Continue?')) return; }
-
     if (!confirm('This will create/update records for all matching services. Continue?')) return;
 
-    document.getElementById('replaceFormSearch').value = search;
-    document.getElementById('replaceFormReplace').value = replace;
-    document.getElementById('replaceForm').submit();
+    // Start job
+    const startUrl = "{{ route('admin.social.replaceNames.start') }}";
+    const processUrl = "{{ route('admin.social.replaceNames.process') }}";
+
+    document.getElementById('replaceProgress').style.display = 'block';
+    document.getElementById('replaceProcessed').textContent = '0';
+    document.getElementById('replaceTotal').textContent = '0';
+    document.getElementById('replacePercent').textContent = '0';
+    document.getElementById('replaceProgressBar').style.width = '0%';
+
+    try {
+        const resp = await fetch(startUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': _csrf() },
+            body: JSON.stringify({ provider, search_term: search, replace_with: replace })
+        });
+        const data = await resp.json();
+        if (!data.success) throw new Error(data.message || 'Failed to start job');
+        if (!data.jobId || data.total === 0) {
+            alert('No matches found.');
+            document.getElementById('replaceProgress').style.display = 'none';
+            return;
+        }
+
+        const jobId = data.jobId;
+        const total = data.total;
+        document.getElementById('replaceTotal').textContent = total;
+
+        // Process chunks until done
+        let processed = 0;
+        const chunkSize = 100;
+        while (true) {
+            const pResp = await fetch(processUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': _csrf() },
+                body: JSON.stringify({ jobId, chunk: chunkSize })
+            });
+            const pData = await pResp.json();
+            if (!pData.success) throw new Error(pData.message || 'Processing failed');
+
+            processed += pData.processed || 0;
+            const remaining = pData.remaining || 0;
+            const percent = Math.round((processed / total) * 100);
+            document.getElementById('replaceProcessed').textContent = processed;
+            document.getElementById('replacePercent').textContent = percent;
+            document.getElementById('replaceProgressBar').style.width = percent + '%';
+
+            if (pData.done) {
+                alert('Replace completed for ' + processed + ' services.');
+                window.location.reload();
+                return;
+            }
+
+            // small delay to avoid hammering DB
+            await new Promise(res => setTimeout(res, 300));
+        }
+    } catch (err) {
+        alert('Failed to perform replace: ' + (err.message || err));
+        console.error(err);
+        document.getElementById('replaceProgress').style.display = 'none';
+    }
 }
 
 // ─── Edit modal ───────────────────────────────────────────────────────
