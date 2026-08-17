@@ -818,24 +818,56 @@ class SocialBoostController extends Controller
 
         $toProcess = array_splice($rows, 0, $chunkSize);
         try {
-            DB::table('social_service_descriptions')->upsert(
-                $toProcess,
-                ['provider', 'service_id'],
-                ['custom_name', 'description', 'custom_category', 'admin_percentage', 'updated_at']
-            );
+            DB::beginTransaction();
+            $inserts = [];
+            $processedCount = 0;
+
+            foreach ($toProcess as $r) {
+                // normalize service_id
+                $svc = isset($r['service_id']) ? trim((string)$r['service_id']) : null;
+                if (!$svc) continue;
+                $r['service_id'] = $svc;
+
+                $updateData = [
+                    'custom_name' => $r['custom_name'],
+                    'description' => $r['description'],
+                    'custom_category' => $r['custom_category'],
+                    'admin_percentage' => $r['admin_percentage'],
+                    'updated_at' => $r['updated_at'],
+                ];
+
+                $affected = DB::table('social_service_descriptions')
+                    ->where('provider', $r['provider'])
+                    ->where('service_id', $r['service_id'])
+                    ->update($updateData);
+
+                if ($affected === 0) {
+                    // prepare for insert (created_at present)
+                    $inserts[] = $r;
+                }
+                $processedCount++;
+            }
+
+            if (!empty($inserts)) {
+                // insert remaining new rows in one batch
+                DB::table('social_service_descriptions')->insert($inserts);
+            }
+
+            DB::commit();
 
             $remaining = count($rows);
             Cache::put($jobId, $rows, 3600);
 
             if ($remaining === 0) {
                 Cache::forget($jobId);
-                return response()->json(['success' => true, 'done' => true, 'processed' => count($toProcess), 'remaining' => 0]);
+                return response()->json(['success' => true, 'done' => true, 'processed' => $processedCount, 'remaining' => 0]);
             }
 
-            return response()->json(['success' => true, 'done' => false, 'processed' => count($toProcess), 'remaining' => $remaining]);
+            return response()->json(['success' => true, 'done' => false, 'processed' => $processedCount, 'remaining' => $remaining]);
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Bulk replace process failed', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Chunk upsert failed: ' . $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => 'Chunk process failed: ' . $e->getMessage()], 500);
         }
     }
 }
