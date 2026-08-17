@@ -870,6 +870,21 @@
         </div>
     </div>
 
+    {{-- ── Name Replace Tool ───────────────────────────────────────────── --}}
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:18px;flex-wrap:wrap;">
+        <input type="text" id="nameSearchInput" placeholder="Find substring in service names (e.g. 'monarch')" class="form-input" style="max-width:360px;" oninput="previewNameMatches()">
+        <input type="text" id="nameReplaceInput" placeholder="Replace with (e.g. 'easyget')" class="form-input" style="max-width:240px;">
+        <button class="gmp-btn" onclick="previewNameMatches()">Preview Matches</button>
+        <form id="replaceForm" method="POST" action="{{ route('admin.social.replaceNames') }}" style="display:inline-block;margin:0;">
+            @csrf
+            <input type="hidden" name="provider" value="{{ $selectedProvider ?? '' }}">
+            <input type="hidden" name="search_term" id="replaceFormSearch">
+            <input type="hidden" name="replace_with" id="replaceFormReplace">
+            <button type="button" class="gmp-btn" style="background:linear-gradient(135deg,#10b981 0%,#059669 100%);" onclick="applyReplace()">Apply Replace</button>
+        </form>
+        <div id="previewCount" style="color:#94a3b8;font-size:13px;margin-left:8px;">Matches: 0</div>
+    </div>
+
     {{-- ── Services Table ───────────────────────────────────────────── --}}
     <div class="table-card">
         <div class="table-header">
@@ -1132,6 +1147,38 @@ function filterServices() {
 
     document.getElementById('visibleCount').textContent   = vis.toLocaleString();
     document.getElementById('tableCountBadge').textContent = vis.toLocaleString() + ' services';
+}
+
+// Preview matches for name replace using the current table DOM
+function previewNameMatches() {
+    const q = document.getElementById('nameSearchInput').value.toLowerCase().trim();
+    const rows = document.querySelectorAll('#servicesTable .service-row');
+    let matches = 0;
+
+    rows.forEach(row => {
+        const nameCell = row.querySelector('.service-name');
+        const text = nameCell ? nameCell.textContent.toLowerCase() : row.textContent.toLowerCase();
+        const show = !q || text.includes(q);
+        row.style.display = show ? '' : 'none';
+        if (show && q) matches++;
+    });
+
+    document.getElementById('previewCount').textContent = 'Matches: ' + matches;
+    document.getElementById('visibleCount').textContent = document.querySelectorAll('#servicesTable .service-row:not([style*="display: none"])').length.toLocaleString();
+    document.getElementById('tableCountBadge').textContent = document.getElementById('visibleCount').textContent + ' services';
+}
+
+function applyReplace() {
+    const search = document.getElementById('nameSearchInput').value.trim();
+    const replace = document.getElementById('nameReplaceInput').value.trim();
+    if (!search) { alert('Enter a search term to replace.'); return; }
+    if (!replace) { if(!confirm('Replace with an empty string? This will remove the match from names. Continue?')) return; }
+
+    if (!confirm('This will create/update records for all matching services. Continue?')) return;
+
+    document.getElementById('replaceFormSearch').value = search;
+    document.getElementById('replaceFormReplace').value = replace;
+    document.getElementById('replaceForm').submit();
 }
 
 // ─── Edit modal ───────────────────────────────────────────────────────

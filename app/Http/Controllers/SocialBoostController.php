@@ -668,4 +668,70 @@ class SocialBoostController extends Controller
             return redirect()->route('admin.social.services', ['provider' => $this->routeSlug($providerSlug)])->with('error', 'Failed to apply global markup: ' . $e->getMessage());
         }
     }
+
+    public function adminBulkReplaceNames(Request $request)
+    {
+        $validated = $request->validate([
+            'provider'     => 'required|string|in:' . implode(',', array_keys(self::PROVIDERS)),
+            'search_term'  => 'required|string|max:255',
+            'replace_with' => 'required|string|max:255',
+        ]);
+
+        $providerSlug = $validated['provider'];
+        $search = $validated['search_term'];
+        $replace = $validated['replace_with'];
+
+        try {
+            $services = $this->getCachedServices($providerSlug);
+            $helper = $this->helperFor($providerSlug);
+
+            $rows = [];
+            $now = now()->toDateTimeString();
+            $matches = 0;
+
+            foreach ($services as $service) {
+                $formatted = $helper->formatServiceForDisplay($service, $this->exchangeRate);
+                $name = $formatted['name'] ?? '';
+                if ($name === null) continue;
+                if (stripos($name, $search) !== false) {
+                    $svcId = (string)($formatted['service_id'] ?? ($service['service'] ?? ''));
+                    if (!$svcId) continue;
+                    $newName = str_ireplace($search, $replace, $name);
+                    $rows[] = [
+                        'service_id' => $svcId,
+                        'provider' => $providerSlug,
+                        'custom_name' => $newName,
+                        'description' => $formatted['description'] ?? null,
+                        'custom_category' => $formatted['category'] ?? null,
+                        'admin_percentage' => intval($formatted['admin_percentage'] ?? 0),
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                    $matches++;
+                }
+            }
+
+            if (empty($rows)) {
+                return redirect()->route('admin.social.services', ['provider' => $this->routeSlug($providerSlug)])->with('success', 'No matching services found for "' . $search . '".');
+            }
+
+            // Upsert in chunks to handle large volumes
+            foreach (array_chunk($rows, 500) as $chunk) {
+                DB::table('social_service_descriptions')->upsert(
+                    $chunk,
+                    ['provider','service_id'],
+                    ['custom_name','description','custom_category','admin_percentage','updated_at']
+                );
+            }
+
+            // Clear provider cache
+            $cachePath = storage_path('app/cache/' . self::PROVIDERS[$providerSlug]['cache']);
+            if (file_exists($cachePath)) unlink($cachePath);
+
+            return redirect()->route('admin.social.services', ['provider' => $this->routeSlug($providerSlug)])->with('success', "Replaced occurrences across {$matches} services.");
+        } catch (\Exception $e) {
+            Log::error('Bulk replace names failed', ['error' => $e->getMessage()]);
+            return redirect()->route('admin.social.services', ['provider' => $this->routeSlug($providerSlug)])->with('error', 'Failed to perform replace: ' . $e->getMessage());
+        }
+    }
 }
