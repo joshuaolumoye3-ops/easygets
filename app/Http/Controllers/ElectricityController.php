@@ -23,11 +23,6 @@ class ElectricityController extends Controller
         return view('users.electricity', compact('plans', 'wallet'));
     }
 
-    // -------------------------------------------------------------------------
-    // Normalize the raw ClubKonnect response into a consistent shape:
-    //   [ { code, name, products: [ { id, type, min, max } ] } ]
-    // The "code" is the numeric ElectricCompany value the API requires (e.g. "07").
-    // -------------------------------------------------------------------------
     private function normalizePlans(array $rawPlans): array
     {
         if (empty($rawPlans)) {
@@ -36,15 +31,12 @@ class ElectricityController extends Controller
 
         $normalized = [];
 
-        // Response is a keyed object: { "EKO_ELECTRIC": [ { "ID": "01", "NAME": "...", "PRODUCT": [...] } ] }
         foreach ($rawPlans as $key => $companyWrapper) {
 
-            // Each value is an array containing one company object — unwrap it
             if (!is_array($companyWrapper)) {
                 continue;
             }
 
-            // Handle both [ {...} ] (wrapped) and { ... } (direct object)
             $company = isset($companyWrapper[0]) ? $companyWrapper[0] : $companyWrapper;
 
             if (!is_array($company)) {
@@ -63,7 +55,7 @@ class ElectricityController extends Controller
             $products = $this->normalizeProducts((array) $rawProducts);
 
             $normalized[] = [
-                'code'     => $code,   // "01", "02", etc. — numeric ID the API expects
+                'code'     => $code,
                 'name'     => $name,
                 'products' => $products,
             ];
@@ -74,7 +66,6 @@ class ElectricityController extends Controller
 
     private function normalizeProducts(array $rawProducts): array
     {
-        // Guard: single product object instead of array of objects
         if (!empty($rawProducts) && isset($rawProducts['PRODUCT_ID'])) {
             $rawProducts = [$rawProducts];
         }
@@ -91,7 +82,6 @@ class ElectricityController extends Controller
                 continue;
             }
 
-            // Capitalise the type for display e.g. "prepaid" → "Prepaid"
             $type = ucfirst(strtolower(
                 $product['PRODUCT_TYPE']
                 ?? $product['PRODUCT_NAME']
@@ -115,7 +105,6 @@ class ElectricityController extends Controller
 
     private function extractCompanyCode(array $company): ?string
     {
-        // No longer used by normalizePlans() — kept for any direct callers
         $id = trim((string) ($company['ID'] ?? ''));
         if ($id !== '') return $id;
 
@@ -127,9 +116,6 @@ class ElectricityController extends Controller
         return null;
     }
 
-    // -------------------------------------------------------------------------
-    // Verify meter number — MeterType is required by the ClubKonnect API.
-    // -------------------------------------------------------------------------
     public function verifyElectricityMeter(Request $request)
     {
         $request->validate([
@@ -191,11 +177,6 @@ class ElectricityController extends Controller
         }
     }
 
-    /**
-     * Fetch packages for a given electricity provider (AJAX helper).
-     * Now that the blade loads packages from normalized plan data directly,
-     * this endpoint is mainly used for server-side amount validation.
-     */
     public function getPackages(Request $request)
     {
         $request->validate([
@@ -242,8 +223,12 @@ class ElectricityController extends Controller
             'electricCompany' => 'required|string',
             'package'         => 'required|string',
             'meterNumber'     => 'required|string',
+            // Nigerian local format: 0 followed by 10 digits (e.g. 08149659347)
+            'phoneNo'         => ['required', 'string', 'regex:/^0\d{10}$/'],
             'amount'          => 'required|numeric|min:100',
             'pin'             => 'required|string|size:4',
+        ], [
+            'phoneNo.regex' => 'Please enter a valid 11-digit phone number starting with 0.',
         ]);
 
         try {
@@ -264,18 +249,15 @@ class ElectricityController extends Controller
             ], 400);
         }
 
-        // Use a fallback phone so ClubKonnect never receives an empty string
-        $phoneNo = auth()->user()->phone ?? '';
-        if (empty(trim($phoneNo))) {
-            $phoneNo = '08000000000'; // neutral fallback — ClubKonnect requires a non-empty value
-        }
+        // Use the phone number the user entered on the form — this is what
+        // ClubKonnect requires (PhoneNo) and uses to deliver the token/receipt SMS.
+        $phoneNo = $validated['phoneNo'];
 
         $requestId = Str::uuid()->toString();
 
         DB::beginTransaction();
 
         try {
-            // Server-side min/max validation
             $rawPlans     = ClubKonnectHelper::getElectricityDiscos();
             $plans        = $this->normalizePlans($rawPlans);
             $providerPlan = collect($plans)->firstWhere('code', $validated['electricCompany']);
@@ -308,7 +290,6 @@ class ElectricityController extends Controller
                 ], 400);
             }
 
-            // Log exactly what we are sending to ClubKonnect
             Log::info('Electricity purchase request', [
                 'user_id'          => auth()->id(),
                 'electric_company' => $validated['electricCompany'],
@@ -328,17 +309,27 @@ class ElectricityController extends Controller
                 $requestId
             );
 
-            // Log the raw ClubKonnect response so we can see exactly what came back
             Log::info('Electricity purchase raw response', [
                 'user_id'    => auth()->id(),
                 'request_id' => $requestId,
                 'response'   => $response,
             ]);
 
+            // Guard against ClubKonnect returning a plain error string/status
+            // (e.g. MISSING_Electricity, MISSING_MeterType, INVALID_MeterNo) instead of an order object.
+            $knownErrorStatuses = [
+                'INVALID_CREDENTIALS', 'MISSING_CREDENTIALS', 'MISSING_USERID', 'MISSING_APIKEY',
+                'MISSING_ELECTRICITY', 'MISSING_METERTYPE', 'INVALID_METERNO', 'METERTYPE_NOT_AVAILABLE',
+            ];
+
             $statusCode = (string) ($response['statuscode'] ?? $response['StatusCode'] ?? '');
-            $statusText = strtoupper($response['status']   ?? $response['Status']     ?? '');
-            $accepted   = in_array($statusCode, ['100', '200'])
-                || in_array($statusText, ['ORDER_RECEIVED', 'ORDER_COMPLETED', 'SUCCESS']);
+            $statusText = strtoupper((string) ($response['status'] ?? $response['Status'] ?? ''));
+
+            $accepted = !in_array($statusText, $knownErrorStatuses)
+                && (
+                    in_array($statusCode, ['100', '200'])
+                    || in_array($statusText, ['ORDER_RECEIVED', 'ORDER_COMPLETED', 'SUCCESS'])
+                );
 
             Transaction::create([
                 'reference'    => $requestId,
@@ -350,7 +341,9 @@ class ElectricityController extends Controller
                 'amount'       => $validated['amount'],
                 'meter_number' => $validated['meterNumber'],
                 'package'      => $validated['package'],
-                'status'       => $accepted ? 'success' : 'failed',
+                // Orders accepted with statuscode 100 are still pending on ClubKonnect's
+                // side until the callback confirms ORDER_COMPLETED — mark as pending here.
+                'status'       => $accepted ? ($statusCode === '100' ? 'pending' : 'success') : 'failed',
                 'response'     => json_encode($response),
             ]);
 
@@ -360,7 +353,9 @@ class ElectricityController extends Controller
 
                 return response()->json([
                     'status'  => true,
-                    'message' => 'Electricity purchase successful.',
+                    'message' => $statusCode === '100'
+                        ? 'Order received and is being processed.'
+                        : 'Electricity purchase successful.',
                     'data'    => [
                         'token'          => $response['metertoken'] ?? $response['token'] ?? '',
                         'order_id'       => $response['orderid']    ?? $response['OrderID'] ?? '',
@@ -414,5 +409,57 @@ class ElectricityController extends Controller
             'message' => $data['message'],
             'details' => $data['details'] ?? [],
         ])->render();
+    }
+
+    /**
+     * Handle ClubKonnect's async callback for electricity orders.
+     * ClubKonnect POSTs (or GETs) here with: orderid, requestid, statuscode, orderstatus, orderremark.
+     * This route must be public (no auth, no CSRF) since ClubKonnect's server calls it directly.
+     */
+    public function handleCallback(Request $request)
+    {
+        $orderId    = $request->input('orderid');
+        $requestId  = $request->input('requestid');
+        $statusCode = (string) $request->input('statuscode');
+        $orderStatus = strtoupper((string) $request->input('orderstatus'));
+
+        Log::info('ClubKonnect electricity callback received', [
+            'orderid'     => $orderId,
+            'requestid'   => $requestId,
+            'statuscode'  => $statusCode,
+            'orderstatus' => $orderStatus,
+        ]);
+
+        $transaction = $requestId
+            ? Transaction::where('reference', $requestId)->where('type', 'electricity')->first()
+            : null;
+
+        if (!$transaction) {
+            Log::warning('ClubKonnect electricity callback: no matching transaction', [
+                'requestid' => $requestId,
+                'orderid'   => $orderId,
+            ]);
+            return response()->json(['status' => 'ignored'], 200);
+        }
+
+        $isCompleted = in_array($statusCode, ['200']) || $orderStatus === 'ORDER_COMPLETED';
+        $isFailed    = in_array($orderStatus, ['ORDER_FAILED', 'ORDER_CANCELED', 'ORDER_CANCELLED']);
+
+        if ($isCompleted) {
+            $transaction->update(['status' => 'success']);
+        } elseif ($isFailed) {
+            // Refund the wallet if the order ultimately failed after we'd already deducted.
+            DB::transaction(function () use ($transaction) {
+                if ($transaction->status !== 'failed') {
+                    $wallet = Wallet::where('user_id', $transaction->user_id)->lockForUpdate()->first();
+                    if ($wallet) {
+                        $wallet->increment('balance', $transaction->amount);
+                    }
+                }
+                $transaction->update(['status' => 'failed']);
+            });
+        }
+
+        return response()->json(['status' => 'received'], 200);
     }
 }

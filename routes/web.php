@@ -108,6 +108,10 @@ Route::post('/webhook/korapay', [KorapayWebhookController::class, 'handle'])
     ->name('korapay.webhook')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
+Route::match(['get', 'post'], '/clubkonnect/electricity/callback', [ElectricityController::class, 'handleCallback'])
+    ->name('electricity.callback')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+
 
 Route::middleware('auth')->group(function () {
 //     Route::post('/virtual-account/create', [VirtualAccountController::class, 'createAccount'])

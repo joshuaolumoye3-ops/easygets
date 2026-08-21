@@ -73,6 +73,27 @@
                 <div id="meterVerification" class="mt-2 text-sm hidden"></div>
             </div>
 
+            <!-- Step 4: Phone Number -->
+            <div>
+                <label for="phoneNo" class="block text-sm font-semibold text-gray-700 mb-2 mt-6">
+                    Phone Number
+                </label>
+                <div class="relative">
+                    <input
+                        type="tel"
+                        id="phoneNo"
+                        name="phoneNo"
+                        inputmode="numeric"
+                        class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-full placeholder-gray-400 focus:ring-2 focus:ring-brand-green focus:border-brand-green outline-none transition duration-200"
+                        placeholder="Enter phone number"
+                        value="{{ old('phoneNo', auth()->user() && auth()->user()->phone ? auth()->user()->phone : '') }}"
+                        autocomplete="off"
+                        required
+                    >
+                </div>
+                <p class="mt-1 text-xs text-gray-500">Token/receipt will be sent to this number.</p>
+            </div>
+
             <!-- Amount -->
             <div>
                 <label for="amount" class="block text-sm font-semibold text-gray-700 mb-2 mt-6">Amount (₦)</label>
@@ -81,6 +102,7 @@
                     placeholder="Enter amount" required min="100">
                 <div id="amountLimits" class="mt-1 text-xs text-gray-500 hidden"></div>
             </div>
+            
 
             <input type="hidden" id="minAmount" name="minAmount">
             <input type="hidden" id="maxAmount" name="maxAmount">
@@ -338,6 +360,13 @@ async function verifyMeter(electricCompanyCode, meterTypeCode, meterNumber) {
 }
 
 // ============================================================================
+// PHONE NUMBER INPUT — digits only
+// ============================================================================
+document.getElementById('phoneNo').addEventListener('input', function () {
+    this.value = this.value.replace(/\D/g, '');
+});
+
+// ============================================================================
 // METER NUMBER INPUT — debounced auto-verify
 // ============================================================================
 document.getElementById('meterNumber').addEventListener('input', function () {
@@ -482,6 +511,7 @@ document.addEventListener('DOMContentLoaded', function () {
         e.preventDefault();
 
         const meterNumber = document.getElementById('meterNumber').value.trim();
+        const phoneNo     = document.getElementById('phoneNo').value.trim();
         const amount      = parseFloat(document.getElementById('amount').value) || 0;
 
         if (!selectedProvider) {
@@ -495,6 +525,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (!meterVerified) {
             return showModal('Meter Not Verified', 'Please wait for meter verification to complete before purchasing.', 'text-yellow-600');
+        }
+        if (!phoneNo || !/^0\d{10}$/.test(phoneNo)) {
+            return showModal('Error', 'Please enter a valid 11-digit phone number starting with 0.', 'text-red-600');
         }
         if (!amount || amount < 100) {
             return showModal('Error', 'Please enter a valid amount (minimum ₦100).', 'text-red-600');
@@ -517,6 +550,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <div><strong>Company:</strong> ${selectedProvider.name}</div>
             <div><strong>Meter Type:</strong> ${selectedProduct.type}</div>
             <div><strong>Meter Number:</strong> ${meterNumber}</div>
+            <div><strong>Phone:</strong> ${phoneNo}</div>
             ${customerName ? `<div><strong>Customer:</strong> ${customerName}</div>` : ''}
             <div><strong>Amount:</strong> ₦${amount.toLocaleString()}</div>
             <div class="mt-2 font-semibold text-green-700"><strong>Wallet Balance:</strong> ₦${walletBalance.toLocaleString()}</div>`;
@@ -554,6 +588,7 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('electricCompany', selectedProvider.code);   // numeric "07"
         formData.append('package',         selectedProduct.id);       // "01"
         formData.append('meterNumber',     document.getElementById('meterNumber').value);
+        formData.append('phoneNo',         document.getElementById('phoneNo').value);
         formData.append('amount',          document.getElementById('amount').value);
         formData.append('minAmount',       selectedProduct.min);
         formData.append('maxAmount',       selectedProduct.max);
@@ -630,6 +665,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById('minAmount').value    = '';
                 document.getElementById('maxAmount').value    = '';
                 document.getElementById('amountLimits').classList.add('hidden');
+                document.getElementById('meterNumber').value  = '';
+                document.getElementById('phoneNo').value      = '';
                 resetMeterVerification();
 
             } else {
