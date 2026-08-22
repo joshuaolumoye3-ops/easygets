@@ -299,7 +299,7 @@
         <div class="grid grid-cols-2 gap-4">
             <button onclick="window.location.href='services'"
                     class="bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-700 transition-colors">
-                Get OTP
+                Get Number
             </button>
             <button onclick="window.location.href='social-boost'"
                     class="bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-700 transition-colors">

@@ -208,7 +208,7 @@ document.getElementById('verifySmartcardBtn').addEventListener('click', async ()
     const data = await response.json();
 
     if (response.ok && data.status) {
-      showModal('Verification Successful', data.status, 'text-green-600');
+      showModal('Verification Successful', data.customer_name || data.message || 'Smartcard verified.', 'text-green-600');
     } else {
       showModal('Verification Failed', data.message || 'Unknown error', 'text-red-600');
     }
@@ -279,8 +279,25 @@ function toggleLoading(show) {
             btn.textContent = provider;
             btn.className = 'block w-full text-left px-4 py-2 border-b hover:bg-gray-100';
             btn.onclick = () => {
+                // The lowercase code (e.g. "dstv") is what ClubKonnect's API requires
+                // as the CableTV parameter — never send the capitalized display name.
+                const code = (plans[provider][0] && plans[provider][0]['ID'])
+                    ? plans[provider][0]['ID']
+                    : provider.toLowerCase();
+
                 document.getElementById('openServiceProvider').textContent = provider;
-                document.getElementById('networkInput').value = provider;
+                document.getElementById('networkInput').value = code;
+                document.getElementById('networkInput').dataset.planKey = provider; // for local plans[] lookups only
+
+                // Reset downstream selections since the provider changed
+                document.getElementById('openPackage').textContent = 'Choose a Package';
+                document.getElementById('packageInput').value = '';
+                document.getElementById('packageInput').dataset.subscriptionTypes = '';
+                document.getElementById('openSubscriptionType').textContent = 'Choose a Subscription Type (Optional)';
+                document.getElementById('subscriptionTypeInput').value = '';
+                document.getElementById('amountDisplay').textContent = 'N0.00';
+                document.getElementById('amount').value = '0';
+
                 modalHide(document.getElementById('serviceProviderModal'));
             };
             list.appendChild(btn);
@@ -289,7 +306,9 @@ function toggleLoading(show) {
     });
 
     document.getElementById('openPackage').addEventListener('click', () => {
-        const provider = document.getElementById('networkInput').value;
+        // Use the display-name key (stored separately) to look up plans[],
+        // since networkInput.value now holds the lowercase API code.
+        const provider = document.getElementById('networkInput').dataset.planKey;
         if (!provider) return alert('Please choose a provider first.');
         const list = document.getElementById('packageList');
         list.innerHTML = '';
@@ -303,8 +322,7 @@ function toggleLoading(show) {
                 document.getElementById('openPackage').textContent = pkg.PACKAGE_NAME;
                 document.getElementById('packageInput').value = pkg.PACKAGE_ID;
                 document.getElementById('packageInput').dataset.subscriptionTypes = JSON.stringify(pkg.SUBSCRIPTION_TYPE || []);
-                
-                // Update amount display and hidden input here:
+
                 const amountDisplay = document.getElementById('amountDisplay');
                 const amountInput = document.getElementById('amount');
                 amountDisplay.textContent = `N${parseFloat(pkg.PACKAGE_AMOUNT).toFixed(2)}`;
@@ -320,21 +338,18 @@ function toggleLoading(show) {
     document.getElementById('openSubscriptionType').addEventListener('click', () => {
         const list = document.getElementById('subscriptionTypeList');
         list.innerHTML = '';
-        
-        // Default subscription types
+
         const defaultSubscriptionTypes = ['Prepaid', 'Postpaid'];
-        
-        // Check if package has specific subscription types
         const packageEl = document.getElementById('packageInput');
         let subscriptionTypes = defaultSubscriptionTypes;
-        
+
         if (packageEl.value && packageEl.dataset.subscriptionTypes) {
             const packageSubscriptionTypes = JSON.parse(packageEl.dataset.subscriptionTypes || '[]');
             if (packageSubscriptionTypes.length > 0) {
                 subscriptionTypes = packageSubscriptionTypes;
             }
         }
-        
+
         subscriptionTypes.forEach(sub => {
             const btn = document.createElement('button');
             btn.textContent = sub.SUBSCRIPTION_TYPE || sub;
@@ -346,7 +361,7 @@ function toggleLoading(show) {
             };
             list.appendChild(btn);
         });
-        
+
         modalShow(document.getElementById('subscriptionTypeModal'));
     });
 
@@ -362,7 +377,7 @@ const walletBalance = {{ $wallet->balance ?? 0 }}; // Pass user's wallet balance
 
 document.getElementById('payNowBtn').addEventListener('click', () => {
     // Gather selected details and validate
-    const provider = document.getElementById('networkInput').value;
+    const provider = document.getElementById('networkInput').dataset.planKey || document.getElementById('networkInput').value;
     const packageName = document.getElementById('openPackage').textContent;
     const packageId = document.getElementById('packageInput').value;
     const subscriptionType = document.getElementById('openSubscriptionType').textContent;

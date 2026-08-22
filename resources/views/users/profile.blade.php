@@ -152,7 +152,7 @@
                 </span>
             </a>
            <a 
-                href="https://wa.me/2348024339657?text=Hello%20EasyGets%20Support" 
+                href="https://wa.me/2348022746033?text=Hello%20EasyGets%20Support" 
                 target="_blank"
                 class="flex justify-between items-center p-4 hover:bg-gray-50"
             >
