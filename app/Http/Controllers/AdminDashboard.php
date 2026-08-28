@@ -341,6 +341,7 @@ class AdminDashboard extends Controller
         $stats = [
             'total_users'             => User::count(),
             'total_revenue'           => $turnoverTx->sum('amount'),
+            'total_wallet_balance'    => (float) Wallet::sum('balance'),
             'total_transactions'      => $turnoverTx->count(),
             'pending_requests'        => $allTransactions->filter(fn($t) => strtolower($t->status ?? '') === 'pending')->count(),
             'successful_transactions' => $successfulTx->count(),

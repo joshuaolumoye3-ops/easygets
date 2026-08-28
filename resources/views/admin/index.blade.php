@@ -426,6 +426,15 @@
             </div>
             <div class="stat-value">₦{{ number_format($transactionsTotalAmount ?? 0, 0) }}</div>
         </div>
+        <div class="stat-card violet">
+            <div class="accent-line"></div>
+            <div class="stat-top">
+                <div class="stat-label">Total User Balance</div>
+                <div class="stat-icon"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 10.5a2.5 2.5 0 012.5-2.5h13A2.5 2.5 0 0121 10.5v7a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 17.5v-7zm3.5-5h11a2.5 2.5 0 012.5 2.5v1.5H4v-1.5A2.5 2.5 0 016.5 5.5z"/></svg></div>
+            </div>
+            <div class="stat-value">₦{{ number_format($stats['total_wallet_balance'] ?? 0, 2) }}</div>
+            <span class="stat-badge">All wallets</span>
+        </div>
     </div>
 
     {{-- ── Users Table ── --}}
