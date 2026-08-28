@@ -29,6 +29,7 @@ class User extends Authenticatable
         'is_blocked',
         'blocked_reason',
         'blocked_at',
+        'last_login_at',
         // Referral / partner fields
         'is_partner',
         'partner_percentage',
@@ -58,6 +59,7 @@ class User extends Authenticatable
         return [
             'email_verified_at'      => 'datetime',
             'blocked_at'             => 'datetime',
+            'last_login_at'          => 'datetime',
             'password'               => 'hashed',
             'is_blocked'             => 'boolean',
             'is_partner'             => 'boolean',

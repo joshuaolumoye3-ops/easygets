@@ -52,6 +52,10 @@ class AdminDashboard extends Controller
             });
         }
 
+        if ($uActivity === 'active') {
+            $userQuery->whereNotNull('last_login_at');
+        }
+
         if ($uRange || $uStart || $uEnd) {
             $from = null;
             $to   = null;

@@ -89,7 +89,7 @@ class LoginController extends Controller
                 ->with('warning', 'Please verify your email first to continue. We\'ve sent a verification code to your email.');
         }
 
-        $user->update(['last_login_at' => now()]);
+        $user->forceFill(['last_login_at' => now()])->save();
 
         return redirect()->intended(route('dashboard'))
                         ->with('success', 'Welcome back!');
