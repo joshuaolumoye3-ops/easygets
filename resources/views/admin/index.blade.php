@@ -618,9 +618,11 @@
                         <th style="width:160px;">User</th>
                         <th style="width:120px;">Type</th>
                         <th style="width:140px;">Provider</th>
+                        <th style="width:110px;">Tx ID</th>
                         <th style="width:220px;">Details</th>
                         <th style="width:140px;">Amount</th>
                         <th style="width:140px;">Status</th>
+                        <th style="width:110px;">Action</th>
                         <th style="width:110px;">Date</th>
                     </tr>
                 </thead>
@@ -657,6 +659,7 @@
                         <td><div class="ucell"><div class="uav">{{ strtoupper(substr($tx->user?->username ?? 'N', 0, 1)) }}</div><span class="uname">{{ $tx->user?->username ?? 'N/A' }}</span></div></td>
                         <td><span class="type-chip">{{ $tx->type ?? '—' }}</span></td>
                         <td>{{ $tx->provider ?? ucfirst($tx->channel ?? '—') }}</td>
+                        <td><span class="tx-id">#{{ $tx->id }}</span></td>
                         <td>
                             @if(count($details) > 0)
                                 <div class="detail-list">@foreach($details as $detail)<div>{{ $detail }}</div>@endforeach</div>
@@ -669,6 +672,25 @@
                                 <span style="width:6px;height:6px;border-radius:50%;background:{{ $chipColor }};flex-shrink:0;"></span>
                                 {{ $chipLbl }}
                             </span>
+                        </td>
+                        <td>
+                            @if(strtolower($tx->type ?? '') === 'social_boost')
+                                <button type="button"
+                                        class="social-tx-btn"
+                                        data-id="{{ $tx->id }}"
+                                        data-user="{{ $tx->user?->username ?? 'Unknown user' }}"
+                                        data-service="{{ $tx->service_name ?? 'Social boost' }}"
+                                        data-provider="{{ $tx->provider ?? ucfirst($tx->channel ?? '—') }}"
+                                        data-amount="{{ $tx->amount ?? 0 }}"
+                                        data-status="{{ strtolower($tx->status ?? '') }}"
+                                        data-reference="{{ $tx->reference ?? '' }}"
+                                        data-request="{{ $tx->request_id ?? '' }}"
+                                        style="background:rgba(168,85,247,0.12);color:#8b5cf6;border:1px solid rgba(168,85,247,0.25);padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">
+                                    Manage
+                                </button>
+                            @else
+                                <span style="color:var(--t3);font-size:11px;">—</span>
+                            @endif
                         </td>
                         <td style="color:var(--t3);font-size:12px;">{{ $tx->created_at?->format('d M Y') ?? '—' }}</td>
                     </tr>
@@ -708,6 +730,28 @@
         </div>
         <div class="mbody" id="mBody">
             <div class="mloading"><div class="spinner"></div>Loading…</div>
+        </div>
+    </div>
+</div>
+
+{{-- Social transaction action modal --}}
+<div class="overlay" id="socialTxModal">
+    <div class="mbox" id="socialTxModalBox" style="max-width:520px;">
+        <div class="drawer-handle"></div>
+        <div class="mhd">
+            <div class="mhd-left">
+                <div class="mhd-av" id="socialTxAvatar">S</div>
+                <div>
+                    <h2 id="socialTxTitle">Social Order Action</h2>
+                    <div class="mhd-sub" id="socialTxSubtitle">Manage pending social purchase</div>
+                </div>
+            </div>
+            <button class="mclose" id="socialTxCloseBtn">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="mbody" id="socialTxBody" style="padding:20px 20px 24px;">
+            <div class="mloading"><div class="spinner"></div>Preparing social order actions…</div>
         </div>
     </div>
 </div>
@@ -1225,6 +1269,149 @@
             } catch(e) { flash(body, 'Error: ' + e.message, 'err'); }
         }
     }
+
+    function openSocialTxModalFromButton(btn) {
+        const txId = btn.dataset.id;
+        const payload = {
+            id: txId,
+            user: btn.dataset.user || 'Unknown user',
+            service: btn.dataset.service || 'Social boost',
+            provider: btn.dataset.provider || 'Social',
+            amount: Number(btn.dataset.amount || 0),
+            status: btn.dataset.status || 'pending',
+            reference: btn.dataset.reference || '',
+            request: btn.dataset.request || '',
+        };
+
+        const modal = document.getElementById('socialTxModal');
+        const body = document.getElementById('socialTxBody');
+        document.getElementById('socialTxTitle').textContent = 'Social Order Action';
+        document.getElementById('socialTxSubtitle').textContent = '@' + payload.user + ' • ' + payload.service;
+        document.getElementById('socialTxAvatar').textContent = 'S';
+
+        body.innerHTML = `
+            <div style="display:grid;gap:16px;">
+                <div style="background:linear-gradient(135deg,#f5f3ff,#eef2ff);border:1px solid rgba(139,92,246,0.18);border-radius:16px;padding:16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+                        <div>
+                            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:#6d28d9;font-weight:700;">Order summary</div>
+                            <div style="font-size:19px;font-weight:800;color:#111827;margin-top:8px;">${payload.service}</div>
+                        </div>
+                        <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#fff;color:#6d28d9;border:1px solid rgba(109,40,217,.18);font-size:11px;font-weight:700;">${payload.status}</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px;">
+                        <div style="background:rgba(255,255,255,0.7);border:1px solid rgba(99,102,241,0.12);padding:10px 12px;border-radius:12px;">
+                            <div style="font-size:10px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;">Tx ID</div>
+                            <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#111827;margin-top:4px;">#${payload.id}</div>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.7);border:1px solid rgba(99,102,241,0.12);padding:10px 12px;border-radius:12px;">
+                            <div style="font-size:10px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;">Amount</div>
+                            <div style="font-size:12px;font-weight:700;color:#111827;margin-top:4px;">₦${Number(payload.amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.7);border:1px solid rgba(99,102,241,0.12);padding:10px 12px;border-radius:12px;">
+                            <div style="font-size:10px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;">Provider</div>
+                            <div style="font-size:12px;font-weight:700;color:#111827;margin-top:4px;">${payload.provider}</div>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.7);border:1px solid rgba(99,102,241,0.12);padding:10px 12px;border-radius:12px;">
+                            <div style="font-size:10px;text-transform:uppercase;color:#6b7280;letter-spacing:0.08em;">Reference</div>
+                            <div style="font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#111827;margin-top:4px;">${payload.reference || '—'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="border:1px solid rgba(15,118,110,0.16);background:rgba(16,185,129,0.04);border-radius:14px;padding:14px;">
+                    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#047857;font-weight:700;">Fulfill order</div>
+                    <p style="margin:8px 0 0;color:#065f46;font-size:13px;line-height:1.55;">Once fulfilled, the order is marked complete and the user can no longer report it as pending.</p>
+                    <button type="button" id="socialFulfillBtn" style="margin-top:12px;width:100%;background:#10b981;color:#fff;border:none;border-radius:10px;padding:12px 14px;font-weight:700;cursor:pointer;">Mark as Completed</button>
+                </div>
+
+                <div style="border:1px solid rgba(244,63,94,0.2);background:rgba(244,63,94,0.04);border-radius:14px;padding:14px;">
+                    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#be123c;font-weight:700;">Cancel & refund</div>
+                    <label style="display:block;margin-top:10px;color:#374151;font-size:12px;font-weight:600;">Refund amount</label>
+                    <input id="socialRefundAmount" type="number" min="0" step="0.01" max="${Number(payload.amount || 0).toFixed(2)}" value="${Number(payload.amount || 0).toFixed(2)}" style="width:100%;margin-top:6px;padding:11px 12px;border:1px solid #d1d5db;border-radius:10px;outline:none;font-size:14px;">
+                    <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12px;color:#374151;">
+                        <input id="socialFullRefund" type="checkbox" checked>
+                        Full refund
+                    </label>
+                    <textarea id="socialCancelReason" rows="2" placeholder="Reason for cancellation" style="width:100%;margin-top:12px;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;resize:vertical;outline:none;font-size:13px;">Cancelled by admin</textarea>
+                    <button type="button" id="socialCancelBtn" style="margin-top:12px;width:100%;background:#ef4444;color:#fff;border:none;border-radius:10px;padding:12px 14px;font-weight:700;cursor:pointer;">Cancel & Refund</button>
+                </div>
+            </div>
+        `;
+
+        const closeBtn = document.getElementById('socialTxCloseBtn');
+        closeBtn.onclick = () => { modal.classList.remove('open'); document.body.style.overflow = ''; };
+
+        document.getElementById('socialFulfillBtn').addEventListener('click', async () => {
+            try {
+                const response = await fetch(`${BASE}/app/admin/transactions/${payload.id}/social/fulfill`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.message || 'Failed to fulfill order.');
+                alert(data.message || 'Social order completed.');
+                window.location.reload();
+            } catch (error) {
+                alert(error.message || 'Failed to fulfill order.');
+            }
+        });
+
+        document.getElementById('socialCancelBtn').addEventListener('click', async () => {
+            const fullRefund = document.getElementById('socialFullRefund').checked;
+            const refundInput = document.getElementById('socialRefundAmount').value;
+            const refundAmount = fullRefund ? Number(payload.amount || 0) : Number(refundInput || 0);
+            const reason = document.getElementById('socialCancelReason').value.trim() || 'Cancelled by admin';
+
+            if (!fullRefund && (!Number.isFinite(refundAmount) || refundAmount < 0)) {
+                alert('Enter a valid refund amount.');
+                return;
+            }
+
+            if (refundAmount > Number(payload.amount || 0)) {
+                alert('Refund amount cannot exceed the original amount paid by the user.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${BASE}/app/admin/transactions/${payload.id}/social/cancel`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+                    body: JSON.stringify({ refund_amount: refundAmount, full_refund: fullRefund, reason })
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.message || 'Failed to cancel order.');
+                alert(data.message || 'Social order cancelled.');
+                window.location.reload();
+            } catch (error) {
+                alert(error.message || 'Failed to cancel order.');
+            }
+        });
+
+        document.getElementById('socialFullRefund').addEventListener('change', function () {
+            const refundInput = document.getElementById('socialRefundAmount');
+            refundInput.disabled = this.checked;
+            if (this.checked) refundInput.value = Number(payload.amount || 0).toFixed(2);
+        });
+
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    document.addEventListener('click', function (event) {
+        const btn = event.target.closest('.social-tx-btn');
+        if (btn) {
+            openSocialTxModalFromButton(btn);
+        }
+    });
+
+    document.getElementById('socialTxModal').addEventListener('click', function (event) {
+        if (event.target === this) {
+            this.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+    });
 
     // ── Date range helpers ────────────────────────────────────────────────
     function handleDateRangeChange(selectId, prefix) {

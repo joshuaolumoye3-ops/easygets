@@ -320,6 +320,8 @@ function socialBadgeClass(string $status): string {
         'pending'              => 'bg-yellow-100 text-yellow-700',
         'partial'              => 'bg-orange-100 text-orange-700',
         'failed'               => 'bg-red-100 text-red-700',
+        'cancelled'            => 'bg-gray-100 text-gray-700',
+        'refunded'             => 'bg-purple-100 text-purple-700',
         default                => 'bg-gray-100 text-gray-700',
     };
 }
@@ -812,6 +814,13 @@ function openSocialModal(boostId) {
         : 0;
 
     const isActive = rawStatus === 'pending' || rawStatus === 'processing';
+    const deliveredCount = (qty > 0 && remains !== null && remains !== undefined)
+        ? Math.max(0, qty - parseInt(remains))
+        : 0;
+    const partialCancelledNote = (rawStatus === 'cancelled' || rawStatus === 'refunded')
+        && qty > 0 && remains !== null && remains !== undefined && deliveredCount > 0
+        ? `<div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"><span class="font-semibold">Cancelled after partial delivery:</span> ${deliveredCount.toLocaleString()} of ${qty.toLocaleString()} delivered.</div>`
+        : '';
 
     modal.querySelector('.bg-white').innerHTML = `
         <div class="p-6">
@@ -853,6 +862,8 @@ function openSocialModal(boostId) {
                     </button>
                 </div>
             </div>` : ''}
+
+            ${partialCancelledNote}
 
             <div class="bg-white border-2 border-gray-200 rounded-xl p-4 mb-4">
                 <div class="flex items-center justify-between mb-3">
@@ -925,6 +936,17 @@ function openSocialModal(boostId) {
                     </div>
                 </div>
             </div>
+
+            ${(rawStatus === 'pending' || rawStatus === 'processing') ? `
+            <div class="border-t border-gray-200 pt-4 mt-4">
+                <a href="https://wa.me/2348022746033?text=${encodeURIComponent('Hey easygets admin, I\'m having issue with the socials that I bought. Here is the transaction id: ' + boost.id)}" target="_blank" rel="noopener noreferrer"
+                   class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] text-white font-semibold py-3 px-4 hover:bg-[#1ebe57] transition-colors">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M20.52 3.48A11.87 11.87 0 0 0 12.08 0C5.49 0 .07 5.4.06 12.02c0 2.12.55 4.18 1.6 6L.03 24l6.12-1.6a11.98 11.98 0 0 0 5.93 1.8h.01c6.59 0 12.01-5.4 12.02-12.02.01-3.2-1.24-6.2-3.49-8.7ZM12.08 21.9h-.01c-1.9 0-3.77-.51-5.4-1.47l-.39-.23-3.63.95 1-3.53-.25-.37A9.9 9.9 0 0 1 2.2 12c0-5.47 4.46-9.93 9.96-9.93 2.66 0 5.16 1.04 7.03 2.92a9.82 9.82 0 0 1 2.93 7.01c-.01 5.47-4.47 9.93-9.95 9.93Zm5.44-7.44c-.3-.15-1.77-.87-2.05-.97-.28-.1-.48-.15-.68.15-.2.3-.78.97-.96 1.17-.18.2-.35.22-.65.07-.3-.15-1.26-.47-2.4-1.49-.89-.8-1.49-1.8-1.67-2.1-.17-.3-.02-.46.13-.6.14-.14.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.38-.03-.53-.08-.15-.68-1.64-.93-2.24-.24-.57-.49-.5-.68-.51l-.58-.01c-.2 0-.53.08-.8.38-.27.3-1.03 1.01-1.03 2.46 0 1.45 1.06 2.86 1.2 3.06.15.2 2.08 3.18 5.04 4.46.7.3 1.25.48 1.68.62.71.22 1.35.19 1.86.12.57-.08 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.08-.12-.28-.2-.58-.35Z"/>
+                    </svg>
+                    Report an issue to admin
+                </a>
+            </div>` : ''}
         </div>`;
 
     modal.classList.remove('hidden');

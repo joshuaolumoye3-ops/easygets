@@ -189,7 +189,8 @@ class AdminDashboard extends Controller
         $txQuery = Transaction::with('user')->latest();
         if ($txSearch !== '') {
             $txQuery->where(function ($q) use ($txSearch) {
-                $q->where('type',      'like', "%{$txSearch}%")
+                $q->where('id',       'like', "%{$txSearch}%")
+                ->orWhere('type',      'like', "%{$txSearch}%")
                 ->orWhere('status',  'like', "%{$txSearch}%")
                 ->orWhere('reference', 'like', "%{$txSearch}%")
                 ->orWhereHas('user', function ($uq) use ($txSearch) {
@@ -377,6 +378,141 @@ class AdminDashboard extends Controller
             'transactionsTotalCount',
             'uDateLabel'
         ));
+    }
+
+    public function fulfillSocialTransaction(Request $request, Transaction $transaction)
+    {
+        if ($transaction->type !== 'social_boost') {
+            return response()->json(['success' => false, 'message' => 'This action is only allowed for social boost transactions.'], 422);
+        }
+
+        if (in_array(strtolower((string) $transaction->status), ['completed', 'success', 'cancelled', 'refunded'], true)) {
+            return response()->json(['success' => false, 'message' => 'This social order is already closed.'], 422);
+        }
+
+        try {
+            $response = is_array($transaction->response) ? $transaction->response : (json_decode($transaction->response ?? '[]', true) ?? []);
+            $quantity = max(0, (int) ($response['quantity'] ?? $transaction->amount ?? 0));
+            $remains = isset($response['remains']) && is_numeric($response['remains']) ? (int) $response['remains'] : 0;
+            $deliveredCount = $quantity > 0 ? max(0, $quantity - $remains) : (int) ($response['fulfilled_count'] ?? 0);
+
+            $response['admin_fulfilled_at'] = now()->toIso8601String();
+            $response['admin_fulfilled_by'] = Auth::id();
+            $response['fulfilled_count'] = $deliveredCount;
+            $response['delivered_count'] = $deliveredCount;
+            $response['remains'] = 0;
+            $response['last_updated_by'] = 'admin';
+
+            $transaction->status = 'completed';
+            $transaction->response = $response;
+            $transaction->updated_at = now();
+            $transaction->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Social boost order marked as completed successfully.',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Admin social fulfill failed', [
+                'transaction_id' => $transaction->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['success' => false, 'message' => 'Unable to complete this social order right now.'], 500);
+        }
+    }
+
+    public function cancelSocialTransaction(Request $request, Transaction $transaction)
+    {
+        if ($transaction->type !== 'social_boost') {
+            return response()->json(['success' => false, 'message' => 'This action is only allowed for social boost transactions.'], 422);
+        }
+
+        if (in_array(strtolower((string) $transaction->status), ['completed', 'success', 'cancelled', 'refunded'], true)) {
+            return response()->json(['success' => false, 'message' => 'This social order cannot be cancelled again.'], 422);
+        }
+
+        $refundAmount = $request->input('refund_amount');
+        $fullRefund = $request->boolean('full_refund');
+
+        if ($fullRefund) {
+            $refundAmount = (float) $transaction->amount;
+        } else {
+            $refundAmount = is_numeric($refundAmount) ? (float) $refundAmount : 0.0;
+        }
+
+        if ($refundAmount < 0 || $refundAmount > (float) $transaction->amount) {
+            return response()->json(['success' => false, 'message' => 'Refund amount cannot exceed the original paid amount.'], 422);
+        }
+
+        try {
+            return DB::transaction(function () use ($transaction, $refundAmount, $fullRefund, $request) {
+                $wallet = Wallet::where('user_id', $transaction->user_id)->lockForUpdate()->first();
+                if (!$wallet) {
+                    return response()->json(['success' => false, 'message' => 'User wallet not found. Refund could not be processed securely.'], 500);
+                }
+
+                if ($refundAmount > 0) {
+                    $wallet->balance = (float) $wallet->balance + $refundAmount;
+                    $wallet->save();
+
+                    Transaction::create([
+                        'reference' => 'REF-' . strtoupper(Str::random(12)),
+                        'user_id' => $transaction->user_id,
+                        'type' => 'credit',
+                        'channel' => 'Refund',
+                        'provider' => $transaction->provider ?? 'Social boost',
+                        'amount' => $refundAmount,
+                        'status' => 'success',
+                        'description' => 'Social boost refund for transaction #' . $transaction->id,
+                        'response' => [
+                            'original_transaction_id' => $transaction->id,
+                            'reason' => 'Admin social order cancellation',
+                            'refund_amount' => $refundAmount,
+                            'full_refund' => $fullRefund,
+                            'cancelled_by_admin' => Auth::id(),
+                        ],
+                        'balance_after' => (float) $wallet->balance,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+
+                $response = is_array($transaction->response) ? $transaction->response : (json_decode($transaction->response ?? '[]', true) ?? []);
+                $quantity = max(0, (int) ($response['quantity'] ?? $transaction->amount ?? 0));
+                $remains = isset($response['remains']) && is_numeric($response['remains']) ? (int) $response['remains'] : 0;
+                $deliveredCount = $quantity > 0 ? max(0, $quantity - $remains) : (int) ($response['fulfilled_count'] ?? 0);
+
+                $response['cancelled_at'] = now()->toIso8601String();
+                $response['cancelled_by_admin'] = Auth::id();
+                $response['refund_amount'] = $refundAmount;
+                $response['refunded'] = $refundAmount > 0;
+                $response['full_refund'] = $fullRefund;
+                $response['last_updated_by'] = 'admin';
+                $response['cancel_reason'] = $request->input('reason', 'Cancelled by admin');
+                $response['fulfilled_count'] = $deliveredCount;
+                $response['delivered_count'] = $deliveredCount;
+                $response['cancelled_after_partial'] = $quantity > 0 && $deliveredCount > 0 && $deliveredCount < $quantity;
+
+                $transaction->status = 'cancelled';
+                $transaction->response = $response;
+                $transaction->updated_at = now();
+                $transaction->save();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Social boost order cancelled and refund processed securely.',
+                    'refund_amount' => number_format($refundAmount, 2),
+                ]);
+            });
+        } catch (\Throwable $e) {
+            Log::error('Admin social cancel failed', [
+                'transaction_id' => $transaction->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['success' => false, 'message' => 'Unable to cancel this social order securely.'], 500);
+        }
     }
 
     public function createAdmin(Request $request)

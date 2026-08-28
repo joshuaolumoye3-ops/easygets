@@ -429,6 +429,11 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
         Route::post('/update-description', [SocialBoostController::class, 'adminUpdateDescription'])->name('admin.social.updateDescription');
     });
 
+    Route::post('/transactions/{transaction}/social/fulfill', [AdminDashboard::class, 'fulfillSocialTransaction'])
+        ->name('admin.transactions.social.fulfill');
+    Route::post('/transactions/{transaction}/social/cancel', [AdminDashboard::class, 'cancelSocialTransaction'])
+        ->name('admin.transactions.social.cancel');
+
     Route::get('/list', [AdminAuthController::class, 'index'])->name('admin.list');
     Route::get('/{admin}', [AdminAuthController::class, 'showadmin'])->name('admins.show');
     Route::post('/{admin}/update', [AdminAuthController::class, 'updateadmin'])->name('admins.update');
