@@ -38,6 +38,9 @@ class AdminDashboard extends Controller
         $uRange       = trim($request->get('u_range', ''));
         $uStart       = trim($request->get('u_start', ''));
         $uEnd         = trim($request->get('u_end', ''));
+        $uActivity    = in_array(trim($request->get('u_activity', 'created')), ['created', 'active'], true)
+            ? trim($request->get('u_activity', 'created'))
+            : 'created';
         $uDateLabel   = '';
 
         $userQuery = User::with('wallet')->latest();
@@ -116,7 +119,8 @@ class AdminDashboard extends Controller
             }
 
             if ($from && $to) {
-                $userQuery->whereBetween('created_at', [$from, $to]);
+                $loginField = $uActivity === 'active' ? 'last_login_at' : 'created_at';
+                $userQuery->whereBetween($loginField, [$from, $to]);
             }
         }
 
@@ -338,8 +342,10 @@ class AdminDashboard extends Controller
             if ($created->isSameMonth(now()))                                  $thisMonthProfit += $profit;
         }
 
+        $filteredUsersCount = (clone $userQuery)->count();
+
         $stats = [
-            'total_users'             => User::count(),
+            'total_users'             => $filteredUsersCount,
             'total_revenue'           => $turnoverTx->sum('amount'),
             'total_wallet_balance'    => (float) Wallet::sum('balance'),
             'total_transactions'      => $turnoverTx->count(),

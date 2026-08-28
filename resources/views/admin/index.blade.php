@@ -457,6 +457,10 @@
                         <svg class="ico" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                         <input type="text" name="u_search" placeholder="Search users…" value="{{ request('u_search') }}">
                     </div>
+                    <select class="per-page filter-select" name="u_activity" onchange="this.form.submit()">
+                        <option value="created" {{ request('u_activity', 'created') === 'created' ? 'selected' : '' }}>Created users</option>
+                        <option value="active" {{ request('u_activity') === 'active' ? 'selected' : '' }}>Active users</option>
+                    </select>
                     <select class="per-page" name="u_pp" onchange="this.form.submit()">
                         @foreach([10,25,50] as $n)
                             <option value="{{ $n }}" {{ request('u_pp', 10) == $n ? 'selected' : '' }}>{{ $n }} / pg</option>
@@ -477,8 +481,8 @@
                         <input type="date" class="date-input" name="u_end" id="uEnd" value="{{ request('u_end') }}">
                     </div>
                     <button type="submit" class="btn-filter">Search</button>
-                    @if(request('u_search') || request('u_range') || request('u_start') || request('u_end'))
-                        <a href="{{ url()->current() }}{{ !empty(request()->except(['u_search','u_pp','u_range','u_start','u_end'])) ? '?'.http_build_query(request()->except(['u_search','u_pp','u_range','u_start','u_end'])) : '' }}" class="btn-clear">
+                    @if(request('u_search') || request('u_range') || request('u_start') || request('u_end') || request('u_activity'))
+                        <a href="{{ url()->current() }}{{ !empty(request()->except(['u_search','u_pp','u_range','u_start','u_end','u_activity'])) ? '?'.http_build_query(request()->except(['u_search','u_pp','u_range','u_start','u_end','u_activity'])) : '' }}" class="btn-clear">
                             <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
                             Clear
                         </a>
@@ -531,12 +535,12 @@
             @endif
         </div>
         @if(!empty($uDateLabel))
-        <div class="range-summary">Showing <b>{{ number_format($users->total()) }}</b> user{{ $users->total() === 1 ? '' : 's' }} created during <b>{{ $uDateLabel }}</b></div>
+        <div class="range-summary">Showing <b>{{ number_format($users->total()) }}</b> user{{ $users->total() === 1 ? '' : 's' }} {{ request('u_activity', 'created') === 'active' ? 'active' : 'created' }} during <b>{{ $uDateLabel }}</b></div>
         @endif
         @if($users->hasPages())
         <div class="pgbar">
             <div class="pg-info">Showing <b>{{ $users->firstItem() }}–{{ $users->lastItem() }}</b> of <b>{{ $users->total() }}</b></div>
-            <div>{{ $users->appends(request()->only(['u_search','u_pp','tx_search','tx_pp','tx_service','tx_provider','u_range','u_start','u_end','tx_range','tx_start','tx_end']))->links('partials.admin.custom') }}</div>
+            <div>{{ $users->appends(request()->only(['u_search','u_pp','u_activity','tx_search','tx_pp','tx_service','tx_provider','u_range','u_start','u_end','tx_range','tx_start','tx_end']))->links('partials.admin.custom') }}</div>
         </div>
         @endif
     </div>
