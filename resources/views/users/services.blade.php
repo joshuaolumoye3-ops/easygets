@@ -41,7 +41,7 @@
             <h2 class="text-lg font-semibold text-gray-800 mb-4">Popular Services</h2>
             <div class="flex space-x-4 overflow-x-auto pb-4 -mx-4 px-4">
                 @foreach($popular as $product)
-                    <button onclick="showProviderModal('{{ $product['id'] }}', '{{ $product['title'] }}', '{{ strtolower($product['code']) }}')"
+                    <button onclick="handleServiceClick('{{ $product['id'] }}', '{{ $product['title'] }}', '{{ strtolower($product['code']) }}')"
                        class="flex-shrink-0 group">
                         <div class="w-16 h-16 rounded-full bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center hover:from-green-200 hover:to-green-100 transition-all duration-200 shadow-sm group-hover:shadow-md">
                             <div class="w-10 h-10 flex items-center justify-center">
@@ -68,7 +68,7 @@
         </h2>
         <div id="productList" class="space-y-3">
             @forelse($products as $product)
-                <button onclick="showProviderModal('{{ $product['id'] }}', '{{ $product['title'] }}', '{{ strtolower($product['code']) }}')" class="w-full block group">
+                <button onclick="handleServiceClick('{{ $product['id'] }}', '{{ $product['title'] }}', '{{ strtolower($product['code']) }}')" class="w-full block group">
                     <div class="flex items-center space-x-4 p-4 border border-gray-100 rounded-xl hover:border-green-200 hover:bg-green-50/50 transition-all duration-200 group-hover:shadow-sm">
                         <div class="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0 group-hover:bg-white transition-colors duration-200">
                             @if(str_contains($product['icon_url'], '.svg'))
@@ -330,6 +330,21 @@
         } else {
             window.location.href = `/app/services/${serviceCode || serviceId}/countries-provider3`;
         }
+    }
+
+    // Handle service click: navigate directly if preferred provider exists, otherwise show modal
+    function handleServiceClick(serviceId, serviceName, serviceCode) {
+        const pref = getPreferredProvider(serviceCode, serviceId);
+        if (pref) {
+            navigateToProvider(pref, serviceId, serviceCode);
+            return;
+        }
+
+        // show modal (it will also check again for preference)
+        selectedServiceId = serviceId;
+        selectedServiceName = serviceName;
+        selectedServiceCode = serviceCode;
+        showProviderModal(serviceId, serviceName, serviceCode);
     }
 
     // Close on escape / outside click
