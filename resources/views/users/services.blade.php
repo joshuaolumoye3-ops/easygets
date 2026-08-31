@@ -41,8 +41,8 @@
             <h2 class="text-lg font-semibold text-gray-800 mb-4">Popular Services</h2>
             <div class="flex space-x-4 overflow-x-auto pb-4 -mx-4 px-4">
                 @foreach($popular as $product)
-                    <button onclick="handleServiceClick('{{ addslashes($product['id'] ?? '') }}', '{{ addslashes($product['title'] ?? '') }}', '{{ strtolower($product['code'] ?? '') }}')"
-                       class="flex-shrink-0 group">
+                    <button data-service-id="{{ $product['id'] ?? '' }}" data-service-title="{{ $product['title'] ?? '' }}" data-service-code="{{ strtolower($product['code'] ?? '') }}"
+                       class="flex-shrink-0 group service-item-btn">
                         <div class="w-16 h-16 rounded-full bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center hover:from-green-200 hover:to-green-100 transition-all duration-200 shadow-sm group-hover:shadow-md">
                             <div class="w-10 h-10 flex items-center justify-center">
                                 @if(str_contains($product['large_icon_url'], '.svg'))
@@ -68,7 +68,7 @@
         </h2>
         <div id="productList" class="space-y-3">
             @forelse($products as $product)
-                <button onclick="handleServiceClick('{{ addslashes($product['id'] ?? '') }}', '{{ addslashes($product['title'] ?? '') }}', '{{ strtolower($product['code'] ?? '') }}')" class="w-full block group">
+                <button data-service-id="{{ $product['id'] ?? '' }}" data-service-title="{{ $product['title'] ?? '' }}" data-service-code="{{ strtolower($product['code'] ?? '') }}" class="w-full block group service-item-btn">
                     <div class="flex items-center space-x-4 p-4 border border-gray-100 rounded-xl hover:border-green-200 hover:bg-green-50/50 transition-all duration-200 group-hover:shadow-sm">
                         <div class="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0 group-hover:bg-white transition-colors duration-200">
                             @if(str_contains($product['icon_url'], '.svg'))
@@ -346,6 +346,29 @@
         selectedServiceCode = serviceCode;
         showProviderModal(serviceId, serviceName, serviceCode);
     }
+
+    // Delegate clicks from dynamically inserted items or buttons using data attributes
+    function initServiceDelegation() {
+        const containers = [];
+        const prod = document.getElementById('productList');
+        if (prod) containers.push(prod);
+        const pop = document.getElementById('popularSection');
+        if (pop) containers.push(pop);
+
+        containers.forEach(container => {
+            container.addEventListener('click', function (e) {
+                const btn = e.target.closest('.service-item-btn');
+                if (!btn) return;
+                const id = btn.getAttribute('data-service-id') || '';
+                const name = btn.getAttribute('data-service-title') || '';
+                const code = btn.getAttribute('data-service-code') || '';
+                handleServiceClick(id, name, code);
+            });
+        });
+    }
+
+    // initialize delegation now that DOM is loaded (script placed at end of body)
+    try { initServiceDelegation(); } catch (e) { console.error('initServiceDelegation', e); }
 
     // Close on escape / outside click
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeProviderModal(); });
