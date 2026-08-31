@@ -769,19 +769,44 @@ document.addEventListener('keydown', function (e) { if (e.key === 'Escape') clos
 // ── Provider modal ────────────────────────────────────────
 var selectedServiceId = null, selectedServiceName = null, selectedServiceCode = null;
 function showProviderModal(serviceId, serviceName, serviceCode) {
+    // If the user already picked a provider for this service, skip the modal
+    try {
+        const key = 'preferredProvider:' + (serviceCode || serviceId || '');
+        const saved = localStorage.getItem(key);
+        if (saved) {
+            // navigate directly
+            navigateToProvider(saved, serviceId, serviceCode);
+            return;
+        }
+    } catch (e) {
+        // ignore localStorage errors and show modal
+    }
+
     selectedServiceId = serviceId; selectedServiceName = serviceName; selectedServiceCode = serviceCode;
     document.getElementById('modalServiceTitle').textContent = serviceName;
     var m = document.getElementById('providerModal'); m.classList.remove('hidden'); m.classList.add('flex');
 }
 function closeProviderModal() { var m = document.getElementById('providerModal'); m.classList.add('hidden'); m.classList.remove('flex'); }
 function selectProvider(provider) {
+    // persist user's provider choice for this service so modal is skipped next time
+    try {
+        const key = 'preferredProvider:' + (selectedServiceCode || selectedServiceId || '');
+        if (key) localStorage.setItem(key, provider);
+    } catch (e) {
+        // ignore storage errors
+    }
+
+    navigateToProvider(provider, selectedServiceId, selectedServiceCode);
+}
+
+function navigateToProvider(provider, serviceId, serviceCode) {
     if (provider === 'provider1') {
-        window.location.href = '/app/services/' + selectedServiceCode + '/provider1/countries';
+        window.location.href = '/app/services/' + (serviceCode || serviceId) + '/provider1/countries';
     } else if (provider === 'provider2') {
-        window.location.href = '/app/services/' + selectedServiceCode + '/provider2/rank';
+        window.location.href = '/app/services/' + (serviceCode || serviceId) + '/provider2/rank';
     } else {
         // provider3 = SMS-Bus
-        window.location.href = '/app/services/' + selectedServiceId + '/countries-provider3';
+        window.location.href = '/app/services/' + (serviceCode || serviceId) + '/countries-provider3';
     }
 }
 function openSocialModal()  { document.getElementById('socialModal').classList.remove('hidden'); }

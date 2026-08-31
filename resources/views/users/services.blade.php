@@ -278,6 +278,16 @@
     let selectedServiceCode = null;
 
     function showProviderModal(serviceId, serviceName, serviceCode) {
+        // skip modal if user already selected a preferred provider for this service
+        try {
+            const key = 'preferredProvider:' + (serviceCode || serviceId || '');
+            const saved = localStorage.getItem(key);
+            if (saved) {
+                navigateToProvider(saved, serviceId, serviceCode);
+                return;
+            }
+        } catch (e) { /* ignore storage errors */ }
+
         selectedServiceId   = serviceId;
         selectedServiceName = serviceName;
         selectedServiceCode = serviceCode;
@@ -290,14 +300,19 @@
     }
 
     function selectProvider(provider) {
+        // persist preference
+        try { const key = 'preferredProvider:' + (selectedServiceCode || selectedServiceId || ''); if (key) localStorage.setItem(key, provider); } catch(e){}
         closeProviderModal();
+        navigateToProvider(provider, selectedServiceId, selectedServiceCode);
+    }
+
+    function navigateToProvider(provider, serviceId, serviceCode) {
         if (provider === 'provider1') {
-            window.location.href = `/app/services/${selectedServiceCode}/provider1/countries`;
+            window.location.href = `/app/services/${serviceCode || serviceId}/provider1/countries`;
         } else if (provider === 'provider2') {
-            window.location.href = `/app/services/${selectedServiceCode}/provider2/rank`;
+            window.location.href = `/app/services/${serviceCode || serviceId}/provider2/rank`;
         } else {
-            // provider3 = SMS-Bus (old provider2)
-            window.location.href = `/app/services/${selectedServiceId}/countries-provider3`;
+            window.location.href = `/app/services/${serviceCode || serviceId}/countries-provider3`;
         }
     }
 
