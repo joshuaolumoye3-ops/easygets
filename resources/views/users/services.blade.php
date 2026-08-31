@@ -353,7 +353,15 @@
         isLoading = true;
         document.getElementById('loading').classList.remove('hidden');
 
-        fetch(`${window.location.pathname}?page=${nextPage}&ajax=1`, {
+        // include provider filter (URL or preferred) so next pages come from provider-specific endpoint
+        const params = new URLSearchParams();
+        params.set('page', nextPage);
+        params.set('ajax', '1');
+        const urlProvider = new URLSearchParams(window.location.search).get('provider');
+        const preferred = urlProvider || getPreferredProvider('', '');
+        if (preferred) params.set('provider', preferred);
+
+        fetch(`${window.location.pathname}?${params.toString()}`, {
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
         })
         .then(r => r.json())
@@ -399,6 +407,10 @@
 
         const url = new URL(window.location);
         filter ? url.searchParams.set('search', filter) : url.searchParams.delete('search');
+        // ensure provider param is preserved (or injected from preference)
+        const urlProvider = new URLSearchParams(window.location.search).get('provider');
+        const preferred = urlProvider || getPreferredProvider('', '');
+        if (preferred) url.searchParams.set('provider', preferred); else url.searchParams.delete('provider');
         window.history.replaceState({}, '', url);
 
         document.getElementById('loading').classList.remove('hidden');
