@@ -91,9 +91,7 @@
                             <div class="text-right flex-shrink-0 ml-4">
                                 <div class="flex items-center space-x-2">
                                     <div>
-                                        <p class="text-lg font-bold text-green-600">
-                                            ₦{{ number_format($country['cost'], 2) }}
-                                        </p>
+                                        <p class="text-sm font-semibold text-green-600 whitespace-nowrap">View listings</p>
                                     </div>
 
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-green-600 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor">
