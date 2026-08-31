@@ -48,11 +48,68 @@ class CountryController extends Controller
     // ═══════════════════════════════════════════════════════════
     public function showServices(Request $request)
     {
+        $requestedProvider = $request->input('provider');
         $token = env('SMSBUS_TOKEN');
         $cacheKey = 'smsbus_services';
         $backupCacheKey = 'smsbus_services_backup';
 
         $products = Cache::get($cacheKey);
+
+        // If a specific provider was requested, we'll load provider-scoped services
+        if (!empty($requestedProvider)) {
+            $requestedProvider = strtolower($requestedProvider);
+
+            if ($requestedProvider === '5sim') {
+                // Load products from local DB for Provider 1 (5sim)
+                $dbProducts = Product::whereHas('provider', function ($q) {
+                    $q->where('api_identifier', '5sim');
+                })->where('is_active', true)->get();
+
+                $iconMap = $this->getServiceIconMap();
+                $products = $dbProducts->map(function ($p) use ($iconMap) {
+                    $code = strtolower($p->product_code ?: ($p->name ?? '')); 
+                    $iconUrl = $iconMap[$code] ?? null;
+                    if (!$iconUrl) {
+                        $initials = strtoupper(substr($p->name ?? $code, 0, 2));
+                        $colors = ['10b981', '3b82f6', '8b5cf6', 'f59e0b', 'ef4444', '06b6d4'];
+                        $color = $colors[crc32($code) % count($colors)];
+                        $iconUrl = "https://ui-avatars.com/api/?name={$initials}&background={$color}&color=ffffff&size=96&format=svg";
+                    }
+
+                    return [
+                        'id' => $p->id,
+                        'title' => $p->name,
+                        'code' => $p->product_code ?? $code,
+                        'icon_url' => $iconUrl,
+                        'large_icon_url' => $iconUrl,
+                    ];
+                })->values();
+            } elseif ($requestedProvider === 'smsbower') {
+                // Use SmsBower service list
+                $smsBowerServices = SmsBowerHelper::getServices();
+                $iconMap = $this->getServiceIconMap();
+                $products = collect($smsBowerServices)->map(function ($s) use ($iconMap) {
+                    $code = strtolower($s['code'] ?? ($s['name'] ?? ''));
+                    $iconUrl = $iconMap[$code] ?? null;
+                    if (!$iconUrl) {
+                        $initials = strtoupper(substr($s['name'] ?? $code, 0, 2));
+                        $colors = ['10b981', '3b82f6', '8b5cf6', 'f59e0b', 'ef4444', '06b6d4'];
+                        $color = $colors[crc32($code) % count($colors)];
+                        $iconUrl = "https://ui-avatars.com/api/?name={$initials}&background={$color}&color=ffffff&size=96&format=svg";
+                    }
+                    return [
+                        'id' => 'sb_' . $code,
+                        'title' => $s['name'] ?? ucfirst($code),
+                        'code' => $code,
+                        'icon_url' => $iconUrl,
+                        'large_icon_url' => $iconUrl,
+                    ];
+                })->values();
+
+            } else {
+                // For smsbus or unknown, fall back to the existing sms-bus list below
+            }
+        }
 
         if (!$products || $products->isEmpty()) {
             try {
@@ -114,7 +171,8 @@ class CountryController extends Controller
 
         // Bring in any SMSBower services that aren't already in the SMS-Bus list,
         // so they show up in "All Services" and are searchable — Provider 2 only.
-        if (!empty(env('SMSBOWER_API_KEY'))) {
+        // Only merge these extras when no specific provider filter was requested.
+        if (empty($requestedProvider) && !empty(env('SMSBOWER_API_KEY'))) {
             $smsBowerServices = Cache::remember('smsbower_services_list', 3600, function () {
                 return SmsBowerHelper::getServices();
             });
@@ -206,6 +264,7 @@ class CountryController extends Controller
             'hasFivesim' => !empty(env('FIVESIM_TOKEN')) && $this->providerIsAvailable($fivesimProvider),
             'hasSmsBower' => !empty(env('SMSBOWER_API_KEY')) && $this->providerIsAvailable($smsbowerProvider),
             'hasSmsbus' => !empty(env('SMSBUS_TOKEN')) && $this->providerIsAvailable($smsbusProvider),
+            'activeProvider' => $requestedProvider ?? null,
         ]);
     }
 
@@ -1760,7 +1819,7 @@ class CountryController extends Controller
                 : '<img src="' . $product['icon_url'] . '" alt="' . htmlspecialchars($product['title']) . '" class="w-6 h-6 object-contain" loading="lazy" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';">
                    <div class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold" style="display: none;">' . strtoupper(substr($product['title'], 0, 2)) . '</div>';
 
-            $html .= '<button onclick="showProviderModal(\'' . $product['id'] . '\', \'' . addslashes($product['title']) . '\', \'' . strtolower($product['code']) . '\')" class="w-full block group">
+            $html .= '<button onclick="handleServiceClick(\'' . $product['id'] . '\', \'' . addslashes($product['title']) . '\', \'' . strtolower($product['code']) . '\')" class="w-full block group">
                 <div class="flex items-center space-x-4 p-4 border border-gray-100 rounded-xl hover:border-green-200 hover:bg-green-50/50 transition-all duration-200 group-hover:shadow-sm">
                     <div class="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0 group-hover:bg-white transition-colors duration-200">' . $iconDisplay . '</div>
                     <div class="flex-1 min-w-0">
