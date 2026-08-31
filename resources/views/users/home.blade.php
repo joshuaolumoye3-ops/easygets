@@ -768,18 +768,27 @@ document.addEventListener('keydown', function (e) { if (e.key === 'Escape') clos
 
 // ── Provider modal ────────────────────────────────────────
 var selectedServiceId = null, selectedServiceName = null, selectedServiceCode = null;
+
+function getPreferredProvider(serviceCode, serviceId) {
+    try {
+        const keys = [];
+        if (serviceCode) keys.push('preferredProvider:' + serviceCode);
+        if (serviceId)   keys.push('preferredProvider:' + serviceId);
+        keys.push('preferredProvider:');
+        for (const k of keys) {
+            const v = localStorage.getItem(k);
+            if (v) return v;
+        }
+    } catch (e) { /* ignore */ }
+    return null;
+}
+
 function showProviderModal(serviceId, serviceName, serviceCode) {
     // If the user already picked a provider for this service, skip the modal
-    try {
-        const key = 'preferredProvider:' + (serviceCode || serviceId || '');
-        const saved = localStorage.getItem(key);
-        if (saved) {
-            // navigate directly
-            navigateToProvider(saved, serviceId, serviceCode);
-            return;
-        }
-    } catch (e) {
-        // ignore localStorage errors and show modal
+    const saved = getPreferredProvider(serviceCode, serviceId);
+    if (saved) {
+        navigateToProvider(saved, serviceId, serviceCode);
+        return;
     }
 
     selectedServiceId = serviceId; selectedServiceName = serviceName; selectedServiceCode = serviceCode;

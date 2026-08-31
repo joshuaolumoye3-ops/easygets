@@ -277,16 +277,29 @@
     let selectedServiceName = null;
     let selectedServiceCode = null;
 
-    function showProviderModal(serviceId, serviceName, serviceCode) {
-        // skip modal if user already selected a preferred provider for this service
+    function getPreferredProvider(serviceCode, serviceId) {
         try {
-            const key = 'preferredProvider:' + (serviceCode || serviceId || '');
-            const saved = localStorage.getItem(key);
-            if (saved) {
-                navigateToProvider(saved, serviceId, serviceCode);
-                return;
+            // check specific keys first, then fallback to global empty key
+            const keys = [];
+            if (serviceCode) keys.push('preferredProvider:' + serviceCode);
+            if (serviceId)   keys.push('preferredProvider:' + serviceId);
+            keys.push('preferredProvider:');
+
+            for (const k of keys) {
+                const v = localStorage.getItem(k);
+                if (v) return v;
             }
         } catch (e) { /* ignore storage errors */ }
+        return null;
+    }
+
+    function showProviderModal(serviceId, serviceName, serviceCode) {
+        // skip modal if user already selected a preferred provider for this service or globally
+        const saved = getPreferredProvider(serviceCode, serviceId);
+        if (saved) {
+            navigateToProvider(saved, serviceId, serviceCode);
+            return;
+        }
 
         selectedServiceId   = serviceId;
         selectedServiceName = serviceName;
@@ -300,8 +313,11 @@
     }
 
     function selectProvider(provider) {
-        // persist preference
-        try { const key = 'preferredProvider:' + (selectedServiceCode || selectedServiceId || ''); if (key) localStorage.setItem(key, provider); } catch(e){}
+        // persist preference (per-service if available, otherwise global)
+        try {
+            const key = 'preferredProvider:' + (selectedServiceCode || selectedServiceId || '');
+            if (key) localStorage.setItem(key, provider);
+        } catch(e){}
         closeProviderModal();
         navigateToProvider(provider, selectedServiceId, selectedServiceCode);
     }
@@ -387,7 +403,17 @@
 
         document.getElementById('loading').classList.remove('hidden');
 
-        fetch(`?search=${encodeURIComponent(filter)}&ajax=1`, {
+        // include provider filter from URL or preferred provider
+        const params = new URLSearchParams();
+        params.set('ajax', '1');
+        if (filter) params.set('search', filter);
+
+        // prefer URL provider param, otherwise use stored preferred provider (global)
+        const urlProvider = new URLSearchParams(window.location.search).get('provider');
+        const preferred = urlProvider || getPreferredProvider('', '');
+        if (preferred) params.set('provider', preferred);
+
+        fetch(`?${params.toString()}`, {
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
         })
         .then(r => r.json())
@@ -415,6 +441,19 @@
             isSearching       = true;
             clearSearchBtn.classList.remove('hidden');
         }
+
+        // If user has a preferred provider globally and URL lacks provider=, redirect so server returns provider-scoped services
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const hasProviderParam = urlParams.has('provider');
+            const globalPref = getPreferredProvider('', '');
+            if (globalPref && !hasProviderParam) {
+                urlParams.set('provider', globalPref);
+                // preserve existing search param
+                const redirectUrl = window.location.pathname + '?' + urlParams.toString();
+                window.location.replace(redirectUrl);
+            }
+        } catch (e) { /* ignore */ }
     });
 </script>
 @endsection
