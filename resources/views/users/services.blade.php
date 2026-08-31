@@ -367,9 +367,31 @@
         });
     }
 
-    // initialize delegation now that DOM is loaded (script placed at end of body)
-    try { initServiceDelegation(); } catch (e) { console.error('initServiceDelegation', e); }
+    // initialize delegation on DOMContentLoaded to be safe
+    document.addEventListener('DOMContentLoaded', function () {
+        try { initServiceDelegation(); } catch (e) { console.error('initServiceDelegation', e); }
 
+        const searchTerm = new URLSearchParams(window.location.search).get('search');
+        if (searchTerm) {
+            searchInput.value = searchTerm;
+            currentSearch     = searchTerm;
+            isSearching       = true;
+            clearSearchBtn.classList.remove('hidden');
+        }
+
+        // If user has a preferred provider globally and URL lacks provider=, redirect so server returns provider-scoped services
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const hasProviderParam = urlParams.has('provider');
+            const globalPref = getPreferredProvider('', '');
+            if (globalPref && !hasProviderParam) {
+                urlParams.set('provider', globalPref);
+                // preserve existing search param
+                const redirectUrl = window.location.pathname + '?' + urlParams.toString();
+                window.location.replace(redirectUrl);
+            }
+        } catch (e) { /* ignore */ }
+    });
     // Close on escape / outside click
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeProviderModal(); });
     document.getElementById('providerModal')?.addEventListener('click', e => { if (e.target === e.currentTarget) closeProviderModal(); });
@@ -442,26 +464,21 @@
     function performSearch(filter) {
         currentSearch = filter;
         isSearching   = filter !== '';
-
         const url = new URL(window.location);
         filter ? url.searchParams.set('search', filter) : url.searchParams.delete('search');
-        // ensure provider param is preserved (or injected from preference)
-        const urlProvider = new URLSearchParams(window.location.search).get('provider');
-        const preferred = urlProvider || getPreferredProvider('', '');
-        if (preferred) url.searchParams.set('provider', preferred); else url.searchParams.delete('provider');
+
+        // prefer URL provider param, otherwise use stored preferred provider (global)
+        const providerFromUrl = new URLSearchParams(window.location.search).get('provider');
+        const provider = providerFromUrl || getPreferredProvider('', '');
+        if (provider) url.searchParams.set('provider', provider); else url.searchParams.delete('provider');
         window.history.replaceState({}, '', url);
 
         document.getElementById('loading').classList.remove('hidden');
 
-        // include provider filter from URL or preferred provider
         const params = new URLSearchParams();
         params.set('ajax', '1');
         if (filter) params.set('search', filter);
-
-        // prefer URL provider param, otherwise use stored preferred provider (global)
-        const urlProvider = new URLSearchParams(window.location.search).get('provider');
-        const preferred = urlProvider || getPreferredProvider('', '');
-        if (preferred) params.set('provider', preferred);
+        if (provider) params.set('provider', provider);
 
         fetch(`?${params.toString()}`, {
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
