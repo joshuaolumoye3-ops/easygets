@@ -64,7 +64,8 @@
                     <button
                         onclick="buyNow('{{ addslashes($country['country_id']) }}', '{{ addslashes($country['title']) }}', '{{ $country['code'] }}')"
                         class="w-full block group country-item"
-                        data-country-name="{{ strtolower($country['title']) }}">
+                        data-country-name="{{ strtolower($country['title']) }}"
+                        data-country-code="{{ strtolower($country['code']) }}">
 
                         <div class="flex items-center justify-between p-4 bg-white border-2 border-gray-100 rounded-xl hover:border-green-500 hover:bg-green-50/50 transition-all duration-200 group-hover:shadow-md">
                             <div class="flex items-center space-x-4 flex-1">
@@ -141,15 +142,37 @@
     }
 
     document.getElementById('searchInput').addEventListener('input', function () {
-        const filter = this.value.toLowerCase().trim();
+        const raw = this.value || '';
+        const q = raw.toLowerCase().trim();
         const items = document.querySelectorAll('.country-item');
         let visible = 0;
 
+        // Simple alias map for common short forms
+        const aliasMap = {
+            'usa': 'united states', 'us': 'united states', 'u.s.a': 'united states',
+            'uk': 'united kingdom', 'gb': 'united kingdom',
+            'uae': 'united arab emirates',
+            'south korea': 'korea', 'korea': 'korea',
+            'drc': 'democratic republic of the congo',
+            'ivory coast': "cote d'ivoire", 'cote d ivoire': "cote d'ivoire",
+        };
+
+        const norm = (s) => String(s || '').toLowerCase().replace(/[\._,\/\\]/g, ' ').replace(/\s+/g, ' ').trim();
+        const mapped = aliasMap[q] || q;
+
         items.forEach(item => {
-            const name = item.getAttribute('data-country-name');
-            const show = name.includes(filter);
-            item.style.display = show ? 'block' : 'none';
-            if (show) visible++;
+            const name = norm(item.getAttribute('data-country-name') || '');
+            const code = String(item.getAttribute('data-country-code') || '').toLowerCase();
+
+            const matches = (
+                name.includes(mapped) ||
+                name.includes(q) ||
+                code === q ||
+                code === mapped
+            );
+
+            item.style.display = matches ? 'block' : 'none';
+            if (matches) visible++;
         });
 
         document.getElementById('countryCount').textContent = visible + ' countries';

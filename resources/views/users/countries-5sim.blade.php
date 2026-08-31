@@ -60,8 +60,8 @@
             <h2 class="text-xl font-bold text-gray-800 mb-4">Available Countries</h2>
             <div id="countryList" class="space-y-3">
                 @forelse ($countries as $country)
-                    <a href="{{ route('operators.provider1', ['serviceCode' => $serviceCode, 'country' => $country['name']]) }}" 
-                       class="block group country-item" data-country-name="{{ strtolower($country['name']) }}">
+                    <a href="{{ route('operators.provider1', ['serviceCode' => $serviceCode, 'country' => $country['name']]) }} " 
+                       class="block group country-item" data-country-name="{{ strtolower($country['name']) }}" data-country-code="{{ strtolower($country['code']) }}">
                         <div class="flex items-center justify-between p-4 bg-white border-2 border-gray-100 rounded-xl hover:border-blue-500 hover:bg-blue-50/50 transition-all duration-200 group-hover:shadow-md">
                             <div class="flex items-center space-x-4 flex-1">
                                 <img class="w-12 h-12 rounded-full object-cover shadow-sm" 
@@ -141,13 +141,34 @@
 
     // Search functionality
     document.getElementById('searchInput')?.addEventListener('input', function () {
-        const filter = this.value.toLowerCase().trim();
+        const raw = this.value || '';
+        const q = raw.toLowerCase().trim();
         const items = document.querySelectorAll('.country-item');
         let visibleCount = 0;
-        
+
+        const aliasMap = {
+            'usa': 'united states', 'us': 'united states', 'u.s.a': 'united states',
+            'uk': 'united kingdom', 'gb': 'united kingdom',
+            'uae': 'united arab emirates',
+            'drc': 'democratic republic of the congo',
+            'ivory coast': "cote d'ivoire", 'cote d ivoire': "cote d'ivoire",
+        };
+
+        const norm = (s) => String(s || '').toLowerCase().replace(/[\._,\/\\]/g, ' ').replace(/\s+/g, ' ').trim();
+        const mapped = aliasMap[q] || q;
+
         items.forEach(item => {
-            const countryName = item.getAttribute('data-country-name');
-            if (countryName.includes(filter)) {
+            const countryName = norm(item.getAttribute('data-country-name') || '');
+            const countryCode = String(item.getAttribute('data-country-code') || '').toLowerCase();
+
+            const match = (
+                countryName.includes(mapped) ||
+                countryName.includes(q) ||
+                countryCode === q ||
+                countryCode === mapped
+            );
+
+            if (match) {
                 item.style.display = 'block';
                 visibleCount++;
             } else {
