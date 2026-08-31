@@ -297,7 +297,7 @@
 
         {{-- Action Buttons --}}
         <div class="grid grid-cols-2 gap-4">
-            <button onclick="window.location.href='services'"
+            <button onclick="showProviderModal('', 'Get Number', '')"
                     class="bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-700 transition-colors">
                 Get Number
             </button>
@@ -800,13 +800,26 @@ function selectProvider(provider) {
 }
 
 function navigateToProvider(provider, serviceId, serviceCode) {
+    const target = (serviceCode || serviceId);
+    if (!target) {
+        // No specific service selected — go to services list filtered by provider
+        if (provider === 'provider1') {
+            window.location.href = '/app/services?provider=provider1';
+        } else if (provider === 'provider2') {
+            window.location.href = '/app/services?provider=provider2';
+        } else {
+            window.location.href = '/app/services?provider=provider3';
+        }
+        return;
+    }
+
     if (provider === 'provider1') {
-        window.location.href = '/app/services/' + (serviceCode || serviceId) + '/provider1/countries';
+        window.location.href = '/app/services/' + target + '/provider1/countries';
     } else if (provider === 'provider2') {
-        window.location.href = '/app/services/' + (serviceCode || serviceId) + '/provider2/rank';
+        window.location.href = '/app/services/' + target + '/provider2/rank';
     } else {
         // provider3 = SMS-Bus
-        window.location.href = '/app/services/' + (serviceCode || serviceId) + '/countries-provider3';
+        window.location.href = '/app/services/' + target + '/countries-provider3';
     }
 }
 function openSocialModal()  { document.getElementById('socialModal').classList.remove('hidden'); }
