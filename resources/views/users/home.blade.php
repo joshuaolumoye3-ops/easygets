@@ -297,7 +297,7 @@
 
         {{-- Action Buttons --}}
         <div class="grid grid-cols-2 gap-4">
-            <button onclick="showProviderModal('', 'Get Number', '')"
+            <button onclick="showProviderModalForce('', 'Get Number', '')"
                     class="bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-700 transition-colors">
                 Get Number
             </button>
@@ -794,6 +794,18 @@ function showProviderModal(serviceId, serviceName, serviceCode) {
     selectedServiceId = serviceId; selectedServiceName = serviceName; selectedServiceCode = serviceCode;
     document.getElementById('modalServiceTitle').textContent = serviceName;
     var m = document.getElementById('providerModal'); m.classList.remove('hidden'); m.classList.add('flex');
+}
+// Force-open provider modal regardless of stored preference (used by Get Number)
+function showProviderModalForce(serviceId, serviceName, serviceCode) {
+    try {
+        selectedServiceId = serviceId; selectedServiceName = serviceName; selectedServiceCode = serviceCode;
+        document.getElementById('modalServiceTitle').textContent = serviceName || 'Select Provider';
+        var m = document.getElementById('providerModal'); if (m) { m.classList.remove('hidden'); m.classList.add('flex'); }
+    } catch (e) {
+        console.error('showProviderModalForce error', e);
+        // fallback to normal flow
+        showProviderModal(serviceId, serviceName, serviceCode);
+    }
 }
 function closeProviderModal() { var m = document.getElementById('providerModal'); m.classList.add('hidden'); m.classList.remove('flex'); }
 function selectProvider(provider) {
