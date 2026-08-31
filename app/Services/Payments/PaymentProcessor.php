@@ -113,11 +113,33 @@ class PaymentProcessor
                     return ['status' => 'failed', 'message' => 'Wallet not found.'];
                 }
 
-                $wallet->increment('balance', $amount);
+                // The user originally requested to add a specific amount when
+                // creating the pending Transaction row. If the customer paid
+                // more than that (overpayment) we should only credit the
+                // wallet with the originally requested amount — Korapay will
+                // handle the refund of the excess back to the customer. If
+                // they paid less, credit what we actually received.
+                $requestedAmount = (float) $transaction->amount;
+                $paidAmount = $amount;
+
+                $creditAmount = min($paidAmount, $requestedAmount);
+
+                if ($creditAmount <= 0) {
+                    Log::error('Korapay: computed zero/negative credit amount', ['reference' => $reference, 'paid' => $paidAmount, 'requested' => $requestedAmount]);
+                    return ['status' => 'failed', 'message' => 'Invalid credited amount.'];
+                }
+
+                $wallet->increment('balance', $creditAmount);
 
                 $transaction->status = 'success';
-                $transaction->amount = $amount; // trust the verified amount, not the original request amount
-                $transaction->response = json_encode($verifiedData);
+                // Preserve the original requested amount in `amount` so UI/records
+                // keep showing what the user asked for. Store the payment
+                // details (paid + credited) inside `response` for auditing.
+                $transaction->response = array_merge($verifiedData, [
+                    'paid_amount'    => $paidAmount,
+                    'credited_amount'=> $creditAmount,
+                    'requested_amount'=> $requestedAmount,
+                ]);
                 $transaction->save();
 
                 Log::info('Korapay: wallet credited (one-time checkout)', [
