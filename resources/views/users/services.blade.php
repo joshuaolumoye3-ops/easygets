@@ -339,7 +339,11 @@
         } else if (provider === 'provider2') {
             window.location.href = `/app/services/${serviceCode || serviceId}/provider2/rank`;
         } else {
-            window.location.href = `/app/services/${serviceCode || serviceId}/countries-provider3`;
+            // provider3 = SMS-Bus — routes and API calls require the numeric project id,
+            // not the service code (unlike provider1/provider2). Using serviceCode here
+            // was sending e.g. "fb" into an endpoint expecting an integer projectId,
+            // which is why Provider 3 was returning no countries.
+            window.location.href = `/app/services/${serviceId}/countries-provider3`;
         }
     }
 

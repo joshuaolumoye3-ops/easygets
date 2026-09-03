@@ -821,27 +821,27 @@ function selectProvider(provider) {
 }
 
 function navigateToProvider(provider, serviceId, serviceCode) {
-    const target = (serviceCode || serviceId);
-    if (!target) {
-        // No specific service selected — go to services list filtered by provider
+    if (provider === 'provider1' || provider === 'provider2') {
+        const target = (serviceCode || serviceId);
+        if (!target) {
+            window.location.href = '/app/services?provider=' + provider;
+            return;
+        }
         if (provider === 'provider1') {
-            window.location.href = '/app/services?provider=provider1';
-        } else if (provider === 'provider2') {
-            window.location.href = '/app/services?provider=provider2';
+            window.location.href = '/app/services/' + target + '/provider1/countries';
         } else {
-            window.location.href = '/app/services?provider=provider3';
+            window.location.href = '/app/services/' + target + '/provider2/rank';
         }
         return;
     }
 
-    if (provider === 'provider1') {
-        window.location.href = '/app/services/' + target + '/provider1/countries';
-    } else if (provider === 'provider2') {
-        window.location.href = '/app/services/' + target + '/provider2/rank';
-    } else {
-        // provider3 = SMS-Bus
-        window.location.href = '/app/services/' + target + '/countries-provider3';
+    // provider3 = SMS-Bus — MUST use the numeric project id, never the text code,
+    // because every SMS-Bus endpoint (prices, purchase) keys off projectId/service:integer.
+    if (!serviceId) {
+        window.location.href = '/app/services?provider=provider3';
+        return;
     }
+    window.location.href = '/app/services/' + serviceId + '/countries-provider3';
 }
 function openSocialModal()  { document.getElementById('socialModal').classList.remove('hidden'); }
 function closeSocialModal() { document.getElementById('socialModal').classList.add('hidden'); }
