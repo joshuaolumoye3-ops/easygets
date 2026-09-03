@@ -48,7 +48,12 @@ class CountryController extends Controller
     // ═══════════════════════════════════════════════════════════
     public function showServices(Request $request)
     {
-        $requestedProvider = $request->input('provider');
+        // What the front-end actually sent: 'provider1' | 'provider2' | 'provider3' | null
+        $requestedProviderSlug = $this->normalizeProviderSlug($request->input('provider'));
+
+        // Internal identifier used by the branching logic below: '5sim' | 'smsbower' | 'smsbus' | null
+        $requestedProvider = $this->providerSlugToInternal($requestedProviderSlug);
+
         $token = env('SMSBUS_TOKEN');
         $cacheKey = 'smsbus_services';
         $backupCacheKey = 'smsbus_services_backup';
@@ -57,9 +62,7 @@ class CountryController extends Controller
 
         // If a specific provider was requested, we'll load provider-scoped services
         if (!empty($requestedProvider)) {
-            $requestedProvider = strtolower($requestedProvider);
-
-            if ($requestedProvider === '5sim') {
+            if ($requestedProvider === self::PROVIDER_5SIM) {
                 // Load products from local DB for Provider 1 (5sim)
                 $dbProducts = Product::whereHas('provider', function ($q) {
                     $q->where('api_identifier', '5sim');
@@ -67,7 +70,7 @@ class CountryController extends Controller
 
                 $iconMap = $this->getServiceIconMap();
                 $products = $dbProducts->map(function ($p) use ($iconMap) {
-                    $code = strtolower($p->product_code ?: ($p->name ?? '')); 
+                    $code = strtolower($p->product_code ?: ($p->name ?? ''));
                     $iconUrl = $iconMap[$code] ?? null;
                     if (!$iconUrl) {
                         $initials = strtoupper(substr($p->name ?? $code, 0, 2));
@@ -84,9 +87,12 @@ class CountryController extends Controller
                         'large_icon_url' => $iconUrl,
                     ];
                 })->values();
-            } elseif ($requestedProvider === 'smsbower') {
-                // Use SmsBower service list
-                $smsBowerServices = SmsBowerHelper::getServices();
+            } elseif ($requestedProvider === self::PROVIDER_SMSBOWER) {
+                // Use SmsBower's live "get services" endpoint
+                $smsBowerServices = Cache::remember('smsbower_services_list', 3600, function () {
+                    return SmsBowerHelper::getServices();
+                });
+
                 $iconMap = $this->getServiceIconMap();
                 $products = collect($smsBowerServices)->map(function ($s) use ($iconMap) {
                     $code = strtolower($s['code'] ?? ($s['name'] ?? ''));
@@ -105,9 +111,9 @@ class CountryController extends Controller
                         'large_icon_url' => $iconUrl,
                     ];
                 })->values();
-
             } else {
-                // For smsbus or unknown, fall back to the existing sms-bus list below
+                // provider3 (smsbus) — fall through to the SMS-Bus "list projects" fetch below,
+                // which is the correct live endpoint for that provider.
             }
         }
 
@@ -170,8 +176,9 @@ class CountryController extends Controller
         });
 
         // Bring in any SMSBower services that aren't already in the SMS-Bus list,
-        // so they show up in "All Services" and are searchable — Provider 2 only.
-        // Only merge these extras when no specific provider filter was requested.
+        // so they show up in the unfiltered "All Services" page and are searchable.
+        // Only merge these extras when NO specific provider filter was requested —
+        // a provider1/provider2/provider3 filtered view must stay pure to that provider.
         if (empty($requestedProvider) && !empty(env('SMSBOWER_API_KEY'))) {
             $smsBowerServices = Cache::remember('smsbower_services_list', 3600, function () {
                 return SmsBowerHelper::getServices();
@@ -248,6 +255,7 @@ class CountryController extends Controller
                 'current_page' => $page,
                 'total' => $others->count(),
                 'is_searching' => $isSearching,
+                'active_provider' => $requestedProviderSlug,
             ]);
         }
 
@@ -264,7 +272,7 @@ class CountryController extends Controller
             'hasFivesim' => !empty(env('FIVESIM_TOKEN')) && $this->providerIsAvailable($fivesimProvider),
             'hasSmsBower' => !empty(env('SMSBOWER_API_KEY')) && $this->providerIsAvailable($smsbowerProvider),
             'hasSmsbus' => !empty(env('SMSBUS_TOKEN')) && $this->providerIsAvailable($smsbusProvider),
-            'activeProvider' => $requestedProvider ?? null,
+            'activeProvider' => $requestedProviderSlug,
         ]);
     }
 
@@ -1856,4 +1864,40 @@ class CountryController extends Controller
     }
 
     private function fetchCountriesFromAPI(): array { return []; }
+
+/**
+ * Normalize the incoming `provider` value (from the UI: provider1/provider2/provider3,
+ * or legacy internal names 5sim/smsbower/smsbus) into a canonical UI slug.
+ * Returns null when no provider filter was requested.
+ */
+private function normalizeProviderSlug(?string $provider): ?string
+{
+    if (empty($provider)) {
+        return null;
+    }
+
+    $provider = strtolower(trim($provider));
+
+    return match ($provider) {
+        'provider1', '5sim'      => 'provider1',
+        'provider2', 'smsbower'  => 'provider2',
+        'provider3', 'smsbus'    => 'provider3',
+        default                  => null,
+    };
+}
+
+/**
+ * Map a UI provider slug (provider1/provider2/provider3) to the internal
+ * identifier used throughout the rest of this controller.
+ */
+private function providerSlugToInternal(?string $slug): ?string
+{
+    return match ($slug) {
+        'provider1' => self::PROVIDER_5SIM,
+        'provider2' => self::PROVIDER_SMSBOWER,
+        'provider3' => self::PROVIDER_SMSBUS,
+        default     => null,
+    };
+}
+
 }

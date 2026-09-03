@@ -36,6 +36,16 @@
             </button>
         </div>
 
+        @if(!empty($activeProvider))
+            <div class="mb-4 p-3 bg-yellow-50 border border-yellow-100 rounded-lg flex items-center justify-between">
+                <div class="text-sm text-yellow-800">
+                    Showing services from
+                    {{ $activeProvider === 'provider1' ? 'Provider 1' : ($activeProvider === 'provider2' ? 'Provider 2' : 'Provider 3') }}
+                </div>
+                <a href="{{ route('services.list') }}" class="text-sm text-yellow-700 underline">Show all</a>
+            </div>
+        @endif
+
         {{-- Popular Services --}}
         <div id="popularSection" class="mb-6 {{ count($popular) > 0 ? '' : 'hidden' }}">
             <h2 class="text-lg font-semibold text-gray-800 mb-4">Popular Services</h2>
@@ -271,6 +281,7 @@
     let hasMorePages  = {{ $nextPage ? 'true' : 'false' }};
     let isSearching   = {{ $isSearching ?? false ? 'true' : 'false' }};
     let currentSearch = '';
+    let activeProvider = @json($activeProvider ?? null);
 
     // Selected service state
     let selectedServiceId   = null;
@@ -332,8 +343,14 @@
         }
     }
 
-    // Handle service click: navigate directly if preferred provider exists, otherwise show modal
+    // Handle service click: if this page is already scoped to one provider,
+    // skip the picker entirely and go straight to that provider's next screen.
     function handleServiceClick(serviceId, serviceName, serviceCode) {
+        if (activeProvider) {
+            navigateToProvider(activeProvider, serviceId, serviceCode);
+            return;
+        }
+
         const pref = getPreferredProvider(serviceCode, serviceId);
         if (pref) {
             navigateToProvider(pref, serviceId, serviceCode);
@@ -413,12 +430,11 @@
         isLoading = true;
         document.getElementById('loading').classList.remove('hidden');
 
-        // include provider filter (URL or preferred) so next pages come from provider-specific endpoint
+        // include the page's provider filter so later pages come from the same provider endpoint
         const params = new URLSearchParams();
         params.set('page', nextPage);
         params.set('ajax', '1');
-        const urlProvider = new URLSearchParams(window.location.search).get('provider');
-        const preferred = urlProvider || getPreferredProvider('', '');
+        const preferred = activeProvider || getPreferredProvider('', '');
         if (preferred) params.set('provider', preferred);
 
         fetch(`${window.location.pathname}?${params.toString()}`, {
@@ -467,9 +483,9 @@
         const url = new URL(window.location);
         filter ? url.searchParams.set('search', filter) : url.searchParams.delete('search');
 
-        // prefer URL provider param, otherwise use stored preferred provider (global)
-        const providerFromUrl = new URLSearchParams(window.location.search).get('provider');
-        const provider = providerFromUrl || getPreferredProvider('', '');
+        // The provider filter for this page is fixed at load time (activeProvider),
+        // so every search stays scoped to that same provider.
+        const provider = activeProvider || getPreferredProvider('', '');
         if (provider) url.searchParams.set('provider', provider); else url.searchParams.delete('provider');
         window.history.replaceState({}, '', url);
 
@@ -491,6 +507,7 @@
             nextPage     = data.next_page;
             hasMorePages = data.has_more || false;
             isSearching  = data.is_searching || false;
+            if (data.active_provider !== undefined) activeProvider = data.active_provider;
             document.getElementById('endOfList').classList.add('hidden');
         })
         .catch(() => {
