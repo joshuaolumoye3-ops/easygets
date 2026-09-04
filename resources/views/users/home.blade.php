@@ -298,7 +298,7 @@
         {{-- Action Buttons --}}
         <div class="grid grid-cols-3 gap-3">
             <button onclick="openGetNumberChoiceModal()"
-                    class="bg-gradient-to-br from-slate-800 to-slate-900 text-white font-bold py-3.5 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2">
+                    class="bg-gradient-to-br from-[#030f0f] via-[#03624c] to-[#00df82] text-white font-bold py-3.5 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18m9-9H3"/>
                 </svg>
@@ -306,7 +306,7 @@
             </button>
 
             <button onclick="showComingSoonToast('Gift Card is coming soon.')"
-                    class="bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-500 text-white font-bold py-3.5 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2">
+                    class="bg-gradient-to-br from-[#03624c] via-[#00df82] to-[#030f0f] text-white font-bold py-3.5 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
@@ -314,7 +314,7 @@
             </button>
 
             <button onclick="window.location.href='social-boost'"
-                    class="bg-gradient-to-br from-emerald-600 to-green-700 text-white font-bold py-3.5 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2">
+                    class="bg-gradient-to-br from-[#00df82] via-[#03624c] to-[#030f0f] text-white font-bold py-3.5 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/>
                 </svg>
