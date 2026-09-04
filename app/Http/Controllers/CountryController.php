@@ -1098,11 +1098,27 @@ class CountryController extends Controller
 
     private function process5sim(array $purchase, array $split = [])
     {
-        $token = config('services.5sim.token');
+        // Prefer configuration value, but fall back to ENV in case config cache
+        // wasn't refreshed or the key wasn't loaded into config().
+        $token = config('services.5sim.token') ?: env('FIVESIM_TOKEN');
+
         if (!$token) {
-            Log::error('5sim purchase blocked: no token configured (config services.5sim.token is empty)');
+            Log::error('5sim purchase blocked: no token configured (services.5sim.token and FIVESIM_TOKEN are empty)');
             $this->refundPurchase($purchase, $split, '5sim token missing');
             return back()->withErrors('Service configuration error. Balance refunded.');
+        }
+
+        // Log a masked token and source to aid debugging without exposing secrets
+        try {
+            $mask = is_string($token) && strlen($token) > 8
+                ? substr($token, 0, 6) . '...' . substr($token, -4)
+                : '***';
+            Log::info('5sim token loaded for purchase', [
+                'token_mask' => $mask,
+                'loaded_from_config' => (bool) config('services.5sim.token'),
+            ]);
+        } catch (\Exception $e) {
+            // fail silently — not critical to block purchase
         }
 
         try {
