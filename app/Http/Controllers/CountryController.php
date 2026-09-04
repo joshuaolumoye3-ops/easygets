@@ -63,12 +63,41 @@ class CountryController extends Controller
         // If a specific provider was requested, we'll load provider-scoped services
         if (!empty($requestedProvider)) {
             if ($requestedProvider === self::PROVIDER_5SIM) {
-                // Load products from local DB for Provider 1 (5sim)
+    // Live catalog from 5sim's own "get products" endpoint.
+    $fiveSimCatalog = $this->getFiveSimServiceCatalog();
+
+    $iconMap = $this->getServiceIconMap();
+    $products = collect($fiveSimCatalog)->map(function ($s) use ($iconMap) {
+        $code = $s['code'];
+        $iconUrl = $iconMap[$code] ?? null;
+        if (!$iconUrl) {
+            $initials = strtoupper(substr($s['name'], 0, 2));
+            $colors = ['10b981', '3b82f6', '8b5cf6', 'f59e0b', 'ef4444', '06b6d4'];
+            $color = $colors[crc32($code) % count($colors)];
+            $iconUrl = "https://ui-avatars.com/api/?name={$initials}&background={$color}&color=ffffff&size=96&format=svg";
+        }
+
+        return [
+            'id' => 'fs_' . $code,
+            'title' => $s['name'],
+            'code' => $code,
+            'icon_url' => $iconUrl,
+            'large_icon_url' => $iconUrl,
+        ];
+    })->values();
+
+            // Safety net only — if 5sim's API is unreachable, fall back to whatever
+            // real (non-pricing-helper) products are curated locally, rather than
+            // showing an empty page.
+            if ($products->isEmpty()) {
+                Log::warning('5sim live catalog empty — falling back to local curated products table');
+
                 $dbProducts = Product::whereHas('provider', function ($q) {
                     $q->where('api_identifier', '5sim');
-                })->where('is_active', true)->get();
+                })->where('is_active', true)
+                ->where('product_code', '!=', 'conversion_rate')
+                ->get();
 
-                $iconMap = $this->getServiceIconMap();
                 $products = $dbProducts->map(function ($p) use ($iconMap) {
                     $code = strtolower($p->product_code ?: ($p->name ?? ''));
                     $iconUrl = $iconMap[$code] ?? null;
@@ -87,7 +116,8 @@ class CountryController extends Controller
                         'large_icon_url' => $iconUrl,
                     ];
                 })->values();
-            } elseif ($requestedProvider === self::PROVIDER_SMSBOWER) {
+            }
+            }elseif ($requestedProvider === self::PROVIDER_SMSBOWER) {
                 // Use SmsBower's live "get services" endpoint
                 $smsBowerServices = Cache::remember('smsbower_services_list', 3600, function () {
                     return SmsBowerHelper::getServices();
@@ -1898,6 +1928,64 @@ private function providerSlugToInternal(?string $slug): ?string
         'provider3' => self::PROVIDER_SMSBUS,
         default     => null,
     };
+}
+
+/**
+ * Live catalog of 5sim services via the guest "products" endpoint
+ * (country=any, operator=any). This is what Provider 1's service list
+ * should be built from — NOT the local `products` table, which only
+ * holds internal pricing rows like "conversion_rate", not real services.
+ */
+private function getFiveSimServiceCatalog(): array
+{
+    return Cache::remember('5sim_service_catalog', 3600, function () {
+        try {
+            $response = Http::timeout(30)
+                ->withOptions(['verify' => false])
+                ->get('https://5sim.net/v1/guest/products/any/any');
+
+            if (!$response->successful()) {
+                Log::error('5sim products catalog fetch failed', ['status' => $response->status()]);
+                return [];
+            }
+
+            $data = $response->json();
+            if (!is_array($data)) {
+                return [];
+            }
+
+            $catalog = [];
+            foreach ($data as $code => $details) {
+                if (!is_array($details)) {
+                    continue;
+                }
+
+                // Only real, currently-buyable activation numbers belong on
+                // the "get number" flow — skip rental/hosting categories and
+                // anything with zero stock.
+                $category = strtolower($details['Category'] ?? 'activation');
+                if ($category !== 'activation') {
+                    continue;
+                }
+
+                $qty = (int) ($details['Qty'] ?? 0);
+                if ($qty <= 0) {
+                    continue;
+                }
+
+                $catalog[] = [
+                    'code' => strtolower($code),
+                    'name' => ucfirst(str_replace(['_', '-'], ' ', $code)),
+                    'qty'  => $qty,
+                ];
+            }
+
+            return $catalog;
+        } catch (\Exception $e) {
+            Log::error('5sim products catalog exception', ['error' => $e->getMessage()]);
+            return [];
+        }
+    });
 }
 
 }
