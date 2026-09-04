@@ -432,125 +432,98 @@
                 </div>
                 <div class="p-6 space-y-4">
 
-                        {{-- Provider 1 --}}
-                        @if(!empty($hasFivesim))
-                        <button onclick="selectProvider('provider1')"
-                            class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-200">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md">EG1</div>
-                            <div class="flex-1 text-left">
-                                <h3 class="font-bold text-gray-800 group-hover:text-blue-700">Provider 1</h3>
-                                <div class="flex items-center space-x-2 mt-1">
-                                    <span class="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
-                                    <span class="text-xs text-gray-600">Global coverage, multiple operators</span>
-                                </div>
-                            </div>
-                            <svg class="w-5 h-5 text-gray-400 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                        </div>
-                    </button>
-                    @else
-                    <button disabled class="w-full p-5 border-2 border-gray-200 rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-12 h-12 bg-gray-400 rounded-lg flex items-center justify-center text-white font-bold text-lg">EG1</div>
-                            <div class="flex-1 text-left">
-                                <h3 class="font-bold text-gray-600">Provider 1 (Unavailable)</h3>
-                                <div class="flex items-center space-x-2 mt-1">
-                                    <span class="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
-                                    @if(empty($fivesimConfigOk))
-                                        <span class="text-xs text-gray-500">Not configured — contact admin</span>
-                                    @elseif(!$fivesimProviderAvailable)
-                                        <span class="text-xs text-gray-500">Provider offline — try again later</span>
-                                    @else
-                                        <span class="text-xs text-gray-500">Unavailable — contact support</span>
-                                    @endif
-                                    <div class="mt-2">
-                                        <button data-provider="fivesim" class="retry-provider inline-flex items-center px-3 py-1 rounded-md text-xs bg-white text-gray-700 border">Retry</button>
+                        {{-- Provider 1 (always rendered; enabled/disabled by class) --}}
+                        @php $p1_enabled = !empty($hasFivesim); @endphp
+                        <button {{ $p1_enabled ? "onclick=\"selectProvider('provider1')\"" : 'disabled' }}
+                            class="w-full group p-5 border-2 rounded-xl transition-all duration-200 {{ $p1_enabled ? 'border-gray-200 hover:border-blue-500 hover:bg-blue-50' : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed' }}">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-12 h-12 {{ $p1_enabled ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white' : 'bg-gray-400 text-white' }} rounded-lg flex items-center justify-center font-bold text-lg shadow-md">EG1</div>
+                                <div class="flex-1 text-left">
+                                    <h3 class="font-bold {{ $p1_enabled ? 'text-gray-800 group-hover:text-blue-700' : 'text-gray-600' }}">Provider 1</h3>
+                                    <div class="flex items-center space-x-2 mt-1">
+                                        <span class="inline-block w-2 h-2 {{ $p1_enabled ? 'bg-green-500' : 'bg-red-400' }} rounded-full"></span>
+                                        <span class="text-xs {{ $p1_enabled ? 'text-gray-600' : 'text-gray-500' }}">{{ $p1_enabled ? 'Global coverage, multiple operators' : 'Currently unavailable' }}</span>
                                     </div>
+                                    @unless($p1_enabled)
+                                    <div class="mt-2">
+                                        @if(empty($fivesimConfigOk))
+                                            <span class="text-xs text-gray-500">Not configured — contact admin</span>
+                                        @elseif(!$fivesimProviderAvailable)
+                                            <span class="text-xs text-gray-500">Provider record inactive — check admin</span>
+                                        @else
+                                            <span class="text-xs text-gray-500">Unavailable — contact support</span>
+                                        @endif
+                                        <div class="mt-2">
+                                            <button data-provider="fivesim" class="retry-provider inline-flex items-center px-3 py-1 rounded-md text-xs bg-white text-gray-700 border">Retry</button>
+                                        </div>
+                                    </div>
+                                    @endunless
                                 </div>
+                                <svg class="w-5 h-5 text-gray-400 {{ $p1_enabled ? 'group-hover:text-blue-600' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                             </div>
-                        </div>
-                    </button>
-                    @endif
+                        </button>
 
-                        {{-- Provider 2 --}}
-                        @if(!empty($hasSmsBower))
-                        <button onclick="selectProvider('provider2')"
-                            class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all duration-200">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md">EG2</div>
-                            <div class="flex-1 text-left">
-                                <h3 class="font-bold text-gray-800 group-hover:text-green-700">Provider 2</h3>
-                                <div class="flex items-center space-x-2 mt-1">
-                                    <span class="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
-                                    <span class="text-xs text-gray-600">Fast &amp; reliable</span>
-                                </div>
-                            </div>
-                            <svg class="w-5 h-5 text-gray-400 group-hover:text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                        </div>
-                    </button>
-                    @else
-                    <button disabled class="w-full p-5 border-2 border-gray-200 rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-12 h-12 bg-gray-400 rounded-lg flex items-center justify-center text-white font-bold text-lg">EG2</div>
-                            <div class="flex-1 text-left">
-                                <h3 class="font-bold text-gray-600">Provider 2 (Unavailable)</h3>
-                                <div class="flex items-center space-x-2 mt-1">
-                                    <span class="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
-                                    @if(empty($smsbowerConfigOk))
-                                        <span class="text-xs text-gray-500">Not configured — contact admin</span>
-                                    @elseif(!$smsbowerProviderAvailable)
-                                        <span class="text-xs text-gray-500">Provider offline — try again later</span>
-                                    @else
-                                        <span class="text-xs text-gray-500">Unavailable — contact support</span>
-                                    @endif
-                                    <div class="mt-2">
-                                        <button data-provider="smsbower" class="retry-provider inline-flex items-center px-3 py-1 rounded-md text-xs bg-white text-gray-700 border">Retry</button>
+                        {{-- Provider 2 (always rendered; enabled/disabled by class) --}}
+                        @php $p2_enabled = !empty($hasSmsBower); @endphp
+                        <button {{ $p2_enabled ? "onclick=\"selectProvider('provider2')\"" : 'disabled' }}
+                            class="w-full group p-5 border-2 rounded-xl transition-all duration-200 {{ $p2_enabled ? 'border-gray-200 hover:border-green-500 hover:bg-green-50' : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed' }}">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-12 h-12 {{ $p2_enabled ? 'bg-gradient-to-br from-green-500 to-green-600 text-white' : 'bg-gray-400 text-white' }} rounded-lg flex items-center justify-center font-bold text-lg shadow-md">EG2</div>
+                                <div class="flex-1 text-left">
+                                    <h3 class="font-bold {{ $p2_enabled ? 'text-gray-800 group-hover:text-green-700' : 'text-gray-600' }}">Provider 2</h3>
+                                    <div class="flex items-center space-x-2 mt-1">
+                                        <span class="inline-block w-2 h-2 {{ $p2_enabled ? 'bg-green-500' : 'bg-red-400' }} rounded-full"></span>
+                                        <span class="text-xs {{ $p2_enabled ? 'text-gray-600' : 'text-gray-500' }}">{{ $p2_enabled ? 'Fast & reliable' : 'Currently unavailable' }}</span>
                                     </div>
+                                    @unless($p2_enabled)
+                                    <div class="mt-2">
+                                        @if(empty($smsbowerConfigOk))
+                                            <span class="text-xs text-gray-500">Not configured — contact admin</span>
+                                        @elseif(!$smsbowerProviderAvailable)
+                                            <span class="text-xs text-gray-500">Provider record inactive — check admin</span>
+                                        @else
+                                            <span class="text-xs text-gray-500">Unavailable — contact support</span>
+                                        @endif
+                                        <div class="mt-2">
+                                            <button data-provider="smsbower" class="retry-provider inline-flex items-center px-3 py-1 rounded-md text-xs bg-white text-gray-700 border">Retry</button>
+                                        </div>
+                                    </div>
+                                    @endunless
                                 </div>
+                                <svg class="w-5 h-5 text-gray-400 {{ $p2_enabled ? 'group-hover:text-green-600' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                             </div>
-                        </div>
-                    </button>
-                    @endif
+                        </button>
 
-                        {{-- Provider 3 --}}
-                        @if(!empty($hasSmsbus))
-                        <button onclick="selectProvider('provider3')"
-                            class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all duration-200">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md">EG3</div>
-                            <div class="flex-1 text-left">
-                                <h3 class="font-bold text-gray-800 group-hover:text-purple-700">Provider 3</h3>
-                                <div class="flex items-center space-x-2 mt-1">
-                                    <span class="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
-                                    <span class="text-xs text-gray-600">Wide country coverage</span>
-                                </div>
-                            </div>
-                            <svg class="w-5 h-5 text-gray-400 group-hover:text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                        </div>
-                    </button>
-                    @else
-                    <button disabled class="w-full p-5 border-2 border-gray-200 rounded-xl bg-gray-100 text-gray-400 cursor-not-allowed">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-12 h-12 bg-gray-400 rounded-lg flex items-center justify-center text-white font-bold text-lg">EG3</div>
-                            <div class="flex-1 text-left">
-                                <h3 class="font-bold text-gray-600">Provider 3 (Unavailable)</h3>
-                                <div class="flex items-center space-x-2 mt-1">
-                                    <span class="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
-                                    @if(empty($smsbusConfigOk))
-                                        <span class="text-xs text-gray-500">Not configured — contact admin</span>
-                                    @elseif(!$smsbusProviderAvailable)
-                                        <span class="text-xs text-gray-500">Provider offline — try again later</span>
-                                    @else
-                                        <span class="text-xs text-gray-500">Unavailable — contact support</span>
-                                    @endif
-                                    <div class="mt-2">
-                                        <button data-provider="smsbus" class="retry-provider inline-flex items-center px-3 py-1 rounded-md text-xs bg-white text-gray-700 border">Retry</button>
+                        {{-- Provider 3 (always rendered; enabled/disabled by class) --}}
+                        @php $p3_enabled = !empty($hasSmsbus); @endphp
+                        <button {{ $p3_enabled ? "onclick=\"selectProvider('provider3')\"" : 'disabled' }}
+                            class="w-full group p-5 border-2 rounded-xl transition-all duration-200 {{ $p3_enabled ? 'border-gray-200 hover:border-purple-500 hover:bg-purple-50' : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed' }}">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-12 h-12 {{ $p3_enabled ? 'bg-gradient-to-br from-purple-500 to-purple-600 text-white' : 'bg-gray-400 text-white' }} rounded-lg flex items-center justify-center font-bold text-lg shadow-md">EG3</div>
+                                <div class="flex-1 text-left">
+                                    <h3 class="font-bold {{ $p3_enabled ? 'text-gray-800 group-hover:text-purple-700' : 'text-gray-600' }}">Provider 3</h3>
+                                    <div class="flex items-center space-x-2 mt-1">
+                                        <span class="inline-block w-2 h-2 {{ $p3_enabled ? 'bg-green-500' : 'bg-red-400' }} rounded-full"></span>
+                                        <span class="text-xs {{ $p3_enabled ? 'text-gray-600' : 'text-gray-500' }}">{{ $p3_enabled ? 'Wide country coverage' : 'Currently unavailable' }}</span>
                                     </div>
+                                    @unless($p3_enabled)
+                                    <div class="mt-2">
+                                        @if(empty($smsbusConfigOk))
+                                            <span class="text-xs text-gray-500">Not configured — contact admin</span>
+                                        @elseif(!$smsbusProviderAvailable)
+                                            <span class="text-xs text-gray-500">Provider record inactive — check admin</span>
+                                        @else
+                                            <span class="text-xs text-gray-500">Unavailable — contact support</span>
+                                        @endif
+                                        <div class="mt-2">
+                                            <button data-provider="smsbus" class="retry-provider inline-flex items-center px-3 py-1 rounded-md text-xs bg-white text-gray-700 border">Retry</button>
+                                        </div>
+                                    </div>
+                                    @endunless
                                 </div>
+                                <svg class="w-5 h-5 text-gray-400 {{ $p3_enabled ? 'group-hover:text-purple-600' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                             </div>
-                        </div>
-                    </button>
-                    @endif
+                        </button>
 
                 </div>
                 <div class="bg-gray-50 px-6 py-4 border-t border-gray-100">
