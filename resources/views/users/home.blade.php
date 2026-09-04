@@ -297,7 +297,7 @@
 
         {{-- Action Buttons --}}
         <div class="grid grid-cols-2 gap-4">
-            <button onclick="showProviderModalForce('', 'Get Number', '')"
+            <button onclick="openGetNumberChoiceModal()"
                     class="bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-700 transition-colors">
                 Get Number
             </button>
@@ -305,6 +305,62 @@
                     class="bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-700 transition-colors">
                 Social Boosting
             </button>
+        </div>
+
+        {{-- Get Number Choice Modal --}}
+        <div id="getNumberChoiceModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-green-100">
+                <div class="bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 p-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-[0.25em] text-emerald-100">Choose one</p>
+                            <h2 class="text-2xl font-extrabold text-white mt-1">Get Number</h2>
+                        </div>
+                        <button type="button" onclick="closeGetNumberChoiceModal()" class="text-white/90 hover:text-white text-2xl font-light leading-none">×</button>
+                    </div>
+                </div>
+
+                <div class="p-6 space-y-4">
+                    <div class="grid grid-cols-1 gap-4">
+                        <button type="button" onclick="showGetNumberComingSoon()"
+                                class="group w-full text-left rounded-2xl border-2 border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50 p-4 shadow-sm hover:shadow-md hover:border-emerald-400 transition-all duration-200 active:scale-[0.99]">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <p class="text-xl font-bold text-gray-900">Buy Number</p>
+                                    <p class="text-sm text-gray-600 mt-1">Valid for more than 1 month</p>
+                                </div>
+                                <span class="inline-flex items-center justify-center w-11 h-11 rounded-full bg-emerald-600 text-white font-bold text-xs shadow-md">1M+</span>
+                            </div>
+                            <div class="mt-3 flex items-center justify-between text-xs font-semibold">
+                                <span class="text-emerald-700">Long-term access</span>
+                                <span class="text-gray-400 group-hover:text-emerald-600">›</span>
+                            </div>
+                        </button>
+
+                        <button type="button" onclick="openOneTimeNumberModal()"
+                                class="group w-full text-left rounded-2xl border-2 border-sky-200 bg-gradient-to-r from-sky-50 to-blue-50 p-4 shadow-sm hover:shadow-md hover:border-sky-400 transition-all duration-200 active:scale-[0.99]">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <p class="text-xl font-bold text-gray-900">One-time Number</p>
+                                    <p class="text-sm text-gray-600 mt-1">Usable once</p>
+                                </div>
+                                <span class="inline-flex items-center justify-center w-11 h-11 rounded-full bg-sky-600 text-white font-bold text-xs shadow-md">1X</span>
+                            </div>
+                            <div class="mt-3 flex items-center justify-between text-xs font-semibold">
+                                <span class="text-sky-700">Instant verification</span>
+                                <span class="text-gray-400 group-hover:text-sky-600">›</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div id="getNumberComingSoon" class="hidden mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-sm animate-pulse">
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex h-2.5 w-2.5 rounded-full bg-amber-500"></span>
+                            <span class="font-semibold">Buy Number is coming soon.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         {{-- Quick Pick --}}
@@ -845,7 +901,50 @@ function navigateToProvider(provider, serviceId, serviceCode) {
 }
 function openSocialModal()  { document.getElementById('socialModal').classList.remove('hidden'); }
 function closeSocialModal() { document.getElementById('socialModal').classList.add('hidden'); }
-document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeProviderModal(); });
+function openGetNumberChoiceModal() {
+    closeProviderModal();
+    const modal = document.getElementById('getNumberChoiceModal');
+    const message = document.getElementById('getNumberComingSoon');
+    if (message) message.classList.add('hidden');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+}
+
+function closeGetNumberChoiceModal() {
+    const modal = document.getElementById('getNumberChoiceModal');
+    const message = document.getElementById('getNumberComingSoon');
+    if (message) message.classList.add('hidden');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+function showGetNumberComingSoon() {
+    const message = document.getElementById('getNumberComingSoon');
+    if (message) {
+        message.classList.remove('hidden');
+        message.classList.add('block');
+    }
+}
+
+function openOneTimeNumberModal() {
+    closeGetNumberChoiceModal();
+    showProviderModalForce('', 'Get Number', '');
+}
+
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+        if (!document.getElementById('getNumberChoiceModal')?.classList.contains('hidden')) {
+            closeGetNumberChoiceModal();
+            return;
+        }
+        closeProviderModal();
+    }
+});
 document.getElementById('providerModal')?.addEventListener('click', function (e) { if (e.target === this) closeProviderModal(); });
+document.getElementById('getNumberChoiceModal')?.addEventListener('click', function (e) { if (e.target === this) closeGetNumberChoiceModal(); });
 </script>
 @endsection
