@@ -297,43 +297,31 @@
 
         {{-- Action Buttons --}}
         <div class="grid grid-cols-3 gap-3">
-            <button onclick="openGetNumberChoiceModal()"
-                    class="rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden border border-[#03624c]/30"
-                    style="background: #1a2322; padding: 0;">
-                <div class="flex items-center justify-center gap-2 font-bold py-3.5 px-3"
-                     style="background: #03624c; color: #ffffff; min-height: 52px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18m9-9H3"/>
-                    </svg>
+            <button onclick="openGetNumberChoiceModal()" class="rounded-2xl border border-transparent p-0 bg-transparent">
+                <div class="flex items-center justify-center gap-3 font-bold py-3.5 px-5 rounded-full"
+                     style="background: linear-gradient(90deg,#0b8454,#047a3d); color:#fff; min-height:52px; box-shadow: 0 8px 18px rgba(4,75,45,0.24), inset 0 1px 0 rgba(255,255,255,0.12);">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5l7 7-7 7"/></svg>
                     <span>Get Number</span>
                 </div>
-                <div class="h-2 w-full" style="background: linear-gradient(90deg, #0b1717 0%, #1a2322 100%);"></div>
+                <div class="h-1 w-full mt-2 rounded-full" style="background: linear-gradient(90deg,#074b33,#052f22);"></div>
             </button>
 
-            <button onclick="showComingSoonToast('Gift Card is coming soon.')"
-                    class="rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden border border-[#03624c]/30"
-                    style="background: #1a2322; padding: 0;">
-                <div class="flex items-center justify-center gap-2 font-bold py-3.5 px-3"
-                     style="background: #03624c; color: #ffffff; min-height: 52px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
+            <button onclick="showComingSoonToast('Gift Card is coming soon.')" class="rounded-2xl border border-transparent p-0 bg-transparent">
+                <div class="flex items-center justify-center gap-3 font-bold py-3.5 px-5 rounded-full"
+                     style="background: linear-gradient(90deg,#0b8454,#047a3d); color:#fff; min-height:52px; box-shadow: 0 8px 18px rgba(4,75,45,0.24), inset 0 1px 0 rgba(255,255,255,0.12);">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3"/></svg>
                     <span>Gift Card</span>
                 </div>
-                <div class="h-2 w-full" style="background: linear-gradient(90deg, #0b1717 0%, #1a2322 100%);"></div>
+                <div class="h-1 w-full mt-2 rounded-full" style="background: linear-gradient(90deg,#074b33,#052f22);"></div>
             </button>
 
-            <button onclick="window.location.href='social-boost'"
-                    class="rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden border border-[#03624c]/30"
-                    style="background: #1a2322; padding: 0;">
-                <div class="flex items-center justify-center gap-2 font-bold py-3.5 px-3"
-                     style="background: #03624c; color: #ffffff; min-height: 52px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/>
-                    </svg>
+            <button onclick="window.location.href='social-boost'" class="rounded-2xl border border-transparent p-0 bg-transparent">
+                <div class="flex items-center justify-center gap-3 font-bold py-3.5 px-5 rounded-full"
+                     style="background: linear-gradient(90deg,#0b8454,#047a3d); color:#fff; min-height:52px; box-shadow: 0 8px 18px rgba(4,75,45,0.24), inset 0 1px 0 rgba(255,255,255,0.12);">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
                     <span>Social Boost</span>
                 </div>
-                <div class="h-2 w-full" style="background: linear-gradient(90deg, #0b1717 0%, #1a2322 100%);"></div>
+                <div class="h-1 w-full mt-2 rounded-full" style="background: linear-gradient(90deg,#074b33,#052f22);"></div>
             </button>
         </div>
 
