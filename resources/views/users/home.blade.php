@@ -315,28 +315,28 @@
             </div>
             <div class="grid grid-cols-4 gap-4 text-center">
                 @if(isset($quickPickServices['facebook']))
-                <button onclick="showProviderModal('{{ $quickPickServices['facebook']['id'] }}', '{{ $quickPickServices['facebook']['title'] }}', 'fb')"
+                <button onclick="showProviderModalForce('{{ $quickPickServices['facebook']['id'] }}', '{{ $quickPickServices['facebook']['title'] }}', 'fb')"
                         class="flex flex-col items-center justify-center space-y-2">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" class="w-10 h-10" alt="Facebook">
                     <span class="text-xs text-gray-600">Facebook</span>
                 </button>
                 @endif
                 @if(isset($quickPickServices['whatsapp']))
-                <button onclick="showProviderModal('{{ $quickPickServices['whatsapp']['id'] }}', '{{ $quickPickServices['whatsapp']['title'] }}', 'wa')"
+                <button onclick="showProviderModalForce('{{ $quickPickServices['whatsapp']['id'] }}', '{{ $quickPickServices['whatsapp']['title'] }}', 'wa')"
                         class="flex flex-col items-center justify-center space-y-2">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" class="w-10 h-10" alt="WhatsApp">
                     <span class="text-xs text-gray-600">WhatsApp</span>
                 </button>
                 @endif
                 @if(isset($quickPickServices['telegram']))
-                <button onclick="showProviderModal('{{ $quickPickServices['telegram']['id'] }}', '{{ $quickPickServices['telegram']['title'] }}', 'tg')"
+                <button onclick="showProviderModalForce('{{ $quickPickServices['telegram']['id'] }}', '{{ $quickPickServices['telegram']['title'] }}', 'tg')"
                         class="flex flex-col items-center justify-center space-y-2">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg" class="w-10 h-10" alt="Telegram">
                     <span class="text-xs text-gray-600">Telegram</span>
                 </button>
                 @endif
                 @if(isset($quickPickServices['google']))
-                <button onclick="showProviderModal('{{ $quickPickServices['google']['id'] }}', '{{ $quickPickServices['google']['title'] }}', 'google')"
+                <button onclick="showProviderModalForce('{{ $quickPickServices['google']['id'] }}', '{{ $quickPickServices['google']['title'] }}', 'google')"
                         class="flex flex-col items-center justify-center space-y-2">
                     <img src="https://static.cdnlogo.com/logos/g/86/google-voice.svg" class="w-10 h-10" alt="Google Voice">
                     <span class="text-xs text-gray-600">Google Voice</span>
