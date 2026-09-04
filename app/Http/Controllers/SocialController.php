@@ -17,18 +17,28 @@ class SocialController extends Controller
 public function services()
 {
 
-    $services = smm_api()->services();
-    $categories = collect($services)->groupBy('category')->map(function ($services) {
+    try {
+        $rawServices = smm_api()->services();
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::error('smm_api()->services() failed in SocialController', ['error' => $e->getMessage()]);
+        $rawServices = [];
+    }
+
+    $servicesCollection = collect($rawServices ?: []);
+    $categories = $servicesCollection->groupBy(function ($s) {
+        return is_array($s) ? ($s['category'] ?? 'other') : ($s->category ?? 'other');
+    })->map(function ($services) {
         return $services->map(function ($service) {
+            $svc = is_array($service) ? (object) $service : $service;
             return (object) [
-                'id'   => $service->service,   // access as object
-                'name' => $service->name,
-                'rate' => round($service->rate),
-                'min'  => (int) $service->min,
-                'max'  => (int) $service->max,
-                'desc' => $service->desc ?? '',
+                'id'   => $svc->service ?? $svc->id ?? null,
+                'name' => $svc->name ?? '',
+                'rate' => isset($svc->rate) ? round($svc->rate) : 0,
+                'min'  => (int) ($svc->min ?? 0),
+                'max'  => (int) ($svc->max ?? 0),
+                'desc' => $svc->desc ?? '',
             ];
-        });
+        })->values();
 
     });
  // dd($categories); // removed for production
@@ -54,7 +64,12 @@ public function order(Request $request)
         \App\Helpers\PinHelper::verifyPin($request->pin);
 
         // Find service — API returns objects with ->service not ->id
-        $allServices = smm_api()->services();
+        try {
+            $allServices = smm_api()->services();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('smm_api()->services() failed in SocialController::order', ['error' => $e->getMessage()]);
+            $allServices = [];
+        }
         $service = collect($allServices)
             ->first(fn($s) => (int)($s->service ?? $s->id ?? 0) === (int)$request->service_id);
 

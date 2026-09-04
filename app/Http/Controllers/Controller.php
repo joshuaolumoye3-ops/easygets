@@ -32,19 +32,33 @@ class Controller
             ->take(4)
             ->get();
 
-        $services = smm_api()->services();
+        // Fetch services from MoreThanPanel (SMM API). Be defensive: the helper
+        // may return null, an array, or objects depending on the remote response.
+        try {
+            $rawServices = smm_api()->services();
+        } catch (\Exception $e) {
+            Log::error('smm_api()->services() failed', ['error' => $e->getMessage()]);
+            $rawServices = [];
+        }
 
-        $categories = collect($services)->groupBy('category')->map(function ($services) {
+        $servicesCollection = collect($rawServices ?: []);
+
+        $categories = $servicesCollection->groupBy(function ($s) {
+            // Support both array and object shapes
+            if (is_array($s)) return $s['category'] ?? 'other';
+            return $s->category ?? 'other';
+        })->map(function ($services) {
             return $services->map(function ($service) {
+                $svc = is_array($service) ? (object) $service : $service;
                 return (object) [
-                    'id'   => $service->service,
-                    'name' => $service->name,
-                    'rate' => round($service->rate * 1.05, 2),
-                    'min'  => (int) $service->min,
-                    'max'  => (int) $service->max,
-                    'desc' => $service->desc ?? '',
+                    'id'   => $svc->service ?? $svc->id ?? null,
+                    'name' => $svc->name ?? '',
+                    'rate' => isset($svc->rate) ? round($svc->rate * 1.05, 2) : 0,
+                    'min'  => (int) ($svc->min ?? 0),
+                    'max'  => (int) ($svc->max ?? 0),
+                    'desc' => $svc->desc ?? '',
                 ];
-            });
+            })->values();
         });
 
         // Fetch SMS services for Quick Pick
