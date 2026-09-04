@@ -151,6 +151,19 @@ class CountryController extends Controller
             }
         }
 
+        // Debug: log which provider was requested and how many products were loaded
+        try {
+            $prodCount = 0;
+            if (is_object($products) && method_exists($products, 'count')) {
+                $prodCount = $products->count();
+            } elseif (is_array($products)) {
+                $prodCount = count($products);
+            }
+            Log::info('showServices: provider result', ['requested_provider' => $requestedProvider, 'products_count' => $prodCount]);
+        } catch (\Exception $e) {
+            // ignore logging failures
+        }
+
         $iconMap = $this->getServiceIconMap();
 
         $products = $products->map(function ($product) use ($iconMap) {
@@ -2008,6 +2021,12 @@ private function getSmsBowerServiceCatalog(): \Illuminate\Support\Collection
         $services = collect([]);
     }
 
+    try {
+        Log::info('getSmsBowerServiceCatalog: fetched', ['count' => $services->count()]);
+    } catch (\Exception $e) {
+        // ignore
+    }
+
     if ($services->isEmpty()) {
         Log::warning('SmsBower live catalog empty — falling back to local curated products table');
         $services = Product::whereHas('provider', function ($q) {
@@ -2058,6 +2077,7 @@ private function getSmsBusServiceCatalog(): \Illuminate\Support\Collection
                 $data = $response->json('data');
                 if (is_array($data) && !empty($data)) {
                     $products = collect($data)->values();
+                    try { Log::info('getSmsBusServiceCatalog: fetched', ['count' => $products->count()]); } catch (\Exception $e) {}
                     Cache::put($cacheKey, $products, now()->addMinutes(30));
                     Cache::put($backupCacheKey, $products, now()->addDays(7));
                     return $products;
@@ -2074,9 +2094,11 @@ private function getSmsBusServiceCatalog(): \Illuminate\Support\Collection
 
     $backup = Cache::get($backupCacheKey);
     if ($backup && collect($backup)->isNotEmpty()) {
+        try { Log::info('getSmsBusServiceCatalog: using backup cache', ['count' => collect($backup)->count()]); } catch (\Exception $e) {}
         return collect($backup);
     }
 
+    try { Log::info('getSmsBusServiceCatalog: returning mock services'); } catch (\Exception $e) {}
     return $this->getMockServices();
 }
 
