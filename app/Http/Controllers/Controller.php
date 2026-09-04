@@ -183,5 +183,85 @@ class Controller
                          ->with('success', 'Your PIN has been updated successfully.');
     }
 
+    /**
+     * AJAX: return provider config and connectivity status for modal retry.
+     */
+    public function providerStatus(Request $request)
+    {
+        try {
+            $fivesimConfigOk = !empty(config('services.5sim.token') ?: env('FIVESIM_TOKEN'));
+            $smsbowerConfigOk = !empty(config('services.smsbower.api_key') ?: env('SMSBOWER_API_KEY'));
+            $smsbusConfigOk   = !empty(config('services.smsbus.token') ?: env('SMSBUS_TOKEN')) || !empty(env('SMSBUS_TOKEN'));
+
+            $fivesimProvider  = Provider::where('api_identifier', '5sim')->first();
+            $smsbowerProvider = Provider::where('api_identifier', 'smsbower')->first();
+            $smsbusProvider   = Provider::where('api_identifier', 'smsbus')->first();
+
+            $providerIsAvailable = function (?Provider $provider): bool {
+                if (!$provider) return false;
+                if ($provider->status !== 'active') return false;
+                return $provider->products()->where('is_active', true)->exists();
+            };
+
+            $fivesimProviderAvailable  = $providerIsAvailable($fivesimProvider);
+            $smsbowerProviderAvailable = $providerIsAvailable($smsbowerProvider);
+            $smsbusProviderAvailable   = $providerIsAvailable($smsbusProvider);
+
+            // Lightweight connectivity probes
+            $fivesimProbe = false; $fivesimProbeMsg = null;
+            if ($fivesimConfigOk) {
+                try {
+                    $token = config('services.5sim.token') ?: env('FIVESIM_TOKEN');
+                    $resp = Http::withHeaders(['Authorization' => "Bearer {$token}", 'Accept' => 'application/json'])
+                                ->timeout(10)->get('https://5sim.net/v1/user/profile');
+                    $fivesimProbe = $resp->successful();
+                } catch (\Exception $e) { $fivesimProbeMsg = $e->getMessage(); }
+            }
+
+            $smsbowerProbe = false; $smsbowerProbeMsg = null;
+            if ($smsbowerConfigOk) {
+                try {
+                    $services = \App\Helpers\SmsBowerHelper::getServices();
+                    $smsbowerProbe = !empty($services);
+                } catch (\Exception $e) { $smsbowerProbeMsg = $e->getMessage(); }
+            }
+
+            $smsbusProbe = false; $smsbusProbeMsg = null;
+            if ($smsbusConfigOk) {
+                try {
+                    $token = config('services.smsbus.token') ?: env('SMSBUS_TOKEN');
+                    $resp = Http::timeout(10)->get('https://sms-bus.com/api/control/list/projects', ['token' => $token]);
+                    $smsbusProbe = $resp->successful() && !empty($resp->json('data'));
+                } catch (\Exception $e) { $smsbusProbeMsg = $e->getMessage(); }
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'fivesim' => [
+                        'config_ok' => $fivesimConfigOk,
+                        'provider_available' => $fivesimProviderAvailable,
+                        'probe_ok' => $fivesimProbe,
+                        'probe_msg' => $fivesimProbeMsg,
+                    ],
+                    'smsbower' => [
+                        'config_ok' => $smsbowerConfigOk,
+                        'provider_available' => $smsbowerProviderAvailable,
+                        'probe_ok' => $smsbowerProbe,
+                        'probe_msg' => $smsbowerProbeMsg,
+                    ],
+                    'smsbus' => [
+                        'config_ok' => $smsbusConfigOk,
+                        'provider_available' => $smsbusProviderAvailable,
+                        'probe_ok' => $smsbusProbe,
+                        'probe_msg' => $smsbusProbeMsg,
+                    ],
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
 
 }

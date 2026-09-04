@@ -463,6 +463,9 @@
                                     @else
                                         <span class="text-xs text-gray-500">Unavailable — contact support</span>
                                     @endif
+                                    <div class="mt-2">
+                                        <button data-provider="fivesim" class="retry-provider inline-flex items-center px-3 py-1 rounded-md text-xs bg-white text-gray-700 border">Retry</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -500,6 +503,9 @@
                                     @else
                                         <span class="text-xs text-gray-500">Unavailable — contact support</span>
                                     @endif
+                                    <div class="mt-2">
+                                        <button data-provider="smsbower" class="retry-provider inline-flex items-center px-3 py-1 rounded-md text-xs bg-white text-gray-700 border">Retry</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -537,6 +543,9 @@
                                     @else
                                         <span class="text-xs text-gray-500">Unavailable — contact support</span>
                                     @endif
+                                    <div class="mt-2">
+                                        <button data-provider="smsbus" class="retry-provider inline-flex items-center px-3 py-1 rounded-md text-xs bg-white text-gray-700 border">Retry</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -994,5 +1003,40 @@ document.addEventListener('keydown', function (e) {
 });
 document.getElementById('providerModal')?.addEventListener('click', function (e) { if (e.target === this) closeProviderModal(); });
 document.getElementById('getNumberChoiceModal')?.addEventListener('click', function (e) { if (e.target === this) closeGetNumberChoiceModal(); });
+</script>
+<script>
+// Retry provider connectivity probe and refresh on success
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.retry-provider');
+    if (!btn) return;
+    e.preventDefault();
+    var provider = btn.getAttribute('data-provider');
+    btn.disabled = true; btn.textContent = 'Checking...';
+
+    fetch('{{ url('/app/provider-status') }}', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            btn.disabled = false;
+            btn.textContent = 'Retry';
+            if (!data || !data.success) {
+                alert('Unable to check provider status. Please try again later.');
+                return;
+            }
+            var mapping = { fivesim: 'fivesim', smsbower: 'smsbower', smsbus: 'smsbus' };
+            var item = data.data[mapping[provider]];
+            if (item && item.config_ok && item.provider_available && item.probe_ok) {
+                // provider looks healthy now — reload to reflect enabled buttons
+                window.location.reload();
+            } else {
+                var msg = 'Still unavailable.';
+                if (item) {
+                    if (!item.config_ok) msg = 'Not configured. Contact admin.';
+                    else if (!item.provider_available) msg = 'Provider record is unavailable.';
+                    else if (!item.probe_ok) msg = 'Remote API probe failed.' + (item.probe_msg ? (' ('+item.probe_msg+')') : '');
+                }
+                alert(msg);
+            }
+        }).catch(function () { btn.disabled = false; btn.textContent = 'Retry'; alert('Network error. Please try again.'); });
+});
 </script>
 @endsection

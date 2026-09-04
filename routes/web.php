@@ -197,6 +197,9 @@ Route::middleware('auth')->group(function () {
     // Services list
     Route::get('/services', [CountryController::class, 'showServices'])->middleware('check.user.not.blocked')->name('services.list');
 
+    // Provider status probe (AJAX) — returns JSON about config & connectivity
+    Route::get('/provider-status', [Controller::class, 'providerStatus'])->middleware('check.user.not.blocked')->name('provider.status');
+
     // ==================== PROVIDER1 (5sim) PROVIDER ROUTES ====================
     // Step 1: Show countries for a service
     Route::get('/services/{serviceCode}/provider1/countries', [CountryController::class, 'showCountries5sim'])
