@@ -120,7 +120,7 @@
                             @else
                                 <button id="openWithdrawalModal"
                                         class="text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap active:scale-95 transition-transform"
-                                        style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;box-shadow:0 4px 12px rgba(245,158,11,0.4);">
+                                        style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;box-shadow:0 4px 12px rgba(4, 4, 4, 0.4);">
                                     Withdraw
                                 </button>
                             @endif
