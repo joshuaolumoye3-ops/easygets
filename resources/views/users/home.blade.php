@@ -296,14 +296,29 @@
         @endif
 
         {{-- Action Buttons --}}
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-3 gap-3">
             <button onclick="openGetNumberChoiceModal()"
-                    class="bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-700 transition-colors">
-                Get Number
+                    class="bg-gradient-to-br from-slate-800 to-slate-900 text-white font-bold py-3.5 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18m9-9H3"/>
+                </svg>
+                <span>Get Number</span>
             </button>
+
+            <button onclick="showComingSoonToast('Gift Card is coming soon.')"
+                    class="bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-500 text-white font-bold py-3.5 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span>Gift Card</span>
+            </button>
+
             <button onclick="window.location.href='social-boost'"
-                    class="bg-gray-800 text-white font-bold py-3.5 rounded-xl shadow-sm hover:bg-gray-700 transition-colors">
-                Social Boosting
+                    class="bg-gradient-to-br from-emerald-600 to-green-700 text-white font-bold py-3.5 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+                <span>Boost</span>
             </button>
         </div>
 
@@ -928,6 +943,21 @@ function showGetNumberComingSoon() {
         message.classList.remove('hidden');
         message.classList.add('block');
     }
+}
+
+function showComingSoonToast(message) {
+    const existing = document.getElementById('comingSoonToast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.id = 'comingSoonToast';
+    toast.className = 'fixed inset-x-4 bottom-24 z-[60] mx-auto max-w-sm rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800 shadow-lg animate-pulse';
+    toast.innerHTML = '<div class="flex items-center gap-2"><span class="inline-flex h-2.5 w-2.5 rounded-full bg-amber-500"></span><span>' + message + '</span></div>';
+    document.body.appendChild(toast);
+
+    setTimeout(function () {
+        if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 2200);
 }
 
 function openOneTimeNumberModal() {
