@@ -74,4 +74,12 @@ return [
         'token' => env('FIVESIM_TOKEN'),
     ],
 
+    'smsbower' => [
+        'api_key' => env('SMSBOWER_API_KEY'),
+    ],
+
+    'smsbus' => [
+        'token' => env('SMSBUS_TOKEN'),
+    ],
+
 ];

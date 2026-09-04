@@ -299,9 +299,9 @@ class CountryController extends Controller
             'products' => $paginated,
             'nextPage' => $hasMorePages ? 2 : null,
             'isSearching' => $isSearching,
-            'hasFivesim' => !empty(config('services.5sim.token')) && $this->providerIsAvailable($fivesimProvider),
-            'hasSmsBower' => !empty(env('SMSBOWER_API_KEY')) && $this->providerIsAvailable($smsbowerProvider),
-            'hasSmsbus' => !empty(env('SMSBUS_TOKEN')) && $this->providerIsAvailable($smsbusProvider),
+            'hasFivesim' => $this->providerIsAvailable($fivesimProvider),
+            'hasSmsBower' => $this->providerIsAvailable($smsbowerProvider),
+            'hasSmsbus' => $this->providerIsAvailable($smsbusProvider),
             'activeProvider' => $requestedProviderSlug,
         ]);
     }

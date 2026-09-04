@@ -9,7 +9,7 @@ class Provider extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['service_id', 'name', 'code','api_identifier'];
+    protected $fillable = ['service_id', 'name', 'code', 'api_identifier', 'status'];
 
     public function service()
     {

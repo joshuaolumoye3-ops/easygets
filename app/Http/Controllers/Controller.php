@@ -115,9 +115,12 @@ class Controller
         $smsbowerProviderAvailable = $providerIsAvailable($smsbowerProvider);
         $smsbusProviderAvailable   = $providerIsAvailable($smsbusProvider);
 
-        $hasFivesim  = $fivesimConfigOk && $fivesimProviderAvailable;
-        $hasSmsBower = $smsbowerConfigOk && $smsbowerProviderAvailable;
-        $hasSmsbus   = $smsbusConfigOk && $smsbusProviderAvailable;
+        // The provider record is the source of truth for display state in the UI.
+        // Config checks are still reported separately for diagnostics, but they must
+        // not hide an admin-enabled provider from the home screen modal.
+        $hasFivesim  = $fivesimProviderAvailable;
+        $hasSmsBower = $smsbowerProviderAvailable;
+        $hasSmsbus   = $smsbusProviderAvailable;
 
         return view('users.home', compact(
             'latestTransactions', 'wallet', 'categories', 'admin_rate', 'quickPickServices',
