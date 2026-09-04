@@ -74,7 +74,7 @@
                                     </span>
                                     <div class="flex items-center space-x-3 mt-1">
                                         <span class="text-xs text-gray-500">
-                                            Available: {{ number_format($country['qty']) }}
+                                            View Listing
                                         </span>
                                     </div>
                                 </div>
