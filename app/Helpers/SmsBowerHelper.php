@@ -12,7 +12,7 @@ class SmsBowerHelper
 
     protected static function apiKey(): string
     {
-        return env('SMSBOWER_API_KEY', '');
+        return config('services.smsbower.api_key') ?: env('SMSBOWER_API_KEY', '');
     }
 
     // ──────────────────────────────────────────────

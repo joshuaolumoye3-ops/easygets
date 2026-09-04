@@ -54,7 +54,6 @@ class CountryController extends Controller
         // Internal identifier used by the branching logic below: '5sim' | 'smsbower' | 'smsbus' | null
         $requestedProvider = $this->providerSlugToInternal($requestedProviderSlug);
 
-        $token = env('SMSBUS_TOKEN');
         $cacheKey = 'smsbus_services';
         $backupCacheKey = 'smsbus_services_backup';
 
@@ -188,7 +187,7 @@ class CountryController extends Controller
         // so they show up in the unfiltered "All Services" page and are searchable.
         // Only merge these extras when NO specific provider filter was requested —
         // a provider1/provider2/provider3 filtered view must stay pure to that provider.
-        if (empty($requestedProvider) && !empty(env('SMSBOWER_API_KEY'))) {
+        if (empty($requestedProvider) && !empty($this->smsbowerApiKey())) {
             $smsBowerServices = $this->getSmsBowerServiceCatalog();
 
             $existingCodes = $products
@@ -460,7 +459,7 @@ class CountryController extends Controller
     public function showCountries(string $serviceId, Request $request = null)
     {
         $request = $request ?? request();
-        $token = env('SMSBUS_TOKEN');
+        $token = $this->smsbusToken();
 
         if (!$token) {
             $emptyPaginator = new LengthAwarePaginator([], 0, 20, 1);
@@ -571,7 +570,7 @@ class CountryController extends Controller
 
     public function getPrices(Request $request, $serviceId, $countryId)
     {
-        $token    = env('SMSBUS_TOKEN');
+        $token    = $this->smsbusToken();
         $response = Http::get("https://sms-bus.com/api/control/list/prices", [
             'token'      => $token,
             'country_id' => $countryId,
@@ -1022,7 +1021,7 @@ class CountryController extends Controller
      */
     private function processSmsBower(array $purchase, array $split = [])
     {
-        if (!env('SMSBOWER_API_KEY')) {
+        if (!$this->smsbowerApiKey()) {
             $this->refundPurchase($purchase, $split, 'SMSBOWER_API_KEY not configured');
             Log::error('SMSBOWER_API_KEY not configured');
             return back()->withErrors('Service configuration error. Balance refunded.');
@@ -1185,7 +1184,7 @@ class CountryController extends Controller
 
     private function processSmsbus(array $purchase, array $split = [])
     {
-        $token = env('SMSBUS_TOKEN');
+        $token = $this->smsbusToken();
         if (!$token) {
             $this->refundPurchase($purchase, $split, 'SMSBUS token missing');
             return back()->withErrors('Service configuration error. Balance refunded.');
@@ -1270,7 +1269,7 @@ class CountryController extends Controller
         $countryId   = $request->country;
         $countryName = $request->country_name;
         $countryCode = strtolower($request->country_code);
-        $token       = env('SMSBUS_TOKEN');
+        $token       = $this->smsbusToken();
 
         if (!$token) return back()->withErrors('Service configuration error');
 
@@ -1715,7 +1714,7 @@ class CountryController extends Controller
             if ($isCode) {
                 $cacheKey    = "smsbus_service_by_code_{$serviceIdentifier}";
                 $serviceData = Cache::remember($cacheKey, 300, function () use ($serviceIdentifier) {
-                    $token    = env('SMSBUS_TOKEN');
+                    $token    = $this->smsbusToken();
                     $response = Http::timeout(20)->get("https://sms-bus.com/api/control/list/projects", ['token' => $token]);
                     if ($response->successful()) {
                         $data = $response->json('data');
@@ -1734,7 +1733,7 @@ class CountryController extends Controller
             } else {
                 $cacheKey    = "smsbus_service_{$serviceIdentifier}";
                 $serviceData = Cache::remember($cacheKey, 300, function () use ($serviceIdentifier) {
-                    $token    = env('SMSBUS_TOKEN');
+                    $token    = $this->smsbusToken();
                     $response = Http::timeout(20)->get("https://sms-bus.com/api/control/list/projects", ['token' => $token]);
                     if ($response->successful()) {
                         $data = $response->json('data');
@@ -1762,7 +1761,7 @@ class CountryController extends Controller
             if ($isName) {
                 return ['name' => ucfirst($countryIdentifier), 'code' => $this->getCountryCode($countryIdentifier)];
             } else {
-                $token    = env('SMSBUS_TOKEN');
+                $token    = $this->smsbusToken();
                 $cacheKey = "smsbus_country_{$countryIdentifier}";
                 $countryData = Cache::remember($cacheKey, 300, function () use ($token, $countryIdentifier) {
                     $response = Http::timeout(20)->get("https://sms-bus.com/api/control/list/prices", [
@@ -2058,7 +2057,7 @@ private function getSmsBusServiceCatalog(): \Illuminate\Support\Collection
 {
     $cacheKey       = 'smsbus_services';
     $backupCacheKey = 'smsbus_services_backup';
-    $token          = env('SMSBUS_TOKEN');
+    $token          = $this->smsbusToken();
 
     $cached = Cache::get($cacheKey);
     if ($cached && collect($cached)->isNotEmpty()) {
@@ -2100,6 +2099,16 @@ private function getSmsBusServiceCatalog(): \Illuminate\Support\Collection
 
     try { Log::info('getSmsBusServiceCatalog: returning mock services'); } catch (\Exception $e) {}
     return $this->getMockServices();
+}
+
+private function smsbusToken(): ?string
+{
+    return config('services.smsbus.token') ?: env('SMSBUS_TOKEN');
+}
+
+private function smsbowerApiKey(): ?string
+{
+    return config('services.smsbower.api_key') ?: env('SMSBOWER_API_KEY');
 }
 
 }
