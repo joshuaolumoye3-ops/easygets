@@ -58,7 +58,7 @@ class CountryController extends Controller
         $cacheKey = 'smsbus_services';
         $backupCacheKey = 'smsbus_services_backup';
 
-        $products = Cache::get($cacheKey);
+        $products = Cache::get($cacheKey); // still used as a fast-path for the unfiltered view
 
         // If a specific provider was requested, we'll load provider-scoped services
         if (!empty($requestedProvider)) {
@@ -117,14 +117,9 @@ class CountryController extends Controller
                     ];
                 })->values();
             }
-            }elseif ($requestedProvider === self::PROVIDER_SMSBOWER) {
-                // Use SmsBower's live "get services" endpoint
-                $smsBowerServices = Cache::remember('smsbower_services_list', 3600, function () {
-                    return SmsBowerHelper::getServices();
-                });
-
+            } elseif ($requestedProvider === self::PROVIDER_SMSBOWER) {
                 $iconMap = $this->getServiceIconMap();
-                $products = collect($smsBowerServices)->map(function ($s) use ($iconMap) {
+                $products = $this->getSmsBowerServiceCatalog()->map(function ($s) use ($iconMap) {
                     $code = strtolower($s['code'] ?? ($s['name'] ?? ''));
                     $iconUrl = $iconMap[$code] ?? null;
                     if (!$iconUrl) {
@@ -141,47 +136,18 @@ class CountryController extends Controller
                         'large_icon_url' => $iconUrl,
                     ];
                 })->values();
-            } else {
-                // provider3 (smsbus) — fall through to the SMS-Bus "list projects" fetch below,
-                // which is the correct live endpoint for that provider.
+            } elseif ($requestedProvider === self::PROVIDER_SMSBUS) {
+                // Explicit SMS-Bus provider path
+                $products = $this->getSmsBusServiceCatalog();
             }
-        }
 
-        if (!$products || $products->isEmpty()) {
-            try {
-                $response = Http::timeout(30)
-                    ->connectTimeout(15)
-                    ->retry(3, function ($exception, $request) {
-                        return 2000;
-                    })
-                    ->withOptions(['verify' => false])
-                    ->get("https://sms-bus.com/api/control/list/projects", [
-                        'token' => $token
-                    ]);
-
-                if ($response->successful()) {
-                    $data = $response->json('data');
-
-                    if (is_array($data) && !empty($data)) {
-                        $products = collect($data)->values();
-                        Cache::put($cacheKey, $products, now()->addMinutes(30));
-                        Cache::put($backupCacheKey, $products, now()->addDays(7));
-                    } else {
-                        throw new \Exception('Invalid API response data');
-                    }
-                } else {
-                    throw new \Exception('API returned status: ' . $response->status());
-                }
-            } catch (\Exception $e) {
-                Log::error('SMS-Bus API Error', [
-                    'error' => $e->getMessage()
-                ]);
-
-                $products = Cache::get($backupCacheKey);
-
-                if (!$products || $products->isEmpty()) {
-                    $products = $this->getMockServices();
-                }
+            // Provider-filtered requests are done here — do NOT fall through to the
+            // generic fetch below, or an empty/failed SMSBower result will silently
+            // get replaced with SMS-Bus's catalog (wrong provider's data).
+        } else {
+            // Unfiltered "All Services" — base list from SMS-Bus.
+            if (!$products || $products->isEmpty()) {
+                $products = $this->getSmsBusServiceCatalog();
             }
         }
 
@@ -210,9 +176,7 @@ class CountryController extends Controller
         // Only merge these extras when NO specific provider filter was requested —
         // a provider1/provider2/provider3 filtered view must stay pure to that provider.
         if (empty($requestedProvider) && !empty(env('SMSBOWER_API_KEY'))) {
-            $smsBowerServices = Cache::remember('smsbower_services_list', 3600, function () {
-                return SmsBowerHelper::getServices();
-            });
+            $smsBowerServices = $this->getSmsBowerServiceCatalog();
 
             $existingCodes = $products
                 ->pluck('code')
@@ -2020,6 +1984,100 @@ private function getFiveSimServiceCatalog(): array
             return [];
         }
     });
+}
+
+
+/**
+ * Live SMSBower service catalog, safe against API failures.
+ * Mirrors getFiveSimServiceCatalog()'s pattern: try the live API,
+ * fall back to local curated products, never cache an empty result.
+ */
+private function getSmsBowerServiceCatalog(): \Illuminate\Support\Collection
+{
+    $cacheKey = 'smsbower_services_list';
+
+    $cached = Cache::get($cacheKey);
+    if ($cached && collect($cached)->isNotEmpty()) {
+        return collect($cached);
+    }
+
+    try {
+        $services = collect(SmsBowerHelper::getServices() ?: []);
+    } catch (\Exception $e) {
+        Log::error('SmsBowerHelper::getServices() failed', ['error' => $e->getMessage()]);
+        $services = collect([]);
+    }
+
+    if ($services->isEmpty()) {
+        Log::warning('SmsBower live catalog empty — falling back to local curated products table');
+        $services = Product::whereHas('provider', function ($q) {
+            $q->where('api_identifier', 'smsbower');
+        })->where('is_active', true)
+          ->where('product_code', '!=', 'conversion_rate')
+          ->get()
+          ->map(fn ($p) => [
+              'code' => strtolower($p->product_code ?: ($p->name ?? '')),
+              'name' => $p->name,
+          ]);
+    }
+
+    // Only cache non-empty results, and only for the same hour 5sim/smsbus use.
+    if ($services->isNotEmpty()) {
+        Cache::put($cacheKey, $services, 3600);
+    }
+
+    return $services;
+}
+
+
+/**
+ * Live SMS-Bus service catalog, safe against API failures.
+ * Consolidates the fetch logic that used to be duplicated between the
+ * unfiltered "All Services" path and the provider3-filtered path.
+ */
+private function getSmsBusServiceCatalog(): \Illuminate\Support\Collection
+{
+    $cacheKey       = 'smsbus_services';
+    $backupCacheKey = 'smsbus_services_backup';
+    $token          = env('SMSBUS_TOKEN');
+
+    $cached = Cache::get($cacheKey);
+    if ($cached && collect($cached)->isNotEmpty()) {
+        return collect($cached);
+    }
+
+    if ($token) {
+        try {
+            $response = Http::timeout(30)
+                ->connectTimeout(15)
+                ->retry(3, fn () => 2000)
+                ->withOptions(['verify' => false])
+                ->get('https://sms-bus.com/api/control/list/projects', ['token' => $token]);
+
+            if ($response->successful()) {
+                $data = $response->json('data');
+                if (is_array($data) && !empty($data)) {
+                    $products = collect($data)->values();
+                    Cache::put($cacheKey, $products, now()->addMinutes(30));
+                    Cache::put($backupCacheKey, $products, now()->addDays(7));
+                    return $products;
+                }
+            }
+
+            Log::warning('SMS-Bus list/projects returned no usable data', ['status' => $response->status()]);
+        } catch (\Exception $e) {
+            Log::error('SMS-Bus API Error', ['error' => $e->getMessage()]);
+        }
+    } else {
+        Log::error('SMSBUS_TOKEN not configured');
+    }
+
+    $backup = Cache::get($backupCacheKey);
+    if ($backup && collect($backup)->isNotEmpty()) {
+        return collect($backup);
+    }
+
+    return $this->getMockServices();
 }
 
 }
