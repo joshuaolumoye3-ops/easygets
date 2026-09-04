@@ -74,7 +74,7 @@
                                     </span>
                                     <div class="flex items-center space-x-3 mt-1">
                                         <span class="text-xs text-gray-500">
-                                            View Listing
+                                            Available: {{ number_format($country['qty']) }}
                                         </span>
                                     </div>
                                 </div>
@@ -83,7 +83,7 @@
                                 <div class="flex items-center space-x-2">
                                     <div>
                                         <p class="text-lg font-bold text-green-600">
-                                            ₦{{ number_format($country['price_ngn'], 2) }}
+                                            View Listing
                                         </p>
                                         {{-- <p class="text-xs text-gray-400 mt-0.5">
                                             ${{ number_format($country['price_usd'], 2) }}
