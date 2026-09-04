@@ -299,7 +299,7 @@ class CountryController extends Controller
             'products' => $paginated,
             'nextPage' => $hasMorePages ? 2 : null,
             'isSearching' => $isSearching,
-            'hasFivesim' => !empty(env('FIVESIM_TOKEN')) && $this->providerIsAvailable($fivesimProvider),
+            'hasFivesim' => !empty(config('services.5sim.token')) && $this->providerIsAvailable($fivesimProvider),
             'hasSmsBower' => !empty(env('SMSBOWER_API_KEY')) && $this->providerIsAvailable($smsbowerProvider),
             'hasSmsbus' => !empty(env('SMSBUS_TOKEN')) && $this->providerIsAvailable($smsbusProvider),
             'activeProvider' => $requestedProviderSlug,
@@ -1098,8 +1098,9 @@ class CountryController extends Controller
 
     private function process5sim(array $purchase, array $split = [])
     {
-        $token = env('FIVESIM_TOKEN');
+        $token = config('services.5sim.token');
         if (!$token) {
+            Log::error('5sim purchase blocked: no token configured (config services.5sim.token is empty)');
             $this->refundPurchase($purchase, $split, '5sim token missing');
             return back()->withErrors('Service configuration error. Balance refunded.');
         }
@@ -1113,14 +1114,31 @@ class CountryController extends Controller
             );
 
             $response     = Http::timeout(30)
+                ->withOptions(['verify' => false])
                 ->withHeaders(['Authorization' => "Bearer {$token}", 'Accept' => 'application/json'])
                 ->get($url);
             $responseData = $response->json();
 
             if ($response->failed()) {
                 Log::error('5sim buy failed', [
-                    'url' => $url, 'status' => $response->status(), 'body' => $response->body(),
+                    'url'    => $url,
+                    'status' => $response->status(),
+                    'body'   => $response->body(),
                 ]);
+
+                // 5sim returns an EMPTY body for auth-layer rejections (bad/expired
+                // token) rather than a JSON message — detect that explicitly so the
+                // real cause isn't hidden behind a blank error string.
+                if (in_array($response->status(), [401, 403]) || trim($response->body()) === '') {
+                    $this->refundPurchase($purchase, $split, '5sim auth rejected (status ' . $response->status() . ')');
+                    return back()->withErrors(
+                        'Provider 1 rejected the request (auth error, status ' . $response->status() . '). '
+                        . 'This usually means the 5sim API token is missing, invalid, or the 5sim account has '
+                        . 'insufficient balance. Please check config/services.php → services.5sim.token and the '
+                        . '5sim account balance. Your balance has been refunded.'
+                    );
+                }
+
                 $this->refundPurchase($purchase, $split, '5sim purchase failed');
                 $errorMsg = is_array($responseData) && isset($responseData['message'])
                     ? $responseData['message']

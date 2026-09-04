@@ -70,5 +70,8 @@ return [
         'api_url' => env('FIVESMM_API_URL', 'https://5smm.com/api/v2'),
         'api_key' => env('FIVESMM_API_KEY'),
     ],
+    '5sim' => [
+        'token' => env('FIVESIM_TOKEN'),
+    ],
 
 ];
