@@ -892,27 +892,36 @@ function selectProvider(provider) {
 }
 
 function navigateToProvider(provider, serviceId, serviceCode) {
-    if (provider === 'provider1' || provider === 'provider2') {
-        const target = (serviceCode || serviceId);
+    const target = serviceCode || serviceId;
+
+    if (provider === 'provider1') {
         if (!target) {
-            window.location.href = '/app/services?provider=' + provider;
+            window.location.href = '/app/services?provider=provider1';
             return;
         }
-        if (provider === 'provider1') {
-            window.location.href = '/app/services/' + target + '/provider1/countries';
-        } else {
-            window.location.href = '/app/services/' + target + '/provider2/rank';
-        }
+        window.location.href = '/app/services/' + target + '/provider1/countries';
         return;
     }
 
-    // provider3 = SMS-Bus — MUST use the numeric project id, never the text code,
-    // because every SMS-Bus endpoint (prices, purchase) keys off projectId/service:integer.
-    if (!serviceId) {
+    if (provider === 'provider2') {
+        if (!target) {
+            window.location.href = '/app/services?provider=provider2';
+            return;
+        }
+        window.location.href = '/app/services/' + target + '/provider2/rank';
+        return;
+    }
+
+    // provider3 = SMS-Bus — when no specific service is selected, load the provider-scoped
+    // service catalog via the services list route, then the user can click an item and land
+    // on the numeric projectId country page.
+    if (!target) {
         window.location.href = '/app/services?provider=provider3';
         return;
     }
-    window.location.href = '/app/services/' + serviceId + '/countries-provider3';
+
+    // Once a specific SMS-Bus service is chosen, use the numeric project id, not the code.
+    window.location.href = '/app/services/' + (serviceId || target) + '/countries-provider3';
 }
 function openSocialModal()  { document.getElementById('socialModal').classList.remove('hidden'); }
 function closeSocialModal() { document.getElementById('socialModal').classList.add('hidden'); }

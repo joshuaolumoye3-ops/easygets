@@ -334,17 +334,36 @@
     }
 
     function navigateToProvider(provider, serviceId, serviceCode) {
+        const target = serviceCode || serviceId;
+
         if (provider === 'provider1') {
-            window.location.href = `/app/services/${serviceCode || serviceId}/provider1/countries`;
-        } else if (provider === 'provider2') {
-            window.location.href = `/app/services/${serviceCode || serviceId}/provider2/rank`;
-        } else {
-            // provider3 = SMS-Bus — routes and API calls require the numeric project id,
-            // not the service code (unlike provider1/provider2). Using serviceCode here
-            // was sending e.g. "fb" into an endpoint expecting an integer projectId,
-            // which is why Provider 3 was returning no countries.
-            window.location.href = `/app/services/${serviceId}/countries-provider3`;
+            if (!target) {
+                window.location.href = '/app/services?provider=provider1';
+                return;
+            }
+            window.location.href = `/app/services/${target}/provider1/countries`;
+            return;
         }
+
+        if (provider === 'provider2') {
+            if (!target) {
+                window.location.href = '/app/services?provider=provider2';
+                return;
+            }
+            window.location.href = `/app/services/${target}/provider2/rank`;
+            return;
+        }
+
+        // provider3 = SMS-Bus — when no specific service is chosen, show the provider-filtered
+        // service catalog so the API-backed list can load via /services?provider=provider3.
+        if (!target) {
+            window.location.href = '/app/services?provider=provider3';
+            return;
+        }
+
+        // If a service has already been picked, use the numeric project ID for SMS-Bus,
+        // because that endpoint expects projectId rather than a code string.
+        window.location.href = `/app/services/${serviceId || target}/countries-provider3`;
     }
 
     // Handle service click: if this page is already scoped to one provider,
