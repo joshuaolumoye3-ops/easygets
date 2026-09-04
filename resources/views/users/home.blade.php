@@ -432,9 +432,9 @@
                 </div>
                 <div class="p-6 space-y-4">
 
-                    {{-- Provider 1 --}}
-                    @if($hasFivesim ?? false)
-                    <button onclick="selectProvider('provider1')"
+                        {{-- Provider 1 --}}
+                        @if(!empty($hasFivesim))
+                        <button onclick="selectProvider('provider1')"
                             class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-200">
                         <div class="flex items-center space-x-4">
                             <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md">EG1</div>
@@ -456,16 +456,22 @@
                                 <h3 class="font-bold text-gray-600">Provider 1 (Unavailable)</h3>
                                 <div class="flex items-center space-x-2 mt-1">
                                     <span class="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
-                                    <span class="text-xs text-gray-500">Not configured — contact admin</span>
+                                    @if(empty($fivesimConfigOk))
+                                        <span class="text-xs text-gray-500">Not configured — contact admin</span>
+                                    @elseif(!$fivesimProviderAvailable)
+                                        <span class="text-xs text-gray-500">Provider offline — try again later</span>
+                                    @else
+                                        <span class="text-xs text-gray-500">Unavailable — contact support</span>
+                                    @endif
                                 </div>
                             </div>
                         </div>
                     </button>
                     @endif
 
-                    {{-- Provider 2 --}}
-                    @if($hasSmsBower ?? false)
-                    <button onclick="selectProvider('provider2')"
+                        {{-- Provider 2 --}}
+                        @if(!empty($hasSmsBower))
+                        <button onclick="selectProvider('provider2')"
                             class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all duration-200">
                         <div class="flex items-center space-x-4">
                             <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md">EG2</div>
@@ -487,16 +493,22 @@
                                 <h3 class="font-bold text-gray-600">Provider 2 (Unavailable)</h3>
                                 <div class="flex items-center space-x-2 mt-1">
                                     <span class="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
-                                    <span class="text-xs text-gray-500">Not configured — contact admin</span>
+                                    @if(empty($smsbowerConfigOk))
+                                        <span class="text-xs text-gray-500">Not configured — contact admin</span>
+                                    @elseif(!$smsbowerProviderAvailable)
+                                        <span class="text-xs text-gray-500">Provider offline — try again later</span>
+                                    @else
+                                        <span class="text-xs text-gray-500">Unavailable — contact support</span>
+                                    @endif
                                 </div>
                             </div>
                         </div>
                     </button>
                     @endif
 
-                    {{-- Provider 3 --}}
-                    @if($hasSmsbus ?? false)
-                    <button onclick="selectProvider('provider3')"
+                        {{-- Provider 3 --}}
+                        @if(!empty($hasSmsbus))
+                        <button onclick="selectProvider('provider3')"
                             class="w-full group p-5 border-2 border-gray-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all duration-200">
                         <div class="flex items-center space-x-4">
                             <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md">EG3</div>
@@ -515,10 +527,16 @@
                         <div class="flex items-center space-x-4">
                             <div class="w-12 h-12 bg-gray-400 rounded-lg flex items-center justify-center text-white font-bold text-lg">EG3</div>
                             <div class="flex-1 text-left">
-                                <h3 class="font-bold text-gray-600">Provider 3 (Currently not available)</h3>
+                                <h3 class="font-bold text-gray-600">Provider 3 (Unavailable)</h3>
                                 <div class="flex items-center space-x-2 mt-1">
                                     <span class="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
-                                    <span class="text-xs text-gray-500">Currently not available — contact admin</span>
+                                    @if(empty($smsbusConfigOk))
+                                        <span class="text-xs text-gray-500">Not configured — contact admin</span>
+                                    @elseif(!$smsbusProviderAvailable)
+                                        <span class="text-xs text-gray-500">Provider offline — try again later</span>
+                                    @else
+                                        <span class="text-xs text-gray-500">Unavailable — contact support</span>
+                                    @endif
                                 </div>
                             </div>
                         </div>

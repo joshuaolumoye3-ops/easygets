@@ -106,13 +106,25 @@ class Controller
         $smsbowerProvider = Provider::where('api_identifier', 'smsbower')->first();
         $smsbusProvider   = Provider::where('api_identifier', 'smsbus')->first();
 
-        $hasFivesim  = !empty(env('FIVESIM_TOKEN'))    && $providerIsAvailable($fivesimProvider);
-        $hasSmsBower = !empty(env('SMSBOWER_API_KEY')) && $providerIsAvailable($smsbowerProvider);
-        $hasSmsbus   = !empty(env('SMSBUS_TOKEN'))     && $providerIsAvailable($smsbusProvider);
+        // Config checks (support config() or env fallbacks)
+        $fivesimConfigOk = !empty(config('services.5sim.token') ?: env('FIVESIM_TOKEN'));
+        $smsbowerConfigOk = !empty(config('services.smsbower.api_key') ?: env('SMSBOWER_API_KEY'));
+        $smsbusConfigOk   = !empty(config('services.smsbus.token') ?: env('SMSBUS_TOKEN')) || !empty(env('SMSBUS_TOKEN'));
+
+        $fivesimProviderAvailable  = $providerIsAvailable($fivesimProvider);
+        $smsbowerProviderAvailable = $providerIsAvailable($smsbowerProvider);
+        $smsbusProviderAvailable   = $providerIsAvailable($smsbusProvider);
+
+        $hasFivesim  = $fivesimConfigOk && $fivesimProviderAvailable;
+        $hasSmsBower = $smsbowerConfigOk && $smsbowerProviderAvailable;
+        $hasSmsbus   = $smsbusConfigOk && $smsbusProviderAvailable;
 
         return view('users.home', compact(
             'latestTransactions', 'wallet', 'categories', 'admin_rate', 'quickPickServices',
-            'hasFivesim', 'hasSmsBower', 'hasSmsbus'
+            'hasFivesim', 'hasSmsBower', 'hasSmsbus',
+            'fivesimConfigOk', 'fivesimProviderAvailable',
+            'smsbowerConfigOk', 'smsbowerProviderAvailable',
+            'smsbusConfigOk', 'smsbusProviderAvailable'
         ));
     }
 
