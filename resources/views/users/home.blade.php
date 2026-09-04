@@ -64,10 +64,10 @@
                         </div>
 
                         {{-- Wallet balance display --}}
-                        <div id="walletBalanceVisible" class="text-4xl font-extrabold text-white tracking-tight">
+                        <div id="walletBalanceVisible" class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
                             ₦{{ number_format($wallet->balance ?? 0, 2) }}
                         </div>
-                        <div id="walletBalanceHidden" class="hidden text-4xl font-extrabold text-white tracking-tight select-none" style="letter-spacing:0.15em;">
+                        <div id="walletBalanceHidden" class="hidden text-2xl sm:text-4xl font-extrabold text-white tracking-tight select-none" style="letter-spacing:0.15em;">
                             ••••••
                         </div>
                     </div>
@@ -98,10 +98,10 @@
                         </p>
 
                         {{-- Referral balance display --}}
-                        <div id="refBalanceVisible" class="text-2xl font-bold text-white mt-0.5">
+                        <div id="refBalanceVisible" class="text-lg sm:text-2xl font-bold text-white mt-0.5">
                             ₦{{ number_format($refBal, 2) }}
                         </div>
-                        <div id="refBalanceHidden" class="hidden text-2xl font-bold text-white mt-0.5 select-none" style="letter-spacing:0.15em;">
+                        <div id="refBalanceHidden" class="hidden text-lg sm:text-2xl font-bold text-white mt-0.5 select-none" style="letter-spacing:0.15em;">
                             ••••••
                         </div>
 
@@ -296,29 +296,29 @@
         @endif
 
         {{-- Action Buttons --}}
-        <div class="grid grid-cols-3 gap-3">
+        <div class="grid grid-cols-3 gap-2">
             <button onclick="openGetNumberChoiceModal()"
-                    class="bg-gradient-to-br from-[#00df82] via-[#03624c] to-[#030f0f] text-white font-bold py-3.5 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    class="bg-gradient-to-br from-[#00df82] via-[#03624c] to-[#030f0f] text-white font-bold py-2 sm:py-3 px-2 sm:px-4 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base whitespace-nowrap">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18m9-9H3"/>
                 </svg>
-                <span>Get Number</span>
+                <span class="truncate">Get Number</span>
             </button>
 
             <button onclick="showComingSoonToast('Gift Card is coming soon.')"
-                    class="bg-gradient-to-br from-[#00df82] via-[#03624c] to-[#030f0f] text-white font-bold py-3.5 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    class="bg-gradient-to-br from-[#00df82] via-[#03624c] to-[#030f0f] text-white font-bold py-2 sm:py-3 px-2 sm:px-4 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base whitespace-nowrap">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
-                <span>Gift Card</span>
+                <span class="truncate">Gift Card</span>
             </button>
 
             <button onclick="window.location.href='social-boost'"
-                    class="bg-gradient-to-br from-[#00df82] via-[#03624c] to-[#030f0f] text-white font-bold py-3.5 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    class="bg-gradient-to-br from-[#00df82] via-[#03624c] to-[#030f0f] text-white font-bold py-2 sm:py-3 px-2 sm:px-4 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base whitespace-nowrap">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/>
                 </svg>
-                <span>Social Boost</span>
+                <span class="truncate">Social Boost</span>
             </button>
         </div>
 
