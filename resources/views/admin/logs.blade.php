@@ -596,6 +596,10 @@
                             <label class="fl" for="country_code">Country Code</label>
                             <input class="fi" type="text" id="country_code" name="country_code" maxlength="2" placeholder="GB" />
                         </div>
+                        <div class="fg">
+                            <label class="fl" for="image_url">Product Image URL (optional)</label>
+                            <input class="fi" type="url" id="image_url" name="image_url" maxlength="1024" placeholder="https://example.com/logo.png" />
+                        </div>
                     </div>
                     <div class="fg" style="margin-bottom: 14px;">
                         <label class="fl" for="description">Description (optional)</label>
@@ -642,6 +646,10 @@
                             <label class="fl" for="country_code_manual">Country Code</label>
                             <input class="fi" type="text" id="country_code_manual" name="country_code" maxlength="2" placeholder="GB" />
                         </div>
+                        <div class="fg">
+                            <label class="fl" for="image_url_manual">Product Image URL (optional)</label>
+                            <input class="fi" type="url" id="image_url_manual" name="image_url" maxlength="1024" placeholder="https://example.com/logo.png" />
+                        </div>
                     </div>
                     <div class="fg" style="margin-bottom: 14px;">
                         <label class="fl" for="description_manual">Description (optional)</label>
@@ -684,7 +692,13 @@
                         {{-- Top clickable row --}}
                         <div class="product-row" onclick="toggleLogDetails({{ $product->id }}, '{{ $product->mode }}')">
                             <div class="product-row-top">
-                                <div class="product-icon">L</div>
+                                <div class="product-icon">
+                                    @if(!empty($product->image_url))
+                                        <img src="{{ $product->image_url }}" alt="{{ $product->name }}" style="width:40px;height:40px;border-radius:6px;object-fit:cover;" onerror="this.onerror=null; this.src='/assets/empty.svg'" />
+                                    @else
+                                        L
+                                    @endif
+                                </div>
                                 <div class="product-info">
                                     <div class="product-name">
                                         {{ $product->name }}
@@ -769,6 +783,10 @@
                                         <div class="fg">
                                             <label class="fl">Country Code</label>
                                             <input class="fi" type="text" name="country_code" value="{{ $product->country_code }}" maxlength="2" />
+                                        </div>
+                                        <div class="fg">
+                                            <label class="fl">Product Image URL</label>
+                                            <input class="fi" type="url" name="image_url" value="{{ $product->image_url ?? '' }}" maxlength="1024" placeholder="https://example.com/logo.png" />
                                         </div>
                                     </div>
                                     <div class="fg" style="margin-bottom:12px;">

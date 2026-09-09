@@ -21,6 +21,7 @@ class Product extends Model
         'country',
         'country_code',
         'description',
+        'image_url',
         'mode',
         'log_details',
     ];

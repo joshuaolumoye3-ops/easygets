@@ -839,6 +839,7 @@ class AdminServiceController extends Controller
             'country' => $request->country,
             'country_code' => strtoupper($request->country_code),
             'description' => $request->description,
+            'image_url' => $request->image_url ?? null,
             'mode' => $mode,
         ];
         

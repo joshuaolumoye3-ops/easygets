@@ -10,16 +10,25 @@
 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
 
     {{-- Flag / Image Area --}}
-    <div class="flex items-center justify-center bg-gray-50 p-5 h-32">
-        @if($flagCode)
-            <img
-                src="https://flagcdn.com/w80/{{ $flagCode }}.png"
-                alt="{{ $product->country ?? 'Country' }} flag"
-                class="w-16 h-12 object-cover rounded-lg shadow-sm border border-gray-200"
-                onerror="this.onerror=null; this.src='/assets/sim-icon.svg'; this.className='w-12 h-12 object-contain';"
-            />
+    <div class="flex items-center justify-center bg-gray-50 p-5 h-32 relative">
+        @if(!empty($product->image_url))
+            <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="w-20 h-20 object-cover rounded-lg shadow-sm border border-gray-200" onerror="this.onerror=null; this.src='/assets/sim-icon.svg'" />
         @else
-            <img src="/assets/sim-icon.svg" alt="Log" class="w-12 h-12 object-contain opacity-60" />
+            @if($flagCode)
+                <img
+                    src="https://flagcdn.com/w80/{{ $flagCode }}.png"
+                    alt="{{ $product->country ?? 'Country' }} flag"
+                    class="w-16 h-12 object-cover rounded-lg shadow-sm border border-gray-200"
+                    onerror="this.onerror=null; this.src='/assets/sim-icon.svg'; this.className='w-12 h-12 object-contain';"
+                />
+            @else
+                <img src="/assets/sim-icon.svg" alt="Log" class="w-12 h-12 object-contain opacity-60" />
+            @endif
+        @endif
+
+        {{-- Overlay small country flag on one side if available --}}
+        @if($flagCode)
+            <img src="https://flagcdn.com/w20/{{ $flagCode }}.png" alt="{{ $product->country ?? '' }}" style="position:absolute;right:8px;bottom:8px;width:28px;height:18px;border-radius:3px;border:1px solid #e6e6e6;object-fit:cover;" onerror="this.style.display='none'" />
         @endif
     </div>
 
