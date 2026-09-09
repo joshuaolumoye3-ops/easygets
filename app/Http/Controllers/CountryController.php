@@ -1400,7 +1400,10 @@ class CountryController extends Controller
             $logsService  = \App\Models\Service::firstOrCreate(['slug' => 'logs'], ['name' => 'Logs', 'is_active' => true]);
             $logsProvider = \App\Models\Provider::firstOrCreate(['code' => 'logs'], ['name' => 'Logs Service', 'service_id' => $logsService->id, 'api_identifier' => 'logs']);
 
-            $query = Product::where('provider_id', $logsProvider->id)->where('is_active', true)->orderBy('created_at', 'desc');
+            $query = Product::where('provider_id', $logsProvider->id)->where('is_active', true);
+
+            // Sorting (client-controlled via JS)
+            $sort = $request->get('sort', 'default');
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -1410,6 +1413,24 @@ class CountryController extends Controller
                       ->orWhere('country', 'like', "%{$search}%")
                       ->orWhere('country_code', 'like', "%{$search}%");
                 });
+            }
+
+            // Apply sorting after search filter
+            switch ($sort) {
+                case 'price_desc':
+                    $query->orderBy('client_price', 'desc');
+                    break;
+                case 'name_asc':
+                    $query->orderBy('name', 'asc');
+                    break;
+                case 'name_desc':
+                    $query->orderBy('name', 'desc');
+                    break;
+                case 'default':
+                default:
+                    // Price: Low to High by default
+                    $query->orderBy('client_price', 'asc');
+                    break;
             }
 
             $products = $query->paginate(20);
@@ -1426,7 +1447,14 @@ class CountryController extends Controller
 
             if ($request->ajax()) {
                 $html = view('partials.logs-items', ['products' => $products])->render();
-                return response()->json(['success' => true, 'html' => $html, 'has_more' => $products->hasMorePages(), 'next_page' => $products->currentPage() + 1]);
+                return response()->json([
+                    'success'  => true,
+                    'html'     => $html,
+                    'has_more' => $products->hasMorePages(),
+                    'next_page'=> $products->currentPage() + 1,
+                    'count'    => $products->count(),
+                    'total'    => $products->total(),
+                ]);
             }
 
             return view('users.logs', compact('products'));

@@ -96,7 +96,8 @@ function performSearch(query) {
     document.getElementById('loadingIndicator').classList.remove('hidden');
     document.getElementById('endMessage').classList.add('hidden');
 
-    fetch(`{{ route('logs') }}?search=${encodeURIComponent(query)}&sort=${sort}&ajax=1`, {
+    // Reset to page 1 and include sort param
+    fetch(`{{ route('logs') }}?search=${encodeURIComponent(query)}&sort=${encodeURIComponent(sort)}&ajax=1`, {
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
     .then(r => r.json())
@@ -135,7 +136,8 @@ function loadMoreProducts() {
     const query = document.getElementById('searchInput').value;
     const sort = document.getElementById('sortSelect').value;
 
-    fetch(`{{ route('logs') }}?page=${currentPage}&search=${encodeURIComponent(query)}&sort=${sort}&ajax=1`, {
+    // Request next page with same search & sort parameters
+    fetch(`{{ route('logs') }}?page=${currentPage}&search=${encodeURIComponent(query)}&sort=${encodeURIComponent(sort)}&ajax=1`, {
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
     .then(r => r.json())
