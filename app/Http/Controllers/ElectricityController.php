@@ -331,23 +331,24 @@ class ElectricityController extends Controller
                     || in_array($statusText, ['ORDER_RECEIVED', 'ORDER_COMPLETED', 'SUCCESS'])
                 );
 
-            Transaction::create([
-                'reference'    => $requestId,
-                'user_id'      => auth()->id(),
-                'type'         => 'electricity',
-                'channel'      => 'ClubKonnect',
-                'provider'     => $validated['electricCompany'],
-                'phone'        => $phoneNo,
-                'amount'       => $validated['amount'],
-                'meter_number' => $validated['meterNumber'],
-                'package'      => $validated['package'],
-                // Orders accepted with statuscode 100 are still pending on ClubKonnect's
-                // side until the callback confirms ORDER_COMPLETED — mark as pending here.
-                'status'       => $accepted ? ($statusCode === '100' ? 'pending' : 'success') : 'failed',
-                'response'     => json_encode($response),
-            ]);
-
             if ($accepted) {
+                // Persist transaction (pending or success depending on provider status code)
+                $txStatus = $statusCode === '100' ? 'pending' : 'success';
+                $transaction = Transaction::create([
+                    'reference'    => $requestId,
+                    'user_id'      => auth()->id(),
+                    'type'         => 'electricity',
+                    'channel'      => 'ClubKonnect',
+                    'provider'     => $validated['electricCompany'],
+                    'phone'        => $phoneNo,
+                    'amount'       => $validated['amount'],
+                    'meter_number' => $validated['meterNumber'],
+                    'package'      => $validated['package'],
+                    'status'       => $txStatus,
+                    'response'     => json_encode($response),
+                ]);
+
+                // Deduct user wallet for accepted orders (including status 100 pending state)
                 $wallet->decrement('balance', $validated['amount']);
                 DB::commit();
 
@@ -366,6 +367,42 @@ class ElectricityController extends Controller
                         'new_balance'    => $wallet->fresh()->balance,
                     ],
                 ]);
+            }
+
+            // Not accepted — special-case duplicate/txn-history responses to record a pending transaction
+            $errorMessage = $response['message']
+                ?? $response['Message']
+                ?? $response['Status']
+                ?? $response['status']
+                ?? 'Electricity purchase failed. Please try again.';
+
+            if (is_string($errorMessage) && strtoupper($errorMessage) === 'TXN_HISTORY') {
+                Log::warning('ClubKonnect returned TXN_HISTORY for electricity purchase', [
+                    'user_id'    => auth()->id(),
+                    'request_id' => $requestId,
+                    'meter'      => $validated['meterNumber'] ?? null,
+                    'raw_response' => $response,
+                ]);
+
+                // Create a pending transaction record for reconciliation but do NOT debit the user's wallet.
+                Transaction::create([
+                    'reference'    => $requestId,
+                    'user_id'      => auth()->id(),
+                    'type'         => 'electricity',
+                    'channel'      => 'ClubKonnect',
+                    'provider'     => $validated['electricCompany'],
+                    'phone'        => $phoneNo,
+                    'amount'       => $validated['amount'],
+                    'meter_number' => $validated['meterNumber'],
+                    'package'      => $validated['package'],
+                    'status'       => 'pending',
+                    'response'     => json_encode($response),
+                ]);
+
+                DB::commit();
+
+                $friendly = 'A matching transaction was found in the provider history (duplicate). If you were charged, check your transaction history or contact support.';
+                return response()->json(['status' => false, 'message' => $friendly], 400);
             }
 
             DB::rollBack();
