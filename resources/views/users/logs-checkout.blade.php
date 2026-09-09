@@ -21,11 +21,23 @@
 
         {{-- Product Card --}}
         <div class="border border-gray-100 rounded-xl p-5 mb-6 bg-gray-50">
-            <div class="flex items-center justify-between mb-3">
-                <span class="inline-block bg-green-100 rounded-full px-3 py-1 text-xs font-semibold text-green-700">
-                    {{ $product->country }}
-                </span>
-                <span class="text-xs font-mono font-bold text-gray-400 uppercase">{{ $product->country_code }}</span>
+            <div class="flex items-start justify-between mb-3">
+                <div class="flex items-center gap-3">
+                    @if(!empty($product->image_url))
+                        <div class="relative">
+                            <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="w-20 h-20 object-cover rounded-lg shadow-sm border border-gray-200" onerror="this.onerror=null; this.src='/assets/sim-icon.svg'" />
+                            @if(!empty($product->country_code))
+                                <img src="https://flagcdn.com/w20/{{ strtolower($product->country_code) }}.png" alt="{{ $product->country ?? '' }}" style="position:absolute;right:-6px;bottom:-6px;width:28px;height:18px;border-radius:3px;border:1px solid #e6e6e6;object-fit:cover;" onerror="this.style.display='none'" />
+                            @endif
+                        </div>
+                    @endif
+                    <div>
+                        <span class="inline-block bg-green-100 rounded-full px-3 py-1 text-xs font-semibold text-green-700">
+                            {{ $product->country }}
+                        </span>
+                        <div class="text-xs font-mono font-bold text-gray-400 uppercase mt-1">{{ $product->country_code }}</div>
+                    </div>
+                </div>
             </div>
             <h2 class="font-bold text-gray-800 text-lg mb-2">{{ $product->name }}</h2>
             <p class="text-gray-500 text-sm mb-4">{{ $product->description }}</p>

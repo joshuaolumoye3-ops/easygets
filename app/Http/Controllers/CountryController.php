@@ -1440,6 +1440,7 @@ class CountryController extends Controller
                     'name'         => $product->name,
                     'description'  => $product->description ?? 'Premium logs access',
                     'price'        => $product->client_price,
+                    'image_url'    => $product->image_url ?? null,
                     'country'      => $product->country ?? 'Global',
                     'country_code' => $product->country_code ? strtoupper($product->country_code) : 'GLB',
                 ];
@@ -1480,6 +1481,7 @@ class CountryController extends Controller
                 'name'         => $product->name,
                 'description'  => $product->description ?? 'Premium logs access',
                 'price'        => $product->client_price,
+                'image_url'    => $product->image_url ?? null,
                 'country'      => $product->country ?? 'Global',
                 'country_code' => $product->country_code ? strtoupper($product->country_code) : 'GLB',
             ];
