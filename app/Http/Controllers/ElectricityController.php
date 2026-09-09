@@ -376,6 +376,18 @@ class ElectricityController extends Controller
                 ?? $response['status']
                 ?? 'Electricity purchase failed. Please try again.';
 
+            // Map specific provider codes to friendly messages
+            if (is_string($errorMessage) && strtoupper($errorMessage) === 'TXN_HISTORY') {
+                Log::warning('ClubKonnect returned TXN_HISTORY for electricity purchase', [
+                    'user_id'    => auth()->id(),
+                    'request_id' => $requestId,
+                    'meter'      => $validated['meterNumber'] ?? null,
+                    'raw_response' => $response,
+                ]);
+
+                $errorMessage = 'A matching transaction was found in the provider history (duplicate). If you were charged, check your transaction history or contact support.';
+            }
+
             return response()->json([
                 'status'  => false,
                 'message' => $errorMessage,
