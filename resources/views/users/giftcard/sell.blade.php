@@ -38,11 +38,19 @@ window.imgFallback = function(el){
     if(list.length){ const next=list.shift(); el.dataset.fallbacks=JSON.stringify(list); el.src=next; }
     else { el.style.display='none'; if(el.nextElementSibling) el.nextElementSibling.style.display='flex'; }
 };
-function badgeHtml(icon, badge, size='text-lg'){
+function badgeHtml(icons, badge, size='text-lg'){
     const b = badge || {initial:'G', color:'#03624C'};
     const badgeDiv = `<div class="w-full h-full hidden items-center justify-center text-white font-extrabold ${size}" style="background:${esc(b.color)}">${esc(b.initial)}</div>`;
-    if(!icon) return `<div class="w-full h-full flex items-center justify-center text-white font-extrabold ${size}" style="background:${esc(b.color)}">${esc(b.initial)}</div>`;
-    return `<img src="${esc(icon)}" alt="" loading="lazy" class="w-full h-full object-contain p-1.5" onerror="imgFallback(this)">${badgeDiv}`;
+    const list = (icons||[]).slice();
+    if(!list.length) return `<div class="w-full h-full flex items-center justify-center text-white font-extrabold ${size}" style="background:${esc(b.color)}">${esc(b.initial)}</div>`;
+    const first = list.shift();
+    return `<img src="${esc(first)}" alt="" loading="lazy" class="w-full h-full object-contain p-1.5" data-fallbacks='${esc(JSON.stringify(list))}' onerror="imgFallback(this)">${badgeDiv}`;
+}
+/** A flag badge pinned to the corner of an icon circle — makes the country the visually dominant signal. */
+function cornerFlag(flag){
+    if(!flag) return '';
+    return `<span class="absolute -top-1 -right-1 z-10 shadow rounded-sm overflow-hidden border border-white" style="width:18px;height:13px">
+        <img src="${flagUrl(flag)}" alt="" class="w-full h-full object-cover" onerror="this.parentElement.remove()"></span>`;
 }
 const MAX_IMG=20, MAX_BYTES=5*1024*1024;
 
@@ -70,10 +78,10 @@ function stepBrand(){
     view.innerHTML=`<input id="bq" type="search" placeholder="Search brands…" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-[#03624C]"><div id="bl" class="grid grid-cols-2 gap-3"></div>`;
     const paint=(f='')=>{
         document.getElementById('bl').innerHTML=DATA.categories.filter(c=>c.toLowerCase().includes(f)).map(c=>{
-            const icon = DATA.categoryIcons && DATA.categoryIcons[c];
+            const icons = (DATA.categoryIcons && DATA.categoryIcons[c]) || [];
             const badge = DATA.categoryBadges && DATA.categoryBadges[c];
             return `<button data-b="${esc(c)}" class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md text-left transition">
-                <div class="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center mb-2">${badgeHtml(icon, badge, 'text-base')}</div>
+                <div class="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center mb-2">${badgeHtml(icons, badge, 'text-base')}</div>
                 <p class="font-semibold text-sm text-gray-800">${esc(c)}</p></button>`;
         }).join('')||'<p class="col-span-2 text-center text-sm text-gray-400 py-8">No brands found.</p>';
         document.querySelectorAll('#bl button').forEach(b=>b.onclick=()=>{ brand=b.dataset.b; step=2; render(); }); };
@@ -83,8 +91,8 @@ function stepCard(){
     const list=DATA.cards.filter(c=>c.category===brand);
     view.innerHTML=`<p class="text-xs font-bold text-gray-500 uppercase mb-2">${esc(brand)}</p><div class="space-y-2">${list.map(c=>{
         return `<button data-id="${c.id}" class="w-full bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md text-left transition flex items-center gap-3">
-        <div class="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0">${badgeHtml(c.icon, c.badge)}</div>
-        <div class="min-w-0 flex-1"><p class="font-semibold text-sm text-gray-800">${esc(c.name)}</p><p class="text-xs text-gray-400 mt-0.5 flex items-center gap-1">${flagBadge(c.flag)} ${esc(c.country)}${c.form?' · '+esc(c.form):''}${c.minimum?' · min '+c.minimum:''}</p></div>
+        <div class="relative w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0">${badgeHtml(c.icons, c.badge)}${cornerFlag(c.flag)}</div>
+        <div class="min-w-0 flex-1"><p class="font-semibold text-sm text-gray-800">${esc(c.name)}</p><p class="text-xs text-gray-400 mt-0.5">${esc(c.country)}${c.form?' · '+esc(c.form):''}${c.minimum?' · min '+c.minimum:''}</p></div>
         <div class="text-right flex-shrink-0"><p class="text-sm font-extrabold text-[#03624C]">₦${Number(c.rate).toLocaleString('en-NG',{maximumFractionDigits:2})}</p><p class="text-[10px] text-gray-400">per $1</p></div></button>`;
     }).join('')}</div>`;
     document.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>{ card=DATA.cards.find(c=>c.id==b.dataset.id); files=[]; clientToken=token(); step=3; render(); });
@@ -93,8 +101,8 @@ function stepForm(){
     const form=(card.form||'').toLowerCase(), needImg=form!=='ecode', needCode=form!=='physical';
         view.innerHTML=`
       <div class="bg-white rounded-2xl p-4 border border-gray-100 mb-3 flex items-center gap-3">
-        <div class="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0">${badgeHtml(card.icon, card.badge)}</div>
-        <div><p class="font-bold text-gray-800 text-sm">${esc(card.name)}</p><p class="text-xs text-gray-400 flex items-center gap-1">${flagBadge(card.flag)} ${esc(card.country)}${card.form?' · '+esc(card.form):''} · ₦${Number(card.rate).toLocaleString('en-NG')} per $1</p></div>
+        <div class="relative w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0">${badgeHtml(card.icons, card.badge)}${cornerFlag(card.flag)}</div>
+        <div><p class="font-bold text-gray-800 text-sm">${esc(card.name)}</p><p class="text-xs text-gray-400">${esc(card.country)}${card.form?' · '+esc(card.form):''} · ₦${Number(card.rate).toLocaleString('en-NG')} per $1</p></div>
       </div>
       <div id="msg" class="hidden text-sm rounded-xl p-3 mb-3"></div>
       <label class="text-xs font-bold text-gray-500 uppercase">Card value (USD)</label>

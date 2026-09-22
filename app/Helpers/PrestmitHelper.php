@@ -23,6 +23,7 @@ class PrestmitHelper
     ];
 
     /** Keyword => real website domain, used only to build a favicon URL. Not a drawn/reproduced logo. */
+        /** Keyword => real website domain, used only to build a favicon URL. Not a drawn/reproduced logo. */
     private const BRAND_DOMAINS = [
         'itunes' => 'apple.com', 'apple' => 'apple.com', 'amazon' => 'amazon.com',
         'google play' => 'google.com', 'google' => 'google.com', 'playstation' => 'playstation.com',
@@ -32,8 +33,22 @@ class PrestmitHelper
         'best buy' => 'bestbuy.com', 'spotify' => 'spotify.com', 'netflix' => 'netflix.com',
         'roblox' => 'roblox.com', 'vanilla' => 'vanillagift.com', 'macy' => 'macys.com',
         'home depot' => 'homedepot.com', 'visa' => 'visa.com', 'mastercard' => 'mastercard.com',
+        'american express' => 'americanexpress.com', 'amex' => 'americanexpress.com',
+        'foot locker' => 'footlocker.com', 'footlocker' => 'footlocker.com',
+        'colourpop' => 'colourpop.com', 'colorpop' => 'colourpop.com',
+        'jc penney' => 'jcpenney.com', 'jcpenney' => 'jcpenney.com', 'jc penny' => 'jcpenney.com',
+        'offgamers' => 'offgamers.com', 'off gamers' => 'offgamers.com',
+        'saks' => 'saksfifthavenue.com',
         'sears' => 'sears.com', 'gamestop' => 'gamestop.com', 'starbucks' => 'starbucks.com',
-        'airbnb' => 'airbnb.com', 'uber' => 'uber.com',
+        'airbnb' => 'airbnb.com', 'uber' => 'uber.com', 'hulu' => 'hulu.com', 'disney' => 'disney.com',
+        'chipotle' => 'chipotle.com', 'costco' => 'costco.com', 'doordash' => 'doordash.com',
+        'grubhub' => 'grubhub.com', 'wayfair' => 'wayfair.com', 'sephora' => 'sephora.com',
+        'zara' => 'zara.com', 'h&m' => 'hm.com', 'adidas' => 'adidas.com', 'lowes' => 'lowes.com',
+        'kohls' => 'kohls.com', 'cvs' => 'cvs.com', 'walgreens' => 'walgreens.com',
+        'aeropostale' => 'aeropostale.com', 'bath & body' => 'bathandbodyworks.com',
+        'victoria' => 'victoriassecret.com', 'ulta' => 'ulta.com', 'dunkin' => 'dunkindonuts.com',
+        'ticketmaster' => 'ticketmaster.com', 'expedia' => 'expedia.com', 'delta' => 'delta.com',
+        'southwest' => 'southwest.com', 'bloomingdale' => 'bloomingdales.com',
     ];
 
     /** Palette for generated brand badges — no external logo service involved. */
@@ -219,16 +234,44 @@ class PrestmitHelper
         return ['initial' => $letter, 'color' => $color];
     }
 
-    /** Favicon URL for a card/brand name via Google's public favicon service, or null if unknown. */
-    public function brandIconUrl(string $name): ?string
+    /**
+     * Candidate favicon URLs for a card/brand name, via Google's public favicon service.
+     * Tries the curated domain map first, then guesses a domain from the name itself, so
+     * new brands Prestmit adds still get a real logo without needing the map updated.
+     * Returns an ordered list (possibly empty) for the frontend to try in sequence.
+     */
+    public function brandIconUrls(string $name): array
     {
         $lower = strtolower($name);
+        $urls  = [];
+
         foreach (self::BRAND_DOMAINS as $needle => $domain) {
             if (str_contains($lower, $needle)) {
-                return 'https://www.google.com/s2/favicons?domain=' . $domain . '&sz=128';
+                $urls[] = 'https://www.google.com/s2/favicons?domain=' . $domain . '&sz=128';
+                break;
             }
         }
-        return null;
+
+        if ($guess = $this->guessDomain($name)) {
+            $url = 'https://www.google.com/s2/favicons?domain=' . $guess . '&sz=128';
+            if (!in_array($url, $urls, true)) {
+                $urls[] = $url;
+            }
+        }
+
+        return $urls;
+    }
+
+    /** Strips noise words ("gift card", "ecode", region hints) and turns what's left into a plausible domain. */
+    private function guessDomain(string $name): ?string
+    {
+        $clean = strtolower($name);
+        $clean = preg_replace('/\b(gift ?card|ecode|e-code|physical|digital|usa|uk|eu|europe|canada|global|\$?\d+([.,]\d+)?)\b/i', '', $clean);
+        $clean = preg_replace('/[^a-z0-9]/', '', $clean);
+        if ($clean === '' || strlen($clean) < 3) {
+            return null;
+        }
+        return $clean . '.com';
     }
 
     /** flagcdn.com iso2 code for a Prestmit country code (USA, UK, EURO, CANADA, OTHERS…), or null. */
