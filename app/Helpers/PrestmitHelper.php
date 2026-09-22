@@ -11,40 +11,6 @@ class PrestmitHelper
 {
     private array $cfg;
 
-    /** Keyword => domain, for Clearbit logos. Checked in order, first match wins. */
-    private const BRAND_DOMAINS = [
-        'itunes'        => 'apple.com',
-        'apple'         => 'apple.com',
-        'amazon'        => 'amazon.com',
-        'google play'   => 'google.com',
-        'playstation'   => 'playstation.com',
-        'psn'           => 'playstation.com',
-        'xbox'          => 'xbox.com',
-        'steam'         => 'steampowered.com',
-        'razer'         => 'razer.com',
-        'nike'          => 'nike.com',
-        'walmart'       => 'walmart.com',
-        'ebay'          => 'ebay.com',
-        'sephora'       => 'sephora.com',
-        'nordstrom'     => 'nordstrom.com',
-        'target'        => 'target.com',
-        'best buy'      => 'bestbuy.com',
-        'spotify'       => 'spotify.com',
-        'netflix'       => 'netflix.com',
-        'roblox'        => 'roblox.com',
-        'vanilla'       => 'vanillagift.com',
-        'macy'          => 'macys.com',
-        'home depot'    => 'homedepot.com',
-        'google'        => 'google.com',
-        'visa'          => 'visa.com',
-        'mastercard'    => 'mastercard.com',
-        'sears'         => 'sears.com',
-        'gamestop'      => 'gamestop.com',
-        'starbucks'     => 'starbucks.com',
-        'airbnb'        => 'airbnb.com',
-        'uber'          => 'uber.com',
-    ];
-
     /** Prestmit country code => flagcdn iso2. */
     private const COUNTRY_FLAGS = [
         'USA'    => 'us',
@@ -54,6 +20,12 @@ class PrestmitHelper
         'CANADA' => 'ca',
         'CA'     => 'ca',
         'CAN'    => 'ca',
+    ];
+
+    /** Palette for generated brand badges — no external logo service involved. */
+    private const BADGE_COLORS = [
+        '#03624C', '#4f46e5', '#0ea5e9', '#db2777', '#d97706',
+        '#059669', '#7c3aed', '#dc2626', '#0891b2', '#65a30d',
     ];
 
     public function __construct()
@@ -188,9 +160,10 @@ class PrestmitHelper
                         continue;
                     }
                     $regionCode = strtolower((string) ($c['regions'][0]['code'] ?? ''));
+                    $title = (string) ($c['title'] ?? 'Gift card');
                     $all[] = [
                         'sku'         => (int) $c['sku'],
-                        'title'       => (string) ($c['title'] ?? 'Gift card'),
+                        'title'       => $title,
                         'description' => $this->cleanHtml($c['description']['content'] ?? ''),
                         'min'         => (float) ($c['minPrice'] ?? 0),
                         'max'         => (float) ($c['maxPrice'] ?? 0),
@@ -199,8 +172,8 @@ class PrestmitHelper
                         'pre_order'   => (bool) ($c['preOrder'] ?? false),
                         'categories'  => array_values(array_filter(array_map(fn ($x) => $x['name'] ?? null, $c['categories'] ?? []))),
                         'regions'     => array_values(array_filter(array_map(fn ($x) => $x['name'] ?? null, $c['regions'] ?? []))),
-                        'image'       => $c['imageUrl'] ?? null,
-                        'logo'        => $c['imageUrl'] ?: $this->brandLogo($c['title'] ?? ''),
+                        'image'       => $c['imageUrl'] ?: null,
+                        'badge'       => $this->badge($title),
                         'flag'        => $regionCode !== '' ? $regionCode : null,
                     ];
                 }
@@ -218,16 +191,17 @@ class PrestmitHelper
         return preg_replace('/<(\w+)[^>]*>/', '<$1>', $html);
     }
 
-    /** Best-effort brand logo (Clearbit CDN) from a card/category name. Client falls back to an emoji on error. */
-    public function brandLogo(string $name): ?string
+    /**
+     * Deterministic colored initial badge for a card/brand name — used as the
+     * logo whenever no real product image is available. No external service,
+     * so it never fails, 404s, or gets blocked by CORS.
+     */
+    public function badge(string $name): array
     {
-        $lower = strtolower($name);
-        foreach (self::BRAND_DOMAINS as $needle => $domain) {
-            if (str_contains($lower, $needle)) {
-                return 'https://logo.clearbit.com/' . $domain . '?size=128';
-            }
-        }
-        return null;
+        $clean  = trim($name) ?: 'Gift card';
+        $letter = mb_strtoupper(mb_substr($clean, 0, 1));
+        $color  = self::BADGE_COLORS[crc32(mb_strtolower($clean)) % count(self::BADGE_COLORS)];
+        return ['initial' => $letter, 'color' => $color];
     }
 
     /** flagcdn.com iso2 code for a Prestmit country code (USA, UK, EURO, CANADA, OTHERS…), or null. */

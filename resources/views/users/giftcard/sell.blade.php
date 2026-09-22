@@ -31,8 +31,12 @@ const esc=s=>{const d=document.createElement('div');d.textContent=String(s??'');
 const ngn=n=>'₦'+Number(n).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2});
 const token=()=>(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36));
 const flagUrl=f=>f?`https://flagcdn.com/24x18/${f}.png`:null;
-function logoImg(logo,size='w-full h-full object-cover'){ if(!logo) return null; return `<img src="${esc(logo)}" alt="" loading="lazy" class="${size}" onerror="this.parentElement.dataset.fallback='1';this.remove()">`; }
 function flagBadge(flag){ if(!flag) return ''; return `<img src="${flagUrl(flag)}" alt="" class="inline-block rounded-sm" style="width:16px;height:12px;object-fit:cover" onerror="this.remove()">`; }
+/** Colored-initial badge — Prestmit's sell catalog has no images, so this IS the logo. Never fails or CORS-blocks. */
+function badgeHtml(badge, size='text-lg'){
+    const b = badge || {initial:'G', color:'#03624C'};
+    return `<div class="w-full h-full flex items-center justify-center text-white font-extrabold ${size}" style="background:${esc(b.color)}">${esc(b.initial)}</div>`;
+}
 const MAX_IMG=20, MAX_BYTES=5*1024*1024;
 
 let DATA=null, step=1, brand=null, card=null, files=[], clientToken=token();
@@ -59,10 +63,9 @@ function stepBrand(){
     view.innerHTML=`<input id="bq" type="search" placeholder="Search brands…" class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-[#03624C]"><div id="bl" class="grid grid-cols-2 gap-3"></div>`;
     const paint=(f='')=>{
         document.getElementById('bl').innerHTML=DATA.categories.filter(c=>c.toLowerCase().includes(f)).map(c=>{
-            const logo=DATA.categoryLogos && DATA.categoryLogos[c];
-            const icon=logoImg(logo,'w-full h-full object-contain p-1.5');
+            const badge = DATA.categoryBadges && DATA.categoryBadges[c];
             return `<button data-b="${esc(c)}" class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md text-left transition">
-                <div class="w-10 h-10 rounded-xl bg-[#03624C]/10 overflow-hidden flex items-center justify-center mb-2 text-lg font-extrabold text-[#03624C]">${icon || esc(c.charAt(0).toUpperCase())}</div>
+                <div class="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center mb-2">${badgeHtml(badge, 'text-base')}</div>
                 <p class="font-semibold text-sm text-gray-800">${esc(c)}</p></button>`;
         }).join('')||'<p class="col-span-2 text-center text-sm text-gray-400 py-8">No brands found.</p>';
         document.querySelectorAll('#bl button').forEach(b=>b.onclick=()=>{ brand=b.dataset.b; step=2; render(); }); };
@@ -71,9 +74,8 @@ function stepBrand(){
 function stepCard(){
     const list=DATA.cards.filter(c=>c.category===brand);
     view.innerHTML=`<p class="text-xs font-bold text-gray-500 uppercase mb-2">${esc(brand)}</p><div class="space-y-2">${list.map(c=>{
-        const icon=logoImg(c.logo,'w-full h-full object-contain p-1.5');
         return `<button data-id="${c.id}" class="w-full bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md text-left transition flex items-center gap-3">
-        <div class="w-11 h-11 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0 text-lg">${icon || '🎁'}</div>
+        <div class="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0">${badgeHtml(c.badge)}</div>
         <div class="min-w-0 flex-1"><p class="font-semibold text-sm text-gray-800">${esc(c.name)}</p><p class="text-xs text-gray-400 mt-0.5 flex items-center gap-1">${flagBadge(c.flag)} ${esc(c.country)}${c.form?' · '+esc(c.form):''}${c.minimum?' · min '+c.minimum:''}</p></div>
         <div class="text-right flex-shrink-0"><p class="text-sm font-extrabold text-[#03624C]">₦${Number(c.rate).toLocaleString('en-NG',{maximumFractionDigits:2})}</p><p class="text-[10px] text-gray-400">per $1</p></div></button>`;
     }).join('')}</div>`;
@@ -81,10 +83,9 @@ function stepCard(){
 }
 function stepForm(){
     const form=(card.form||'').toLowerCase(), needImg=form!=='ecode', needCode=form!=='physical';
-    const icon=logoImg(card.logo,'w-full h-full object-contain p-1');
-    view.innerHTML=`
+        view.innerHTML=`
       <div class="bg-white rounded-2xl p-4 border border-gray-100 mb-3 flex items-center gap-3">
-        <div class="w-11 h-11 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0 text-lg">${icon||'🎁'}</div>
+        <div class="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0">${badgeHtml(card.badge)}</div>
         <div><p class="font-bold text-gray-800 text-sm">${esc(card.name)}</p><p class="text-xs text-gray-400 flex items-center gap-1">${flagBadge(card.flag)} ${esc(card.country)}${card.form?' · '+esc(card.form):''} · ₦${Number(card.rate).toLocaleString('en-NG')} per $1</p></div>
       </div>
       <div id="msg" class="hidden text-sm rounded-xl p-3 mb-3"></div>
