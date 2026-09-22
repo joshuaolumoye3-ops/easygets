@@ -95,6 +95,7 @@ class HistoryController extends Controller
             'newSocialBoostId'  => $newSocialBoostId,
             'logs'              => $this->fetchLogsForUser($userId),
             'esims'             => $this->fetchEsimsForUser($userId),
+            'giftcards'         => $this->fetchGiftcardsForUser($userId),
         ]);
     }
 
@@ -725,6 +726,29 @@ class HistoryController extends Controller
                 ] : null,
             ];
         })->values();
+    }
+
+    private function fetchGiftcardsForUser($userId)
+    {
+        try {
+            return \App\Models\GiftcardOrder::where('user_id', $userId)
+                ->orderBy('created_at', 'desc')
+                ->limit(100)
+                ->get()
+                ->map(fn ($o) => [
+                    'id'         => $o->id,
+                    'reference'  => $o->reference,
+                    'type'       => $o->type,
+                    'title'      => $o->title,
+                    'image'      => $o->image_url,
+                    'amount'     => '₦' . number_format((float) ($o->type === 'sell' ? ($o->payout_ngn ?? $o->total_ngn) : $o->total_ngn), 2),
+                    'status'     => $o->statusLabel(),
+                    'raw_status' => $o->status,
+                    'date'       => $o->created_at->format('M d, Y h:i A'),
+                ])->values();
+        } catch (\Throwable $e) {
+            return collect([]);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════

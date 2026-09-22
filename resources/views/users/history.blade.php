@@ -15,11 +15,12 @@
     </div>
 
     <!-- Tabs -->
-    <div class="grid grid-cols-4 gap-1.5 px-4 mb-6 bg-white py-4">
+    <div class="grid grid-cols-5 gap-1 px-4 mb-6 bg-white py-4">
         <button id="activationsBtn" class="text-center py-2.5 px-1 rounded-full font-semibold text-[11px] sm:text-xs leading-tight whitespace-nowrap bg-green-800 text-white transition-colors">Activations</button>
         <button id="socialsBtn"     class="text-center py-2.5 px-1 rounded-full font-semibold text-[11px] sm:text-xs leading-tight whitespace-nowrap bg-gray-200 text-gray-600 transition-colors">Socials</button>
         <button id="logsBtn"        class="text-center py-2.5 px-1 rounded-full font-semibold text-[11px] sm:text-xs leading-tight whitespace-nowrap bg-gray-200 text-gray-600 transition-colors">Logs</button>
         <button id="esimBtn"        class="text-center py-2.5 px-1 rounded-full font-semibold text-[11px] sm:text-xs leading-tight whitespace-nowrap bg-gray-200 text-gray-600 transition-colors">eSIM</button>
+        <button id="giftcardsBtn" class="text-center py-2.5 px-1 rounded-full font-semibold text-[10px] sm:text-xs leading-tight whitespace-nowrap bg-gray-200 text-gray-600 transition-colors">Giftcards</button>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════
@@ -274,6 +275,51 @@
         @endforelse
     </div>{{-- #esimsContent --}}
 
+    <!-- ══════════════════════════════════════════════════════════
+         GIFTCARDS TAB
+    ══════════════════════════════════════════════════════════ -->
+    <div id="giftcardsContent" class="space-y-3 px-4 transition-all duration-500 ease-in-out hidden">
+        @forelse($giftcards as $giftcard)
+            <div onclick="openGiftcardModal({{ $giftcard['id'] }})"
+                 class="cursor-pointer flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex items-center space-x-3">
+                    @if(!empty($giftcard['image']))
+                        <img src="{{ $giftcard['image'] }}" alt="giftcard"
+                             class="w-10 h-10 rounded-lg object-cover border-2 border-gray-100"
+                             onerror="this.outerHTML='<div class=&quot;w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-lg&quot;>🎁</div>'">
+                    @else
+                        <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-lg">🎁</div>
+                    @endif
+                    <div>
+                        <p class="font-semibold text-gray-800">{{ $giftcard['title'] ?? 'Giftcard' }}</p>
+                        <p class="text-xs text-gray-500 mt-0.5">
+                            {{ ucfirst($giftcard['type'] ?? 'purchase') }} • {{ $giftcard['reference'] ?? 'N/A' }}
+                        </p>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ $giftcard['date'] }}</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-semibold text-gray-900 mb-1">{{ $giftcard['amount'] }}</p>
+                    <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full
+                        {{ strtolower($giftcard['raw_status'] ?? '') === 'success' || strtolower($giftcard['raw_status'] ?? '') === 'completed' ? 'bg-green-100 text-green-700' :
+                           (strtolower($giftcard['raw_status'] ?? '') === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                           (strtolower($giftcard['raw_status'] ?? '') === 'failed' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700')) }}">
+                        {{ $giftcard['status'] ?? 'Unknown' }}
+                    </span>
+                </div>
+            </div>
+        @empty
+            <div class="text-center py-12">
+                <div class="text-6xl mb-4">🎁</div>
+                <p class="text-gray-500 font-medium">No giftcard history yet</p>
+                <p class="text-sm text-gray-400 mt-1">Your giftcard orders will appear here</p>
+                <a href="{{ route('giftcards.index') }}" class="inline-block mt-4 px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors">
+                    Buy Giftcards
+                </a>
+            </div>
+        @endforelse
+    </div>{{-- #giftcardsContent --}}
+
 </div>{{-- .max-w-md --}}
 
 <!-- ══════════════════════════════════════════════════════════
@@ -301,6 +347,10 @@
      ESIM MODAL
 ══════════════════════════════════════════════════════════ -->
 <div id="esimModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"></div>
+</div>
+
+<div id="giftcardModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"></div>
 </div>
 
@@ -544,6 +594,7 @@ const ALL_ACTIVATIONS   = @json($activations);
 const ALL_SOCIAL_BOOSTS = @json($socialBoosts);
 const ALL_LOGS          = @json($logs ?? []);
 const ALL_ESIMS         = @json($esims ?? []);
+const ALL_GIFTCARDS     = @json($giftcards ?? []);
 
 // Build a keyed map for quick O(1) lookup in modal
 const logsData = {};
@@ -551,6 +602,9 @@ ALL_LOGS.forEach(log => { logsData[log.id] = log; });
 
 const esimsData = {};
 ALL_ESIMS.forEach(e => { esimsData[e.id] = e; });
+
+const giftcardsData = {};
+ALL_GIFTCARDS.forEach(g => { giftcardsData[g.id] = g; });
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let pollingInterval         = null;
@@ -616,12 +670,15 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('socialsBtn').addEventListener('click',     () => showTab('socials'));
     document.getElementById('logsBtn').addEventListener('click',        () => showTab('logs'));
     document.getElementById('esimBtn').addEventListener('click',        () => showTab('esim'));
+    document.getElementById('giftcardsBtn').addEventListener('click',   () => showTab('giftcards'));
+    document.getElementById('giftcardModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeGiftcardModal(); });
 
     // ── URL param redirect ─────────────────────────────────────────────────
     const tabParam = new URLSearchParams(window.location.search).get('tab');
     if (tabParam === 'logs')    showTab('logs');
     else if (tabParam === 'socials') showTab('socials');
     else if (tabParam === 'esim')    showTab('esim');
+    else if (tabParam === 'giftcards') showTab('giftcards');
     else showTab('activations');
 
     // ── Modal backdrop click ───────────────────────────────────────────────
@@ -647,39 +704,26 @@ document.addEventListener('DOMContentLoaded', function () {
 // TAB SWITCHING
 // ═════════════════════════════════════════════════════════════════════════════
 function showTab(tab) {
-    // Hide all content panels
-    ['activationsContent', 'socialsContent', 'logsContent', 'esimsContent'].forEach(id => {
+    ['activationsContent', 'socialsContent', 'logsContent', 'esimsContent', 'giftcardsContent'].forEach(id => {
         document.getElementById(id)?.classList.add('hidden');
     });
-
-    // Reset all buttons to inactive style
-    const btnIds = { activations: 'activationsBtn', socials: 'socialsBtn', logs: 'logsBtn', esim: 'esimBtn' };
+    const btnIds = { activations: 'activationsBtn', socials: 'socialsBtn', logs: 'logsBtn', esim: 'esimBtn', giftcards: 'giftcardsBtn' };
     Object.values(btnIds).forEach(id => {
         const btn = document.getElementById(id);
         if (!btn) return;
-        btn.classList.remove('bg-green-800', 'bg-purple-600', 'bg-indigo-600', 'text-white');
+        btn.classList.remove('bg-green-800', 'text-white');
         btn.classList.add('bg-gray-200', 'text-gray-600');
     });
-
-    // Activate selected tab
-    const activeColors = {
-        activations: ['bg-green-800', 'text-white'],
-        socials:     ['bg-green-800', 'text-white'],
-        logs:        ['bg-green-800', 'text-white'],
-        esim:        ['bg-green-800', 'text-white'],
-    };
-
     const contentId = tab === 'activations' ? 'activationsContent'
                     : tab === 'socials'      ? 'socialsContent'
                     : tab === 'esim'         ? 'esimsContent'
+                    : tab === 'giftcards'    ? 'giftcardsContent'
                     : 'logsContent';
-
     document.getElementById(contentId)?.classList.remove('hidden');
-
     const activeBtn = document.getElementById(btnIds[tab]);
     if (activeBtn) {
         activeBtn.classList.remove('bg-gray-200', 'text-gray-600');
-        activeColors[tab].forEach(cls => activeBtn.classList.add(cls));
+        activeBtn.classList.add('bg-green-800', 'text-white');
     }
 }
 
@@ -1672,6 +1716,97 @@ function copyToClipboard(text, btnEl) {
             setTimeout(() => btnEl.innerHTML = orig, 1500);
         }
     }).catch(() => showToast('Failed to copy', 'error'));
+}
+
+function closeGiftcardModal() {
+    const modal = document.getElementById('giftcardModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function openGiftcardModal(id) {
+    const modal = document.getElementById('giftcardModal');
+    const giftcard = giftcardsData[id];
+    if (!modal || !giftcard) return;
+
+    const rawStatus = String(giftcard.raw_status || '').toLowerCase();
+    const badgeClass = {
+        success: 'bg-green-100 text-green-700',
+        completed: 'bg-green-100 text-green-700',
+        pending: 'bg-yellow-100 text-yellow-700',
+        processing: 'bg-blue-100 text-blue-700',
+        failed: 'bg-red-100 text-red-700',
+        cancelled: 'bg-gray-100 text-gray-700',
+        refunded: 'bg-purple-100 text-purple-700',
+    }[rawStatus] || 'bg-gray-100 text-gray-700';
+
+    modal.querySelector('.bg-white').innerHTML = `
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-900">Giftcard Details</h2>
+                <button onclick="closeGiftcardModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="bg-gradient-to-br from-amber-50 to-orange-100 rounded-xl p-4 mb-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        ${giftcard.image ? `<img src="${giftcard.image}" alt="giftcard" class="w-12 h-12 rounded-lg object-cover">` : `<div class="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center text-xl">🎁</div>`}
+                        <div>
+                            <p class="font-semibold text-gray-800">${giftcard.title || 'Giftcard'}</p>
+                            <p class="text-xs text-gray-600">${(giftcard.type || 'purchase').charAt(0).toUpperCase() + (giftcard.type || 'purchase').slice(1)}</p>
+                        </div>
+                    </div>
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${badgeClass}">${giftcard.status || 'Unknown'}</span>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 rounded-xl p-4 mb-4">
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div><p class="text-gray-500">Amount</p><p class="font-semibold text-gray-900">${giftcard.amount || '₦0.00'}</p></div>
+                    <div><p class="text-gray-500">Date</p><p class="font-semibold text-gray-900 text-xs">${giftcard.date || 'N/A'}</p></div>
+                    <div class="col-span-2"><p class="text-gray-500">Reference</p><p class="font-semibold text-gray-900 text-xs break-all">${giftcard.reference || '—'}</p></div>
+                </div>
+            </div>
+
+            ${giftcard.reference ? `
+            <div class="bg-white border-2 border-gray-200 rounded-xl p-4">
+                <div class="flex items-center justify-between">
+                    <p class="text-xs text-gray-500 font-medium uppercase">Reference</p>
+                    <button onclick="gcCopy('${String(giftcard.reference).replace(/'/g, "\\'")}', this)" class="text-amber-600 flex-shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                    </button>
+                </div>
+                <p class="mt-2 text-sm font-mono text-gray-900 break-all">${giftcard.reference}</p>
+            </div>` : ''}
+        </div>`;
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function gcCopy(value, btnEl) {
+    navigator.clipboard.writeText(value).then(() => {
+        showToast('Reference copied!', 'success');
+        if (btnEl) {
+            const orig = btnEl.innerHTML;
+            btnEl.innerHTML = '✓';
+            setTimeout(() => btnEl.innerHTML = orig, 1500);
+        }
+    }).catch(() => showToast('Failed to copy', 'error'));
+}
+
+function gcRefresh(id) {
+    const giftcard = giftcardsData[id];
+    if (!giftcard) return;
+    showToast('Giftcard status is up to date.', 'success');
+    openGiftcardModal(id);
 }
 
 function showToast(message, type = 'success') {

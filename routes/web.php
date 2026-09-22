@@ -10,6 +10,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\CountryController;
 use App\Http\Controllers\DataController;
 use App\Http\Controllers\ElectricityController;
+use App\Http\Controllers\GiftcardController;
+use App\Http\Controllers\GiftcardWebhookController;
 use App\Http\Controllers\MonnifyWebhookController;
 use App\Http\Controllers\WalletController;
 use Illuminate\Support\Facades\Route;
@@ -17,6 +19,7 @@ use App\Http\Controllers\SocialController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminEsimController;
+use App\Http\Controllers\AdminGiftcardController;
 use App\Http\Controllers\AdminServiceController;
 use App\Http\Controllers\EsimController;
 use App\Http\Controllers\FlutterwaveWebhookController;
@@ -106,6 +109,11 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/webhook/korapay', [KorapayWebhookController::class, 'handle'])
     ->name('korapay.webhook')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+
+Route::post('/webhook/prestmit', [GiftcardWebhookController::class, 'handle'])
+    ->middleware('throttle:120,1')
+    ->name('prestmit.webhook')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
 Route::match(['get', 'post'], '/clubkonnect/electricity/callback', [ElectricityController::class, 'handleCallback'])
@@ -299,6 +307,23 @@ Route::middleware('auth')->group(function () {
 
     // Route::post('/clubkonnect/callback', [BettingController::class, 'handleCallback'])->middleware('check.user.not.blocked')->name('clubkonnect.callback');
 
+    Route::prefix('giftcards')->middleware('check.user.not.blocked')->name('giftcards.')->group(function () {
+        Route::get('/', [GiftcardController::class, 'index'])->name('index');
+
+        Route::get('/buy', [GiftcardController::class, 'buyPage'])->middleware('check.service.active:giftcard-buy')->name('buy');
+        Route::get('/buy/catalog', [GiftcardController::class, 'buyCatalog'])->middleware('throttle:60,1')->name('buy.catalog');
+        Route::post('/buy/quote', [GiftcardController::class, 'buyQuote'])->middleware('throttle:30,1')->name('buy.quote');
+        Route::post('/buy/purchase', [GiftcardController::class, 'buyPurchase'])->middleware('throttle:6,1')->name('buy.purchase');
+
+        Route::get('/sell', [GiftcardController::class, 'sellPage'])->middleware('check.service.active:giftcard-sell')->name('sell');
+        Route::get('/sell/catalog', [GiftcardController::class, 'sellCatalog'])->middleware('throttle:60,1')->name('sell.catalog');
+        Route::post('/sell/submit', [GiftcardController::class, 'sellSubmit'])->middleware('throttle:6,1')->name('sell.submit');
+
+        Route::get('/orders/{reference}', [GiftcardController::class, 'orderDetail'])->middleware('throttle:60,1')->name('order');
+        Route::post('/orders/{reference}/refresh', [GiftcardController::class, 'orderRefresh'])->middleware('throttle:20,1')->name('order.refresh');
+        Route::post('/withdraw', [GiftcardController::class, 'withdraw'])->middleware('throttle:5,1')->name('withdraw');
+    });
+
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 });
 
@@ -436,6 +461,16 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
         ->name('admin.transactions.social.fulfill');
     Route::post('/transactions/{transaction}/social/cancel', [AdminDashboard::class, 'cancelSocialTransaction'])
         ->name('admin.transactions.social.cancel');
+
+    Route::prefix('giftcards')->name('admin.giftcards.')->group(function () {
+        Route::get('/', [AdminGiftcardController::class, 'index'])->name('index');
+        Route::post('/settings', [AdminGiftcardController::class, 'saveSettings'])->name('settings');
+        Route::get('/orders/{id}', [AdminGiftcardController::class, 'orderDetail'])->name('order');
+        Route::post('/orders/{id}/sync', [AdminGiftcardController::class, 'syncOrder'])->name('sync');
+        Route::get('/orders/{id}/attachment/{n}', [AdminGiftcardController::class, 'attachment'])->name('attachment');
+        Route::post('/withdrawals/{id}/approve', [AdminGiftcardController::class, 'approveWithdrawal'])->name('withdrawals.approve');
+        Route::post('/withdrawals/{id}/decline', [AdminGiftcardController::class, 'declineWithdrawal'])->name('withdrawals.decline');
+    });
 
     Route::get('/list', [AdminAuthController::class, 'index'])->name('admin.list');
     Route::get('/{admin}', [AdminAuthController::class, 'showadmin'])->name('admins.show');

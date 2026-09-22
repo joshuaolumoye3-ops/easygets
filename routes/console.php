@@ -29,3 +29,5 @@ Schedule::command('activations:process-expired', ['--limit=100', '--timeout=3'])
 Schedule::command('social:check-pending-orders', ['--limit=50'])
     ->everyTwoMinutes()
     ->withoutOverlapping();
+
+Schedule::command('giftcards:reconcile')->everyFiveMinutes();

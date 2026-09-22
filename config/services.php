@@ -82,4 +82,15 @@ return [
         'token' => env('SMSBUS_TOKEN'),
     ],
 
+    'prestmit' => [
+        'base_url'        => env('PRESTMIT_BASE_URL', 'https://dev-api.prestmit.io/partners/v1'),
+        'api_key'         => env('PRESTMIT_API_KEY'),
+        'api_secret'      => env('PRESTMIT_API_SECRET'),
+        'webhook_secret'  => env('PRESTMIT_WEBHOOK_SECRET'),
+        'account_pin'     => env('PRESTMIT_ACCOUNT_PIN'),
+        'timeout'         => 30,
+        'empty_hash_body' => env('PRESTMIT_EMPTY_HASH_BODY', '[]'),
+        'hash_numeric'    => filter_var(env('PRESTMIT_HASH_NUMERIC', false), FILTER_VALIDATE_BOOLEAN),
+    ],
+
 ];

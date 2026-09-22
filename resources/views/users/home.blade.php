@@ -305,7 +305,7 @@
                 <span class="truncate">Get Number</span>
             </button>
 
-            <button onclick="showComingSoonToast('Gift Card is coming soon.')"
+            <button onclick="window.location.href='giftcards'"
                     class="bg-gradient-to-br from-[#00df82] via-[#03624c] to-[#030f0f] text-white font-bold py-2 sm:py-3 px-2 sm:px-4 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base whitespace-nowrap">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
