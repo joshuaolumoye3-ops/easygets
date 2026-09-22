@@ -22,6 +22,20 @@ class PrestmitHelper
         'CAN'    => 'ca',
     ];
 
+    /** Keyword => real website domain, used only to build a favicon URL. Not a drawn/reproduced logo. */
+    private const BRAND_DOMAINS = [
+        'itunes' => 'apple.com', 'apple' => 'apple.com', 'amazon' => 'amazon.com',
+        'google play' => 'google.com', 'google' => 'google.com', 'playstation' => 'playstation.com',
+        'psn' => 'playstation.com', 'xbox' => 'xbox.com', 'steam' => 'steampowered.com',
+        'razer' => 'razer.com', 'nike' => 'nike.com', 'walmart' => 'walmart.com', 'ebay' => 'ebay.com',
+        'sephora' => 'sephora.com', 'nordstrom' => 'nordstrom.com', 'target' => 'target.com',
+        'best buy' => 'bestbuy.com', 'spotify' => 'spotify.com', 'netflix' => 'netflix.com',
+        'roblox' => 'roblox.com', 'vanilla' => 'vanillagift.com', 'macy' => 'macys.com',
+        'home depot' => 'homedepot.com', 'visa' => 'visa.com', 'mastercard' => 'mastercard.com',
+        'sears' => 'sears.com', 'gamestop' => 'gamestop.com', 'starbucks' => 'starbucks.com',
+        'airbnb' => 'airbnb.com', 'uber' => 'uber.com',
+    ];
+
     /** Palette for generated brand badges — no external logo service involved. */
     private const BADGE_COLORS = [
         '#03624C', '#4f46e5', '#0ea5e9', '#db2777', '#d97706',
@@ -173,6 +187,7 @@ class PrestmitHelper
                         'categories'  => array_values(array_filter(array_map(fn ($x) => $x['name'] ?? null, $c['categories'] ?? []))),
                         'regions'     => array_values(array_filter(array_map(fn ($x) => $x['name'] ?? null, $c['regions'] ?? []))),
                         'image'       => $c['imageUrl'] ?: null,
+                        'icon'        => $this->brandIconUrl($title),
                         'badge'       => $this->badge($title),
                         'flag'        => $regionCode !== '' ? $regionCode : null,
                     ];
@@ -202,6 +217,18 @@ class PrestmitHelper
         $letter = mb_strtoupper(mb_substr($clean, 0, 1));
         $color  = self::BADGE_COLORS[crc32(mb_strtolower($clean)) % count(self::BADGE_COLORS)];
         return ['initial' => $letter, 'color' => $color];
+    }
+
+    /** Favicon URL for a card/brand name via Google's public favicon service, or null if unknown. */
+    public function brandIconUrl(string $name): ?string
+    {
+        $lower = strtolower($name);
+        foreach (self::BRAND_DOMAINS as $needle => $domain) {
+            if (str_contains($lower, $needle)) {
+                return 'https://www.google.com/s2/favicons?domain=' . $domain . '&sz=128';
+            }
+        }
+        return null;
     }
 
     /** flagcdn.com iso2 code for a Prestmit country code (USA, UK, EURO, CANADA, OTHERS…), or null. */

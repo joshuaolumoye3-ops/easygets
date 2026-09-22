@@ -52,13 +52,19 @@ function flagBadge(flag, extraClass=''){
     if(!flag) return '';
     return `<img src="${flagUrl(flag)}" alt="" class="inline-block rounded-sm ${extraClass}" style="width:18px;height:13px;object-fit:cover" onerror="this.remove()">`;
 }
-/** Real product image with a colored-initial fallback that can never CORS-fail or 404. */
-function mediaHtml(image, badge, imgClass){
+/** Chained fallback: real product image -> brand favicon -> colored-initial badge. Never shows broken. */
+window.imgFallback = function(el){
+    let list=[]; try{ list=JSON.parse(el.dataset.fallbacks||'[]'); }catch(e){}
+    if(list.length){ const next=list.shift(); el.dataset.fallbacks=JSON.stringify(list); el.src=next; }
+    else { el.style.display='none'; if(el.nextElementSibling) el.nextElementSibling.style.display='flex'; }
+};
+function mediaHtml(image, icon, badge, imgClass){
     const b = badge || {initial:'G', color:'#03624C'};
-    const badgeDiv = `<div class="w-full h-full flex items-center justify-center text-white font-extrabold text-lg" style="background:${esc(b.color)}">${esc(b.initial)}</div>`;
-    if(!image) return badgeDiv;
-    return `<img src="${esc(image)}" alt="" loading="lazy" class="${imgClass}" style="display:block" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-            <div class="w-full h-full hidden items-center justify-center text-white font-extrabold text-lg" style="background:${esc(b.color)}">${esc(b.initial)}</div>`;
+    const badgeDiv = `<div class="w-full h-full hidden items-center justify-center text-white font-extrabold text-lg" style="background:${esc(b.color)}">${esc(b.initial)}</div>`;
+    const sources = [image, icon].filter(Boolean);
+    if(!sources.length) return `<div class="w-full h-full flex items-center justify-center text-white font-extrabold text-lg" style="background:${esc(b.color)}">${esc(b.initial)}</div>`;
+    const first = sources.shift();
+    return `<img src="${esc(first)}" alt="" loading="lazy" class="${imgClass}" data-fallbacks='${esc(JSON.stringify(sources))}' onerror="imgFallback(this)">${badgeDiv}`;
 }
 
 async function api(url, opts={}) {
@@ -90,7 +96,7 @@ function cardHtml(c){
     return `<button onclick="openSheet(${c.sku})" class="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 text-left hover:shadow-md hover:-translate-y-0.5 transition relative">
         ${c.flag?`<span class="absolute top-2 right-2 z-10 shadow-sm rounded-sm overflow-hidden">${flagBadge(c.flag)}</span>`:''}
         <div class="aspect-[16/10] rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center mb-2">
-            ${mediaHtml(c.image, c.badge, 'w-full h-full object-contain p-3')}
+            ${mediaHtml(c.image, c.icon, c.badge, 'w-full h-full object-contain p-3')}
         </div>
         <p class="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug">${esc(c.title)}</p>
         <p class="text-xs text-gray-400 mt-1">${esc(range)}${c.pre_order?' · Pre-order':''}</p></button>`;
@@ -111,7 +117,7 @@ function openSheet(sku){
     const chips = [5,10,15,20,25,50,100,200,500].filter(v=>v>=cur.min&&v<=cur.max);
     document.getElementById('sheetBody').innerHTML = `
       <div class="flex justify-between items-start mb-4">
-            <div class="flex gap-3 items-center min-w-0"><div class="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0">${mediaHtml(cur.image, cur.badge, 'w-full h-full object-contain p-2')}</div>
+                    <div class="flex gap-3 items-center min-w-0"><div class="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0">${mediaHtml(cur.image, cur.icon, cur.badge, 'w-full h-full object-contain p-2')}</div>
         <div class="min-w-0"><p class="font-bold text-gray-900 leading-tight">${esc(cur.title)}</p><p class="text-xs text-gray-500 flex items-center gap-1 mt-0.5">${flagBadge(cur.flag)} ${esc(cur.regions.slice(0,3).join(', '))}</p></div></div>
         <button onclick="closeSheet()" class="text-2xl text-gray-400 leading-none">&times;</button>
       </div>

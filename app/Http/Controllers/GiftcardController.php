@@ -319,18 +319,21 @@ class GiftcardController extends Controller
                 'minimum'  => (float) ($x['minimum'] ?? 0),
                 'rate'     => round((float) $x['rate'] * (1 - $c / 100), 4),
                 'terms'    => $this->prestmit->cleanHtml($x['terms'] ?? ''),
+                'icon'     => $this->prestmit->brandIconUrl($name),
                 'badge'    => $this->prestmit->badge($name),
                 'flag'     => $this->prestmit->countryFlag($x['country'] ?? null),
             ];
         })->values();
 
+        $categoryIcons  = $cards->groupBy('category')->map(fn ($g) => $g->first()['icon'])->all();
         $categoryBadges = $cards->groupBy('category')->map(fn ($g) => $g->first()['badge'])->all();
 
         return response()->json([
-            'success'         => true,
-            'cards'           => $cards,
-            'categories'      => $cards->pluck('category')->unique()->sort()->values(),
-            'categoryBadges'  => $categoryBadges,
+            'success'        => true,
+            'cards'          => $cards,
+            'categories'     => $cards->pluck('category')->unique()->sort()->values(),
+            'categoryIcons'  => $categoryIcons,
+            'categoryBadges' => $categoryBadges,
         ]);
     }
 
