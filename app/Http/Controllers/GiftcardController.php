@@ -308,20 +308,29 @@ class GiftcardController extends Controller
         }
         $c = (float) GiftcardSetting::get('sell_commission_percent');
 
-        $cards = collect($cat['cards'])->filter(fn ($x) => (float) ($x['rate'] ?? 0) > 0)->map(fn ($x) => [
-            'id'       => (int) $x['id'],
-            'name'     => (string) ($x['name'] ?? ''),
-            'category' => (string) ($x['category']['name'] ?? 'Other'),
-            'country'  => (string) ($x['country'] ?? ''),
-            'form'     => (string) ($x['form'] ?? ''),
-            'minimum'  => (float) ($x['minimum'] ?? 0),
-            'rate'     => round((float) $x['rate'] * (1 - $c / 100), 4),
-            'terms'    => $this->prestmit->cleanHtml($x['terms'] ?? ''),
-        ])->values();
+        $cards = collect($cat['cards'])->filter(fn ($x) => (float) ($x['rate'] ?? 0) > 0)->map(function ($x) use ($c) {
+            $name = (string) ($x['name'] ?? '');
+            return [
+                'id'       => (int) $x['id'],
+                'name'     => $name,
+                'category' => (string) ($x['category']['name'] ?? 'Other'),
+                'country'  => (string) ($x['country'] ?? ''),
+                'form'     => (string) ($x['form'] ?? ''),
+                'minimum'  => (float) ($x['minimum'] ?? 0),
+                'rate'     => round((float) $x['rate'] * (1 - $c / 100), 4),
+                'terms'    => $this->prestmit->cleanHtml($x['terms'] ?? ''),
+                'logo'     => $this->prestmit->brandLogo($name),
+                'flag'     => $this->prestmit->countryFlag($x['country'] ?? null),
+            ];
+        })->values();
+
+        $categoryLogos = $cards->groupBy('category')->map(fn ($g) => $g->first()['logo'])->all();
 
         return response()->json([
-            'success' => true, 'cards' => $cards,
-            'categories' => $cards->pluck('category')->unique()->sort()->values(),
+            'success'        => true,
+            'cards'          => $cards,
+            'categories'     => $cards->pluck('category')->unique()->sort()->values(),
+            'categoryLogos'  => $categoryLogos,
         ]);
     }
 
@@ -333,10 +342,14 @@ class GiftcardController extends Controller
         $data = $request->validate([
             'giftcard_id' => 'required|integer|min:1', 'amount' => 'required|numeric|min:1|max:100000',
             'comments' => 'nullable|string|max:2000', 'client_token' => 'required|string|max:64',
-            'expected_payout' => 'required|numeric', 'images' => 'nullable|array|max:20',
-            'images.*' => 'file|image|mimes:jpg,jpeg,png|max:5120',
+            'expected_payout' => 'required|numeric', 'pin' => 'required|digits:4',
+            'images' => 'nullable|array|max:20', 'images.*' => 'file|image|mimes:jpg,jpeg,png|max:5120',
         ]);
         $user = Auth::user();
+
+        if ($resp = $this->checkPin($request, $user)) {
+            return $resp;
+        }
 
         $lock = Cache::lock('gc-sell-' . $user->id, 60);
         if (!$lock->get()) {
@@ -399,7 +412,7 @@ class GiftcardController extends Controller
             'reference' => 'GCS-' . strtoupper(Str::random(12)), 'client_token' => $data['client_token'],
             'user_id' => $user->id, 'type' => 'sell', 'status' => 'pending',
             'product_id' => (int) $card['id'], 'title' => (string) ($card['name'] ?? 'Gift card'),
-            'category' => $card['category']['name'] ?? null, 'card_form' => $card['form'] ?? null,
+            'category' => $card['category'] ?? null, 'card_form' => $card['form'] ?? null,
             'country' => $card['country'] ?? null, 'currency_code' => 'USD',
             'face_value' => $amount, 'quantity' => 1, 'unit_rate' => round((float) $card['rate'] * (1 - $commission / 100), 4),
             'total_ngn' => $payout, 'attachments' => $paths, 'comments' => $comments ?: null,

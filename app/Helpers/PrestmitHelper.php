@@ -11,6 +11,51 @@ class PrestmitHelper
 {
     private array $cfg;
 
+    /** Keyword => domain, for Clearbit logos. Checked in order, first match wins. */
+    private const BRAND_DOMAINS = [
+        'itunes'        => 'apple.com',
+        'apple'         => 'apple.com',
+        'amazon'        => 'amazon.com',
+        'google play'   => 'google.com',
+        'playstation'   => 'playstation.com',
+        'psn'           => 'playstation.com',
+        'xbox'          => 'xbox.com',
+        'steam'         => 'steampowered.com',
+        'razer'         => 'razer.com',
+        'nike'          => 'nike.com',
+        'walmart'       => 'walmart.com',
+        'ebay'          => 'ebay.com',
+        'sephora'       => 'sephora.com',
+        'nordstrom'     => 'nordstrom.com',
+        'target'        => 'target.com',
+        'best buy'      => 'bestbuy.com',
+        'spotify'       => 'spotify.com',
+        'netflix'       => 'netflix.com',
+        'roblox'        => 'roblox.com',
+        'vanilla'       => 'vanillagift.com',
+        'macy'          => 'macys.com',
+        'home depot'    => 'homedepot.com',
+        'google'        => 'google.com',
+        'visa'          => 'visa.com',
+        'mastercard'    => 'mastercard.com',
+        'sears'         => 'sears.com',
+        'gamestop'      => 'gamestop.com',
+        'starbucks'     => 'starbucks.com',
+        'airbnb'        => 'airbnb.com',
+        'uber'          => 'uber.com',
+    ];
+
+    /** Prestmit country code => flagcdn iso2. */
+    private const COUNTRY_FLAGS = [
+        'USA'    => 'us',
+        'UK'     => 'gb',
+        'EURO'   => 'eu',
+        'EU'     => 'eu',
+        'CANADA' => 'ca',
+        'CA'     => 'ca',
+        'CAN'    => 'ca',
+    ];
+
     public function __construct()
     {
         $this->cfg = config('services.prestmit', []);
@@ -142,6 +187,7 @@ class PrestmitHelper
                     if (!is_array($c) || empty($c['sku'])) {
                         continue;
                     }
+                    $regionCode = strtolower((string) ($c['regions'][0]['code'] ?? ''));
                     $all[] = [
                         'sku'         => (int) $c['sku'],
                         'title'       => (string) ($c['title'] ?? 'Gift card'),
@@ -154,6 +200,8 @@ class PrestmitHelper
                         'categories'  => array_values(array_filter(array_map(fn ($x) => $x['name'] ?? null, $c['categories'] ?? []))),
                         'regions'     => array_values(array_filter(array_map(fn ($x) => $x['name'] ?? null, $c['regions'] ?? []))),
                         'image'       => $c['imageUrl'] ?? null,
+                        'logo'        => $c['imageUrl'] ?: $this->brandLogo($c['title'] ?? ''),
+                        'flag'        => $regionCode !== '' ? $regionCode : null,
                     ];
                 }
                 if ($page >= (int) ($r['data']['meta']['last_page'] ?? 1)) {
@@ -168,6 +216,25 @@ class PrestmitHelper
     {
         $html = strip_tags((string) $html, '<p><br><ul><ol><li><strong><b><em><i>');
         return preg_replace('/<(\w+)[^>]*>/', '<$1>', $html);
+    }
+
+    /** Best-effort brand logo (Clearbit CDN) from a card/category name. Client falls back to an emoji on error. */
+    public function brandLogo(string $name): ?string
+    {
+        $lower = strtolower($name);
+        foreach (self::BRAND_DOMAINS as $needle => $domain) {
+            if (str_contains($lower, $needle)) {
+                return 'https://logo.clearbit.com/' . $domain . '?size=128';
+            }
+        }
+        return null;
+    }
+
+    /** flagcdn.com iso2 code for a Prestmit country code (USA, UK, EURO, CANADA, OTHERS…), or null. */
+    public function countryFlag(?string $countryCode): ?string
+    {
+        $code = strtoupper(trim((string) $countryCode));
+        return self::COUNTRY_FLAGS[$code] ?? null;
     }
 
     public function serviceAvailability(): array
