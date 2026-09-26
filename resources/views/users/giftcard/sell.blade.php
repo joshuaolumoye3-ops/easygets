@@ -7,7 +7,7 @@
         <button id="backBtn" class="z-10" aria-label="Back"><svg class="h-6 w-6 text-gray-800" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.707 4.293a1 1 0 00-1.414 0L5.586 10l5.707 5.707a1 1 0 001.414-1.414L8.414 10l4.293-4.293a1 1 0 000-1.414z" clip-rule="evenodd"/></svg></button>
         <h1 id="title" class="absolute inset-0 flex justify-center items-center text-lg font-semibold">Sell Gift Card</h1>
     </div>
-    <div class="px-4 pt-3"><div class="h-1.5 bg-gray-200 rounded-full overflow-hidden"><div id="bar" class="h-full bg-[#03624C] transition-all" style="width:25%"></div></div></div>
+    <div class="px-4 pt-3"><div class="h-1.5 bg-gray-200 rounded-full overflow-hidden"><div id="bar" class="h-full bg-[#03624C] transition-all" style="width:33%"></div></div></div>
     <div id="view" class="p-4"></div>
 </div>
 
@@ -47,33 +47,49 @@ function badgeHtml(icons, badge, size='text-lg'){
     const first = list.shift();
     return `<img src="${esc(first)}" alt="" loading="lazy" class="w-full h-full object-contain p-1.5" data-fallbacks='${esc(JSON.stringify(list))}' onerror="imgFallback(this)">${badgeDiv}`;
 }
+/** A flag badge pinned to the corner of an icon circle. */
+function cornerFlag(flag){
+    if(!flag) return '';
+    return `<span class="absolute -top-1 -right-1 z-10 shadow rounded-sm overflow-hidden border border-white" style="width:18px;height:13px">
+        <img src="${flagUrl(flag)}" alt="" class="w-full h-full object-cover" onerror="this.parentElement.remove()"></span>`;
+}
 
-/** Display name / flag / currency symbol for a Prestmit country code. */
-const COUNTRY_META = {
-    USA:    {name:'United States',      flag:'us', symbol:'$'},
-    UK:     {name:'United Kingdom',     flag:'gb', symbol:'£'},
-    EURO:   {name:'Euro',               flag:'eu', symbol:'€'},
-    EU:     {name:'Euro',               flag:'eu', symbol:'€'},
-    CANADA: {name:'Canada',             flag:'ca', symbol:'CAD'},
-    CA:     {name:'Canada',             flag:'ca', symbol:'CAD'},
-    CAN:    {name:'Canada',             flag:'ca', symbol:'CAD'},
+/** Display name for a Prestmit country code. */
+const COUNTRY_NAMES = {
+    USA: 'United States', UK: 'United Kingdom', EURO: 'Euro', EU: 'Euro',
+    CANADA: 'Canada', CA: 'Canada', CAN: 'Canada',
 };
-function countryMeta(code){
+function countryName(code){
     const c = (code||'').toUpperCase().trim();
-    if(COUNTRY_META[c]) return COUNTRY_META[c];
-    if(!c || c==='OTHERS') return {name:'Other Countries', flag:null, symbol:''};
-    return {name:code, flag:null, symbol:''};
+    if(COUNTRY_NAMES[c]) return COUNTRY_NAMES[c];
+    if(!c || c==='OTHERS') return 'Other Countries';
+    return code;
 }
 function formLabel(f){
     f=(f||'').toLowerCase();
-    if(f==='physical') return 'Physical';
-    if(f==='ecode') return 'Ecode';
+    if(f.includes('phys')) return 'Physical';
+    if(f.includes('ecode')||f.includes('e-code')||f.includes('digital')||f.includes('online')) return 'Ecode';
     return f ? f.charAt(0).toUpperCase()+f.slice(1) : '—';
+}
+/**
+ * Normalizes whatever Prestmit sends in `form` into one of physical / ecode / unknown.
+ * Real-world values vary ("Physical", "physical card", "E-code", "Digital", blank, etc.),
+ * so this is intentionally forgiving rather than an exact string match.
+ */
+function normalizeForm(f){
+    f = (f||'').toLowerCase().trim();
+    if(f.includes('phys')) return 'physical';
+    if(f.includes('ecode')||f.includes('e-code')||f.includes('digital')||f.includes('online')||f.includes('code')) return 'ecode';
+    return 'unknown';
+}
+function formMatches(cardForm, choice){
+    if(choice==='all') return true;
+    return normalizeForm(cardForm) === choice;
 }
 
 // ── Wizard state ──
 let DATA=null;
-let S = { step:'brand', brand:null, formChoice:null, country:null, card:null };
+let S = { step:'brand', brand:null, formChoice:null, card:null, fallbackNote:null };
 let hist = [];
 let files=[], clientToken=token();
 const view=document.getElementById('view');
@@ -94,16 +110,15 @@ async function init(){
     }catch(e){ view.innerHTML=`<div class="text-center py-16"><p class="text-red-500 text-sm">${esc(e.message)}</p><button onclick="init()" class="mt-3 text-[#03624C] font-semibold text-sm">Retry</button></div>`; }
 }
 
-const TITLES   = { brand:'Choose brand', form:'Gift card form', country:'Gift card country', pick:'Choose card type', details:'Card details' };
-const PROGRESS = { brand:25, form:50, country:75, pick:100, details:100 };
+const TITLES   = { brand:'Choose brand', form:'Gift card form', pick:'Choose card type', details:'Card details' };
+const PROGRESS = { brand:33, form:66, pick:100, details:100 };
 
 function render(){
     document.getElementById('bar').style.width = PROGRESS[S.step] + '%';
     document.getElementById('title').textContent = TITLES[S.step];
-    if(S.step==='brand')   return stepBrand();
-    if(S.step==='form')    return stepForm();
-    if(S.step==='country') return stepCountry();
-    if(S.step==='pick')    return stepPick();
+    if(S.step==='brand') return stepBrand();
+    if(S.step==='form')  return stepForm();
+    if(S.step==='pick')  return stepPick();
     return stepDetails();
 }
 
@@ -122,7 +137,7 @@ function stepBrand(){
         }).join('')||'<p class="col-span-2 text-center text-sm text-gray-400 py-8">No brands found.</p>';
         document.querySelectorAll('#bl button').forEach(b=>b.onclick=()=>{
             hist.push({...S});
-            S.brand=b.dataset.b; S.formChoice=null; S.country=null; S.card=null; S.step='form';
+            S.brand=b.dataset.b; S.formChoice=null; S.card=null; S.fallbackNote=null; S.step='form';
             render();
         });
     };
@@ -131,84 +146,70 @@ function stepBrand(){
 
 // ── Step 2: Gift Card Form ──
 function stepForm(){
-    const cs = cardsForBrand();
-    const hasPhysical = cs.some(c=>(c.form||'').toLowerCase()==='physical');
-    const hasEcode    = cs.some(c=>(c.form||'').toLowerCase()==='ecode');
-    const options = [
-        { value:'physical', title:'Physical Card', desc:'The gift card is bought from a physical store and you have the card image.', enabled:hasPhysical },
-        { value:'ecode',    title:'Ecode',          desc:"The gift card is bought online and you have the code. Or the code is on a paper, or it's scanned.", enabled:hasEcode },
-        { value:'all',      title:'All Forms',      desc:'Select this if you want to see all gift card forms, both physical and ecode.', enabled:true },
-    ];
     view.innerHTML=`
       <p class="text-xs font-bold text-gray-500 uppercase mb-1">${esc(S.brand)}</p>
       <p class="text-sm text-gray-500 mb-4">Kindly select gift card form below. If you don't know what to choose, just select all forms.</p>
-      <div class="space-y-3">${options.map(o=>`
-        <button data-v="${o.value}" ${o.enabled?'':'disabled'} class="w-full text-left bg-white rounded-2xl p-4 border transition ${o.enabled?'border-gray-100 shadow-sm hover:shadow-md hover:border-[#03624C]/40':'border-gray-100 opacity-40 cursor-not-allowed'}">
-          <p class="font-bold text-gray-900 text-sm">${esc(o.title)}</p>
-          <p class="text-xs text-gray-500 mt-1 leading-relaxed">${esc(o.desc)}</p>
-          ${o.enabled?'':'<p class="text-[11px] text-red-500 font-semibold mt-2">Not available for this brand</p>'}
-        </button>`).join('')}</div>`;
-    view.querySelectorAll('button[data-v]:not([disabled])').forEach(b=>b.onclick=()=>{
-        hist.push({...S});
-        S.formChoice=b.dataset.v; S.country=null; S.card=null; S.step='country';
-        render();
-    });
-}
-
-// ── Step 3: Gift Card Country ──
-function stepCountry(){
-    const cs = cardsForBrand().filter(c => S.formChoice==='all' ? true : (c.form||'').toLowerCase()===S.formChoice);
-    const countries = [...new Set(cs.map(c => (c.country||'').toUpperCase()))];
-    view.innerHTML=`
-      <p class="text-xs font-bold text-gray-500 uppercase mb-1">${esc(S.brand)} · ${esc(formLabel(S.formChoice))}</p>
-      <p class="text-sm text-gray-500 mb-4">Choose the country this gift card was issued in.</p>
-      <div class="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 overflow-hidden">
-        ${countries.map(code=>{
-            const m = countryMeta(code);
-            const icon = m.flag
-                ? `<img src="${flagUrl(m.flag)}" alt="" class="w-8 h-6 object-cover rounded shadow-sm" onerror="this.replaceWith(document.createTextNode('🌍'))">`
-                : `<span class="text-2xl leading-none">🌍</span>`;
-            return `<button data-c="${esc(code)}" class="w-full flex items-center justify-between gap-3 px-4 py-3.5 hover:bg-gray-50 transition text-left">
-                <span class="flex items-center gap-3"><span class="w-8 flex items-center justify-center">${icon}</span><span class="font-semibold text-sm text-gray-800">${esc(m.name)}</span></span>
-                ${m.symbol?`<span class="text-xs text-gray-400 font-semibold">(${esc(m.symbol)})</span>`:''}
-            </button>`;
-        }).join('') || '<p class="text-center text-sm text-gray-400 py-8">No countries found.</p>'}
+      <div class="space-y-3">
+        <button data-v="physical" class="w-full text-left bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md hover:border-[#03624C]/40 transition">
+          <p class="font-bold text-gray-900 text-sm">Physical Card</p>
+          <p class="text-xs text-gray-500 mt-1 leading-relaxed">The gift card is bought from a physical store and you have the card image.</p>
+        </button>
+        <button data-v="ecode" class="w-full text-left bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md hover:border-[#03624C]/40 transition">
+          <p class="font-bold text-gray-900 text-sm">Ecode</p>
+          <p class="text-xs text-gray-500 mt-1 leading-relaxed">The gift card is bought online and you have the code. Or the code is on a paper, or it's scanned.</p>
+        </button>
+        <button data-v="all" class="w-full text-left bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md hover:border-[#03624C]/40 transition">
+          <p class="font-bold text-gray-900 text-sm">All Forms</p>
+          <p class="text-xs text-gray-500 mt-1 leading-relaxed">Select this if you want to see all gift card forms, both physical and ecode.</p>
+        </button>
       </div>`;
-    view.querySelectorAll('button[data-c]').forEach(b=>b.onclick=()=>{
+    view.querySelectorAll('button[data-v]').forEach(b=>b.onclick=()=>{
         hist.push({...S});
-        S.country=b.dataset.c; S.card=null;
-        afterCountrySelected();
+        chooseForm(b.dataset.v);
     });
 }
 
-function afterCountrySelected(){
-    const cs = cardsForBrand().filter(c =>
-        (S.formChoice==='all' ? true : (c.form||'').toLowerCase()===S.formChoice) &&
-        (c.country||'').toUpperCase() === S.country
-    );
-    if(cs.length<=1){ S.card = cs[0] || null; enterDetails(); }
-    else { S.step='pick'; render(); }
+function chooseForm(choice){
+    const brandCards = cardsForBrand();
+    let matches = brandCards.filter(c => formMatches(c.form, choice));
+    let fallbackNote = null;
+
+    if(choice !== 'all' && matches.length === 0){
+        // This brand has no cards recognisable as that form — don't dead-end the user.
+        matches = brandCards;
+        fallbackNote = `No ${choice === 'physical' ? 'physical' : 'ecode'} cards were found for ${S.brand}. Showing all available options instead.`;
+    }
+
+    S.formChoice = choice;
+    S.fallbackNote = fallbackNote;
+    S.card = null;
+
+    if(matches.length <= 1){
+        S.card = matches[0] || null;
+        enterDetails();
+    } else {
+        S._matches = matches; // transient, not pushed to history — recomputed on back navigation
+        S.step = 'pick';
+        render();
+    }
 }
 
-// ── Optional step: exact card type (only shown when more than one variant matches) ──
+// ── Step 3 (only when more than one match): choose exact card + country ──
 function stepPick(){
-    const cs = cardsForBrand().filter(c =>
-        (S.formChoice==='all' ? true : (c.form||'').toLowerCase()===S.formChoice) &&
-        (c.country||'').toUpperCase() === S.country
-    );
-    const m = countryMeta(S.country);
+    const matches = S._matches || cardsForBrand().filter(c => formMatches(c.form, S.formChoice));
     view.innerHTML=`
-      <p class="text-xs font-bold text-gray-500 uppercase mb-1">${esc(S.brand)} · ${esc(m.name)}</p>
-      <p class="text-sm text-gray-500 mb-4">Select the exact card type.</p>
-      <div class="space-y-2">${cs.map(c=>`
+      <p class="text-xs font-bold text-gray-500 uppercase mb-1">${esc(S.brand)}${S.formChoice!=='all'?' · '+esc(formLabel(S.formChoice)):''}</p>
+      ${S.fallbackNote?`<div class="text-xs bg-amber-50 text-amber-800 border border-amber-200 rounded-xl p-3 mb-3">${esc(S.fallbackNote)}</div>`:''}
+      <p class="text-sm text-gray-500 mb-4">Select the exact card type and country.</p>
+      <div class="space-y-2">${matches.map(c=>`
         <button data-id="${c.id}" class="w-full bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md text-left transition flex items-center gap-3">
-          <div class="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0">${badgeHtml(c.icons, c.badge)}</div>
-          <div class="min-w-0 flex-1"><p class="font-semibold text-sm text-gray-800">${esc(c.name)}</p><p class="text-xs text-gray-400 mt-0.5">${S.formChoice==='all'?esc(formLabel(c.form))+' · ':''}${c.minimum?'min '+c.minimum:''}</p></div>
+          <div class="relative w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0">${badgeHtml(c.icons, c.badge)}${cornerFlag(c.flag)}</div>
+          <div class="min-w-0 flex-1"><p class="font-semibold text-sm text-gray-800">${esc(c.name)}</p><p class="text-xs text-gray-400 mt-0.5">${esc(countryName(c.country))}${S.formChoice==='all'?' · '+esc(formLabel(c.form)):''}${c.minimum?' · min '+c.minimum:''}</p></div>
           <div class="text-right flex-shrink-0"><p class="text-sm font-extrabold text-[#03624C]">₦${Number(c.rate).toLocaleString('en-NG',{maximumFractionDigits:2})}</p><p class="text-[10px] text-gray-400">per $1</p></div>
         </button>`).join('') || '<p class="text-center text-sm text-gray-400 py-8">No matching cards found.</p>'}</div>`;
     view.querySelectorAll('button[data-id]').forEach(b=>b.onclick=()=>{
         hist.push({...S});
-        S.card = cs.find(c=>String(c.id)===b.dataset.id) || null;
+        S.card = matches.find(c=>String(c.id)===b.dataset.id) || null;
         enterDetails();
     });
 }
@@ -223,23 +224,23 @@ function enterDetails(){
 function stepDetails(){
     const card = S.card;
     if(!card){
-        view.innerHTML='<div class="text-center py-16"><p class="text-sm text-red-500 mb-3">Something went wrong selecting this card.</p><button onclick="history.back?history.back():location.reload()" class="text-[#03624C] font-semibold text-sm">Go back</button></div>';
+        view.innerHTML='<div class="text-center py-16"><p class="text-sm text-red-500 mb-3">Something went wrong selecting this card.</p><button onclick="location.reload()" class="text-[#03624C] font-semibold text-sm">Start over</button></div>';
         return;
     }
-    const form=(card.form||'').toLowerCase(), needImg=form!=='ecode', needCode=form!=='physical';
+    const form=(card.form||'').toLowerCase(), needImg=normalizeForm(card.form)!=='ecode', needCode=normalizeForm(card.form)!=='physical';
     view.innerHTML=`
       <div class="bg-white rounded-2xl p-4 border border-gray-100 mb-3 flex items-center gap-3">
-        <div class="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0">${badgeHtml(card.icons, card.badge)}</div>
-        <div><p class="font-bold text-gray-800 text-sm">${esc(card.name)}</p><p class="text-xs text-gray-400">${esc(card.country)}${card.form?' · '+esc(card.form):''} · ₦${Number(card.rate).toLocaleString('en-NG')} per $1</p></div>
+        <div class="relative w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0">${badgeHtml(card.icons, card.badge)}${cornerFlag(card.flag)}</div>
+        <div><p class="font-bold text-gray-800 text-sm">${esc(card.name)}</p><p class="text-xs text-gray-400">${esc(countryName(card.country))}${card.form?' · '+esc(formLabel(card.form)):''} · ₦${Number(card.rate).toLocaleString('en-NG')} per $1</p></div>
       </div>
       <div id="msg" class="hidden text-sm rounded-xl p-3 mb-3"></div>
       <label class="text-xs font-bold text-gray-500 uppercase">Card value (USD)</label>
       <input id="amt" type="number" min="${card.minimum||1}" step="0.01" placeholder="${card.minimum?'Min '+card.minimum:'e.g. 100'}" class="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl bg-white text-lg font-bold">
       <div class="bg-[#03624C]/10 rounded-2xl p-4 my-3 text-center"><p class="text-xs text-gray-500">You will receive</p><p id="pay" class="text-3xl font-extrabold text-[#03624C]">₦0.00</p><p class="text-[11px] text-gray-400 mt-1">Paid to your withdrawable balance after approval</p></div>
-      ${needImg?`<label class="text-xs font-bold text-gray-500 uppercase">Card photos ${form==='physical'?'(required)':'(optional)'}</label>
+      ${needImg?`<label class="text-xs font-bold text-gray-500 uppercase">Card photos ${needImg&&!needCode?'(required)':'(optional)'}</label>
         <label class="block mt-1 border-2 border-dashed border-gray-300 rounded-2xl p-5 text-center bg-white cursor-pointer"><input id="file" type="file" accept="image/png,image/jpeg" multiple class="hidden"><span class="text-sm text-gray-500">Tap to add JPG / PNG (max 5MB each, up to ${MAX_IMG})</span></label>
         <div id="thumbs" class="grid grid-cols-4 gap-2 mt-2"></div>`:''}
-      ${needCode?`<label class="text-xs font-bold text-gray-500 uppercase block mt-3">${form==='ecode'?'Card code':'Card code (optional)'}</label>
+      ${needCode?`<label class="text-xs font-bold text-gray-500 uppercase block mt-3">${!needImg?'Card code':'Card code (optional)'}</label>
         <textarea id="code" rows="2" maxlength="2000" placeholder="Enter the code exactly as shown" class="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl bg-white text-sm font-mono"></textarea>`:''}
       ${card.terms?`<details class="mt-3 text-xs text-gray-500 bg-white rounded-xl p-3 border border-gray-100"><summary class="font-semibold cursor-pointer">Rate terms</summary><div class="mt-2 leading-relaxed">${card.terms}</div></details>`:''}
       <label class="flex items-start gap-2 mt-4 text-xs text-gray-500"><input id="ok" type="checkbox" class="mt-0.5"> <span>I own this card, it has not been used or sold elsewhere, and the details I provided are accurate.</span></label>
@@ -248,7 +249,11 @@ function stepDetails(){
     const payout=()=>Math.floor((parseFloat(amt.value)||0)*card.rate*100)/100;
     const check=()=>{ const a=parseFloat(amt.value)||0; pay.textContent=ngn(payout());
         const hasImg=files.length>0, hasCode=(document.getElementById('code')?.value.trim()||'')!=='';
-        const ready=a>=(card.minimum||1) && document.getElementById('ok').checked && (form==='physical'?hasImg:form==='ecode'?hasCode:(hasImg||hasCode));
+        const ready=a>=(card.minimum||1) && document.getElementById('ok').checked && (
+            needImg && !needCode ? hasImg :
+            needCode && !needImg ? hasCode :
+            (hasImg||hasCode)
+        );
         sub.disabled=!ready; };
     amt.oninput=check; document.getElementById('ok').onchange=check; document.getElementById('code')?.addEventListener('input',check);
     const fi=document.getElementById('file');
