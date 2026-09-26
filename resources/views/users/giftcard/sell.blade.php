@@ -7,7 +7,7 @@
         <button id="backBtn" class="z-10" aria-label="Back"><svg class="h-6 w-6 text-gray-800" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.707 4.293a1 1 0 00-1.414 0L5.586 10l5.707 5.707a1 1 0 001.414-1.414L8.414 10l4.293-4.293a1 1 0 000-1.414z" clip-rule="evenodd"/></svg></button>
         <h1 id="title" class="absolute inset-0 flex justify-center items-center text-lg font-semibold">Sell Gift Card</h1>
     </div>
-    <div class="px-4 pt-3"><div class="h-1.5 bg-gray-200 rounded-full overflow-hidden"><div id="bar" class="h-full bg-[#03624C] transition-all" style="width:33%"></div></div></div>
+    <div class="px-4 pt-3"><div class="h-1.5 bg-gray-200 rounded-full overflow-hidden"><div id="bar" class="h-full bg-[#03624C] transition-all" style="width:25%"></div></div></div>
     <div id="view" class="p-4"></div>
 </div>
 
@@ -54,16 +54,30 @@ function cornerFlag(flag){
         <img src="${flagUrl(flag)}" alt="" class="w-full h-full object-cover" onerror="this.parentElement.remove()"></span>`;
 }
 
-/** Display name for a Prestmit country code. */
-const COUNTRY_NAMES = {
-    USA: 'United States', UK: 'United Kingdom', EURO: 'Euro', EU: 'Euro',
-    CANADA: 'Canada', CA: 'Canada', CAN: 'Canada',
+/**
+ * Prestmit's own country taxonomy for gift cards (matches their /lookup/sell-giftcard-countries
+ * reference list). Their API does not expose per-brand country availability, so we derive which
+ * of these buckets actually has cards from the rate-calculator data we already fetched, and use
+ * their own flags/labels to present it exactly as their site does.
+ */
+const COUNTRY_BUCKETS = {
+    USA:    { name: 'USA',             flag: 'us', symbol: '$' },
+    UK:     { name: 'United Kingdom',  flag: 'gb', symbol: '£' },
+    EURO:   { name: 'Euro',            flag: 'eu', symbol: '€' },
+    CANADA: { name: 'Canada',          flag: 'ca', symbol: 'CAD' },
+    OTHERS: { name: 'Other Countries', flag: null, symbol: '' },
 };
+function bucketKeyFor(raw){
+    const c = (raw||'').toUpperCase().trim();
+    if(['USA','US','UNITED STATES','UNITED STATES OF AMERICA'].includes(c)) return 'USA';
+    if(['UK','GB','UNITED KINGDOM','GREAT BRITAIN'].includes(c)) return 'UK';
+    if(['EURO','EU','EUROPE','EUROPEAN UNION'].includes(c)) return 'EURO';
+    if(['CANADA','CA','CAN'].includes(c)) return 'CANADA';
+    return 'OTHERS';
+}
 function countryName(code){
-    const c = (code||'').toUpperCase().trim();
-    if(COUNTRY_NAMES[c]) return COUNTRY_NAMES[c];
-    if(!c || c==='OTHERS') return 'Other Countries';
-    return code;
+    const b = COUNTRY_BUCKETS[bucketKeyFor(code)];
+    return code && bucketKeyFor(code)==='OTHERS' ? (code || b.name) : b.name;
 }
 function formLabel(f){
     f=(f||'').toLowerCase();
@@ -89,7 +103,7 @@ function formMatches(cardForm, choice){
 
 // ── Wizard state ──
 let DATA=null;
-let S = { step:'brand', brand:null, formChoice:null, card:null, fallbackNote:null };
+let S = { step:'brand', brand:null, formChoice:null, fallbackNote:null, country:null, card:null, _formMatches:null, _countryMatches:null, _matches:null };
 let hist = [];
 let files=[], clientToken=token();
 const view=document.getElementById('view');
@@ -110,16 +124,21 @@ async function init(){
     }catch(e){ view.innerHTML=`<div class="text-center py-16"><p class="text-red-500 text-sm">${esc(e.message)}</p><button onclick="init()" class="mt-3 text-[#03624C] font-semibold text-sm">Retry</button></div>`; }
 }
 
-const TITLES   = { brand:'Choose brand', form:'Gift card form', pick:'Choose card type', details:'Card details' };
-const PROGRESS = { brand:33, form:66, pick:100, details:100 };
+const TITLES   = { brand:'Choose brand', form:'Gift card form', country:'Gift card country', pick:'Choose card type', details:'Card details' };
+const PROGRESS = { brand:25, form:50, country:75, pick:90, details:100 };
 
 function render(){
     document.getElementById('bar').style.width = PROGRESS[S.step] + '%';
     document.getElementById('title').textContent = TITLES[S.step];
-    if(S.step==='brand') return stepBrand();
-    if(S.step==='form')  return stepForm();
-    if(S.step==='pick')  return stepPick();
+    if(S.step==='brand')   return stepBrand();
+    if(S.step==='form')    return stepForm();
+    if(S.step==='country') return stepCountry();
+    if(S.step==='pick')    return stepPick();
     return stepDetails();
+}
+
+function fallbackBanner(){
+    return S.fallbackNote ? `<div class="text-xs bg-amber-50 text-amber-800 border border-amber-200 rounded-xl p-3 mb-3">${esc(S.fallbackNote)}</div>` : '';
 }
 
 function cardsForBrand(){ return DATA.cards.filter(c=>c.category===S.brand); }
@@ -137,7 +156,9 @@ function stepBrand(){
         }).join('')||'<p class="col-span-2 text-center text-sm text-gray-400 py-8">No brands found.</p>';
         document.querySelectorAll('#bl button').forEach(b=>b.onclick=()=>{
             hist.push({...S});
-            S.brand=b.dataset.b; S.formChoice=null; S.card=null; S.fallbackNote=null; S.step='form';
+            S.brand=b.dataset.b; S.formChoice=null; S.fallbackNote=null; S.country=null; S.card=null;
+            S._formMatches=null; S._countryMatches=null; S._matches=null;
+            S.step='form';
             render();
         });
     };
@@ -182,29 +203,91 @@ function chooseForm(choice){
 
     S.formChoice = choice;
     S.fallbackNote = fallbackNote;
+    S.country = null;
     S.card = null;
+    S._formMatches = matches;
+    proceedToCountry();
+}
 
-    if(matches.length <= 1){
-        S.card = matches[0] || null;
+// ── Step 3: Gift Card Country (skipped automatically if only one country is available) ──
+function bucketize(cards){
+    const groups = {};
+    cards.forEach(c=>{
+        const key = bucketKeyFor(c.country);
+        (groups[key] = groups[key] || []).push(c);
+    });
+    return Object.keys(groups).map(key => ({
+        key, cards: groups[key],
+        name: COUNTRY_BUCKETS[key].name, flag: COUNTRY_BUCKETS[key].flag, symbol: COUNTRY_BUCKETS[key].symbol,
+    })).sort((a,b)=>{
+        const order = ['USA','UK','EURO','CANADA','OTHERS'];
+        return order.indexOf(a.key) - order.indexOf(b.key);
+    });
+}
+
+function proceedToCountry(){
+    const buckets = bucketize(S._formMatches);
+    if(buckets.length <= 1){
+        S.country = buckets[0]?.key ?? null;
+        S._countryMatches = buckets[0]?.cards ?? S._formMatches;
+        proceedFromCountry();
+    } else {
+        S._buckets = buckets;
+        S.step = 'country';
+        render();
+    }
+}
+
+function stepCountry(){
+    const buckets = S._buckets || bucketize(S._formMatches);
+    view.innerHTML=`
+      <p class="text-xs font-bold text-gray-500 uppercase mb-1">${esc(S.brand)}${S.formChoice!=='all'?' · '+esc(formLabel(S.formChoice)):''}</p>
+      ${fallbackBanner()}
+      <p class="text-sm text-gray-500 mb-4">Choose the country this gift card was issued in.</p>
+      <div class="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 overflow-hidden">
+        ${buckets.map(b=>{
+            const icon = b.flag
+                ? `<img src="${flagUrl(b.flag)}" alt="" class="w-9 h-9 rounded-full object-cover border border-gray-100" onerror="this.replaceWith(document.createTextNode('🌍'))">`
+                : `<span class="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center text-lg">🌍</span>`;
+            return `<button data-k="${esc(b.key)}" class="w-full flex items-center justify-between gap-3 px-4 py-3.5 hover:bg-gray-50 transition text-left">
+                <span class="flex items-center gap-3">${icon}<span class="font-semibold text-sm text-gray-800">${esc(b.name)}</span></span>
+                ${b.symbol?`<span class="text-xs text-gray-400 font-semibold">(${esc(b.symbol)})</span>`:''}
+            </button>`;
+        }).join('')}
+      </div>`;
+    view.querySelectorAll('button[data-k]').forEach(b=>b.onclick=()=>{
+        hist.push({...S});
+        const bucket = buckets.find(x=>x.key===b.dataset.k);
+        S.country = bucket.key;
+        S._countryMatches = bucket.cards;
+        proceedFromCountry();
+    });
+}
+
+function proceedFromCountry(){
+    const list = S._countryMatches;
+    if(list.length <= 1){
+        S.card = list[0] || null;
         enterDetails();
     } else {
-        S._matches = matches; // transient, not pushed to history — recomputed on back navigation
+        S._matches = list;
         S.step = 'pick';
         render();
     }
 }
 
-// ── Step 3 (only when more than one match): choose exact card + country ──
+// ── Step 4 (only when a country still has more than one exact variant): choose card type ──
 function stepPick(){
-    const matches = S._matches || cardsForBrand().filter(c => formMatches(c.form, S.formChoice));
+    const matches = S._matches || S._countryMatches || [];
+    const bucketName = COUNTRY_BUCKETS[bucketKeyFor(S.country)]?.name || 'this country';
     view.innerHTML=`
-      <p class="text-xs font-bold text-gray-500 uppercase mb-1">${esc(S.brand)}${S.formChoice!=='all'?' · '+esc(formLabel(S.formChoice)):''}</p>
-      ${S.fallbackNote?`<div class="text-xs bg-amber-50 text-amber-800 border border-amber-200 rounded-xl p-3 mb-3">${esc(S.fallbackNote)}</div>`:''}
-      <p class="text-sm text-gray-500 mb-4">Select the exact card type and country.</p>
+      <p class="text-xs font-bold text-gray-500 uppercase mb-1">${esc(S.brand)}${S.formChoice!=='all'?' · '+esc(formLabel(S.formChoice)):''} · ${esc(bucketName)}</p>
+      ${fallbackBanner()}
+      <p class="text-sm text-gray-500 mb-4">Select the exact card type.</p>
       <div class="space-y-2">${matches.map(c=>`
         <button data-id="${c.id}" class="w-full bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md text-left transition flex items-center gap-3">
           <div class="relative w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0">${badgeHtml(c.icons, c.badge)}${cornerFlag(c.flag)}</div>
-          <div class="min-w-0 flex-1"><p class="font-semibold text-sm text-gray-800">${esc(c.name)}</p><p class="text-xs text-gray-400 mt-0.5">${esc(countryName(c.country))}${S.formChoice==='all'?' · '+esc(formLabel(c.form)):''}${c.minimum?' · min '+c.minimum:''}</p></div>
+          <div class="min-w-0 flex-1"><p class="font-semibold text-sm text-gray-800">${esc(c.name)}</p><p class="text-xs text-gray-400 mt-0.5">${S.formChoice==='all'?esc(formLabel(c.form))+' · ':''}${c.minimum?'min '+c.minimum:''}</p></div>
           <div class="text-right flex-shrink-0"><p class="text-sm font-extrabold text-[#03624C]">₦${Number(c.rate).toLocaleString('en-NG',{maximumFractionDigits:2})}</p><p class="text-[10px] text-gray-400">per $1</p></div>
         </button>`).join('') || '<p class="text-center text-sm text-gray-400 py-8">No matching cards found.</p>'}</div>`;
     view.querySelectorAll('button[data-id]').forEach(b=>b.onclick=()=>{
@@ -227,7 +310,7 @@ function stepDetails(){
         view.innerHTML='<div class="text-center py-16"><p class="text-sm text-red-500 mb-3">Something went wrong selecting this card.</p><button onclick="location.reload()" class="text-[#03624C] font-semibold text-sm">Start over</button></div>';
         return;
     }
-    const form=(card.form||'').toLowerCase(), needImg=normalizeForm(card.form)!=='ecode', needCode=normalizeForm(card.form)!=='physical';
+    const needImg=normalizeForm(card.form)!=='ecode', needCode=normalizeForm(card.form)!=='physical';
     view.innerHTML=`
       <div class="bg-white rounded-2xl p-4 border border-gray-100 mb-3 flex items-center gap-3">
         <div class="relative w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0">${badgeHtml(card.icons, card.badge)}${cornerFlag(card.flag)}</div>
