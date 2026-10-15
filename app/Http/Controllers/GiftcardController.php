@@ -411,11 +411,20 @@ class GiftcardController extends Controller
             $files[] = ['content' => file_get_contents($img->getRealPath()), 'name' => Str::random(12) . '.' . $img->extension()];
         }
 
+        // NOTE: $card here comes from the RAW Prestmit rate-calculator response
+        // (sellableGiftcards), not the flattened array sellCatalog() above sends
+        // to the browser — so 'category' is still Prestmit's nested
+        // {id, name, image} object, not a plain string. Flatten it before it
+        // ever touches the DB, or the insert throws "Array to string conversion".
+        $categoryName = is_array($card['category'] ?? null)
+            ? ($card['category']['name'] ?? null)
+            : ($card['category'] ?? null);
+
         $order = GiftcardOrder::create([
             'reference' => 'GCS-' . strtoupper(Str::random(12)), 'client_token' => $data['client_token'],
             'user_id' => $user->id, 'type' => 'sell', 'status' => 'pending',
             'product_id' => (int) $card['id'], 'title' => (string) ($card['name'] ?? 'Gift card'),
-            'category' => $card['category'] ?? null, 'card_form' => $card['form'] ?? null,
+            'category' => $categoryName, 'card_form' => $card['form'] ?? null,
             'country' => $card['country'] ?? null, 'currency_code' => 'USD',
             'face_value' => $amount, 'quantity' => 1, 'unit_rate' => round((float) $card['rate'] * (1 - $commission / 100), 4),
             'total_ngn' => $payout, 'attachments' => $paths, 'comments' => $comments ?: null,
