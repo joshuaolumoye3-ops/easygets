@@ -32,6 +32,7 @@ use App\Http\Controllers\OtpController;
 use App\Http\Controllers\Payments\KorapayCheckoutController;
 use App\Http\Controllers\Payments\KorapayWebhookController;
 use App\Http\Controllers\Payments\DedicatedAccountController;
+use App\Http\Controllers\Payments\FlutterwaveEventController;
 
 Route::prefix('app')->group(function () {
 
@@ -111,6 +112,11 @@ Route::post('/webhook/korapay', [KorapayWebhookController::class, 'handle'])
     ->name('korapay.webhook')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
+Route::post('/webhook/flutterwave', [FlutterwaveEventController::class, 'handle'])
+    ->middleware('throttle:240,1')
+    ->name('flutterwave.webhook')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+
 Route::post('/webhook/prestmit', [GiftcardWebhookController::class, 'handle'])
     ->middleware('throttle:120,1')
     ->name('prestmit.webhook')
@@ -145,9 +151,9 @@ Route::middleware('auth')->group(function () {
 
     // Dedicated (permanent) account — throttled: max 5 attempts/day per user,
     // since this endpoint accepts BVN/NIN and should not be hammerable.
-    Route::post('/korapay/dedicated-account', [DedicatedAccountController::class, 'store'])
+    Route::post('/dedicated-account', [DedicatedAccountController::class, 'store'])
         ->middleware(['check.user.not.blocked', 'throttle:5,1440'])
-        ->name('korapay.dedicated-account.store');
+        ->name('flutterwave.dedicated-account.store');
 
     Route::get('/dashboard', [Controller::class, 'dashboard'])->middleware('check.user.not.blocked')->name('dashboard');
     Route::get('/transactions', [Controller::class, 'transaction'])->middleware('check.user.not.blocked')->name('transaction');
@@ -310,6 +316,9 @@ Route::middleware('auth')->group(function () {
     Route::prefix('giftcards')->middleware('check.user.not.blocked')->name('giftcards.')->group(function () {
         Route::get('/', [GiftcardController::class, 'index'])->name('index');
 
+        Route::get('/banks', [GiftcardController::class, 'banks'])->middleware('throttle:30,1')->name('banks');
+        Route::post('/resolve-account', [GiftcardController::class, 'resolveAccount'])->middleware('throttle:10,1')->name('resolve');
+
         Route::get('/buy', [GiftcardController::class, 'buyPage'])->middleware('check.service.active:giftcard-buy')->name('buy');
         Route::get('/buy/catalog', [GiftcardController::class, 'buyCatalog'])->middleware('throttle:60,1')->name('buy.catalog');
         Route::post('/buy/quote', [GiftcardController::class, 'buyQuote'])->middleware('throttle:30,1')->name('buy.quote');
@@ -470,6 +479,8 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
         Route::get('/orders/{id}/attachment/{n}', [AdminGiftcardController::class, 'attachment'])->name('attachment');
         Route::post('/withdrawals/{id}/approve', [AdminGiftcardController::class, 'approveWithdrawal'])->name('withdrawals.approve');
         Route::post('/withdrawals/{id}/decline', [AdminGiftcardController::class, 'declineWithdrawal'])->name('withdrawals.decline');
+        Route::post('/withdrawals/{id}/sync', [AdminGiftcardController::class, 'syncWithdrawal'])->name('withdrawals.sync');
+        Route::get('/payout-balance', [AdminGiftcardController::class, 'payoutBalance'])->name('payout-balance');
     });
 
     Route::get('/list', [AdminAuthController::class, 'index'])->name('admin.list');

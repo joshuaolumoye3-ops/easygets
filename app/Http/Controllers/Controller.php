@@ -94,6 +94,8 @@ class Controller
         ];
 
         $wallet = $user->wallet()->with('virtualAccounts')->first();
+        $dedicatedAccount = \App\Models\DedicatedAccount::where('user_id', $user->id)
+            ->where('status', 'active')->first();
 
         // ── Provider availability (mirrors CountryController::showServices) ──
         $providerIsAvailable = function (?Provider $provider): bool {
@@ -123,7 +125,7 @@ class Controller
         $hasSmsbus   = $smsbusProviderAvailable;
 
         return view('users.home', compact(
-            'latestTransactions', 'wallet', 'categories', 'admin_rate', 'quickPickServices',
+            'latestTransactions', 'wallet', 'dedicatedAccount', 'categories', 'admin_rate', 'quickPickServices',
             'hasFivesim', 'hasSmsBower', 'hasSmsbus',
             'fivesimConfigOk', 'fivesimProviderAvailable',
             'smsbowerConfigOk', 'smsbowerProviderAvailable',

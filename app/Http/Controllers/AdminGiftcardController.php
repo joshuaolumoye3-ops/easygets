@@ -17,6 +17,8 @@ use Illuminate\Support\Str;
 
 class AdminGiftcardController extends Controller
 {
+    use \App\Http\Controllers\Concerns\ManagesWithdrawalPayouts;
+
     private const SERVICES = ['giftcard-buy' => 'Gift Card – Buy', 'giftcard-sell' => 'Gift Card – Sell'];
 
     public function index(Request $request, PrestmitHelper $prestmit)
@@ -130,40 +132,6 @@ class AdminGiftcardController extends Controller
             abort(404);
         }
         return Storage::disk('local')->response($path, null, ['X-Content-Type-Options' => 'nosniff']);
-    }
-
-    public function approveWithdrawal(Request $request, $id)
-    {
-        $admin = Auth::guard('admins')->user();
-        $request->validate(['note' => 'nullable|string|max:400']);
-        $res = DB::transaction(function () use ($id, $request, $admin) {
-            $w = GiftcardWithdrawal::lockForUpdate()->find($id);
-            if (!$w || $w->status !== 'pending') {
-                return false;
-            }
-            $w->update(['status' => 'approved', 'admin_id' => $admin->id, 'admin_note' => $request->note, 'processed_at' => now()]);
-            $this->log($admin->id, 'GIFTCARD_WD_APPROVE', $w->amount, $w->user_id, "Approved withdrawal {$w->reference}", $w->reference);
-            return true;
-        });
-        return back()->with($res ? 'success' : 'error', $res ? 'Withdrawal marked as paid.' : 'Withdrawal is no longer pending.');
-    }
-
-    public function declineWithdrawal(Request $request, $id)
-    {
-        $admin = Auth::guard('admins')->user();
-        $request->validate(['note' => 'required|string|min:3|max:400']);
-        $res = DB::transaction(function () use ($id, $request, $admin) {
-            $w = GiftcardWithdrawal::lockForUpdate()->find($id);
-            if (!$w || $w->status !== 'pending') {
-                return false;
-            }
-            DB::table('users')->where('id', $w->user_id)->lockForUpdate()->first();
-            DB::table('users')->where('id', $w->user_id)->increment('withdrawable_balance', $w->amount);
-            $w->update(['status' => 'declined', 'admin_id' => $admin->id, 'admin_note' => $request->note, 'processed_at' => now()]);
-            $this->log($admin->id, 'GIFTCARD_WD_DECLINE', $w->amount, $w->user_id, "Declined withdrawal {$w->reference}: {$request->note}", $w->reference);
-            return true;
-        });
-        return back()->with($res ? 'success' : 'error', $res ? 'Withdrawal declined and funds returned.' : 'Withdrawal is no longer pending.');
     }
 
     private function log($adminId, string $action, $amount, $userId, string $desc, ?string $ref = null): void

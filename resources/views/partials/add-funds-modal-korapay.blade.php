@@ -74,15 +74,8 @@
                     <p class="text-xs text-yellow-800">Choose either your BVN or your NIN to verify your identity. One of them is required, and we never store your full details — only the last 4 digits, for support reference.</p>
                 </div>
 
-                <form action="{{ route('korapay.dedicated-account.store') }}" method="POST" class="space-y-4">
+                <form action="{{ route('flutterwave.dedicated-account.store') }}" method="POST" class="space-y-4">
                     @csrf
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Name on Account</label>
-                        <input type="text" name="account_name" required maxlength="100"
-                               value="{{ old('account_name', trim(Auth::user()->first_name . ' ' . Auth::user()->last_name)) }}"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green">
-                        @error('account_name')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
-                    </div>
                     <div class="flex gap-2">
                         <button type="button" id="useBvnBtn" class="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold transition-colors bg-brand-green text-white shadow-sm">
                             Use BVN

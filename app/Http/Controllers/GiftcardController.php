@@ -23,6 +23,8 @@ use Illuminate\Validation\ValidationException;
 
 class GiftcardController extends Controller
 {
+    use \App\Http\Controllers\Concerns\GiftcardWithdrawalActions;
+
     public function __construct(private PrestmitHelper $prestmit, private GiftcardSettlement $settle)
     {
     }
@@ -480,42 +482,6 @@ class GiftcardController extends Controller
             $this->settle->syncOrder($o);
         }
         return response()->json(['success' => true, 'order' => $o->fresh()->toUserArray(true)]);
-    }
-
-    // ── Withdraw ─────────────────────────────────────────────────────────
-
-    public function withdraw(Request $request): JsonResponse
-    {
-        $min  = (float) GiftcardSetting::get('min_withdrawal');
-        $data = $request->validate([
-            'amount' => 'required|numeric|min:' . $min, 'bank_name' => 'required|string|max:100',
-            'account_number' => ['required', 'regex:/^[0-9]{10}$/'], 'account_name' => 'required|string|max:150',
-            'pin' => 'required|digits:4',
-        ], ['account_number.regex' => 'Account number must be 10 digits.']);
-        $user = Auth::user();
-
-        if ($resp = $this->checkPin($request, $user)) {
-            return $resp;
-        }
-        $amount = round((float) $data['amount'], 2);
-
-        $err = DB::transaction(function () use ($user, $data, $amount) {
-            $row = DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
-            if ((float) $row->withdrawable_balance < $amount) {
-                return 'Amount exceeds your withdrawable balance.';
-            }
-            DB::table('users')->where('id', $user->id)->decrement('withdrawable_balance', $amount);
-            GiftcardWithdrawal::create([
-                'reference' => 'GCW-' . strtoupper(Str::random(10)), 'user_id' => $user->id, 'amount' => $amount,
-                'bank_name' => strip_tags($data['bank_name']), 'account_number' => $data['account_number'],
-                'account_name' => strip_tags($data['account_name']), 'status' => 'pending',
-            ]);
-            return null;
-        });
-        if ($err) {
-            return $this->fail($err, 422);
-        }
-        return response()->json(['success' => true, 'message' => 'Withdrawal request submitted. It is typically processed within 24 hours.']);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────

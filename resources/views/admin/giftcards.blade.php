@@ -129,8 +129,12 @@
 
 @if($tab==='withdrawals')
   <div class="gc-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
+      <h3 style="margin:0">Flutterwave payout balance</h3>
+      <span id="payoutBalance" class="pill p-wait">Checking…</span>
+    </div>
     <form class="gc-filter" method="GET"><input type="hidden" name="tab" value="withdrawals">
-      <select name="wstatus"><option value="">All</option>@foreach(['pending','approved','declined'] as $s)<option value="{{ $s }}" @selected(request('wstatus')===$s)>{{ ucfirst($s) }}</option>@endforeach</select>
+      <select name="wstatus"><option value="">All</option>@foreach(['pending','processing','approved','declined'] as $s)<option value="{{ $s }}" @selected(request('wstatus')===$s)>{{ ucfirst($s) }}</option>@endforeach</select>
       <button class="gc-btn" type="submit">Filter</button>
     </form>
     <div class="gc-scroll"><table>
@@ -142,11 +146,13 @@
           <td>{{ $w->user->username ?? '—' }}</td>
           <td><b>₦{{ number_format($w->amount, 2) }}</b></td>
           <td>{{ $w->account_name }}<div class="gc-sub">{{ $w->bank_name }} · {{ $w->account_number }}</div></td>
-          <td><span class="pill {{ $w->status==='approved'?'p-ok':($w->status==='declined'?'p-bad':'p-wait') }}">{{ $w->status==='approved'?'paid':$w->status }}</span>@if($w->admin_note)<div class="gc-sub">{{ $w->admin_note }}</div>@endif</td>
+          <td><span class="pill {{ $w->status==='approved'?'p-ok':($w->status==='declined'?'p-bad':'p-wait') }}">{{ $w->status==='approved'?'paid':$w->status }}</span>@if($w->failure_reason)<div class="gc-sub">{{ $w->failure_reason }}</div>@elseif($w->admin_note)<div class="gc-sub">{{ $w->admin_note }}</div>@endif</td>
           <td class="gc-sub">{{ $w->created_at->format('d M Y H:i') }}</td>
           <td>@if($w->status==='pending')
-            <form method="POST" action="{{ route('admin.giftcards.withdrawals.approve',$w->id) }}" style="display:inline" onsubmit="return confirm('Confirm you have transferred ₦{{ number_format($w->amount,2) }} to this account?')">@csrf<input type="hidden" name="note" value=""><button class="gc-btn g" type="submit">Mark paid</button></form>
-            <form method="POST" action="{{ route('admin.giftcards.withdrawals.decline',$w->id) }}" style="display:inline" onsubmit="const n=prompt('Reason for declining (user is refunded):');if(!n){return false}this.note.value=n;return true">@csrf<input type="hidden" name="note"><button class="gc-btn r" type="submit">Decline</button></form>
+            <form method="POST" action="{{ route('admin.giftcards.withdrawals.approve',$w->id) }}" style="display:inline" onsubmit="return confirm('Process the ₦{{ number_format($w->amount,2) }} payout through Flutterwave?')">@csrf<button class="gc-btn g" type="submit">Process payout</button></form>
+            <form method="POST" action="{{ route('admin.giftcards.withdrawals.decline',$w->id) }}" style="display:inline" onsubmit="const n=prompt('Reason for declining (user is refunded):');if(!n){return false}this.reason.value=n;return true">@csrf<input type="hidden" name="reason"><button class="gc-btn r" type="submit">Decline / refund</button></form>
+          @elseif($w->status==='processing')
+            <form method="POST" action="{{ route('admin.giftcards.withdrawals.sync',$w->id) }}" style="display:inline">@csrf<button class="gc-btn o" type="submit">Sync status</button></form>
           @else — @endif</td>
         </tr>
       @empty
@@ -164,6 +170,14 @@
 (function(){
   const CSRF=document.querySelector('meta[name="csrf-token"]')?.content||'';
   const esc=s=>{const d=document.createElement('div');d.textContent=String(s??'—');return d.innerHTML;};
+  const payoutBalance=document.getElementById('payoutBalance');
+  if(payoutBalance){
+    fetch(@json(route('admin.giftcards.payout-balance')),{headers:{'Accept':'application/json'}})
+      .then(r=>r.json()).then(d=>{
+        payoutBalance.textContent=d.success&&d.available!==null?'₦'+Number(d.available).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2}):'Unavailable';
+        payoutBalance.className='pill '+(d.success?'p-ok':'p-bad');
+      }).catch(()=>{payoutBalance.textContent='Unavailable';payoutBalance.className='pill p-bad';});
+  }
   document.querySelectorAll('.gc-toggle').forEach(b=>b.onclick=async()=>{
     b.disabled=true;
     try{

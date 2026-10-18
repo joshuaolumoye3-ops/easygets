@@ -12,6 +12,7 @@ class VerifyCsrfToken extends Middleware
      * @var array<int, string>
      */
     protected $except = [
+        'app/webhook/flutterwave',
         'app/flutterwave/webhook',
         'flutterwave/webhook',
         'webhook/flutterwave',
