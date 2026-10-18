@@ -187,56 +187,7 @@
         </div>
         @endif
 
-        {{-- ═══════════════════════════════════════════════════ --}}
-        {{-- ADD FUNDS MODAL — Korapay: one-time checkout + dedicated account --}}
-        {{-- ═══════════════════════════════════════════════════ --}}
-        <div id="addFundsModal" class="fixed inset-0 bg-black/50 hidden justify-center items-center z-50 p-4">
-            <div class="bg-white rounded-xl w-full max-w-md relative shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-                <button id="closeModalBtn" class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-xl font-bold leading-none z-10">✕</button>
-
-                {{-- Tabs --}}
-                <div class="flex border-b border-gray-100 flex-shrink-0">
-                    <button type="button" id="tabBtnOnetime"
-                            class="flex-1 py-3 text-sm font-bold text-brand-green border-b-2 border-brand-green transition-colors cursor-default">
-                        One-time Payment
-                    </button>
-                </div>
-
-                <div class="overflow-y-auto">
-                    {{-- ── Tab 1: One-time checkout ─────────────────────────────── --}}
-                    <div id="tabOnetime" class="p-6">
-                        <h2 class="text-lg font-bold mb-4 text-gray-800">Fund via One-time Payment</h2>
-                        <form id="korapayCheckoutForm" action="{{ route('korapay.checkout.initiate') }}" method="POST">
-                            @csrf
-                            <div class="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start space-x-2">
-                                <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
-                                <div>
-                                    <p class="text-sm text-blue-800 font-semibold mb-1">How it works:</p>
-                                    <ul class="text-xs text-blue-700 space-y-1">
-                                        <li>• Redirected to Korapay's secure payment page</li>
-                                        <li>• Pay with card, bank transfer, or USSD</li>
-                                        <li>• Wallet credited automatically once confirmed</li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <div class="mb-4">
-                                <label for="amount" class="block text-sm font-medium text-gray-700 mb-2">Amount (₦)</label>
-                                <input type="number" id="amount" name="amount" required min="100" step="0.01"
-                                       placeholder="Enter amount e.g. 1000"
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-green">
-                                <p class="text-xs text-gray-500 mt-1">Minimum amount: ₦100</p>
-                            </div>
-                            <button type="submit" id="checkoutSubmitBtn"
-                                    class="w-full bg-brand-green text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                                Proceed to Payment
-                            </button>
-                        </form>
-                    </div>
-
-                </div>
-            </div>
-        </div>
+        @include('partials.add-funds-modal')
 
         {{-- ── Partner Withdrawal Modal ─────────────────────── --}}
         @if ($isPartner)
@@ -723,20 +674,6 @@ function copyDedicatedAccountNumber() {
         ta.select(); document.execCommand('copy');
         document.body.removeChild(ta);
         btn.textContent = '✅ Copied!'; reset();
-    }
-}
-
-// ── Add Funds modal (open/close + tab switching) ──────────
-function switchFundTab(tab) {
-    if (tab !== 'onetime') return;
-
-    var onetime = document.getElementById('tabOnetime');
-    var btnOnetime = document.getElementById('tabBtnOnetime');
-
-    if (onetime) onetime.classList.remove('hidden');
-    if (btnOnetime) {
-        btnOnetime.classList.add('text-brand-green', 'border-brand-green');
-        btnOnetime.classList.remove('text-gray-400', 'border-transparent');
     }
 }
 
