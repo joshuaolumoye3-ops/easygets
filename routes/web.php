@@ -331,6 +331,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/orders/{reference}', [GiftcardController::class, 'orderDetail'])->middleware('throttle:60,1')->name('order');
         Route::post('/orders/{reference}/refresh', [GiftcardController::class, 'orderRefresh'])->middleware('throttle:20,1')->name('order.refresh');
         Route::post('/withdraw', [GiftcardController::class, 'withdraw'])->middleware('throttle:5,1')->name('withdraw');
+        Route::get('/withdrawals/{id}/status', [GiftcardController::class, 'withdrawalStatus'])
+            ->whereNumber('id')->name('withdrawals.status');
     });
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');

@@ -658,7 +658,7 @@
                     @endphp
                     <tr>
                         <td><div class="ucell"><div class="uav">{{ strtoupper(substr($tx->user?->username ?? 'N', 0, 1)) }}</div><span class="uname">{{ $tx->user?->username ?? 'N/A' }}</span></div></td>
-                        <td><span class="type-chip">{{ $tx->type ?? '—' }}</span></td>
+                        <td><span class="type-chip">{{ strtolower($tx->type ?? '') === 'giftcard_withdrawal' ? 'Gift card withdrawal' : ($tx->type ?? '—') }}</span></td>
                         <td>{{ $tx->provider ?? ucfirst($tx->channel ?? '—') }}</td>
                         <td><span class="tx-id">#{{ $tx->id }}</span></td>
                         <td>

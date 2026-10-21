@@ -108,12 +108,37 @@
     </div>
 </div>
 
+<div id="wdResult" class="fixed inset-0 z-[70] hidden overflow-y-auto bg-slate-50 px-4 py-8 sm:py-12" aria-live="polite" aria-modal="true" role="dialog">
+    <div class="mx-auto flex min-h-full w-full max-w-md items-center">
+        <div class="w-full rounded-2xl bg-white p-6 text-center shadow-xl ring-1 ring-black/5 sm:p-8">
+            <div id="wdResultIcon" class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+                <svg id="wdResultSpinner" class="hidden h-8 w-8 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                <svg id="wdResultCheck" class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="m5 12 4 4L19 6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+            <p id="wdResultEyebrow" class="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Transfer complete</p>
+            <h2 id="wdResultTitle" class="mt-2 text-2xl font-bold text-slate-900">Transfer successful</h2>
+            <p id="wdResultCopy" class="mt-2 text-sm leading-6 text-slate-500"></p>
+            <div id="wdReceipt" class="mt-6 hidden divide-y divide-slate-100 rounded-xl bg-slate-50 px-4 text-left">
+                <div class="flex justify-between gap-4 py-3 text-sm"><span class="text-slate-500">Amount sent</span><strong id="wdReceiptAmount" class="text-slate-900"></strong></div>
+                <div class="flex justify-between gap-4 py-3 text-sm"><span class="text-slate-500">Bank account</span><strong id="wdReceiptBank" class="text-right text-slate-900"></strong></div>
+                <div class="flex justify-between gap-4 py-3 text-sm"><span class="text-slate-500">Reference</span><strong id="wdReceiptReference" class="break-all text-right text-slate-900"></strong></div>
+                <div id="wdReceiptDateRow" class="flex justify-between gap-4 py-3 text-sm"><span class="text-slate-500">Completed</span><strong id="wdReceiptDate" class="text-right text-slate-900"></strong></div>
+            </div>
+            <div class="mt-6 grid grid-cols-2 gap-3">
+                <a href="{{ route('giftcards.index') }}" class="rounded-xl border border-slate-200 px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">Gift cards</a>
+                <a href="{{ route('history', ['tab' => 'giftcards']) }}" class="rounded-xl px-3 py-3 text-sm font-semibold text-white hover:bg-emerald-800" style="background:#03624C;">View activity</a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 const CSRF = document.querySelector('meta[name="csrf-token"]').content;
 const WD = {
     banks: @json(route('giftcards.banks')),
     resolve: @json(route('giftcards.resolve')),
     submit: @json(route('giftcards.withdraw')),
+    status: @json(route('giftcards.withdrawals.status', ['id' => '__ID__'])),
     min: {{ (float) $minWithdrawal }},
     max: {{ (float) $withdrawable }},
 };
@@ -125,6 +150,36 @@ function closeWd(){const m=$wd('wdModal');m.classList.add('hidden');m.classList.
 function wdMsg(t,ok){const e=document.getElementById('wdMsg');e.textContent=t;e.className='text-sm rounded-xl p-3 mb-3 '+(ok?'bg-green-50 text-green-700':'bg-red-50 text-red-700');}
 function wdResolvedBox(t,kind){const e=$wd('wdResolved');if(!t){e.className='hidden';return;}e.textContent=t;e.className='text-sm rounded-xl px-4 py-3 '+(kind==='ok'?'bg-green-50 text-green-700 font-semibold':kind==='err'?'bg-red-50 text-red-700':'bg-gray-50 text-gray-500');}
 function wdUpdateBtn(){const a=parseFloat($wd('wdAmount').value)||0;$wd('wdBtn').disabled=!(wdResolvedOk&&a>=WD.min&&a<=WD.max&&/^\d{4}$/.test($wd('wdPin').value));}
+function wdShowResult(kind, data={}){
+    const result=$wd('wdResult'), icon=$wd('wdResultIcon'), spinner=$wd('wdResultSpinner'), check=$wd('wdResultCheck');
+    const isSuccess=kind==='approved', isWaiting=kind==='waiting', isDeclined=kind==='declined';
+    $wd('wdResultEyebrow').textContent=isSuccess?'Transfer complete':isWaiting?'Transfer submitted':isDeclined?'Transfer not completed':'Confirming transfer';
+    $wd('wdResultTitle').textContent=isSuccess?'Transfer successful':isWaiting?'Transfer is processing':isDeclined?'Transfer unsuccessful':'Confirming your transfer';
+    $wd('wdResultCopy').textContent=isSuccess?'Your withdrawal has reached your bank account. Here is your transfer receipt.':isWaiting?'Flutterwave is still processing this transfer. Your funds remain tracked securely; check activity for updates.':isDeclined?'The bank did not complete this transfer. The withdrawal amount has been returned to your withdrawable balance.':'We are waiting for Flutterwave to confirm the transfer. This usually takes a moment.';
+    icon.className='mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full '+(isSuccess?'bg-emerald-50 text-emerald-700':isDeclined?'bg-red-50 text-red-700':'bg-sky-50 text-sky-700');
+    spinner.classList.toggle('hidden',!isWaiting&&kind!=='checking');
+    check.classList.toggle('hidden',isWaiting||kind==='checking');
+    $wd('wdReceipt').classList.toggle('hidden',!isSuccess);
+    if(isSuccess){
+        $wd('wdReceiptAmount').textContent='₦'+Number(data.amount).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2});
+        $wd('wdReceiptBank').textContent=`${data.bank_name} •••• ${data.account_tail}`;
+        $wd('wdReceiptReference').textContent=data.reference;
+        $wd('wdReceiptDate').textContent=data.processed_at||'Confirmed by Flutterwave';
+    }
+    result.classList.remove('hidden');
+}
+const wdWait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function wdPollStatus(id){
+    const url=WD.status.replace('__ID__',encodeURIComponent(id));
+    for(let attempt=0;attempt<30;attempt++){
+        try{
+            const response=await fetch(url,{headers:{'Accept':'application/json','Cache-Control':'no-cache'}}),data=await response.json();
+            if(response.ok&&data.success&&['approved','declined'].includes(data.status)){wdShowResult(data.status,data);return;}
+        }catch(e){}
+        await wdWait(2000);
+    }
+    wdShowResult('waiting');
+}
 async function loadWdBanks(){
     if(wdBanksLoaded)return;
     try{
@@ -157,7 +212,7 @@ async function submitWd(){
     try{
         const r=await fetch(WD.submit,{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':CSRF},body:JSON.stringify({amount:$wd('wdAmount').value,bank_code:$wd('wdBank').value,account_number:$wd('wdAcc').value.trim(),pin:$wd('wdPin').value,client_token:wdToken})});
         const d=await r.json();
-        if(r.ok&&d.success){wdMsg(d.message,true);wdToken=null;setTimeout(()=>location.reload(),1500);return;}
+        if(r.ok&&d.success){wdToken=null;closeWd();wdShowResult('checking');wdPollStatus(d.withdrawal_id);return;}
         wdMsg(d.message||(d.errors?Object.values(d.errors)[0][0]:'Something went wrong.'),false);
     }catch(e){wdMsg('Network error. Please try again.',false);}
     b.textContent='Withdraw';$wd('wdPin').value='';wdUpdateBtn();

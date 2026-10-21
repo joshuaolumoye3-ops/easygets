@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Concerns;
 
 use App\Models\GiftcardSetting;
 use App\Models\GiftcardWithdrawal;
+use App\Models\Transaction;
 use App\Services\Flutterwave\FlutterwaveClient;
 use App\Services\Payments\FlutterwavePayoutService;
 use Illuminate\Http\JsonResponse;
@@ -59,6 +60,22 @@ trait GiftcardWithdrawalActions
         return response()->json(['success' => true, 'account_name' => (string) $r['data']['account_name']]);
     }
 
+    /** GET /giftcards/withdrawals/{id}/status — private transfer status for the submitting user. */
+    public function withdrawalStatus(int $id): JsonResponse
+    {
+        $withdrawal = GiftcardWithdrawal::where('user_id', Auth::id())->findOrFail($id);
+
+        return response()->json([
+            'success' => true,
+            'status' => $withdrawal->status,
+            'amount' => (float) $withdrawal->amount,
+            'bank_name' => $withdrawal->bank_name,
+            'account_tail' => substr((string) $withdrawal->account_number, -4),
+            'reference' => $withdrawal->reference,
+            'processed_at' => $withdrawal->processed_at?->format('M j, Y · g:i A'),
+        ]);
+    }
+
     /** POST /giftcards/withdraw */
     public function withdraw(Request $request): JsonResponse
     {
@@ -81,7 +98,34 @@ trait GiftcardWithdrawalActions
 
         // Idempotent: a retry/double-click with the same token returns the original request.
         if ($existing = GiftcardWithdrawal::where('client_token', $data['client_token'])->where('user_id', $user->id)->first()) {
-            return response()->json(['success' => true, 'message' => 'Your withdrawal request has already been received.']);
+            Transaction::firstOrCreate(
+                ['reference' => $existing->reference],
+                [
+                    'user_id' => $user->id,
+                    'type' => 'giftcard_withdrawal',
+                    'channel' => 'Bank transfer',
+                    'provider' => 'Flutterwave',
+                    'recipient' => $existing->bank_name . ' •••• ' . substr((string) $existing->account_number, -4),
+                    'amount' => $existing->amount,
+                    'status' => match ($existing->status) {
+                        'approved' => 'success',
+                        'declined' => 'failed',
+                        default => 'pending',
+                    },
+                    'description' => 'Gift card earnings withdrawal to ' . $existing->bank_name,
+                    'response' => [
+                        'withdrawal_id' => $existing->id,
+                        'bank_name' => $existing->bank_name,
+                        'account_tail' => substr((string) $existing->account_number, -4),
+                    ],
+                ]
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Your withdrawal request has already been received.',
+                'withdrawal_id' => $existing->id,
+            ]);
         }
 
         $lock = Cache::lock('gc-withdraw:' . $user->id, 30);
@@ -132,6 +176,23 @@ trait GiftcardWithdrawalActions
                 ]);
                 $withdrawal->save();
 
+                Transaction::create([
+                    'reference' => $withdrawal->reference,
+                    'user_id' => $user->id,
+                    'type' => 'giftcard_withdrawal',
+                    'channel' => 'Bank transfer',
+                    'provider' => 'Flutterwave',
+                    'recipient' => $bank['name'] . ' •••• ' . substr($data['account_number'], -4),
+                    'amount' => $amount,
+                    'status' => 'pending',
+                    'description' => 'Gift card earnings withdrawal to ' . $bank['name'],
+                    'response' => [
+                        'withdrawal_id' => $withdrawal->id,
+                        'bank_name' => $bank['name'],
+                        'account_tail' => substr($data['account_number'], -4),
+                    ],
+                ]);
+
                 return null;
             });
 
@@ -151,6 +212,7 @@ trait GiftcardWithdrawalActions
                 'success' => true,
                 'message' => 'Withdrawal submitted. ₦' . number_format($amount, 2) . ' is being sent to '
                     . $bank['name'] . ' ' . FlutterwaveClient::maskAccount($data['account_number']) . '. Track it below.',
+                'withdrawal_id' => $withdrawal->id,
             ]);
         } finally {
             $lock->release();

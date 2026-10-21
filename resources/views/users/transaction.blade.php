@@ -25,8 +25,10 @@
                     'betting'     => '⚽',
                     'esim'        => '📱',
                     'payment'     => '💰',
+                    'giftcard_withdrawal' => '🏦',
                 ];
                 $icon = $icons[$txn->type] ?? '🌐';
+                $title = $txn->type === 'giftcard_withdrawal' ? 'Gift card withdrawal' : ($txn->title ?? ucfirst(str_replace('_', ' ', $txn->type)));
 
                 $statusColors = [
                     'success' => 'bg-green-100 text-green-700',
@@ -78,7 +80,7 @@
                 $txnData = [
                     'id'          => $txn->id,
                     'type'        => $txn->type,
-                    'title'       => $txn->title ?? ucfirst($txn->type),
+                    'title'       => $title,
                     'reference'   => $txn->reference,
                     'amount'      => $txn->amount,
                     'status'      => $txn->status,
@@ -98,7 +100,7 @@
                 <div class="flex items-center space-x-4">
                     <div class="text-green-800 text-xl">{{ $icon }}</div>
                     <div>
-                        <p class="text-sm font-medium">{{ $txn->title ?? ucfirst($txn->type) }}</p>
+                        <p class="text-sm font-medium">{{ $title }}</p>
                         <p class="text-xs text-gray-500">{{ $txn->created_at->format('h:i A') }}</p>
                     </div>
                 </div>

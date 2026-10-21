@@ -4,6 +4,7 @@ namespace App\Services\Payments;
 
 use App\Mail\PayoutNeedsAttention;
 use App\Models\GiftcardWithdrawal;
+use App\Models\Transaction;
 use App\Services\Flutterwave\FlutterwaveClient;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -140,6 +141,7 @@ class FlutterwavePayoutService
 			}
 
 			$this->refundAndDecline($withdrawal, $reason, $adminId);
+			$this->syncTransaction($withdrawal, 'failed');
 			return $this->result('declined', 'Withdrawal declined and funds returned to the user.');
 		});
 	}
@@ -192,6 +194,7 @@ class FlutterwavePayoutService
 					'provider_transfer_id' => $transferId, 'failure_reason' => null,
 					'admin_id' => $adminId ?? $row->admin_id, 'processed_at' => now(),
 				])->save();
+				$this->syncTransaction($row, 'success');
 			});
 			return $this->result('approved', 'Flutterwave confirmed the payout.');
 		}
@@ -204,6 +207,7 @@ class FlutterwavePayoutService
 					if (!in_array($row->status, ['approved', 'declined'], true)) {
 						$row->forceFill(['provider_transfer_id' => $transferId])->save();
 						$this->refundAndDecline($row, $reason, null);
+						$this->syncTransaction($row, 'failed');
 					}
 				});
 				return $this->result('declined', 'Bank rejected the account; the withdrawal was refunded.');
@@ -217,6 +221,7 @@ class FlutterwavePayoutService
 				'status' => 'processing', 'provider' => 'flutterwave', 'provider_transfer_id' => $transferId,
 				'failure_reason' => null, 'updated_at' => now(),
 			]);
+		$this->syncTransaction($withdrawal, 'pending');
 
 		return $this->result('processing', 'Flutterwave is processing the transfer.');
 	}
@@ -236,6 +241,7 @@ class FlutterwavePayoutService
 			'provider_transfer_id' => $transferId ?? $withdrawal->provider_transfer_id,
 			'payout_attempts' => $attempts, 'admin_id' => $adminId ?? $withdrawal->admin_id,
 		])->save();
+		$this->syncTransaction($withdrawal, 'pending');
 
 		$this->sendAttentionEmail($withdrawal->fresh(), $reason, $code, $balance, $attempts);
 		return $this->result('pending', $reason);
@@ -295,5 +301,10 @@ class FlutterwavePayoutService
 	private function result(string $status, string $message): array
 	{
 		return ['status' => $status, 'message' => $message];
+	}
+
+	private function syncTransaction(GiftcardWithdrawal $withdrawal, string $status): void
+	{
+		Transaction::where('reference', $withdrawal->reference)->update(['status' => $status]);
 	}
 }
