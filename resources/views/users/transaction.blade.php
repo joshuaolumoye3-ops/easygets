@@ -26,9 +26,16 @@
                     'esim'        => '📱',
                     'payment'     => '💰',
                     'giftcard_withdrawal' => '🏦',
+                    'giftcard_balance_adjustment' => '🎁',
                 ];
                 $icon = $icons[$txn->type] ?? '🌐';
-                $title = $txn->type === 'giftcard_withdrawal' ? 'Gift card withdrawal' : ($txn->title ?? ucfirst(str_replace('_', ' ', $txn->type)));
+                $adjustmentAction = $txn->response['action'] ?? null;
+                $title = match ($txn->type) {
+                    'giftcard_withdrawal' => 'Gift card withdrawal',
+                    'giftcard_balance_adjustment' => 'Gift card balance ' . ($adjustmentAction === 'add' ? 'credit' : 'debit'),
+                    default => $txn->title ?? ucfirst(str_replace('_', ' ', $txn->type)),
+                };
+                $isCredit = $txn->type === 'payment' || ($txn->type === 'giftcard_balance_adjustment' && $adjustmentAction === 'add');
 
                 $statusColors = [
                     'success' => 'bg-green-100 text-green-700',
@@ -84,6 +91,7 @@
                     'reference'   => $txn->reference,
                     'amount'      => $txn->amount,
                     'status'      => $txn->status,
+                    'response'    => ['action' => $adjustmentAction],
                     'channel'     => $txn->channel,
                     'provider'    => $txn->provider,
                     'phone'       => $txn->phone,
@@ -105,8 +113,8 @@
                     </div>
                 </div>
                 <div class="text-right">
-                    <p class="text-sm font-semibold {{ $txn->type === 'payment' ? 'text-green-600' : 'text-black' }}">
-                        {{ $txn->type === 'payment' ? '+' : '-' }}₦{{ number_format($txn->amount, 2) }}
+                    <p class="text-sm font-semibold {{ $isCredit ? 'text-green-600' : 'text-black' }}">
+                        {{ $isCredit ? '+' : '-' }}₦{{ number_format($txn->amount, 2) }}
                     </p>
                     <p class="flex items-center justify-end text-xs text-gray-500 space-x-1 mt-1">
                         <span class="w-2 h-2 rounded-full {{ explode(' ', $statusColor)[0] }}"></span>

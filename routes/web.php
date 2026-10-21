@@ -372,6 +372,7 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
     Route::post('/users/{id}/update-pin', [AdminController::class, 'updateUserPin'])->name('admin.users.updatePin');
     Route::post('/users/{user}/add-funds', [AdminController::class, 'addFunds'])->name('admin.users.add-funds');
     Route::post('/users/{user}/deduct-funds', [AdminController::class, 'deductFunds'])->name('admin.users.deduct-funds');
+    Route::post('/users/{user}/giftcard-balance', [AdminController::class, 'adjustGiftcardBalance'])->name('admin.users.giftcard-balance');
     
     // User blocking routes
     Route::post('/users/{id}/block', [AdminController::class, 'blockUser'])->name('admin.users.block');

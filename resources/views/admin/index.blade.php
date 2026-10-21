@@ -233,6 +233,7 @@
     .action-grid { display: grid; gap: 8px; margin-bottom: 10px; }
     .action-grid-4 { grid-template-columns: repeat(4, 1fr); }
     .action-grid-5 { grid-template-columns: repeat(5, 1fr); }
+    .action-grid-6 { grid-template-columns: repeat(6, 1fr); }
 
     .act-btn { height: 40px; padding: 0 12px; border-radius: var(--r2); font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px; transition: background .2s, color .2s, box-shadow .2s; font-family: var(--font); border: 1px solid; }
     .act-btn.blue   { background: var(--blue-dim);   color: var(--blue-text);   border-color: rgba(79,140,255,0.25); }
@@ -321,7 +322,7 @@
     /* ── Responsive ── */
     @media (max-width: 900px) {
         .stats { grid-template-columns: repeat(3, 1fr); }
-        .action-grid-4, .action-grid-5 { grid-template-columns: repeat(3, 1fr); }
+        .action-grid-4, .action-grid-5, .action-grid-6 { grid-template-columns: repeat(3, 1fr); }
     }
     @media (max-width: 680px) {
         .stats { grid-template-columns: 1fr 1fr; }
@@ -336,7 +337,7 @@
         .stat-card:last-child { grid-column: auto; }
         .stat-value { font-size: 22px; }
         .f2col, .funds-grid { grid-template-columns: 1fr; }
-        .action-grid-4, .action-grid-5 { grid-template-columns: 1fr 1fr; }
+        .action-grid-4, .action-grid-5, .action-grid-6 { grid-template-columns: 1fr 1fr; }
         .filter-form { width: 100%; }
         .fsearch { flex: 1; }
         .fsearch input { width: 100%; }
@@ -348,7 +349,7 @@
         .ref-type-tabs { flex-direction: column; }
     }
     @media (max-width: 400px) {
-        .action-grid-4, .action-grid-5 { grid-template-columns: 1fr; }
+        .action-grid-4, .action-grid-5, .action-grid-6 { grid-template-columns: 1fr; }
     }
     .users-table { table-layout: auto; min-width: 0; width: 100%; }
     .users-table th, .users-table td { white-space: nowrap; }
@@ -667,7 +668,7 @@
                     @endphp
                     <tr>
                         <td><div class="ucell"><div class="uav">{{ strtoupper(substr($tx->user?->username ?? 'N', 0, 1)) }}</div><span class="uname">{{ $tx->user?->username ?? 'N/A' }}</span></div></td>
-                        <td><span class="type-chip">{{ strtolower($tx->type ?? '') === 'giftcard_withdrawal' ? 'Gift card withdrawal' : ($tx->type ?? '—') }}</span></td>
+                        <td><span class="type-chip">@if(strtolower($tx->type ?? '') === 'giftcard_withdrawal')Gift card withdrawal @elseif(strtolower($tx->type ?? '') === 'giftcard_balance_adjustment')Gift card balance {{ strtolower($txResponse['action'] ?? '') === 'add' ? 'credit' : 'debit' }}@else{{ $tx->type ?? '—' }}@endif</span></td>
                         <td>{{ $tx->provider ?? ucfirst($tx->channel ?? '—') }}</td>
                         <td><span class="tx-id">#{{ $tx->id }}</span></td>
                         <td>
@@ -776,7 +777,7 @@
     <div class="msec">
         <div class="msec-label">Admin Actions</div>
 
-        <div class="action-grid action-grid-5">
+        <div class="action-grid action-grid-6">
             <button class="act-btn blue" id="btnTogPw">
                 <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
                 Password
@@ -788,6 +789,10 @@
             <button class="act-btn green" id="btnTogFunds">
                 <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                 Wallet
+            </button>
+            <button class="act-btn amber" id="btnTogGiftcard">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7.5A2.5 2.5 0 015.5 5h13A2.5 2.5 0 0121 7.5v9a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 16.5v-9zM3 9h18m-5 5h2"/></svg>
+                Gift card
             </button>
             <button class="act-btn rose" id="btnTogBlock">
                 <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
@@ -836,6 +841,27 @@
                     <div class="fg"><label class="fl">Amount (₦)</label><input type="number" id="dAmt" class="fi" placeholder="0.00" min="0" step="0.01"></div>
                     <div class="fg"><label class="fl">Reason</label><textarea id="dDesc" class="fa" placeholder="Reason for deducting funds…"></textarea></div>
                     <button class="sbtn rose" id="btnDoDed">Deduct Funds</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="fGiftcard" class="subform amber-sf">
+            <h4 style="color:var(--amber-text);">Gift Card Balance Management</h4>
+            <div class="info-note amber" style="margin-bottom:14px;">
+                Available balance: <strong id="giftcardBalanceValue">₦0.00</strong>. Every adjustment requires a reason and is recorded in the user and admin transaction logs.
+            </div>
+            <div class="funds-grid">
+                <div class="fund-panel add">
+                    <div class="fund-panel-label">Add withdrawable balance</div>
+                    <div class="fg"><label class="fl" for="gcAddAmt">Amount (₦)</label><input type="number" id="gcAddAmt" class="fi" placeholder="0.00" min="0.01" max="100000000" step="0.01" inputmode="decimal"></div>
+                    <div class="fg"><label class="fl" for="gcAddDesc">Adjustment reason</label><textarea id="gcAddDesc" class="fa" minlength="3" maxlength="500" placeholder="Explain why this balance is being added…"></textarea></div>
+                    <button class="sbtn green" id="btnDoGiftcardAdd">Add gift-card balance</button>
+                </div>
+                <div class="fund-panel ded">
+                    <div class="fund-panel-label">Deduct withdrawable balance</div>
+                    <div class="fg"><label class="fl" for="gcDedAmt">Amount (₦)</label><input type="number" id="gcDedAmt" class="fi" placeholder="0.00" min="0.01" max="100000000" step="0.01" inputmode="decimal"></div>
+                    <div class="fg"><label class="fl" for="gcDedDesc">Adjustment reason</label><textarea id="gcDedDesc" class="fa" minlength="3" maxlength="500" placeholder="Explain why this balance is being deducted…"></textarea></div>
+                    <button class="sbtn rose" id="btnDoGiftcardDeduct">Deduct gift-card balance</button>
                 </div>
             </div>
         </div>
@@ -1003,13 +1029,14 @@
 
             // ── Info tiles ──────────────────────────────────────────────
             const grid = body.querySelector('#mInfo');
+            const currentGiftcardBalance = Number(user.giftcard_withdrawable_balance || 0);
             const tiles = [
                 ['Full Name',  (user.first_name || '') + ' ' + (user.last_name || ''), null],
                 ['Username',   '@' + (user.username || ''), null],
                 ['Email',      user.email || '—', null],
                 ['Phone',      user.phone_number || '—', null],
                 ['Wallet Bal', '₦' + ngn(user.wallet?.balance), 'green'],
-                ['Gift Card Available', '₦' + ngn(user.giftcard_withdrawable_balance), 'green'],
+                ['Gift Card Available', '₦' + ngn(user.giftcard_withdrawable_balance), 'green', 'giftcardBalanceTileValue'],
                 ['Ref. Bal',   '₦' + ngn(user.referral_balance), 'green'],
                 ['Status',     user.is_blocked ? 'Blocked' : 'Active', user.is_blocked ? 'danger' : 'ok'],
                 ['Type',       user.is_partner ? '⭐ Affiliate' : '👤 Normal', null],
@@ -1021,13 +1048,15 @@
             tiles.push(['Joined', new Date(user.created_at).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' }), null]);
 
             const frag = document.createDocumentFragment();
-            tiles.forEach(([lbl, val, cls]) => {
+            tiles.forEach(([lbl, val, cls, valueId]) => {
                 const tile = document.createElement('div'); tile.className = 'itile';
                 const l = document.createElement('div'); l.className = 'ilbl'; l.textContent = lbl;
                 const v = document.createElement('div'); v.className = 'ival' + (cls ? ' ' + cls : ''); v.textContent = val;
+                if (valueId) v.id = valueId;
                 tile.append(l, v); frag.appendChild(tile);
             });
             grid.replaceChildren(frag);
+            body.querySelector('#giftcardBalanceValue').textContent = '₦' + ngn(currentGiftcardBalance);
 
             // ── Transactions mini-table ─────────────────────────────────
             const mTxns = body.querySelector('#mTxns');
@@ -1055,7 +1084,7 @@
                     }
                     const tr = document.createElement('tr');
                     tr.innerHTML =
-                        `<td style="color:var(--t1);">${esc(tx.type||'—')}</td>` +
+                        `<td style="color:var(--t1);">${esc(tx.type === 'giftcard_balance_adjustment' ? 'Gift card balance ' + ((tx.response || {}).action === 'add' ? 'credit' : 'debit') : (tx.type === 'giftcard_withdrawal' ? 'Gift card withdrawal' : (tx.type || '—')))}</td>` +
                         `<td style="color:var(--amber-text);font-family:var(--mono);font-weight:600;">₦${ngn(tx.amount)}</td>` +
                         `<td><span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:5px;font-size:11px;font-weight:700;background:${bg};color:${col};border:1px solid ${bdr};"><span style="width:5px;height:5px;border-radius:50%;background:${col};flex-shrink:0;"></span>${lbl}</span></td>` +
                         `<td style="color:var(--t3);">${new Date(tx.created_at).toLocaleDateString()}</td>`;
@@ -1070,6 +1099,7 @@
             body.querySelector('#btnTogPw').addEventListener('click',    () => togForm('fPw', body));
             body.querySelector('#btnTogPin').addEventListener('click',   () => togForm('fPin', body));
             body.querySelector('#btnTogFunds').addEventListener('click', () => togForm('fFunds', body));
+            body.querySelector('#btnTogGiftcard').addEventListener('click', () => togForm('fGiftcard', body));
 
             // Block/Unblock setup
             const blockBtn    = body.querySelector('#btnTogBlock');
@@ -1180,6 +1210,8 @@
             body.querySelector('#btnDoPin').addEventListener('click',   () => doPin(body));
             body.querySelector('#btnDoAdd').addEventListener('click',   () => doAdd(body));
             body.querySelector('#btnDoDed').addEventListener('click',   () => doDed(body));
+            body.querySelector('#btnDoGiftcardAdd').addEventListener('click', () => adjustGiftcardBalance(body, 'add'));
+            body.querySelector('#btnDoGiftcardDeduct').addEventListener('click', () => adjustGiftcardBalance(body, 'deduct'));
             body.querySelector('#btnDoBlock').addEventListener('click', () => doBlock(body, user));
 
         } catch(e) {
@@ -1240,6 +1272,49 @@
                 setTimeout(() => openModal(uid), 900);
             }
         } catch(e) { flash(body, 'Error: ' + e.message, 'err'); }
+    }
+
+    async function adjustGiftcardBalance(body, action) {
+        const isAdd = action === 'add';
+        const amountInput = body.querySelector(isAdd ? '#gcAddAmt' : '#gcDedAmt');
+        const descriptionInput = body.querySelector(isAdd ? '#gcAddDesc' : '#gcDedDesc');
+        const button = body.querySelector(isAdd ? '#btnDoGiftcardAdd' : '#btnDoGiftcardDeduct');
+        const amount = Number(amountInput.value);
+        const description = descriptionInput.value.trim();
+
+        if (!Number.isFinite(amount) || amount <= 0 || amount > 100000000) {
+            flash(body, 'Enter a valid amount between ₦0.01 and ₦100,000,000.', 'err');
+            return;
+        }
+        if (description.length < 3 || description.length > 500) {
+            flash(body, 'Enter an adjustment reason between 3 and 500 characters.', 'err');
+            return;
+        }
+        if (!confirm(`${isAdd ? 'Add' : 'Deduct'} ₦${ngn(amount)} ${isAdd ? 'to' : 'from'} this user’s available gift-card balance?`)) return;
+
+        button.disabled = true;
+        const originalText = button.textContent;
+        button.textContent = 'Saving adjustment…';
+        try {
+            const result = await post(`${BASE}/app/admin/users/${uid}/giftcard-balance`, { action, amount, description });
+            if (!result.success) throw new Error(result.message || 'Could not update gift-card balance.');
+
+            const formattedBalance = '₦' + ngn(result.new_balance);
+            const tileValue = body.querySelector('#giftcardBalanceTileValue');
+            const panelValue = body.querySelector('#giftcardBalanceValue');
+            if (tileValue) tileValue.textContent = formattedBalance;
+            if (panelValue) panelValue.textContent = formattedBalance;
+            amountInput.value = '';
+            descriptionInput.value = '';
+            flash(body, `${result.message} Reference: ${result.reference}`, 'ok');
+
+            setTimeout(() => openModal(uid), 900);
+        } catch (error) {
+            flash(body, error.message || 'Gift-card balance adjustment failed.', 'err');
+        } finally {
+            button.disabled = false;
+            button.textContent = originalText;
+        }
     }
 
     async function doDed(body) {

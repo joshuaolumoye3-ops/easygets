@@ -522,6 +522,97 @@ class AdminController extends Controller
         }
     }
 
+    public function adjustGiftcardBalance(Request $request, $userId)
+    {
+        $data = $request->validate([
+            'action' => ['required', 'in:add,deduct'],
+            'amount' => ['required', 'numeric', 'gt:0', 'max:100000000'],
+            'description' => ['required', 'string', 'min:3', 'max:500'],
+        ]);
+
+        $admin = Auth::guard('admins')->user();
+        if (!$admin) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        }
+
+        try {
+            $result = DB::transaction(function () use ($data, $userId, $admin) {
+                $user = User::query()->lockForUpdate()->findOrFail($userId);
+                $before = round((float) ($user->withdrawable_balance ?? 0), 2);
+                $amount = round((float) $data['amount'], 2);
+
+                if ($amount <= 0) {
+                    throw ValidationException::withMessages(['amount' => 'Amount must be at least ₦0.01.']);
+                }
+                if ($data['action'] === 'deduct' && $amount > $before) {
+                    throw ValidationException::withMessages(['amount' => 'Insufficient gift-card balance. Available: ₦' . number_format($before, 2)]);
+                }
+
+                $after = $data['action'] === 'add' ? $before + $amount : $before - $amount;
+                DB::table('users')->where('id', $user->id)->update(['withdrawable_balance' => $after]);
+
+                $reference = 'ADMIN_GC_' . strtoupper(Str::random(16));
+                $actionLabel = $data['action'] === 'add' ? 'Added' : 'Deducted';
+                $description = sprintf(
+                    '%s ₦%s gift-card withdrawable balance. Reason: %s. Balance: ₦%s → ₦%s. Admin: %s',
+                    $actionLabel,
+                    number_format($amount, 2),
+                    $data['description'],
+                    number_format($before, 2),
+                    number_format($after, 2),
+                    $admin->username ?? $admin->email ?? ('Admin #' . $admin->id)
+                );
+
+                Transaction::create([
+                    'reference' => $reference,
+                    'user_id' => $user->id,
+                    'type' => 'giftcard_balance_adjustment',
+                    'channel' => 'Admin',
+                    'provider' => 'Admin',
+                    'recipient' => $user->username,
+                    'amount' => $amount,
+                    'status' => 'success',
+                    'description' => $description,
+                    'response' => [
+                        'action' => $data['action'],
+                        'reason' => $data['description'],
+                        'balance_before' => $before,
+                        'balance_after' => $after,
+                        'admin_id' => $admin->id,
+                    ],
+                ]);
+
+                AdminTransaction::create([
+                    'admin_id' => $admin->id,
+                    'action' => $data['action'] === 'add' ? 'GIFTCARD_BALANCE_CREDIT' : 'GIFTCARD_BALANCE_DEBIT',
+                    'amount' => $amount,
+                    'affected_user_id' => $user->id,
+                    'description' => $description,
+                    'reference' => $reference,
+                ]);
+
+                return ['balance' => $after, 'reference' => $reference];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Gift-card balance updated successfully.',
+                'new_balance' => number_format($result['balance'], 2, '.', ''),
+                'reference' => $result['reference'],
+            ]);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::error('Admin gift-card balance adjustment failed', [
+                'user_id' => $userId,
+                'admin_id' => $admin->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['success' => false, 'message' => 'Could not update gift-card balance. No changes were made.'], 500);
+        }
+    }
+
 
     /**
      * Update user password with admin transaction logging
