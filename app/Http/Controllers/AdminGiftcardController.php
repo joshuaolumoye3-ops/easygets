@@ -41,7 +41,7 @@ class AdminGiftcardController extends Controller
             })
             ->latest()->paginate(15, ['*'], 'op')->withQueryString();
 
-        $withdrawals = GiftcardWithdrawal::with('user:id,username,email')
+        $withdrawals = GiftcardWithdrawal::with('user:id,username,email,withdrawable_balance')
             ->when($request->filled('wstatus'), fn ($q) => $q->where('status', $request->wstatus))
             ->latest()->paginate(15, ['*'], 'wp')->withQueryString();
 

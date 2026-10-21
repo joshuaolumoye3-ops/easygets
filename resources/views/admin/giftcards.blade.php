@@ -31,6 +31,15 @@
   .gc-modal.open{display:flex}.gc-mb{background:#111e38;border:1px solid rgba(99,152,255,.2);border-radius:18px;width:100%;max-width:640px;max-height:90vh;overflow:auto;padding:20px}
   .kv{display:grid;grid-template-columns:150px 1fr;gap:6px 12px;font-size:12.5px}.kv dt{color:#7a9fd4}.kv dd{word-break:break-all}
   .gc-filter{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.gc-filter input,.gc-filter select{width:auto;min-width:140px}
+  .gc-balance{font-weight:800;color:#6ee7b7;white-space:nowrap}.gc-action-stack{display:grid;gap:7px;min-width:150px}
+  .gc-adjust-mode{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px;padding:4px;background:#0d1629;border:1px solid rgba(99,152,255,.16);border-radius:11px}
+  .gc-adjust-mode button{height:38px;border:0;border-radius:8px;background:transparent;color:#7a9fd4;font-weight:700;cursor:pointer}
+  .gc-adjust-mode button.active-add{background:rgba(52,217,139,.16);color:#6ee7b7}.gc-adjust-mode button.active-deduct{background:rgba(244,86,110,.16);color:#fda4af}
+  .gc-adjust-summary{padding:13px 14px;margin-bottom:14px;border:1px solid rgba(99,152,255,.14);border-radius:11px;background:#0d1629}
+  .gc-adjust-summary span{display:block;color:#7a9fd4;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}.gc-adjust-summary strong{display:block;margin-top:5px;font-size:20px;color:#eef3ff}
+  .gc-form-error{display:none;margin:10px 0;padding:10px 12px;border:1px solid rgba(244,86,110,.25);border-radius:9px;background:rgba(244,86,110,.1);color:#fda4af;font-size:12px}.gc-form-error.show{display:block}
+  .gc-modal .gc-mb{max-width:480px}.gc-modal .gc-mb h2{font-size:17px;color:#eef3ff}.gc-modal .gc-mb .gc-sub{line-height:1.6}
+  @media(max-width:640px){.gc-in{padding:18px 12px}.gc td{padding:10px 8px}.gc-action-stack{min-width:130px}.gc-modal{align-items:flex-end;padding:0}.gc-modal .gc-mb{border-radius:18px 18px 0 0;max-height:90vh}}
 </style>
 
 <div class="gc"><div class="gc-in">
@@ -49,7 +58,7 @@
     <div class="gc-stat"><span>Needs review</span><b style="color:{{ $stats['needs_review']?'#fda4af':'inherit' }}">{{ $stats['needs_review'] }}</b></div>
     <div class="gc-stat"><span>Buy volume</span><b>₦{{ number_format($stats['buy_volume']) }}</b></div>
     <div class="gc-stat"><span>Sell payouts</span><b>₦{{ number_format($stats['sell_payouts']) }}</b></div>
-    <div class="gc-stat"><span>Users' withdrawable</span><b>₦{{ number_format($stats['withdrawable']) }}</b></div>
+    <div class="gc-stat"><span>Users' withdrawable</span><b id="usersWithdrawableTotal">₦{{ number_format($stats['withdrawable'], 2) }}</b></div>
     <div class="gc-stat"><span>Pending withdrawals</span><b>₦{{ number_format($stats['pending_wd_amt']) }}</b></div>
   </div>
 
@@ -138,25 +147,31 @@
       <button class="gc-btn" type="submit">Filter</button>
     </form>
     <div class="gc-scroll"><table>
-      <thead><tr><th>Ref</th><th>User</th><th>Amount</th><th>Bank details</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
+      <thead><tr><th>Ref</th><th>User</th><th>Available balance</th><th>Withdrawal</th><th>Bank details</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
       <tbody>
       @forelse($withdrawals as $w)
         <tr>
           <td style="font-family:monospace;font-size:11px">{{ $w->reference }}</td>
           <td>{{ $w->user->username ?? '—' }}</td>
+          <td><span class="gc-balance" data-user-balance="{{ $w->user_id }}">₦{{ number_format((float) ($w->user->withdrawable_balance ?? 0), 2) }}</span></td>
           <td><b>₦{{ number_format($w->amount, 2) }}</b></td>
           <td>{{ $w->account_name }}<div class="gc-sub">{{ $w->bank_name }} · {{ $w->account_number }}</div></td>
           <td><span class="pill {{ $w->status==='approved'?'p-ok':($w->status==='declined'?'p-bad':'p-wait') }}">{{ $w->status==='approved'?'paid':$w->status }}</span>@if($w->failure_reason)<div class="gc-sub">{{ $w->failure_reason }}</div>@elseif($w->admin_note)<div class="gc-sub">{{ $w->admin_note }}</div>@endif</td>
           <td class="gc-sub">{{ $w->created_at->format('d M Y H:i') }}</td>
-          <td>@if($w->status==='pending')
-            <form method="POST" action="{{ route('admin.giftcards.withdrawals.approve',$w->id) }}" style="display:inline" onsubmit="return confirm('Process the ₦{{ number_format($w->amount,2) }} payout through Flutterwave?')">@csrf<button class="gc-btn g" type="submit">Process payout</button></form>
-            <form method="POST" action="{{ route('admin.giftcards.withdrawals.decline',$w->id) }}" style="display:inline" onsubmit="const n=prompt('Reason for declining (user is refunded):');if(!n){return false}this.reason.value=n;return true">@csrf<input type="hidden" name="reason"><button class="gc-btn r" type="submit">Decline / refund</button></form>
-          @elseif($w->status==='processing')
-            <form method="POST" action="{{ route('admin.giftcards.withdrawals.sync',$w->id) }}" style="display:inline">@csrf<button class="gc-btn o" type="submit">Sync status</button></form>
-          @else — @endif</td>
+          <td><div class="gc-action-stack">
+            @if($w->user)
+              <button type="button" class="gc-btn o" onclick="openBalanceAdjustment(this)" data-user-id="{{ $w->user_id }}" data-user-name="{{ $w->user->username }}" data-balance="{{ (float) ($w->user->withdrawable_balance ?? 0) }}">Adjust balance</button>
+            @endif
+            @if($w->status==='pending')
+              <form method="POST" action="{{ route('admin.giftcards.withdrawals.approve',$w->id) }}" onsubmit="return confirm('Process the ₦{{ number_format($w->amount,2) }} payout through Flutterwave?')">@csrf<button class="gc-btn g" type="submit">Process payout</button></form>
+              <form method="POST" action="{{ route('admin.giftcards.withdrawals.decline',$w->id) }}" onsubmit="const n=prompt('Reason for declining (user is refunded):');if(!n){return false}this.reason.value=n;return true">@csrf<input type="hidden" name="reason"><button class="gc-btn r" type="submit">Decline / refund</button></form>
+            @elseif($w->status==='processing')
+              <form method="POST" action="{{ route('admin.giftcards.withdrawals.sync',$w->id) }}">@csrf<button class="gc-btn o" type="submit">Sync status</button></form>
+            @endif
+          </div></td>
         </tr>
       @empty
-        <tr><td colspan="7" style="text-align:center;padding:36px" class="gc-sub">No withdrawals.</td></tr>
+        <tr><td colspan="8" style="text-align:center;padding:36px" class="gc-sub">No withdrawals.</td></tr>
       @endforelse
       </tbody></table></div>
     <div style="margin-top:12px">{{ $withdrawals->links('partials.admin.custom') }}</div>
@@ -166,10 +181,89 @@
 
 <div class="gc-modal" id="ordModal"><div class="gc-mb"><div style="display:flex;justify-content:space-between;margin-bottom:12px"><h3 id="ordTitle">Order</h3><button class="gc-btn o" onclick="document.getElementById('ordModal').classList.remove('open')">Close</button></div><div id="ordBody">Loading…</div></div></div>
 
+@if($tab==='withdrawals')
+<div class="gc-modal" id="balanceModal" role="dialog" aria-modal="true" aria-labelledby="balanceModalTitle">
+  <div class="gc-mb">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px">
+      <div><h2 id="balanceModalTitle">Adjust gift-card balance</h2><p class="gc-sub" id="balanceModalUser" style="margin-top:5px"></p></div>
+      <button type="button" class="gc-btn o" onclick="closeBalanceAdjustment()" aria-label="Close balance adjustment">Close</button>
+    </div>
+    <div class="gc-adjust-summary"><span>Current available balance</span><strong id="balanceModalCurrent">₦0.00</strong></div>
+    <div class="gc-adjust-mode" role="group" aria-label="Balance adjustment type">
+      <button type="button" id="balanceModeAdd" class="active-add" onclick="setBalanceAdjustmentMode('add')">Add funds</button>
+      <button type="button" id="balanceModeDeduct" onclick="setBalanceAdjustmentMode('deduct')">Remove funds</button>
+    </div>
+    <label for="balanceAdjustAmount">Amount (₦)</label>
+    <input id="balanceAdjustAmount" type="number" min="0.01" max="100000000" step="0.01" inputmode="decimal" placeholder="0.00">
+    <label for="balanceAdjustReason" style="margin-top:13px">Reason for adjustment</label>
+    <textarea id="balanceAdjustReason" rows="3" maxlength="500" placeholder="Provide a clear reason for this balance change"></textarea>
+    <div id="balanceAdjustError" class="gc-form-error" role="alert"></div>
+    <button type="button" class="gc-btn g" id="balanceAdjustSubmit" style="width:100%;margin-top:14px" onclick="submitBalanceAdjustment()">Add to balance</button>
+    <p class="gc-sub" style="margin-top:10px">This action is recorded in both the user's transaction history and the admin audit log.</p>
+  </div>
+</div>
+@endif
+
 <script>
 (function(){
   const CSRF=document.querySelector('meta[name="csrf-token"]')?.content||'';
   const esc=s=>{const d=document.createElement('div');d.textContent=String(s??'—');return d.innerHTML;};
+  const balanceAdjustUrlTemplate=@json(route('admin.users.giftcard-balance',['user'=>'__USER_ID__']));
+  let balanceAdjustment={userId:null,userName:'',balance:0,action:'add'};
+  const money=value=>'₦'+Number(value||0).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2});
+  window.openBalanceAdjustment=function(button){
+    balanceAdjustment={userId:button.dataset.userId,userName:button.dataset.userName||'User',balance:Number(button.dataset.balance||0),action:'add'};
+    document.getElementById('balanceModalUser').textContent='@'+balanceAdjustment.userName;
+    document.getElementById('balanceModalCurrent').textContent=money(balanceAdjustment.balance);
+    document.getElementById('balanceAdjustAmount').value='';
+    document.getElementById('balanceAdjustReason').value='';
+    document.getElementById('balanceAdjustError').classList.remove('show');
+    setBalanceAdjustmentMode('add');
+    document.getElementById('balanceModal').classList.add('open');
+  };
+  window.closeBalanceAdjustment=function(){document.getElementById('balanceModal').classList.remove('open');};
+  window.setBalanceAdjustmentMode=function(action){
+    balanceAdjustment.action=action;
+    const add=action==='add';
+    document.getElementById('balanceModeAdd').className=add?'active-add':'';
+    document.getElementById('balanceModeDeduct').className=add?'':'active-deduct';
+    const submit=document.getElementById('balanceAdjustSubmit');
+    submit.textContent=add?'Add to balance':'Remove from balance';
+    submit.className='gc-btn '+(add?'g':'r');
+  };
+  window.submitBalanceAdjustment=async function(){
+    const amount=Number(document.getElementById('balanceAdjustAmount').value);
+    const reason=document.getElementById('balanceAdjustReason').value.trim();
+    const error=document.getElementById('balanceAdjustError');
+    const button=document.getElementById('balanceAdjustSubmit');
+    error.textContent='';error.classList.remove('show');
+    if(!Number.isFinite(amount)||amount<=0||amount>100000000){error.textContent='Enter an amount between ₦0.01 and ₦100,000,000.';error.classList.add('show');return;}
+    if(reason.length<3||reason.length>500){error.textContent='Enter a reason between 3 and 500 characters.';error.classList.add('show');return;}
+    if(balanceAdjustment.action==='deduct'&&amount>balanceAdjustment.balance){error.textContent='The amount exceeds this user’s available gift-card balance.';error.classList.add('show');return;}
+    const actionLabel=balanceAdjustment.action==='add'?'Add':'Remove';
+    if(!confirm(`${actionLabel} ${money(amount)} ${balanceAdjustment.action==='add'?'to':'from'} @${balanceAdjustment.userName}'s available gift-card balance?`))return;
+    button.disabled=true;button.textContent='Saving adjustment…';
+    try{
+      const url=balanceAdjustUrlTemplate.replace('__USER_ID__',encodeURIComponent(balanceAdjustment.userId));
+      const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'},body:JSON.stringify({action:balanceAdjustment.action,amount,description:reason})});
+      const data=await response.json();
+      if(!response.ok||!data.success)throw new Error(data.message||'Could not update the available balance.');
+      const previous=balanceAdjustment.balance;
+      balanceAdjustment.balance=Number(data.new_balance);
+      document.querySelectorAll(`[data-user-balance="${CSS.escape(String(balanceAdjustment.userId))}"]`).forEach(el=>el.textContent=money(balanceAdjustment.balance));
+      document.querySelectorAll(`button[data-user-id="${CSS.escape(String(balanceAdjustment.userId))}"]`).forEach(el=>el.dataset.balance=String(balanceAdjustment.balance));
+      document.getElementById('balanceModalCurrent').textContent=money(balanceAdjustment.balance);
+      const total=document.getElementById('usersWithdrawableTotal');
+      if(total)total.textContent=money(Number(total.textContent.replace(/[^0-9.]/g,''))+(balanceAdjustment.balance-previous));
+      error.textContent=`Balance updated. Reference: ${data.reference}`;error.classList.add('show');
+      error.style.background='rgba(52,217,139,.1)';error.style.color='#6ee7b7';error.style.borderColor='rgba(52,217,139,.25)';
+      button.textContent='Updated';
+      setTimeout(closeBalanceAdjustment,1000);
+    }catch(err){error.textContent=err.message||'Balance adjustment failed. Please try again.';error.classList.add('show');}
+    finally{button.disabled=false;if(button.textContent==='Saving adjustment…')button.textContent=balanceAdjustment.action==='add'?'Add to balance':'Remove from balance';}
+  };
+  document.getElementById('balanceModal')?.addEventListener('click',event=>{if(event.target.id==='balanceModal')closeBalanceAdjustment();});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape')closeBalanceAdjustment();});
   const payoutBalance=document.getElementById('payoutBalance');
   if(payoutBalance){
     fetch(@json(route('admin.giftcards.payout-balance')),{headers:{'Accept':'application/json'}})
