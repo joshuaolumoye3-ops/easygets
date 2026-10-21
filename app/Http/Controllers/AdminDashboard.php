@@ -353,6 +353,7 @@ class AdminDashboard extends Controller
             'total_users'             => $filteredUsersCount,
             'total_revenue'           => $turnoverTx->sum('amount'),
             'total_wallet_balance'    => (float) Wallet::sum('balance'),
+            'total_giftcard_withdrawable' => (float) DB::table('users')->sum('withdrawable_balance'),
             'total_transactions'      => $turnoverTx->count(),
             'pending_requests'        => $allTransactions->filter(fn($t) => strtolower($t->status ?? '') === 'pending')->count(),
             'successful_transactions' => $successfulTx->count(),
@@ -923,6 +924,10 @@ class AdminDashboard extends Controller
             $user = User::with(['wallet', 'transactions' => function ($query) {
                 $query->orderBy('created_at', 'desc')->limit(20);
             }])->findOrFail($userId);
+            $user->setAttribute(
+                'giftcard_withdrawable_balance',
+                (float) DB::table('users')->where('id', $user->id)->value('withdrawable_balance')
+            );
 
             return response()->json([
                 'success'      => true,

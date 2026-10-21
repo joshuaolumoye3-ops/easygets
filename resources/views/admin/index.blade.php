@@ -436,6 +436,15 @@
             <div class="stat-value">₦{{ number_format($stats['total_wallet_balance'] ?? 0, 2) }}</div>
             <span class="stat-badge">All wallets</span>
         </div>
+        <div class="stat-card green">
+            <div class="accent-line"></div>
+            <div class="stat-top">
+                <div class="stat-label">Gift Card Withdrawable</div>
+                <div class="stat-icon"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7.5A2.5 2.5 0 015.5 5h13A2.5 2.5 0 0121 7.5v9a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 16.5v-9zM3 9h18m-5 5h2"/></svg></div>
+            </div>
+            <div class="stat-value">₦{{ number_format($stats['total_giftcard_withdrawable'] ?? 0, 2) }}</div>
+            <span class="stat-badge">Available across all users</span>
+        </div>
     </div>
 
     {{-- ── Users Table ── --}}
@@ -1000,6 +1009,7 @@
                 ['Email',      user.email || '—', null],
                 ['Phone',      user.phone_number || '—', null],
                 ['Wallet Bal', '₦' + ngn(user.wallet?.balance), 'green'],
+                ['Gift Card Available', '₦' + ngn(user.giftcard_withdrawable_balance), 'green'],
                 ['Ref. Bal',   '₦' + ngn(user.referral_balance), 'green'],
                 ['Status',     user.is_blocked ? 'Blocked' : 'Active', user.is_blocked ? 'danger' : 'ok'],
                 ['Type',       user.is_partner ? '⭐ Affiliate' : '👤 Normal', null],

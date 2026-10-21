@@ -84,6 +84,7 @@ class AdminController extends Controller
             'active_users_30_days' => User::where('created_at', '>=', Carbon::now()->subDays(30))->count(),
             'latest_user' => User::latest()->first(),
             'latest_transaction' => Transaction::with('user')->latest()->first(),
+            'total_giftcard_withdrawable' => (float) DB::table('users')->sum('withdrawable_balance'),
             'total_profit' => round($totalProfit, 2),
             'profit_today' => round($todayProfit, 2),
             'profit_week' => round($thisWeekProfit, 2),
@@ -653,6 +654,10 @@ class AdminController extends Controller
             $user = User::with(['wallet', 'transactions' => function($query) {
                 $query->orderBy('created_at', 'desc')->limit(20);
             }])->findOrFail($userId);
+            $user->setAttribute(
+                'giftcard_withdrawable_balance',
+                (float) DB::table('users')->where('id', $user->id)->value('withdrawable_balance')
+            );
 
             return response()->json([
                 'success' => true,
