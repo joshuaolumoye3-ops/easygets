@@ -64,13 +64,22 @@ trait ManagesWithdrawalPayouts
 
     private function payoutResponse(Request $request, array $res)
     {
-        $success = in_array($res['status'], ['paid', 'processing', 'declined'], true);
+        $status = $res['status'];
+        $completed = in_array($status, ['approved', 'paid'], true);
+        $handled = in_array($status, ['approved', 'paid', 'processing', 'declined'], true);
 
         if ($request->expectsJson()) {
-            return response()->json(['success' => $success] + $res, $success ? 200 : 422);
+            return response()->json([
+                'success' => $handled,
+                'completed' => $completed,
+            ] + $res, $status === 'processing' ? 202 : ($handled ? 200 : 422));
         }
 
-        return back()->with($success ? 'success' : 'error', $res['message']);
+        $flashType = $completed || $status === 'declined'
+            ? 'success'
+            : ($status === 'processing' ? 'warning' : 'error');
+
+        return back()->with($flashType, $res['message']);
     }
 
     private function currentAdminId(): ?int

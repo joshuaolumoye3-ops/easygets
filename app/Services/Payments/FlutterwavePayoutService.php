@@ -180,8 +180,30 @@ class FlutterwavePayoutService
 			return $this->result($withdrawal->status, 'Flutterwave transfer reference did not match.');
 		}
 
-		$status = strtolower((string) ($transfer['status'] ?? ''));
 		$transferId = isset($transfer['id']) ? (string) $transfer['id'] : null;
+		$accountNumber = preg_replace('/\D/', '', (string) ($transfer['account_number'] ?? ''));
+		$detailsMatch = (!isset($transfer['amount']) || round((float) $transfer['amount'], 2) === round((float) $withdrawal->amount, 2))
+			&& (!isset($transfer['currency']) || strtoupper((string) $transfer['currency']) === 'NGN')
+			&& (!isset($transfer['account_bank']) || (string) $transfer['account_bank'] === (string) $withdrawal->bank_code)
+			&& (strlen($accountNumber) !== 10 || hash_equals((string) $withdrawal->account_number, $accountNumber));
+		if (!$detailsMatch) {
+			return $this->needsAttention(
+				$withdrawal,
+				'Flutterwave transfer details did not match the saved withdrawal. The payout needs manual review.',
+				'outcome_unknown',
+				null,
+				$adminId,
+				$transferId
+			);
+		}
+
+		$status = strtolower((string) ($transfer['status'] ?? ''));
+		Log::info('Flutterwave gift-card transfer status checked', [
+			'withdrawal_id' => $withdrawal->id,
+			'reference' => $withdrawal->reference,
+			'transfer_id' => $transferId,
+			'provider_status' => $status ?: 'unknown',
+		]);
 
 		if (in_array($status, ['successful', 'success', 'completed'], true)) {
 			DB::transaction(function () use ($withdrawal, $transferId, $adminId) {
@@ -201,27 +223,54 @@ class FlutterwavePayoutService
 
 		if (in_array($status, ['failed', 'failure', 'rejected'], true)) {
 			$reason = trim((string) ($transfer['complete_message'] ?? $transfer['message'] ?? 'Flutterwave reported a failed transfer.'));
-			if ($this->isAccountRejection($reason)) {
-				DB::transaction(function () use ($withdrawal, $reason, $transferId) {
-					$row = GiftcardWithdrawal::lockForUpdate()->findOrFail($withdrawal->id);
-					if (!in_array($row->status, ['approved', 'declined'], true)) {
-						$row->forceFill(['provider_transfer_id' => $transferId])->save();
-						$this->refundAndDecline($row, $reason, null);
-						$this->syncTransaction($row, 'failed');
-					}
-				});
-				return $this->result('declined', 'Bank rejected the account; the withdrawal was refunded.');
-			}
+			$declined = DB::transaction(function () use ($withdrawal, $reason, $transferId, $adminId) {
+				$row = GiftcardWithdrawal::lockForUpdate()->findOrFail($withdrawal->id);
+				if (in_array($row->status, ['approved', 'declined'], true)) {
+					return $row->status;
+				}
 
-			return $this->needsAttention($withdrawal, $reason, 'provider_error', null, $adminId, $transferId);
+				$row->forceFill([
+					'provider_transfer_id' => $transferId,
+					'provider' => 'flutterwave',
+					'admin_id' => $adminId ?? $row->admin_id,
+				])->save();
+				$this->refundAndDecline($row, $reason, $adminId);
+				$this->syncTransaction($row, 'failed');
+
+				return 'declined';
+			});
+
+			if ($declined === 'approved') {
+				return $this->result('approved', 'Flutterwave confirmed the payout.');
+			}
+			$message = $this->isAccountRejection($reason)
+				? 'The bank rejected this account; the reserved balance has been returned.'
+				: 'Flutterwave confirmed the transfer failed; the reserved balance has been returned.';
+
+			return $this->result($declined, $message);
 		}
 
-		GiftcardWithdrawal::whereKey($withdrawal->id)->whereNotIn('status', ['approved', 'declined'])
-			->update([
+		$finalStatus = DB::transaction(function () use ($withdrawal, $transferId) {
+			$row = GiftcardWithdrawal::lockForUpdate()->findOrFail($withdrawal->id);
+			if (in_array($row->status, ['approved', 'declined'], true)) {
+				return $row->status;
+			}
+
+			$row->forceFill([
 				'status' => 'processing', 'provider' => 'flutterwave', 'provider_transfer_id' => $transferId,
-				'failure_reason' => null, 'updated_at' => now(),
-			]);
-		$this->syncTransaction($withdrawal, 'pending');
+				'failure_reason' => null,
+			])->save();
+			$this->syncTransaction($row, 'pending');
+
+			return 'processing';
+		});
+
+		if ($finalStatus === 'approved') {
+			return $this->result('approved', 'Flutterwave confirmed the payout.');
+		}
+		if ($finalStatus === 'declined') {
+			return $this->result('declined', 'This withdrawal was declined and refunded.');
+		}
 
 		return $this->result('processing', 'Flutterwave is processing the transfer.');
 	}
@@ -234,17 +283,32 @@ class FlutterwavePayoutService
 		?int $adminId = null,
 		?string $transferId = null
 	): array {
-		$withdrawal->refresh();
-		$attempts = (int) $withdrawal->payout_attempts + 1;
-		$withdrawal->forceFill([
-			'status' => 'pending', 'provider' => 'flutterwave', 'failure_reason' => $reason,
-			'provider_transfer_id' => $transferId ?? $withdrawal->provider_transfer_id,
-			'payout_attempts' => $attempts, 'admin_id' => $adminId ?? $withdrawal->admin_id,
-		])->save();
-		$this->syncTransaction($withdrawal, 'pending');
+		$result = DB::transaction(function () use ($withdrawal, $reason, $code, $adminId, $transferId) {
+			$row = GiftcardWithdrawal::lockForUpdate()->findOrFail($withdrawal->id);
+			if (in_array($row->status, ['approved', 'declined'], true)) {
+				return ['status' => $row->status, 'attempts' => (int) $row->payout_attempts, 'terminal' => true];
+			}
 
-		$this->sendAttentionEmail($withdrawal->fresh(), $reason, $code, $balance, $attempts);
-		return $this->result('pending', $reason);
+			$attempts = (int) $row->payout_attempts + 1;
+			// An unknown outcome may mean Flutterwave accepted the transfer but the response
+			// was lost. Keep it in processing so the admin can only sync, never resubmit it.
+			$status = $code === 'outcome_unknown' ? 'processing' : 'pending';
+			$row->forceFill([
+				'status' => $status, 'provider' => 'flutterwave', 'failure_reason' => $reason,
+				'provider_transfer_id' => $transferId ?? $row->provider_transfer_id,
+				'payout_attempts' => $attempts, 'admin_id' => $adminId ?? $row->admin_id,
+			])->save();
+			$this->syncTransaction($row, 'pending');
+
+			return ['status' => $status, 'attempts' => $attempts, 'terminal' => false];
+		});
+
+		if ($result['terminal']) {
+			return $this->result($result['status'], 'This withdrawal is already finalized.');
+		}
+
+		$this->sendAttentionEmail($withdrawal->fresh(), $reason, $code, $balance, $result['attempts']);
+		return $this->result($result['status'], $reason);
 	}
 
 	private function sendAttentionEmail(GiftcardWithdrawal $withdrawal, string $reason, string $code, ?float $balance, int $attempts): void

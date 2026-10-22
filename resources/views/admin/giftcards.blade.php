@@ -8,6 +8,10 @@
   .gc-card{background:#111e38;border:1px solid rgba(99,152,255,.12);border-radius:16px;padding:18px;margin-bottom:18px}
   .gc h1{font-size:20px;font-weight:800}.gc h3{font-size:14px;font-weight:700;margin-bottom:12px}
   .gc-sub{font-size:12px;color:#7a9fd4}
+  .gc-flash{margin:12px 0;padding:12px 15px;border-radius:10px;font-size:13px;font-weight:600}
+  .gc-flash.success{background:rgba(52,217,139,.12);border:1px solid rgba(52,217,139,.25);color:#6ee7b7}
+  .gc-flash.warning{background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.25);color:#fcd34d}
+  .gc-flash.error{background:rgba(244,86,110,.12);border:1px solid rgba(244,86,110,.25);color:#fda4af}
   .gc-tabs{display:flex;gap:8px;margin:16px 0}
   .gc-tab{padding:9px 16px;border-radius:10px;font-size:13px;font-weight:700;background:#0d1629;color:#7a9fd4;border:1px solid rgba(99,152,255,.15);text-decoration:none}
   .gc-tab.on{background:#4f8cff;color:#fff;border-color:#4f8cff}
@@ -45,6 +49,10 @@
 <div class="gc"><div class="gc-in">
   <h1>Gift Cards</h1>
   <p class="gc-sub">Buy &amp; sell gift cards through Prestmit. Environment: <b>{{ str_contains($prestmit['base'], 'dev-api') ? 'SANDBOX (test mode)' : 'LIVE' }}</b></p>
+
+  @foreach(['success', 'warning', 'error'] as $flashType)
+    @if(session($flashType))<div class="gc-flash {{ $flashType }}" role="status">{{ session($flashType) }}</div>@endif
+  @endforeach
 
   <div class="gc-tabs">
     @foreach(['overview'=>'Overview & Settings','orders'=>'Orders','withdrawals'=>'Withdrawals'.($stats['pending_wd']?" ({$stats['pending_wd']})":'')] as $k=>$lbl)

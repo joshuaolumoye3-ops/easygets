@@ -32,4 +32,4 @@ Schedule::command('social:check-pending-orders', ['--limit=50'])
 
 Schedule::command('giftcards:reconcile')->everyFiveMinutes();
 
-Schedule::command('giftcards:reconcile-withdrawals')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('giftcards:reconcile-withdrawals')->everyMinute()->withoutOverlapping();
