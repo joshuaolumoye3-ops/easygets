@@ -35,13 +35,17 @@ class MoreThanPanelService
             CURLOPT_RETURNTRANSFER => 1,
             CURLOPT_POST => 1,
             CURLOPT_POSTFIELDS => join('&', $fields),
-            CURLOPT_SSL_VERIFYPEER => 0,
-            CURLOPT_SSL_VERIFYHOST => 0,
+            CURLOPT_CONNECTTIMEOUT => 2,
+            CURLOPT_TIMEOUT => 8,
+            CURLOPT_NOSIGNAL => 1,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
         ]);
 
         $result = curl_exec($ch);
+        $error = curl_errno($ch);
         curl_close($ch);
 
-        return $result;
+        return $error === 0 && is_string($result) ? $result : null;
     }
 }

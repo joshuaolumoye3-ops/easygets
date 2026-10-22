@@ -32,14 +32,19 @@ class Controller
             ->take(4)
             ->get();
 
-        // Fetch services from MoreThanPanel (SMM API). Be defensive: the helper
-        // may return null, an array, or objects depending on the remote response.
-        try {
-            $rawServices = smm_api()->services();
-        } catch (\Exception $e) {
-            Log::error('smm_api()->services() failed', ['error' => $e->getMessage()]);
-            $rawServices = [];
-        }
+        $rawServices = Cache::remember('dashboard:mtp-services:v1', now()->addMinutes(10), function () {
+            try {
+                $services = smm_api()->services();
+                if (is_array($services) && $services !== []) {
+                    Cache::put('dashboard:mtp-services:stale:v1', $services, now()->addDay());
+                    return $services;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Dashboard MTP catalog request failed', ['type' => class_basename($e)]);
+            }
+
+            return Cache::get('dashboard:mtp-services:stale:v1', []);
+        });
 
         $servicesCollection = collect($rawServices ?: []);
 
@@ -67,8 +72,8 @@ class Controller
 
         $smsServices = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($token) {
             try {
-                $response = Http::timeout(30)
-                    ->withOptions(['verify' => false])
+                $response = Http::connectTimeout(2)
+                    ->timeout(4)
                     ->get("https://sms-bus.com/api/control/list/projects", [
                         'token' => $token
                     ]);

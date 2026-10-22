@@ -315,55 +315,27 @@ class AdminDashboard extends Controller
 
         $transactions            = $txQuery->paginate($txPP)->withQueryString();
 
-        // ── Stats (computed from the full dataset, not paginated) ──────
-        $allTransactions   = Transaction::with('user')->get();
-        $successfulStatuses = ['success', 'completed'];
-        $revenueTypes       = $this->revenueTransactionTypes();
-
-        // A transaction only counts toward revenue/profit if it's BOTH successful
-        // AND a genuine purchase type — this is what keeps refund credits (type=credit)
-        // and admin wallet adjustments (Admin Credit/Admin Debit) out of the totals.
-        $isRevenueTx = fn($t) =>
-            in_array(strtolower(trim($t->status ?? '')), $successfulStatuses)
-            && in_array(strtolower(trim($t->type ?? '')), $revenueTypes);
-
-        $successfulTx = $allTransactions->filter($isRevenueTx);
-        $turnoverTx   = $successfulTx;
-
-        $exchangeRate    = config('services.exchange_rate', 1500);
-        $totalProfit     = 0.0;
-        $todayProfit     = 0.0;
-        $thisWeekProfit  = 0.0;
-        $thisMonthProfit = 0.0;
-
-        foreach ($successfulTx as $t) {
-            $providerCost = $this->estimateProviderCost($t, $exchangeRate);
-            $profit       = round(floatval($t->amount) - floatval($providerCost), 2);
-            $totalProfit += $profit;
-
-            $created = $t->created_at;
-            if ($created->isToday())                                           $todayProfit     += $profit;
-            if ($created->between(now()->startOfWeek(), now()->endOfWeek()))   $thisWeekProfit  += $profit;
-            if ($created->isSameMonth(now()))                                  $thisMonthProfit += $profit;
-        }
+        // Aggregate the full transaction history in SQL; only the current page is hydrated above.
+        $successfulStatusRaw = "LOWER(COALESCE(status, '')) IN ('success','completed')";
+        $revenueTypes = $this->revenueTransactionTypes();
+        $successfulTransactions = Transaction::whereRaw($successfulStatusRaw)->whereIn('type', $revenueTypes);
+        $totalRevenue = (clone $successfulTransactions)->sum('amount');
+        $totalTransactions = (clone $successfulTransactions)->count();
+        $pendingRequests = Transaction::whereRaw("LOWER(COALESCE(status, '')) = 'pending'")->count();
 
         $filteredUsersCount = (clone $userQuery)->count();
 
         $stats = [
             'total_users'             => $filteredUsersCount,
-            'total_revenue'           => $turnoverTx->sum('amount'),
+            'total_revenue'           => $totalRevenue,
             'total_wallet_balance'    => (float) Wallet::sum('balance'),
             'total_giftcard_withdrawable' => (float) DB::table('users')->sum('withdrawable_balance'),
-            'total_transactions'      => $turnoverTx->count(),
-            'pending_requests'        => $allTransactions->filter(fn($t) => strtolower($t->status ?? '') === 'pending')->count(),
-            'successful_transactions' => $successfulTx->count(),
+            'total_transactions'      => $totalTransactions,
+            'pending_requests'        => $pendingRequests,
+            'successful_transactions' => $totalTransactions,
             'active_users_30_days'    => User::where('created_at', '>=', Carbon::now()->subDays(30))->count(),
             'latest_user'             => User::latest()->first(),
             'latest_transaction'      => Transaction::with('user')->latest()->first(),
-            'total_profit'            => round($totalProfit,    2),
-            'profit_today'            => round($todayProfit,    2),
-            'profit_week'             => round($thisWeekProfit, 2),
-            'profit_month'            => round($thisMonthProfit, 2),
         ];
 
         return view('admin.index', compact(
