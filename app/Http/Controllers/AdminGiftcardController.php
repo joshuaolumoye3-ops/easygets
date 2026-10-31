@@ -90,6 +90,33 @@ class AdminGiftcardController extends Controller
         return back()->with('success', 'Gift card settings saved.');
     }
 
+    public function saveWithdrawalFee(Request $request)
+    {
+        $admin = Auth::guard('admins')->user();
+        if (!$admin || $admin->role !== 'super_admin') {
+            return back()->with('error', 'Only super admins can change the withdrawal service charge.');
+        }
+
+        $data = $request->validate([
+            'withdrawal_fee_flat' => ['required', 'numeric', 'min:0', 'max:1000000', 'decimal:0,2'],
+        ]);
+
+        $previousFee = (float) GiftcardSetting::get('withdrawal_fee_flat', 0);
+        $newFee = round((float) $data['withdrawal_fee_flat'], 2);
+        GiftcardSetting::set('withdrawal_fee_flat', number_format($newFee, 2, '.', ''));
+
+        $this->log(
+            $admin->id,
+            'GIFTCARD_WITHDRAWAL_FEE_UPDATED',
+            $newFee,
+            null,
+            sprintf('Gift-card withdrawal fee changed from ₦%s to ₦%s.', number_format($previousFee, 2), number_format($newFee, 2))
+        );
+
+        return redirect()->route('admin.giftcards.index', ['tab' => 'withdrawals'])
+            ->with('success', 'Withdrawal service charge updated successfully.');
+    }
+
     public function orderDetail($id)
     {
         $o = GiftcardOrder::with('user:id,username,email,phone_number')->findOrFail($id);

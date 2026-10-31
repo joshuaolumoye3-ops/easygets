@@ -477,6 +477,7 @@ Route::middleware(['admin'])->prefix('admin')->group(function () {
     Route::prefix('giftcards')->name('admin.giftcards.')->group(function () {
         Route::get('/', [AdminGiftcardController::class, 'index'])->name('index');
         Route::post('/settings', [AdminGiftcardController::class, 'saveSettings'])->name('settings');
+        Route::post('/withdrawal-fee', [AdminGiftcardController::class, 'saveWithdrawalFee'])->name('withdrawal-fee');
         Route::get('/orders/{id}', [AdminGiftcardController::class, 'orderDetail'])->name('order');
         Route::post('/orders/{id}/sync', [AdminGiftcardController::class, 'syncOrder'])->name('sync');
         Route::get('/orders/{id}/attachment/{n}', [AdminGiftcardController::class, 'attachment'])->name('attachment');

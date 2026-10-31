@@ -146,6 +146,34 @@
 @endif
 
 @if($tab==='withdrawals')
+  <div class="gc-card" style="border-color:rgba(79,140,255,.24)">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap">
+      <div style="max-width:560px">
+        <h3 style="margin-bottom:6px">User withdrawal service charge</h3>
+        <p class="gc-sub">Set a flat fee deducted from each requested withdrawal. The remaining amount is sent to the user's bank. Existing requests keep the fee they were created with.</p>
+      </div>
+      @if(auth('admins')->user()?->role === 'super_admin')
+        <form method="POST" action="{{ route('admin.giftcards.withdrawal-fee') }}" style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;min-width:min(100%,360px)">
+          @csrf
+          <div style="flex:1;min-width:190px">
+            <label for="withdrawalFeeInput">Flat charge (₦)</label>
+            <input id="withdrawalFeeInput" type="number" name="withdrawal_fee_flat" min="0" max="1000000" step="0.01" value="{{ number_format((float) ($settings['withdrawal_fee_flat'] ?? 0), 2, '.', '') }}" required>
+          </div>
+          <button type="submit" class="gc-btn">Save charge</button>
+        </form>
+      @else
+        <p class="gc-sub" style="padding:10px 12px;border:1px solid rgba(99,152,255,.16);border-radius:10px">Current flat fee: <strong style="color:#eef3ff">₦{{ number_format((float) ($settings['withdrawal_fee_flat'] ?? 0), 2) }}</strong>. Only a super admin can change this setting.</p>
+      @endif
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding:12px 14px;border-radius:10px;background:#0d1629;border:1px solid rgba(99,152,255,.12);font-size:12px">
+      <span class="gc-sub">Example for a ₦5,000 withdrawal:</span>
+      <strong>₦5,000.00 requested</strong><span class="gc-sub">−</span>
+      <strong id="withdrawalFeeExample">₦{{ number_format((float) ($settings['withdrawal_fee_flat'] ?? 0), 2) }}</strong><span class="gc-sub">fee =</span>
+      <strong id="withdrawalNetExample" style="color:#6ee7b7">₦{{ number_format(max(0, 5000 - (float) ($settings['withdrawal_fee_flat'] ?? 0)), 2) }}</strong>
+      <span class="gc-sub">sent to bank</span>
+    </div>
+  </div>
+
   <div class="gc-card">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
       <h3 style="margin:0">Flutterwave payout balance</h3>
@@ -220,6 +248,14 @@
   const balanceAdjustUrlTemplate=@json(route('admin.users.giftcard-balance',['user'=>'__USER_ID__']));
   let balanceAdjustment={userId:null,userName:'',balance:0,action:'add'};
   const money=value=>'₦'+Number(value||0).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const withdrawalFeeInput=document.getElementById('withdrawalFeeInput');
+  if(withdrawalFeeInput){
+    withdrawalFeeInput.addEventListener('input',()=>{
+      const fee=Math.max(0,Number(withdrawalFeeInput.value)||0);
+      document.getElementById('withdrawalFeeExample').textContent=money(fee);
+      document.getElementById('withdrawalNetExample').textContent=money(Math.max(0,5000-fee));
+    });
+  }
   window.openBalanceAdjustment=function(button){
     balanceAdjustment={userId:button.dataset.userId,userName:button.dataset.userName||'User',balance:Number(button.dataset.balance||0),action:'add'};
     document.getElementById('balanceModalUser').textContent='@'+balanceAdjustment.userName;
