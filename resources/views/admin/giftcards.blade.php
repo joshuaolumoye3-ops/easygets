@@ -147,30 +147,35 @@
 
 @if($tab==='withdrawals')
   <div class="gc-card" style="border-color:rgba(79,140,255,.24)">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap">
-      <div style="max-width:560px">
-        <h3 style="margin-bottom:6px">User withdrawal service charge</h3>
-        <p class="gc-sub">Set a flat fee deducted from each requested withdrawal. The remaining amount is sent to the user's bank. Existing requests keep the fee they were created with.</p>
+    <h3 style="margin-bottom:6px">Withdrawal service charges</h3>
+    <p class="gc-sub">Set one flat fee per requested amount range. The fee is deducted from the requested withdrawal, and the remaining amount is sent to the user's bank. Existing requests keep their saved fee.</p>
+
+    @php
+      $feeUpTo5000 = (float) ($settings['withdrawal_fee_up_to_5000'] ?? $settings['withdrawal_fee_flat'] ?? 0);
+      $fee5001To50000 = (float) ($settings['withdrawal_fee_5001_to_50000'] ?? $settings['withdrawal_fee_flat'] ?? 0);
+      $feeOver50000 = (float) ($settings['withdrawal_fee_over_50000'] ?? $settings['withdrawal_fee_flat'] ?? 0);
+    @endphp
+
+    @if(auth('admins')->user()?->role === 'super_admin')
+      <form method="POST" action="{{ route('admin.giftcards.withdrawal-fee') }}" style="margin-top:16px">
+        @csrf
+        <div class="gc-grid">
+          <div><label for="withdrawalFeeUpTo5000">₦5,000 and below</label><input id="withdrawalFeeUpTo5000" type="number" name="withdrawal_fee_up_to_5000" min="0" max="1000000" step="0.01" value="{{ number_format($feeUpTo5000, 2, '.', '') }}" required></div>
+          <div><label for="withdrawalFee5001To50000">₦5,001–₦50,000</label><input id="withdrawalFee5001To50000" type="number" name="withdrawal_fee_5001_to_50000" min="0" max="1000000" step="0.01" value="{{ number_format($fee5001To50000, 2, '.', '') }}" required></div>
+          <div><label for="withdrawalFeeOver50000">₦50,001 and above</label><input id="withdrawalFeeOver50000" type="number" name="withdrawal_fee_over_50000" min="0" max="1000000" step="0.01" value="{{ number_format($feeOver50000, 2, '.', '') }}" required></div>
+        </div>
+        <button type="submit" class="gc-btn" style="margin-top:12px">Save withdrawal fees</button>
+      </form>
+    @else
+      <div class="gc-sub" style="padding:10px 12px;margin-top:14px;border:1px solid rgba(99,152,255,.16);border-radius:10px">
+        Current fees: ≤ ₦5,000: <strong style="color:#eef3ff">₦{{ number_format($feeUpTo5000, 2) }}</strong> · ₦5,001–₦50,000: <strong style="color:#eef3ff">₦{{ number_format($fee5001To50000, 2) }}</strong> · Above ₦50,000: <strong style="color:#eef3ff">₦{{ number_format($feeOver50000, 2) }}</strong>. Only a super admin can change these settings.
       </div>
-      @if(auth('admins')->user()?->role === 'super_admin')
-        <form method="POST" action="{{ route('admin.giftcards.withdrawal-fee') }}" style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;min-width:min(100%,360px)">
-          @csrf
-          <div style="flex:1;min-width:190px">
-            <label for="withdrawalFeeInput">Flat charge (₦)</label>
-            <input id="withdrawalFeeInput" type="number" name="withdrawal_fee_flat" min="0" max="1000000" step="0.01" value="{{ number_format((float) ($settings['withdrawal_fee_flat'] ?? 0), 2, '.', '') }}" required>
-          </div>
-          <button type="submit" class="gc-btn">Save charge</button>
-        </form>
-      @else
-        <p class="gc-sub" style="padding:10px 12px;border:1px solid rgba(99,152,255,.16);border-radius:10px">Current flat fee: <strong style="color:#eef3ff">₦{{ number_format((float) ($settings['withdrawal_fee_flat'] ?? 0), 2) }}</strong>. Only a super admin can change this setting.</p>
-      @endif
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding:12px 14px;border-radius:10px;background:#0d1629;border:1px solid rgba(99,152,255,.12);font-size:12px">
-      <span class="gc-sub">Example for a ₦5,000 withdrawal:</span>
-      <strong>₦5,000.00 requested</strong><span class="gc-sub">−</span>
-      <strong id="withdrawalFeeExample">₦{{ number_format((float) ($settings['withdrawal_fee_flat'] ?? 0), 2) }}</strong><span class="gc-sub">fee =</span>
-      <strong id="withdrawalNetExample" style="color:#6ee7b7">₦{{ number_format(max(0, 5000 - (float) ($settings['withdrawal_fee_flat'] ?? 0)), 2) }}</strong>
-      <span class="gc-sub">sent to bank</span>
+    @endif
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:14px;font-size:12px">
+      <div style="padding:12px 14px;border-radius:10px;background:#0d1629;border:1px solid rgba(99,152,255,.12)"><div class="gc-sub">₦5,000 requested</div><strong>Fee <span id="withdrawalFeeExampleLow">₦{{ number_format($feeUpTo5000, 2) }}</span></strong><div class="gc-sub">Net payout <span id="withdrawalNetExampleLow">₦{{ number_format(max(0, 5000 - $feeUpTo5000), 2) }}</span></div></div>
+      <div style="padding:12px 14px;border-radius:10px;background:#0d1629;border:1px solid rgba(99,152,255,.12)"><div class="gc-sub">₦25,000 requested</div><strong>Fee <span id="withdrawalFeeExampleMid">₦{{ number_format($fee5001To50000, 2) }}</span></strong><div class="gc-sub">Net payout <span id="withdrawalNetExampleMid">₦{{ number_format(max(0, 25000 - $fee5001To50000), 2) }}</span></div></div>
+      <div style="padding:12px 14px;border-radius:10px;background:#0d1629;border:1px solid rgba(99,152,255,.12)"><div class="gc-sub">₦50,001 requested</div><strong>Fee <span id="withdrawalFeeExampleHigh">₦{{ number_format($feeOver50000, 2) }}</span></strong><div class="gc-sub">Net payout <span id="withdrawalNetExampleHigh">₦{{ number_format(max(0, 50001 - $feeOver50000), 2) }}</span></div></div>
     </div>
   </div>
 
@@ -248,14 +253,19 @@
   const balanceAdjustUrlTemplate=@json(route('admin.users.giftcard-balance',['user'=>'__USER_ID__']));
   let balanceAdjustment={userId:null,userName:'',balance:0,action:'add'};
   const money=value=>'₦'+Number(value||0).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const withdrawalFeeInput=document.getElementById('withdrawalFeeInput');
-  if(withdrawalFeeInput){
-    withdrawalFeeInput.addEventListener('input',()=>{
-      const fee=Math.max(0,Number(withdrawalFeeInput.value)||0);
-      document.getElementById('withdrawalFeeExample').textContent=money(fee);
-      document.getElementById('withdrawalNetExample').textContent=money(Math.max(0,5000-fee));
+  [
+    ['withdrawalFeeUpTo5000','withdrawalFeeExampleLow','withdrawalNetExampleLow',5000],
+    ['withdrawalFee5001To50000','withdrawalFeeExampleMid','withdrawalNetExampleMid',25000],
+    ['withdrawalFeeOver50000','withdrawalFeeExampleHigh','withdrawalNetExampleHigh',50001],
+  ].forEach(([inputId,feeId,netId,exampleAmount])=>{
+    const feeInput=document.getElementById(inputId);
+    if(!feeInput)return;
+    feeInput.addEventListener('input',()=>{
+      const fee=Math.max(0,Number(feeInput.value)||0);
+      document.getElementById(feeId).textContent=money(fee);
+      document.getElementById(netId).textContent=money(Math.max(0,exampleAmount-fee));
     });
-  }
+  });
   window.openBalanceAdjustment=function(button){
     balanceAdjustment={userId:button.dataset.userId,userName:button.dataset.userName||'User',balance:Number(button.dataset.balance||0),action:'add'};
     document.getElementById('balanceModalUser').textContent='@'+balanceAdjustment.userName;

@@ -76,7 +76,6 @@ class AdminGiftcardController extends Controller
             'buy_markup_percent' => 'required|numeric|min:0|max:100',
             'sell_commission_percent' => 'required|numeric|min:0|max:90',
             'min_withdrawal' => 'required|numeric|min:100|max:100000000',
-            'withdrawal_fee_flat' => ['required', 'numeric', 'min:0', 'max:1000000', 'decimal:0,2'],
             'max_buy_quantity' => 'required|integer|min:1|max:20',
             'daily_buy_limit_ngn' => 'required|numeric|min:0|max:1000000000',
         ]);
@@ -98,20 +97,31 @@ class AdminGiftcardController extends Controller
         }
 
         $data = $request->validate([
-            'withdrawal_fee_flat' => ['required', 'numeric', 'min:0', 'max:1000000', 'decimal:0,2'],
+            'withdrawal_fee_up_to_5000' => ['required', 'numeric', 'min:0', 'max:1000000', 'decimal:0,2'],
+            'withdrawal_fee_5001_to_50000' => ['required', 'numeric', 'min:0', 'max:1000000', 'decimal:0,2'],
+            'withdrawal_fee_over_50000' => ['required', 'numeric', 'min:0', 'max:1000000', 'decimal:0,2'],
         ]);
 
-        $previousFee = (float) GiftcardSetting::get('withdrawal_fee_flat', 0);
-        $newFee = round((float) $data['withdrawal_fee_flat'], 2);
-        GiftcardSetting::set('withdrawal_fee_flat', number_format($newFee, 2, '.', ''));
+        $previousFees = GiftcardSetting::withdrawalFeeTiers();
+        $newFees = array_map(fn ($value) => round((float) $value, 2), $data);
 
-        $this->log(
-            $admin->id,
-            'GIFTCARD_WITHDRAWAL_FEE_UPDATED',
-            $newFee,
-            null,
-            sprintf('Gift-card withdrawal fee changed from ₦%s to ₦%s.', number_format($previousFee, 2), number_format($newFee, 2))
-        );
+        DB::transaction(function () use ($admin, $newFees, $previousFees) {
+            foreach ($newFees as $key => $value) {
+                GiftcardSetting::updateOrCreate(
+                    ['key' => $key],
+                    ['value' => number_format($value, 2, '.', '')]
+                );
+            }
+
+            $this->log(
+                $admin->id,
+                'GIFTCARD_WITHDRAWAL_FEE_UPDATED',
+                array_sum($newFees),
+                null,
+                'Gift-card withdrawal fee tiers updated. ' . json_encode(['from' => $previousFees, 'to' => $newFees])
+            );
+        });
+        \Illuminate\Support\Facades\Cache::forget('giftcard_settings');
 
         return redirect()->route('admin.giftcards.index', ['tab' => 'withdrawals'])
             ->with('success', 'Withdrawal service charge updated successfully.');

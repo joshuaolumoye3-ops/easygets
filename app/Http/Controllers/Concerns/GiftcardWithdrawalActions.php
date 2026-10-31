@@ -146,7 +146,7 @@ trait GiftcardWithdrawalActions
 
         try {
             $amount = round((float) $data['amount'], 2);
-            $feeAmount = round((float) GiftcardSetting::get('withdrawal_fee_flat', 0), 2);
+            $feeAmount = GiftcardSetting::withdrawalFeeForAmount($amount);
             $payoutAmount = round($amount - $feeAmount, 2);
             if ($payoutAmount <= 0) {
                 return $this->fail('The withdrawal amount must be greater than the current withdrawal fee.', 422);

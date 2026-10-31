@@ -103,7 +103,7 @@
             <input id="wdAmount" type="number" step="0.01" min="{{ $minWithdrawal }}" placeholder="Amount (₦)" class="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold">
             <div class="rounded-xl border border-gray-100 bg-white px-4 py-3 text-sm space-y-2">
                 <div class="flex justify-between gap-3 text-gray-500"><span>Withdrawal amount</span><span id="wdQuoteGross">₦0.00</span></div>
-                <div class="flex justify-between gap-3 text-gray-500"><span>Service charge</span><span id="wdQuoteFee">−₦{{ number_format((float) $withdrawalFee, 2) }}</span></div>
+                <div class="flex justify-between gap-3 text-gray-500"><span>Service charge</span><span id="wdQuoteFee">−₦0.00</span></div>
                 <div class="flex justify-between gap-3 border-t border-gray-100 pt-2 font-bold text-gray-900"><span>Sent to bank</span><span id="wdQuotePayout">₦0.00</span></div>
             </div>
             <input id="wdPin" type="password" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="Transaction PIN" class="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 tracking-widest">
@@ -148,7 +148,7 @@ const WD = {
     status: @json(route('giftcards.withdrawals.status', ['id' => '__ID__'])),
     min: {{ (float) $minWithdrawal }},
     max: {{ (float) $withdrawable }},
-    fee: {{ (float) $withdrawalFee }},
+    fees: @json($withdrawalFees),
 };
 let wdBanksLoaded = false, wdResolvedOk = false, wdToken = null, wdTimer = null;
 const $wd = id => document.getElementById(id);
@@ -158,7 +158,8 @@ function closeWd(){const m=$wd('wdModal');m.classList.add('hidden');m.classList.
 function wdMsg(t,ok){const e=document.getElementById('wdMsg');e.textContent=t;e.className='text-sm rounded-xl p-3 mb-3 '+(ok?'bg-green-50 text-green-700':'bg-red-50 text-red-700');}
 function wdResolvedBox(t,kind){const e=$wd('wdResolved');if(!t){e.className='hidden';return;}e.textContent=t;e.className='text-sm rounded-xl px-4 py-3 '+(kind==='ok'?'bg-green-50 text-green-700 font-semibold':kind==='err'?'bg-red-50 text-red-700':'bg-gray-50 text-gray-500');}
 function wdMoney(value){return '₦'+Number(value||0).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2});}
-function wdUpdateBtn(){const a=parseFloat($wd('wdAmount').value)||0;const fee=Math.min(a,WD.fee);const net=Math.max(0,a-WD.fee);$wd('wdQuoteGross').textContent=wdMoney(a);$wd('wdQuoteFee').textContent='−'+wdMoney(fee);$wd('wdQuotePayout').textContent=wdMoney(net);$wd('wdBtn').disabled=!(wdResolvedOk&&a>=WD.min&&a<=WD.max&&net>0&&/^\d{4}$/.test($wd('wdPin').value));}
+function wdFeeForAmount(amount){if(amount<=5000)return Number(WD.fees.up_to_5000||0);if(amount<=50000)return Number(WD.fees['5001_to_50000']||0);return Number(WD.fees.over_50000||0);}
+function wdUpdateBtn(){const a=parseFloat($wd('wdAmount').value)||0;const fee=a>0?wdFeeForAmount(a):0;const net=Math.max(0,a-fee);$wd('wdQuoteGross').textContent=wdMoney(a);$wd('wdQuoteFee').textContent='−'+wdMoney(fee);$wd('wdQuotePayout').textContent=wdMoney(net);$wd('wdBtn').disabled=!(wdResolvedOk&&a>=WD.min&&a<=WD.max&&net>0&&/^\d{4}$/.test($wd('wdPin').value));}
 function wdShowResult(kind, data={}){
     const result=$wd('wdResult'), icon=$wd('wdResultIcon'), spinner=$wd('wdResultSpinner'), check=$wd('wdResultCheck');
     const isSuccess=kind==='approved', isWaiting=kind==='waiting', isDeclined=kind==='declined';
