@@ -281,32 +281,38 @@
     <div id="giftcardsContent" class="space-y-3 px-4 transition-all duration-500 ease-in-out hidden">
         @forelse($giftcards as $giftcard)
             <div onclick="openGiftcardModal({{ $giftcard['id'] }})"
-                 class="cursor-pointer flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-                <div class="flex items-center space-x-3">
-                    @if(!empty($giftcard['image']))
-                        <img src="{{ $giftcard['image'] }}" alt="giftcard"
-                             class="w-10 h-10 rounded-lg object-cover border-2 border-gray-100"
-                             onerror="this.outerHTML='<div class=&quot;w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-lg&quot;>🎁</div>'">
-                    @else
-                        <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-lg">🎁</div>
-                    @endif
-                    <div>
-                        <p class="font-semibold text-gray-800">{{ $giftcard['title'] ?? 'Giftcard' }}</p>
-                        <p class="text-xs text-gray-500 mt-0.5">
-                            {{ ucfirst($giftcard['type'] ?? 'purchase') }} • {{ $giftcard['reference'] ?? 'N/A' }}
-                        </p>
-                        <p class="text-xs text-gray-400 mt-0.5">{{ $giftcard['date'] }}</p>
+                 class="cursor-pointer flex flex-col gap-3 bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow {{ !empty($giftcard['failure_reason']) ? 'border border-red-100' : '' }}">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center space-x-3 min-w-0">
+                        @if(!empty($giftcard['image']))
+                            <img src="{{ $giftcard['image'] }}" alt="giftcard"
+                                 class="w-10 h-10 rounded-lg object-cover border-2 border-gray-100 flex-shrink-0"
+                                 onerror="this.outerHTML='<div class=&quot;w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-lg&quot;>🎁</div>'">
+                        @else
+                            <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-xl flex-shrink-0">🎁</div>
+                        @endif
+                        <div class="min-w-0">
+                            <p class="font-semibold text-gray-800 truncate">{{ $giftcard['title'] ?? 'Giftcard' }}</p>
+                            <p class="text-xs text-gray-500 mt-0.5 truncate">
+                                {{ ucfirst($giftcard['type'] ?? 'purchase') }} • {{ $giftcard['reference'] ?? 'N/A' }}
+                            </p>
+                            <p class="text-xs text-gray-400 mt-0.5">{{ $giftcard['date'] }}</p>
+                        </div>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                        <p class="text-sm font-semibold text-gray-900 mb-1">{{ $giftcard['amount'] }}</p>
+                        @php $giftcardStatus = strtolower($giftcard['raw_status'] ?? ''); @endphp
+                        <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full {{ in_array($giftcardStatus, ['success', 'completed'], true) ? 'bg-green-100 text-green-700' : (in_array($giftcardStatus, ['failed', 'rejected', 'refunded'], true) ? 'bg-red-100 text-red-700' : (in_array($giftcardStatus, ['pending', 'processing'], true) ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-700')) }}">
+                            {{ $giftcard['status'] ?? 'Unknown' }}
+                        </span>
                     </div>
                 </div>
-                <div class="text-right">
-                    <p class="text-sm font-semibold text-gray-900 mb-1">{{ $giftcard['amount'] }}</p>
-                    <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full
-                        {{ strtolower($giftcard['raw_status'] ?? '') === 'success' || strtolower($giftcard['raw_status'] ?? '') === 'completed' ? 'bg-green-100 text-green-700' :
-                           (strtolower($giftcard['raw_status'] ?? '') === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                           (strtolower($giftcard['raw_status'] ?? '') === 'failed' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700')) }}">
-                        {{ $giftcard['status'] ?? 'Unknown' }}
-                    </span>
-                </div>
+                @if(!empty($giftcard['failure_reason']))
+                    <div class="flex gap-2 rounded-lg border border-red-100 bg-red-50 px-3 py-2.5 text-left" role="note">
+                        <svg class="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.75-11a.75.75 0 011.5 0v4a.75.75 0 01-1.5 0V7zm.75 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+                        <div class="min-w-0"><p class="text-xs font-bold text-red-800">{{ $giftcardStatus === 'refunded' ? 'Refund information' : 'Why this order failed' }}</p><p class="mt-0.5 text-xs leading-5 text-red-700">{{ $giftcard['failure_reason'] }}</p></div>
+                    </div>
+                @endif
             </div>
         @empty
             <div class="text-center py-12">
@@ -1740,6 +1746,8 @@ function openGiftcardModal(id) {
         cancelled: 'bg-gray-100 text-gray-700',
         refunded: 'bg-purple-100 text-purple-700',
     }[rawStatus] || 'bg-gray-100 text-gray-700';
+    const failureReason = String(giftcard.failure_reason || '').trim();
+    const isFailure = ['failed', 'rejected', 'refunded'].includes(rawStatus);
 
     modal.querySelector('.bg-white').innerHTML = `
         <div class="p-6">
@@ -1755,21 +1763,35 @@ function openGiftcardModal(id) {
             <div class="bg-gradient-to-br from-amber-50 to-orange-100 rounded-xl p-4 mb-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-3">
-                        ${giftcard.image ? `<img src="${giftcard.image}" alt="giftcard" class="w-12 h-12 rounded-lg object-cover">` : `<div class="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center text-xl">🎁</div>`}
+                        ${giftcard.image ? `<img src="${escapeHtml(String(giftcard.image))}" alt="giftcard" class="w-12 h-12 rounded-lg object-cover" onerror="this.outerHTML='<div class=&quot;w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center text-xl&quot;>🎁</div>'">` : `<div class="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center text-xl">🎁</div>`}
                         <div>
-                            <p class="font-semibold text-gray-800">${giftcard.title || 'Giftcard'}</p>
-                            <p class="text-xs text-gray-600">${(giftcard.type || 'purchase').charAt(0).toUpperCase() + (giftcard.type || 'purchase').slice(1)}</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(String(giftcard.title || 'Giftcard'))}</p>
+                            <p class="text-xs text-gray-600">${escapeHtml((giftcard.type || 'purchase').charAt(0).toUpperCase() + (giftcard.type || 'purchase').slice(1))}</p>
                         </div>
                     </div>
-                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${badgeClass}">${giftcard.status || 'Unknown'}</span>
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${badgeClass}">${escapeHtml(String(giftcard.status || 'Unknown'))}</span>
                 </div>
             </div>
 
+            ${isFailure ? `
+            <section class="${rawStatus === 'refunded' ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'} border rounded-xl p-4 mb-4" aria-live="polite">
+                <div class="flex items-start gap-3">
+                    <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${rawStatus === 'refunded' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">
+                        ${rawStatus === 'refunded' ? '✓' : '!'}
+                    </span>
+                    <div class="min-w-0">
+                        <h3 class="text-sm font-bold ${rawStatus === 'refunded' ? 'text-emerald-900' : 'text-red-900'}">${rawStatus === 'refunded' ? 'Purchase refunded' : (rawStatus === 'rejected' ? 'Card submission rejected' : 'Order not completed')}</h3>
+                        <p class="mt-1 text-sm leading-5 ${rawStatus === 'refunded' ? 'text-emerald-800' : 'text-red-800'}">${escapeHtml(failureReason || (rawStatus === 'refunded' ? 'The purchase could not be completed and the amount was returned to your wallet.' : 'We could not complete this order. Please contact support if you need help.'))}</p>
+                        ${rawStatus === 'refunded' ? '<p class="mt-2 text-xs font-semibold text-emerald-800">The refunded amount is back in your wallet.</p>' : ''}
+                    </div>
+                </div>
+            </section>` : ''}
+
             <div class="bg-gray-50 rounded-xl p-4 mb-4">
                 <div class="grid grid-cols-2 gap-3 text-sm">
-                    <div><p class="text-gray-500">Amount</p><p class="font-semibold text-gray-900">${giftcard.amount || '₦0.00'}</p></div>
-                    <div><p class="text-gray-500">Date</p><p class="font-semibold text-gray-900 text-xs">${giftcard.date || 'N/A'}</p></div>
-                    <div class="col-span-2"><p class="text-gray-500">Reference</p><p class="font-semibold text-gray-900 text-xs break-all">${giftcard.reference || '—'}</p></div>
+                    <div><p class="text-gray-500">Amount</p><p class="font-semibold text-gray-900">${escapeHtml(String(giftcard.amount || '₦0.00'))}</p></div>
+                    <div><p class="text-gray-500">Date</p><p class="font-semibold text-gray-900 text-xs">${escapeHtml(String(giftcard.date || 'N/A'))}</p></div>
+                    <div class="col-span-2"><p class="text-gray-500">Reference</p><p class="font-semibold text-gray-900 text-xs break-all">${escapeHtml(String(giftcard.reference || '—'))}</p></div>
                 </div>
             </div>
 
@@ -1777,13 +1799,13 @@ function openGiftcardModal(id) {
             <div class="bg-white border-2 border-gray-200 rounded-xl p-4">
                 <div class="flex items-center justify-between">
                     <p class="text-xs text-gray-500 font-medium uppercase">Reference</p>
-                    <button onclick="gcCopy('${String(giftcard.reference).replace(/'/g, "\\'")}', this)" class="text-amber-600 flex-shrink-0">
+                    <button data-reference="${escapeHtml(String(giftcard.reference))}" onclick="gcCopy(this.dataset.reference, this)" class="text-amber-600 flex-shrink-0" aria-label="Copy reference">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                         </svg>
                     </button>
                 </div>
-                <p class="mt-2 text-sm font-mono text-gray-900 break-all">${giftcard.reference}</p>
+                <p class="mt-2 text-sm font-mono text-gray-900 break-all">${escapeHtml(String(giftcard.reference))}</p>
             </div>` : ''}
         </div>`;
 

@@ -744,11 +744,39 @@ class HistoryController extends Controller
                     'amount'     => '₦' . number_format((float) ($o->type === 'sell' ? ($o->payout_ngn ?? $o->total_ngn) : $o->total_ngn), 2),
                     'status'     => $o->statusLabel(),
                     'raw_status' => $o->status,
+                    'failure_reason' => $this->giftcardFailureReason($o->reject_reason, $o->type, $o->status),
                     'date'       => $o->created_at->format('M d, Y h:i A'),
                 ])->values();
         } catch (\Throwable $e) {
             return collect([]);
         }
+    }
+
+    private function giftcardFailureReason(?string $reason, string $type, string $status): ?string
+    {
+        if (!in_array($status, ['failed', 'rejected', 'refunded'], true)) {
+            return null;
+        }
+
+        $reason = trim(strip_tags((string) $reason));
+        $reason = preg_replace('/[\x00-\x1F\x7F]/u', ' ', $reason) ?? '';
+        $reason = preg_replace('/https?:\/\/\S+/i', '', $reason) ?? '';
+        $reason = preg_replace('/\b(?:token|secret|api[_ -]?key|authorization)\s*[:=]\s*\S+/i', '[redacted]', $reason) ?? '';
+        $reason = trim(preg_replace('/\s+/', ' ', $reason) ?? '');
+
+        if ($reason === '') {
+            if ($type === 'buy') {
+                return $status === 'refunded'
+                    ? 'The purchase could not be completed. The amount has been returned to your wallet.'
+                    : 'The purchase could not be completed. No gift card was delivered.';
+            }
+
+            return $status === 'rejected'
+                ? 'Your card could not be accepted. Please review the card details and images before submitting again.'
+                : 'Your card sale could not be completed. Please contact support if you need help.';
+        }
+
+        return \Illuminate\Support\Str::limit($reason, 240, '');
     }
 
     // ═══════════════════════════════════════════════════════════
