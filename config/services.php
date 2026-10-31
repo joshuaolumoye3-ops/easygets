@@ -42,10 +42,9 @@ return [
         'api_key' => env('VTU_AFRICA_API_KEY'),
     ],
 
-    'demmy' => [
-        'base_url'    => env('DEMMY_BASE_URL', 'https://apis.demmypayservices.com.ng'),
-        'api_key'     => env('DEMMY_API_KEY'),
-        'pass_phrase' => env('DEMMY_PASS_PHRASE'),
+    'afrikvend' => [
+        'base_url' => env('AFRIKVEND_BASE_URL', 'https://api.afrikvend.com'),
+        'api_key'  => env('AFRIKVEND_API_KEY'),
     ],
     'morethanpanel' => [
         'api_url' => env('MORETHANPANEL_API_URL', 'https://morethanpanel.com/api/v2'),

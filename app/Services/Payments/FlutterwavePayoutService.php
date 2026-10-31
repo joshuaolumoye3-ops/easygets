@@ -39,7 +39,8 @@ class FlutterwavePayoutService
 			}
 
 			$balance = $this->flw->balance('NGN');
-			$required = (float) $withdrawal->amount + (float) config('services.flutterwave.payout_fee_buffer', 100);
+			$payoutAmount = round((float) ($withdrawal->payout_amount ?? $withdrawal->amount), 2);
+			$required = $payoutAmount + (float) config('services.flutterwave.payout_fee_buffer', 100);
 			if (!$balance['ok']) {
 				return $this->needsAttention($withdrawal, 'Flutterwave NGN balance could not be checked: ' . $balance['message'], 'provider_error', null, $adminId);
 			}
@@ -52,7 +53,7 @@ class FlutterwavePayoutService
 			$transfer = $this->flw->transfer([
 				'account_bank' => $withdrawal->bank_code,
 				'account_number' => $withdrawal->account_number,
-				'amount' => (float) $withdrawal->amount,
+				'amount' => $payoutAmount,
 				'currency' => 'NGN',
 				'reference' => $withdrawal->reference,
 				'narration' => 'Gift card withdrawal ' . $withdrawal->reference,
@@ -182,7 +183,8 @@ class FlutterwavePayoutService
 
 		$transferId = isset($transfer['id']) ? (string) $transfer['id'] : null;
 		$accountNumber = preg_replace('/\D/', '', (string) ($transfer['account_number'] ?? ''));
-		$detailsMatch = (!isset($transfer['amount']) || round((float) $transfer['amount'], 2) === round((float) $withdrawal->amount, 2))
+		$expectedPayout = round((float) ($withdrawal->payout_amount ?? $withdrawal->amount), 2);
+		$detailsMatch = (!isset($transfer['amount']) || round((float) $transfer['amount'], 2) === $expectedPayout)
 			&& (!isset($transfer['currency']) || strtoupper((string) $transfer['currency']) === 'NGN')
 			&& (!isset($transfer['account_bank']) || (string) $transfer['account_bank'] === (string) $withdrawal->bank_code)
 			&& (strlen($accountNumber) !== 10 || hash_equals((string) $withdrawal->account_number, $accountNumber));

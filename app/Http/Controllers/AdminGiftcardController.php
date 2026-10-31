@@ -76,6 +76,7 @@ class AdminGiftcardController extends Controller
             'buy_markup_percent' => 'required|numeric|min:0|max:100',
             'sell_commission_percent' => 'required|numeric|min:0|max:90',
             'min_withdrawal' => 'required|numeric|min:100|max:100000000',
+            'withdrawal_fee_flat' => ['required', 'numeric', 'min:0', 'max:1000000', 'decimal:0,2'],
             'max_buy_quantity' => 'required|integer|min:1|max:20',
             'daily_buy_limit_ngn' => 'required|numeric|min:0|max:1000000000',
         ]);

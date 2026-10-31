@@ -15,6 +15,7 @@ class GiftcardSetting extends Model
         'buy_markup_percent'      => '5',
         'sell_commission_percent' => '3',
         'min_withdrawal'          => '1000',
+        'withdrawal_fee_flat'     => '0',
         'max_buy_quantity'        => '5',
         'daily_buy_limit_ngn'     => '500000',
     ];

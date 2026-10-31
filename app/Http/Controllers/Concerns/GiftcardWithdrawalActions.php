@@ -69,6 +69,8 @@ trait GiftcardWithdrawalActions
             'success' => true,
             'status' => $withdrawal->status,
             'amount' => (float) $withdrawal->amount,
+            'fee_amount' => (float) ($withdrawal->fee_amount ?? 0),
+            'payout_amount' => (float) ($withdrawal->payout_amount ?? $withdrawal->amount),
             'bank_name' => $withdrawal->bank_name,
             'account_tail' => substr((string) $withdrawal->account_number, -4),
             'reference' => $withdrawal->reference,
@@ -112,11 +114,20 @@ trait GiftcardWithdrawalActions
                         'declined' => 'failed',
                         default => 'pending',
                     },
-                    'description' => 'Gift card earnings withdrawal to ' . $existing->bank_name,
+                    'description' => sprintf(
+                        'Gift card withdrawal requested ₦%s; fee ₦%s; bank payout ₦%s to %s',
+                        number_format((float) $existing->amount, 2),
+                        number_format((float) ($existing->fee_amount ?? 0), 2),
+                        number_format((float) ($existing->payout_amount ?? $existing->amount), 2),
+                        $existing->bank_name
+                    ),
                     'response' => [
                         'withdrawal_id' => $existing->id,
                         'bank_name' => $existing->bank_name,
                         'account_tail' => substr((string) $existing->account_number, -4),
+                        'gross_amount' => (float) $existing->amount,
+                        'fee_amount' => (float) ($existing->fee_amount ?? 0),
+                        'payout_amount' => (float) ($existing->payout_amount ?? $existing->amount),
                     ],
                 ]
             );
@@ -135,6 +146,11 @@ trait GiftcardWithdrawalActions
 
         try {
             $amount = round((float) $data['amount'], 2);
+            $feeAmount = round((float) GiftcardSetting::get('withdrawal_fee_flat', 0), 2);
+            $payoutAmount = round($amount - $feeAmount, 2);
+            if ($payoutAmount <= 0) {
+                return $this->fail('The withdrawal amount must be greater than the current withdrawal fee.', 422);
+            }
 
             $flw  = app(FlutterwaveClient::class);
             $bank = $this->bankByCode($flw, $data['bank_code']);
@@ -154,7 +170,7 @@ trait GiftcardWithdrawalActions
             }
 
             $withdrawal = null;
-            $err = DB::transaction(function () use ($user, $data, $amount, $bank, $accountName, &$withdrawal) {
+            $err = DB::transaction(function () use ($user, $data, $amount, $feeAmount, $payoutAmount, $bank, $accountName, &$withdrawal) {
                 $row = DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
                 if ((float) $row->withdrawable_balance < $amount) {
                     return 'Amount exceeds your withdrawable balance.';
@@ -167,6 +183,8 @@ trait GiftcardWithdrawalActions
                     'client_token'   => $data['client_token'],
                     'user_id'        => $user->id,
                     'amount'         => $amount,
+                    'fee_amount'     => $feeAmount,
+                    'payout_amount'  => $payoutAmount,
                     'bank_name'      => $bank['name'],
                     'bank_code'      => $bank['code'],
                     'account_number' => $data['account_number'],
@@ -185,11 +203,20 @@ trait GiftcardWithdrawalActions
                     'recipient' => $bank['name'] . ' •••• ' . substr($data['account_number'], -4),
                     'amount' => $amount,
                     'status' => 'pending',
-                    'description' => 'Gift card earnings withdrawal to ' . $bank['name'],
+                    'description' => sprintf(
+                        'Gift card withdrawal requested ₦%s; fee ₦%s; bank payout ₦%s to %s',
+                        number_format($amount, 2),
+                        number_format($feeAmount, 2),
+                        number_format($payoutAmount, 2),
+                        $bank['name']
+                    ),
                     'response' => [
                         'withdrawal_id' => $withdrawal->id,
                         'bank_name' => $bank['name'],
                         'account_tail' => substr($data['account_number'], -4),
+                        'gross_amount' => $amount,
+                        'fee_amount' => $feeAmount,
+                        'payout_amount' => $payoutAmount,
                     ],
                 ]);
 
@@ -210,9 +237,12 @@ trait GiftcardWithdrawalActions
 
             return response()->json([
                 'success' => true,
-                'message' => 'Withdrawal submitted. ₦' . number_format($amount, 2) . ' is being sent to '
+                'message' => 'Withdrawal submitted. ₦' . number_format($payoutAmount, 2) . ' is being sent to '
                     . $bank['name'] . ' ' . FlutterwaveClient::maskAccount($data['account_number']) . '. Track it below.',
                 'withdrawal_id' => $withdrawal->id,
+                'gross_amount' => $amount,
+                'fee_amount' => $feeAmount,
+                'payout_amount' => $payoutAmount,
             ]);
         } finally {
             $lock->release();

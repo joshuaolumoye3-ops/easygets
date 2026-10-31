@@ -4,126 +4,110 @@ namespace App\Helpers;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use RuntimeException;
 
 class DemmyPayHelper
 {
-    protected static $baseUrl;
-    protected static $apiKey;
-    protected static $passPhrase;
-    protected static $accessToken;
+    private const NETWORKS = ['mtn', 'airtel', 'glo', '9mobile'];
 
-    // initialize configs from .env
-    public static function init()
+    public static function normalizeNigerianPhone(string $phone): ?string
     {
-        self::$baseUrl    = config('services.demmy.base_url');
-        self::$apiKey     = config('services.demmy.api_key');
-        self::$passPhrase = config('services.demmy.pass_phrase');
-    }
+        $digits = preg_replace('/\D+/', '', $phone);
 
-    // authenticate and fetch token
-    public static function authenticate()
-    {
-        self::init();
-
-        Log::info('DemmyPay: Starting authentication...');
-
-        $payload = [
-            'apiKey'     => self::$apiKey,
-            'passPhrase' => self::$passPhrase,
-        ];
-
-        $url = self::$baseUrl . '/api/v1/authentication';
-
-        // Debug: log what’s being sent (removed for production)
-        Log::info('DemmyPay Auth Request:', ['url' => $url, 'payload' => $payload]);
-
-        $response = Http::withHeaders([
-            'Content-Type' => 'application/json',
-        ])->post($url, $payload);
-
-        Log::info('DemmyPay Auth Response:', [
-            'status' => $response->status(),
-            'body'   => $response->body(),
-        ]);
-
-        if ($response->successful()) {
-            $data = $response->json();
-            self::$accessToken = $data['data']['accessToken'] ?? null;
-
-            if (self::$accessToken) {
-                Log::info('DemmyPay: Authentication successful');
-                return self::$accessToken;
-            }
+        if (str_starts_with($digits, '0') && strlen($digits) === 11) {
+            $digits = '234' . substr($digits, 1);
         }
 
-        // Return the response directly for easier debugging (removed for production)
-        throw new \Exception('DemmyPay Authentication failed: ' . $response->body());
+        return preg_match('/^234[789][01]\d{8}$/', $digits) ? $digits : null;
     }
 
-    // internal function to ensure valid token
-    protected static function getToken()
+    public static function buyAirtime(string $network, float $amount, string $phone, string $reference): array
     {
-        return self::authenticate();
-    }
-
-    // fetch DATA products
-    public static function getDataProducts()
-    {
-        $token = self::getToken();
-
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $token,
-            'Content-Type'  => 'application/json',
-        ])->get(self::$baseUrl . '/api/v1/product', [
-            'category' => 'DATA'
+        return self::post('/vend/' . self::network($network) . '/airtime', [
+            'phone_number' => self::phone($phone),
+            'amount'       => $amount,
+            'reference'    => $reference,
         ]);
+    }
 
-        if ($response->successful()) {
-            return $response->json();
+    public static function buyData(
+        string $network,
+        string $phone,
+        float $amount,
+        string $tariffTypeId,
+        string $reference
+    ): array {
+        return self::post('/vend/' . self::network($network) . '/data', [
+            'phone_number'   => self::phone($phone),
+            'amount'         => $amount,
+            'tariff_type_id' => $tariffTypeId,
+            'reference'      => $reference,
+        ]);
+    }
+
+    public static function isSuccessful(array $response): bool
+    {
+        return (int) ($response['_http_status'] ?? 0) >= 200
+            && (int) ($response['_http_status'] ?? 0) < 300
+            && strtolower((string) ($response['status'] ?? '')) === 'processed'
+            && strtoupper((string) ($response['code'] ?? '')) === 'SUC200';
+    }
+
+    public static function getDataProducts(): array
+    {
+        throw new RuntimeException('AfrikVend catalog response mapping is not available in the supplied API documentation.');
+    }
+
+    private static function post(string $path, array $payload): array
+    {
+        $baseUrl = rtrim((string) config('services.afrikvend.base_url'), '/');
+        $apiKey = (string) config('services.afrikvend.api_key');
+
+        if ($baseUrl === '' || $apiKey === '') {
+            throw new RuntimeException('AfrikVend API configuration is missing.');
         }
 
-        throw new \Exception('Failed to fetch data products: ' . $response->body());
+        $response = Http::acceptJson()
+            ->asJson()
+            ->withHeader('x-api-key', $apiKey)
+            ->connectTimeout(5)
+            ->timeout(25)
+            ->post($baseUrl . $path, $payload);
+
+        $body = $response->json();
+        if (!is_array($body)) {
+            $body = [];
+        }
+
+        if (!$response->successful()) {
+            Log::warning('AfrikVend vending request rejected.', [
+                'endpoint'    => $path,
+                'http_status' => $response->status(),
+                'code'        => $body['code'] ?? null,
+            ]);
+        }
+
+        return $body + ['_http_status' => $response->status()];
     }
 
-    // purchase airtime (still supported for backward use)
-    public static function buyAirtime($amount, $productId, $recipient, $customerReference)
+    private static function network(string $network): string
     {
-        $token = self::getToken();
+        $network = strtolower($network);
+        if (!in_array($network, self::NETWORKS, true)) {
+            throw new RuntimeException('Unsupported AfrikVend network.');
+        }
 
-        $response = Http::withHeaders([
-            'Content-Type'  => 'application/json',
-            'Authorization' => 'Bearer ' . $token,
-        ])->post(self::$baseUrl . '/api/v1/purchase', [
-            'amount'           => $amount,
-            'productId'        => $productId,
-            'recipient'        => $recipient,
-            'customerReference'=> $customerReference,
-        ]);
-
-        return $response->json();
+        return $network;
     }
 
-    // purchase data (Demmy Global format: productId + recipient + customerReference)
-    public static function buyData($productId, $recipient, $customerReference)
+    private static function phone(string $phone): string
     {
-        $token = self::getToken();
+        $normalized = self::normalizeNigerianPhone($phone);
+        if (!$normalized) {
+            throw new RuntimeException('Invalid Nigerian phone number.');
+        }
 
-        $payload = [
-            'productId'        => $productId,
-            'recipient'        => $recipient,
-            'customerReference'=> $customerReference,
-        ];
-
-        Log::info('DemmyPay Data Purchase Request:', $payload);
-
-        $response = Http::withHeaders([
-            'Content-Type'  => 'application/json',
-            'Authorization' => 'Bearer ' . $token,
-        ])->post(self::$baseUrl . '/api/v1/purchase', $payload);
-
-        Log::info('DemmyPay Data Purchase Response:', ['status' => $response->status(), 'body' => $response->body()]);
-        Log::info('DemmyPay Purchase Raw Response:', ['raw' => $response->body()]);
-
-        return $response->json();
+        return $normalized;
     }
 }

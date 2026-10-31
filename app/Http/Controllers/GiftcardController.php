@@ -40,6 +40,7 @@ class GiftcardController extends Controller
             'buyActive'    => $this->serviceActive('giftcard-buy'),
             'sellActive'   => $this->serviceActive('giftcard-sell'),
             'minWithdrawal' => (float) GiftcardSetting::get('min_withdrawal'),
+            'withdrawalFee' => (float) GiftcardSetting::get('withdrawal_fee_flat', 0),
             'recent'       => GiftcardOrder::where('user_id', $user->id)->latest()->limit(5)->get(),
             'withdrawals'  => GiftcardWithdrawal::where('user_id', $user->id)->latest()->limit(5)->get(),
         ]);

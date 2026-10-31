@@ -104,6 +104,7 @@
         <div><label>Buy: markup on card price (%)</label><input type="number" step="0.01" name="buy_markup_percent" value="{{ $settings['buy_markup_percent'] }}" required></div>
         <div><label>Sell: our commission deducted from rate (%)</label><input type="number" step="0.01" name="sell_commission_percent" value="{{ $settings['sell_commission_percent'] }}" required></div>
         <div><label>Minimum withdrawal (₦)</label><input type="number" step="0.01" name="min_withdrawal" value="{{ $settings['min_withdrawal'] }}" required></div>
+        <div><label>Withdrawal service charge (₦ flat)</label><input type="number" step="0.01" min="0" max="1000000" name="withdrawal_fee_flat" value="{{ $settings['withdrawal_fee_flat'] ?? 0 }}" required><span class="gc-sub">Deducted from the requested amount; the remainder is sent to the bank.</span></div>
         <div><label>Max cards per buy order</label><input type="number" name="max_buy_quantity" value="{{ $settings['max_buy_quantity'] }}" required></div>
         <div><label>Daily buy limit per user (₦, 0 = none)</label><input type="number" step="0.01" name="daily_buy_limit_ngn" value="{{ $settings['daily_buy_limit_ngn'] }}" required></div>
       </div>
@@ -162,7 +163,7 @@
           <td style="font-family:monospace;font-size:11px">{{ $w->reference }}</td>
           <td>{{ $w->user->username ?? '—' }}</td>
           <td><span class="gc-balance" data-user-balance="{{ $w->user_id }}">₦{{ number_format((float) ($w->user->withdrawable_balance ?? 0), 2) }}</span></td>
-          <td><b>₦{{ number_format($w->amount, 2) }}</b></td>
+          <td><b>Requested ₦{{ number_format($w->amount, 2) }}</b><div class="gc-sub">Fee ₦{{ number_format((float) ($w->fee_amount ?? 0), 2) }} · Bank transfer ₦{{ number_format((float) ($w->payout_amount ?? $w->amount), 2) }}</div></td>
           <td>{{ $w->account_name }}<div class="gc-sub">{{ $w->bank_name }} · {{ $w->account_number }}</div></td>
           <td><span class="pill {{ $w->status==='approved'?'p-ok':($w->status==='declined'?'p-bad':'p-wait') }}">{{ $w->status==='approved'?'paid':$w->status }}</span>@if($w->failure_reason)<div class="gc-sub">{{ $w->failure_reason }}</div>@elseif($w->admin_note)<div class="gc-sub">{{ $w->admin_note }}</div>@endif</td>
           <td class="gc-sub">{{ $w->created_at->format('d M Y H:i') }}</td>

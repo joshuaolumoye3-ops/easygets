@@ -22,17 +22,6 @@ class AirtimeController extends Controller
         return view('users.airtime', compact('wallet'));
     }
 
-    private function getAirtimeProductId($code): ?int
-    {
-        return match ($code) {
-            '01' => 1,
-            '02' => 2,
-            '03' => 3,
-            '04' => 4,
-            default => null,
-        };
-    }
-
     public function recharge(Request $request)
     {
         $validated = $request->validate([
@@ -49,29 +38,31 @@ class AirtimeController extends Controller
 
             $amount    = (float) $validated['amount'];
             $network   = $validated['network'];
-            $recipient = preg_replace('/\D/', '', $validated['recipient']);
-
-            if (strlen($recipient) < 8 || strlen($recipient) > 15) {
+            $recipient = DemmyPayHelper::normalizeNigerianPhone($validated['recipient']);
+            if (!$recipient) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid recipient phone number.',
                 ], 400);
             }
 
-            $productId = $this->getAirtimeProductId($network);
-            if (!$productId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid network code provided.',
-                ], 400);
-            }
+            $networkNames = [
+                '01' => 'MTN',
+                '02' => 'Glo',
+                '03' => 'Airtel',
+                '04' => '9mobile',
+            ];
+            $networkName = $networkNames[$network];
 
             // ── Load user and wallet ──────────────────────────────────────────
+            DB::beginTransaction();
+
             /** @var User $user */
             $user   = Auth::user();
             $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->first();
 
             if (!$wallet) {
+                DB::rollBack();
                 return response()->json([
                     'success' => false,
                     'message' => 'Your wallet could not be accessed. Please contact support.',
@@ -95,6 +86,7 @@ class AirtimeController extends Controller
 
             // ── Balance check ─────────────────────────────────────────────────
             if ((float) $wallet->balance < $split['wallet_deduction']) {
+                DB::rollBack();
                 $shortfall = round($split['wallet_deduction'] - $wallet->balance, 2);
 
                 return response()->json([
@@ -119,25 +111,15 @@ class AirtimeController extends Controller
             // ── Generate reference ────────────────────────────────────────────
             $customerReference = 'airtime_' . strtolower(Str::random(10) . '_' . uniqid());
 
-            DB::beginTransaction();
-
             // ── Call provider API ─────────────────────────────────────────────
             $response = DemmyPayHelper::buyAirtime(
+                strtolower($networkName),
                 $amount,
-                $productId,
                 $recipient,
                 $customerReference
             );
 
-            $networkNames = [
-                '01' => 'MTN',
-                '02' => 'Glo',
-                '03' => 'Airtel',
-                '04' => '9mobile',
-            ];
-            $networkName = $networkNames[$network] ?? 'Unknown';
-
-            $apiSuccess = isset($response['status']) && (int) $response['status'] === 200;
+            $apiSuccess = DemmyPayHelper::isSuccessful($response);
 
             // ── Save transaction record ───────────────────────────────────────
             $transaction = Transaction::create([
@@ -185,7 +167,7 @@ class AirtimeController extends Controller
                         'new_balance'           => $wallet->fresh()->balance,
                         'formatted_balance'     => '₦' . number_format($wallet->fresh()->balance, 2),
                         'transaction_time'      => now()->format('Y-m-d H:i:s'),
-                        'provider_response'     => $response['data'] ?? null,
+                        'provider_reference'    => $response['telcoReference'] ?? null,
                     ],
                     'transaction_id' => $transaction->id,
                 ]);

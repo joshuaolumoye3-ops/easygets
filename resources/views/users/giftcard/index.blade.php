@@ -67,7 +67,7 @@
             <h2 class="font-bold text-gray-800 mb-3">Withdrawals</h2>
             @foreach($withdrawals as $w)
                 <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                    <div><p class="text-sm font-semibold">₦{{ number_format($w->amount, 2) }}</p><p class="text-xs text-gray-400">{{ $w->bank_name }} • {{ $w->created_at->format('M d') }}</p></div>
+                    <div><p class="text-sm font-semibold">Requested ₦{{ number_format($w->amount, 2) }}</p><p class="text-xs text-gray-500">Fee ₦{{ number_format((float) ($w->fee_amount ?? 0), 2) }} · Sent ₦{{ number_format((float) ($w->payout_amount ?? $w->amount), 2) }}</p><p class="text-xs text-gray-400">{{ $w->bank_name }} • {{ $w->created_at->format('M d') }}</p></div>
                     @php
                         $wMap = [
                             'approved' => ['Paid', 'bg-green-100 text-green-700'],
@@ -101,6 +101,11 @@
             <input id="wdAcc" type="text" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="10-digit account number" class="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 tracking-wide">
             <div id="wdResolved" class="hidden text-sm rounded-xl px-4 py-3"></div>
             <input id="wdAmount" type="number" step="0.01" min="{{ $minWithdrawal }}" placeholder="Amount (₦)" class="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold">
+            <div class="rounded-xl border border-gray-100 bg-white px-4 py-3 text-sm space-y-2">
+                <div class="flex justify-between gap-3 text-gray-500"><span>Withdrawal amount</span><span id="wdQuoteGross">₦0.00</span></div>
+                <div class="flex justify-between gap-3 text-gray-500"><span>Service charge</span><span id="wdQuoteFee">−₦{{ number_format((float) $withdrawalFee, 2) }}</span></div>
+                <div class="flex justify-between gap-3 border-t border-gray-100 pt-2 font-bold text-gray-900"><span>Sent to bank</span><span id="wdQuotePayout">₦0.00</span></div>
+            </div>
             <input id="wdPin" type="password" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="Transaction PIN" class="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 tracking-widest">
             <button id="wdBtn" onclick="submitWd()" disabled class="w-full py-3.5 rounded-xl font-bold text-white disabled:opacity-40" style="background:#03624C;">Withdraw</button>
             <p class="text-[11px] text-gray-400 text-center">Paid to your bank via Flutterwave. If a payout is delayed, it stays pending while your balance is reserved.</p>
@@ -119,7 +124,9 @@
             <h2 id="wdResultTitle" class="mt-2 text-2xl font-bold text-slate-900">Transfer successful</h2>
             <p id="wdResultCopy" class="mt-2 text-sm leading-6 text-slate-500"></p>
             <div id="wdReceipt" class="mt-6 hidden divide-y divide-slate-100 rounded-xl bg-slate-50 px-4 text-left">
-                <div class="flex justify-between gap-4 py-3 text-sm"><span class="text-slate-500">Amount sent</span><strong id="wdReceiptAmount" class="text-slate-900"></strong></div>
+                <div class="flex justify-between gap-4 py-3 text-sm"><span class="text-slate-500">Withdrawal amount</span><strong id="wdReceiptAmount" class="text-slate-900"></strong></div>
+                <div class="flex justify-between gap-4 py-3 text-sm"><span class="text-slate-500">Service charge</span><strong id="wdReceiptFee" class="text-slate-900"></strong></div>
+                <div class="flex justify-between gap-4 py-3 text-sm"><span class="text-slate-500">Sent to bank</span><strong id="wdReceiptPayout" class="text-emerald-700"></strong></div>
                 <div class="flex justify-between gap-4 py-3 text-sm"><span class="text-slate-500">Bank account</span><strong id="wdReceiptBank" class="text-right text-slate-900"></strong></div>
                 <div class="flex justify-between gap-4 py-3 text-sm"><span class="text-slate-500">Reference</span><strong id="wdReceiptReference" class="break-all text-right text-slate-900"></strong></div>
                 <div id="wdReceiptDateRow" class="flex justify-between gap-4 py-3 text-sm"><span class="text-slate-500">Completed</span><strong id="wdReceiptDate" class="text-right text-slate-900"></strong></div>
@@ -141,6 +148,7 @@ const WD = {
     status: @json(route('giftcards.withdrawals.status', ['id' => '__ID__'])),
     min: {{ (float) $minWithdrawal }},
     max: {{ (float) $withdrawable }},
+    fee: {{ (float) $withdrawalFee }},
 };
 let wdBanksLoaded = false, wdResolvedOk = false, wdToken = null, wdTimer = null;
 const $wd = id => document.getElementById(id);
@@ -149,7 +157,8 @@ function openWd(){const m=$wd('wdModal');m.classList.remove('hidden');m.classLis
 function closeWd(){const m=$wd('wdModal');m.classList.add('hidden');m.classList.remove('flex');}
 function wdMsg(t,ok){const e=document.getElementById('wdMsg');e.textContent=t;e.className='text-sm rounded-xl p-3 mb-3 '+(ok?'bg-green-50 text-green-700':'bg-red-50 text-red-700');}
 function wdResolvedBox(t,kind){const e=$wd('wdResolved');if(!t){e.className='hidden';return;}e.textContent=t;e.className='text-sm rounded-xl px-4 py-3 '+(kind==='ok'?'bg-green-50 text-green-700 font-semibold':kind==='err'?'bg-red-50 text-red-700':'bg-gray-50 text-gray-500');}
-function wdUpdateBtn(){const a=parseFloat($wd('wdAmount').value)||0;$wd('wdBtn').disabled=!(wdResolvedOk&&a>=WD.min&&a<=WD.max&&/^\d{4}$/.test($wd('wdPin').value));}
+function wdMoney(value){return '₦'+Number(value||0).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function wdUpdateBtn(){const a=parseFloat($wd('wdAmount').value)||0;const fee=Math.min(a,WD.fee);const net=Math.max(0,a-WD.fee);$wd('wdQuoteGross').textContent=wdMoney(a);$wd('wdQuoteFee').textContent='−'+wdMoney(fee);$wd('wdQuotePayout').textContent=wdMoney(net);$wd('wdBtn').disabled=!(wdResolvedOk&&a>=WD.min&&a<=WD.max&&net>0&&/^\d{4}$/.test($wd('wdPin').value));}
 function wdShowResult(kind, data={}){
     const result=$wd('wdResult'), icon=$wd('wdResultIcon'), spinner=$wd('wdResultSpinner'), check=$wd('wdResultCheck');
     const isSuccess=kind==='approved', isWaiting=kind==='waiting', isDeclined=kind==='declined';
@@ -162,6 +171,8 @@ function wdShowResult(kind, data={}){
     $wd('wdReceipt').classList.toggle('hidden',!isSuccess);
     if(isSuccess){
         $wd('wdReceiptAmount').textContent='₦'+Number(data.amount).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2});
+        $wd('wdReceiptFee').textContent='−'+wdMoney(data.fee_amount);
+        $wd('wdReceiptPayout').textContent=wdMoney(data.payout_amount??(data.amount-data.fee_amount));
         $wd('wdReceiptBank').textContent=`${data.bank_name} •••• ${data.account_tail}`;
         $wd('wdReceiptReference').textContent=data.reference;
         $wd('wdReceiptDate').textContent=data.processed_at||'Confirmed by Flutterwave';

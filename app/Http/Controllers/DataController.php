@@ -19,10 +19,9 @@ class DataController extends Controller
 {
 public function showData()
 {
-    $providerId = 1;
-
-    // Get provider and its products
-    $provider = Provider::with('products')->find($providerId);
+    $provider = Provider::with('products')
+        ->where('api_identifier', 'demmyglobal')
+        ->first();
     
     if (!$provider) {
         return response()->json(['error' => 'Provider not found'], 404);
@@ -162,11 +161,22 @@ private function detectPlanType($productName)
 
             $network   = strtolower($validated['network']);
             $productId = $validated['data_plan'];
-            $recipient = $validated['recipient'];
-            $requestId = 'DATA_' . \Illuminate\Support\Str::uuid();
+            $recipient = DemmyPayHelper::normalizeNigerianPhone($validated['recipient']);
+            if (!$recipient) {
+                DB::rollBack();
+                return response()->json([
+                    'success'    => false,
+                    'title'      => 'Invalid Number',
+                    'message'    => 'Please enter a valid Nigerian phone number.',
+                    'error_type' => 'validation',
+                ], 422);
+            }
+            $requestId = 'DATA_' . Str::uuid();
 
             // ── Fetch product ─────────────────────────────────────────────────────
-            $product = \App\Models\Product::where('product_code', $productId)
+            $provider = Provider::where('api_identifier', 'demmyglobal')->first();
+            $product = Product::where('provider_id', $provider?->id)
+                ->where('product_code', $productId)
                 ->where('is_active', 1)
                 ->lockForUpdate()
                 ->first();
@@ -183,7 +193,8 @@ private function detectPlanType($productName)
             }
 
             $amount = (float) ($product->client_price ?? 0);
-            if ($amount <= 0) {
+            $providerAmount = (float) ($product->api_price ?? 0);
+            if ($amount <= 0 || $providerAmount <= 0) {
                 DB::rollBack();
                 return response()->json([
                     'success'    => false,
@@ -192,6 +203,25 @@ private function detectPlanType($productName)
                     'error_type' => 'system_error',
                     'details'    => [],
                 ], 400);
+            }
+
+            $productNetwork = strtolower((string) ($product->category ?? '') . ' ' . $product->name);
+            $productNetwork = preg_match('/(^|[^a-z0-9])(?:9mobile|etisalat)([^a-z0-9]|$)/i', $productNetwork)
+                ? '9mobile'
+                : (preg_match('/(^|[^a-z0-9])airtel([^a-z0-9]|$)/i', $productNetwork)
+                    ? 'airtel'
+                    : (preg_match('/(^|[^a-z0-9])glo([^a-z0-9]|$)/i', $productNetwork)
+                        ? 'glo'
+                        : (preg_match('/(^|[^a-z0-9])mtn([^a-z0-9]|$)/i', $productNetwork) ? 'mtn' : null)));
+
+            if ($productNetwork !== $network) {
+                DB::rollBack();
+                return response()->json([
+                    'success'    => false,
+                    'title'      => 'Invalid Package',
+                    'message'    => 'The selected package does not match the chosen network.',
+                    'error_type' => 'validation',
+                ], 422);
             }
 
             // ── Load user and wallet ──────────────────────────────────────────────
@@ -261,7 +291,13 @@ private function detectPlanType($productName)
             }
 
             // ── Call API ──────────────────────────────────────────────────────────
-            $response = DemmyPayHelper::buyData($product->product_code, $recipient, $requestId);
+            $response = DemmyPayHelper::buyData(
+                $network,
+                $recipient,
+                $providerAmount,
+                (string) $product->product_code,
+                $requestId
+            );
 
             $networkNames = [
                 'mtn'     => 'MTN',
@@ -270,7 +306,7 @@ private function detectPlanType($productName)
                 '9mobile' => '9Mobile',
             ];
             $networkName  = $networkNames[$network] ?? ucfirst($network);
-            $isApiSuccess = isset($response['status']) && (int) $response['status'] === 200;
+            $isApiSuccess = DemmyPayHelper::isSuccessful($response);
 
             if ($isApiSuccess) {
                 // ── Deduct balances (referral first, then wallet) ─────────────────
@@ -280,7 +316,7 @@ private function detectPlanType($productName)
                     'reference' => substr($requestId, 0, 100),
                     'user_id'   => $user->id,
                     'type'      => 'data',
-                    'channel'   => 'DemmyPay',
+                    'channel'   => 'AfrikVend',
                     'provider'  => $networkName,
                     'phone'     => $recipient,
                     'recipient' => $recipient,
@@ -312,7 +348,7 @@ private function detectPlanType($productName)
                     'success' => true,
                     'message' => $successMessage,
                     'data'    => [
-                        'transaction_reference' => $requestId,
+                        'transaction_reference' => $response['txRef'] ?? $requestId,
                         'network'               => $networkName,
                         'recipient'             => $recipient,
                         'package_name'          => $product->name ?? 'Data Bundle',
@@ -357,7 +393,7 @@ private function detectPlanType($productName)
                     'reference' => substr($requestId, 0, 100),
                     'user_id'   => $user->id,
                     'type'      => 'data',
-                    'channel'   => 'DemmyPay',
+                    'channel'   => 'AfrikVend',
                     'provider'  => $networkName,
                     'phone'     => $recipient,
                     'recipient' => $recipient,
