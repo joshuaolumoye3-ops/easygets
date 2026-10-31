@@ -95,9 +95,25 @@
         <p class="text-xs text-gray-500 mb-4">Available: <b>₦{{ number_format($withdrawable, 2) }}</b> · Min ₦{{ number_format($minWithdrawal) }}</p>
         <div id="wdMsg" class="hidden text-sm rounded-xl p-3 mb-3"></div>
         <div class="space-y-3">
-            <select id="wdBank" class="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50">
-                <option value="">Loading banks…</option>
-            </select>
+            <div class="relative" id="wdBankPicker">
+                <input id="wdBank" type="hidden" value="">
+                <button id="wdBankToggle" type="button" class="flex w-full items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left shadow-sm transition hover:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-700/20" aria-haspopup="listbox" aria-expanded="false" aria-controls="wdBankOptions">
+                    <span class="min-w-0">
+                        <span id="wdBankSelected" class="block truncate text-sm font-semibold text-gray-800">Choose your bank</span>
+                        <span id="wdBankHint" class="mt-0.5 block text-xs text-gray-400">Loading available banks…</span>
+                    </span>
+                    <svg class="h-5 w-5 flex-shrink-0 text-gray-400 transition-transform" id="wdBankChevron" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.22 7.47a.75.75 0 011.06.03L10 11.46l3.72-3.96a.75.75 0 111.1 1.02l-4.25 4.52a.75.75 0 01-1.1 0L5.2 8.53a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>
+                </button>
+                <div id="wdBankPanel" class="absolute inset-x-0 top-full z-30 mt-2 hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl" role="group" aria-label="Search and select a bank">
+                    <label class="relative block border-b border-gray-100 p-3">
+                        <svg class="pointer-events-none absolute left-6 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke-width="2"/><path d="m16 16 4 4" stroke-width="2" stroke-linecap="round"/></svg>
+                        <input id="wdBankSearch" type="search" autocomplete="off" placeholder="Search banks…" class="w-full rounded-lg border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-3 text-sm text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-700/10" role="combobox" aria-expanded="true" aria-controls="wdBankOptions" aria-autocomplete="list">
+                    </label>
+                    <div id="wdBankOptions" class="max-h-56 overflow-y-auto overscroll-contain p-1.5" role="listbox" aria-label="Available banks">
+                        <p id="wdBankEmpty" class="px-3 py-5 text-center text-sm text-gray-400">Loading banks…</p>
+                    </div>
+                </div>
+            </div>
             <input id="wdAcc" type="text" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="10-digit account number" class="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 tracking-wide">
             <div id="wdResolved" class="hidden text-sm rounded-xl px-4 py-3"></div>
             <input id="wdAmount" type="number" step="0.01" min="{{ $minWithdrawal }}" placeholder="Amount (₦)" class="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold">
@@ -151,9 +167,88 @@ const WD = {
     fees: @json($withdrawalFees),
 };
 let wdBanksLoaded = false, wdResolvedOk = false, wdToken = null, wdTimer = null;
+let wdBanks = [], wdBankMatches = [], wdBankActiveIndex = 0;
 const $wd = id => document.getElementById(id);
 const newWdToken = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
-function openWd(){const m=$wd('wdModal');m.classList.remove('hidden');m.classList.add('flex');wdToken=wdToken||newWdToken();loadWdBanks();}
+function setWdBankPickerOpen(open, focusSearch=false){
+    const panel=$wd('wdBankPanel'), toggle=$wd('wdBankToggle'), chevron=$wd('wdBankChevron');
+    panel.classList.toggle('hidden',!open);
+    toggle.setAttribute('aria-expanded',String(open));
+    chevron.classList.toggle('rotate-180',open);
+    if(open&&focusSearch)setTimeout(()=>$wd('wdBankSearch').focus(),0);
+}
+function renderWdBankOptions(){
+    const query=$wd('wdBankSearch').value.trim().toLocaleLowerCase();
+    wdBankMatches=wdBanks.filter(bank=>bank.name.toLocaleLowerCase().includes(query)||(bank.code||'').toLocaleLowerCase().includes(query));
+    wdBankActiveIndex=wdBankMatches.length?Math.min(wdBankActiveIndex,wdBankMatches.length-1):0;
+    const list=$wd('wdBankOptions');
+    list.replaceChildren();
+    if(!wdBankMatches.length){
+        const empty=document.createElement('p');
+        empty.className='px-3 py-5 text-center text-sm text-gray-400';
+        empty.textContent=query?'No banks match your search.':'No banks available.';
+        list.appendChild(empty);
+        $wd('wdBankSearch').removeAttribute('aria-activedescendant');
+        return;
+    }
+    wdBankMatches.forEach((bank,index)=>{
+        const option=document.createElement('button');
+        option.type='button';
+        option.id='wd-bank-option-'+index;
+        option.setAttribute('role','option');
+        option.setAttribute('aria-selected',String(index===wdBankActiveIndex));
+        option.className='flex w-full items-center justify-between gap-3 rounded-lg px-3 py-3 text-left transition '+(index===wdBankActiveIndex?'bg-emerald-50 text-emerald-900':'text-gray-700 hover:bg-gray-50');
+        const bankName=document.createElement('span');
+        bankName.className='min-w-0 truncate text-sm font-medium';
+        bankName.textContent=bank.name;
+        const bankCode=document.createElement('span');
+        bankCode.className='flex-shrink-0 rounded-md bg-gray-100 px-2 py-1 font-mono text-[10px] text-gray-500';
+        bankCode.textContent=bank.code;
+        option.append(bankName,bankCode);
+        option.addEventListener('mouseenter',()=>{
+            wdBankActiveIndex=index;
+            list.querySelectorAll('[role="option"]').forEach((item,itemIndex)=>{
+                const active=itemIndex===index;
+                item.setAttribute('aria-selected',String(active));
+                item.classList.toggle('bg-emerald-50',active);
+                item.classList.toggle('text-emerald-900',active);
+                item.classList.toggle('text-gray-700',!active);
+            });
+            $wd('wdBankSearch').setAttribute('aria-activedescendant',option.id);
+        });
+        option.addEventListener('click',()=>selectWdBank(bank));
+        list.appendChild(option);
+    });
+    $wd('wdBankSearch').setAttribute('aria-activedescendant','wd-bank-option-'+wdBankActiveIndex);
+}
+function selectWdBank(bank){
+    $wd('wdBank').value=bank.code;
+    $wd('wdBankSelected').textContent=bank.name;
+    $wd('wdBankHint').textContent='Bank selected';
+    $wd('wdBankToggle').classList.add('border-emerald-300');
+    $wd('wdBankSearch').value='';
+    renderWdBankOptions();
+    setWdBankPickerOpen(false);
+    scheduleWdResolve();
+}
+function handleWdBankSearchKeydown(event){
+    if(event.key==='ArrowDown'||event.key==='ArrowUp'){
+        event.preventDefault();
+        if(!wdBankMatches.length)return;
+        const direction=event.key==='ArrowDown'?1:-1;
+        wdBankActiveIndex=(wdBankActiveIndex+direction+wdBankMatches.length)%wdBankMatches.length;
+        renderWdBankOptions();
+        document.getElementById('wd-bank-option-'+wdBankActiveIndex)?.scrollIntoView({block:'nearest'});
+    }else if(event.key==='Enter'){
+        event.preventDefault();
+        if(wdBankMatches[wdBankActiveIndex])selectWdBank(wdBankMatches[wdBankActiveIndex]);
+    }else if(event.key==='Escape'){
+        event.preventDefault();
+        setWdBankPickerOpen(false);
+        $wd('wdBankToggle').focus();
+    }
+}
+function openWd(){const m=$wd('wdModal');m.classList.remove('hidden');m.classList.add('flex');wdToken=wdToken||newWdToken();$wd('wdBankSearch').value='';renderWdBankOptions();loadWdBanks();}
 function closeWd(){const m=$wd('wdModal');m.classList.add('hidden');m.classList.remove('flex');}
 function wdMsg(t,ok){const e=document.getElementById('wdMsg');e.textContent=t;e.className='text-sm rounded-xl p-3 mb-3 '+(ok?'bg-green-50 text-green-700':'bg-red-50 text-red-700');}
 function wdResolvedBox(t,kind){const e=$wd('wdResolved');if(!t){e.className='hidden';return;}e.textContent=t;e.className='text-sm rounded-xl px-4 py-3 '+(kind==='ok'?'bg-green-50 text-green-700 font-semibold':kind==='err'?'bg-red-50 text-red-700':'bg-gray-50 text-gray-500');}
@@ -197,9 +292,15 @@ async function loadWdBanks(){
     try{
         const r=await fetch(WD.banks,{headers:{'Accept':'application/json'}}),d=await r.json();
         if(!r.ok||!d.success)throw new Error(d.message||'Could not load banks.');
-        $wd('wdBank').innerHTML='<option value="">Select your bank</option>'+d.banks.map(b=>`<option value="${String(b.code).replace(/[^A-Za-z0-9]/g,'')}">${String(b.name).replace(/</g,'&lt;')}</option>`).join('');
+        wdBanks=(Array.isArray(d.banks)?d.banks:[]).filter(bank=>bank&&bank.code&&bank.name).map(bank=>({code:String(bank.code),name:String(bank.name)})).sort((a,b)=>a.name.localeCompare(b.name));
         wdBanksLoaded=true;
-    }catch(e){$wd('wdBank').innerHTML='<option value="">Could not load banks</option>';wdMsg(e.message,false);}
+        $wd('wdBankHint').textContent=wdBanks.length?`${wdBanks.length} banks available · Search by name`:'No banks available';
+        renderWdBankOptions();
+    }catch(e){
+        $wd('wdBankHint').textContent='Bank list unavailable';
+        $wd('wdBankOptions').innerHTML='<p class="px-3 py-5 text-center text-sm text-red-600">Could not load banks. Close and reopen to try again.</p>';
+        wdMsg(e.message,false);
+    }
 }
 function scheduleWdResolve(){
     clearTimeout(wdTimer);wdResolvedOk=false;wdUpdateBtn();
@@ -215,7 +316,15 @@ function scheduleWdResolve(){
         wdUpdateBtn();
     },350);
 }
-$wd('wdBank').addEventListener('change',scheduleWdResolve);
+$wd('wdBankToggle').addEventListener('click',()=>{
+    const opening=$wd('wdBankPanel').classList.contains('hidden');
+    setWdBankPickerOpen(opening,opening);
+});
+$wd('wdBankSearch').addEventListener('input',()=>{wdBankActiveIndex=0;renderWdBankOptions();});
+$wd('wdBankSearch').addEventListener('keydown',handleWdBankSearchKeydown);
+document.addEventListener('click',event=>{
+    if(!$wd('wdBankPicker').contains(event.target))setWdBankPickerOpen(false);
+});
 $wd('wdAcc').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,'').slice(0,10);scheduleWdResolve();});
 $wd('wdAmount').addEventListener('input',wdUpdateBtn);
 $wd('wdPin').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,'').slice(0,4);wdUpdateBtn();});
