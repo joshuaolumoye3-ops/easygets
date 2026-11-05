@@ -349,7 +349,7 @@ class GiftcardController extends Controller
             'giftcard_id' => 'required|integer|min:1', 'amount' => 'required|numeric|min:1|max:100000',
             'comments' => 'nullable|string|max:2000', 'client_token' => 'required|string|max:64',
             'expected_payout' => 'required|numeric', 'pin' => 'required|digits:4',
-            'images' => 'nullable|array|max:20', 'images.*' => 'file|image|mimes:jpg,jpeg,png|max:5120',
+            'images' => 'nullable|array|max:20', 'images.*' => 'file|image|mimes:jpg,jpeg,png|max:20480',
         ]);
         $user = Auth::user();
 

@@ -31,7 +31,7 @@ const esc=s=>{const d=document.createElement('div');d.textContent=String(s??'');
 const ngn=n=>'₦'+Number(n).toLocaleString('en-NG',{minimumFractionDigits:2,maximumFractionDigits:2});
 const token=()=>(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36));
 const flagUrl=f=>f?`https://flagcdn.com/48x36/${f}.png`:null;
-const MAX_IMG=20, MAX_BYTES=5*1024*1024;
+const MAX_IMG=20, MAX_BYTES=20*1024*1024;
 
 /** Chained fallback: brand favicon -> colored-initial badge. Never shows broken. Prestmit's sell catalog has no product images. */
 window.imgFallback = function(el){
@@ -321,7 +321,7 @@ function stepDetails(){
       <input id="amt" type="number" min="${card.minimum||1}" step="0.01" placeholder="${card.minimum?'Min '+card.minimum:'e.g. 100'}" class="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl bg-white text-lg font-bold">
       <div class="bg-[#03624C]/10 rounded-2xl p-4 my-3 text-center"><p class="text-xs text-gray-500">You will receive</p><p id="pay" class="text-3xl font-extrabold text-[#03624C]">₦0.00</p><p class="text-[11px] text-gray-400 mt-1">Paid to your withdrawable balance after approval</p></div>
       ${needImg?`<label class="text-xs font-bold text-gray-500 uppercase">Card photos ${needImg&&!needCode?'(required)':'(optional)'}</label>
-        <label class="block mt-1 border-2 border-dashed border-gray-300 rounded-2xl p-5 text-center bg-white cursor-pointer"><input id="file" type="file" accept="image/png,image/jpeg" multiple class="hidden"><span class="text-sm text-gray-500">Tap to add JPG / PNG (max 5MB each, up to ${MAX_IMG})</span></label>
+        <label class="block mt-1 border-2 border-dashed border-gray-300 rounded-2xl p-5 text-center bg-white cursor-pointer"><input id="file" type="file" accept="image/png,image/jpeg" multiple class="hidden"><span class="text-sm text-gray-500">Tap to add JPG / PNG (up to 20MB each, max ${MAX_IMG} files)</span></label>
         <div id="thumbs" class="grid grid-cols-4 gap-2 mt-2"></div>`:''}
       ${needCode?`<label class="text-xs font-bold text-gray-500 uppercase block mt-3">${!needImg?'Card code':'Card code (optional)'}</label>
         <textarea id="code" rows="2" maxlength="2000" placeholder="Enter the code exactly as shown" class="w-full mt-1 px-4 py-3 border border-gray-200 rounded-xl bg-white text-sm font-mono"></textarea>`:''}
@@ -340,7 +340,7 @@ function stepDetails(){
         sub.disabled=!ready; };
     amt.oninput=check; document.getElementById('ok').onchange=check; document.getElementById('code')?.addEventListener('input',check);
     const fi=document.getElementById('file');
-    if(fi) fi.onchange=e=>{ for(const f of e.target.files){ if(!['image/png','image/jpeg'].includes(f.type)) return note('Only JPG or PNG images are allowed.'); if(f.size>MAX_BYTES) return note('Each image must be 5MB or less.'); if(files.length>=MAX_IMG) return note('Maximum '+MAX_IMG+' images.'); files.push(f); } e.target.value=''; thumbs(); check(); };
+    if(fi) fi.onchange=e=>{ for(const f of e.target.files){ if(!['image/png','image/jpeg'].includes(f.type)) return note('Only JPG or PNG images are allowed.'); if(f.size>MAX_BYTES) return note('Each image must be 20MB or less.'); if(files.length>=MAX_IMG) return note('Maximum '+MAX_IMG+' images.'); files.push(f); } e.target.value=''; thumbs(); check(); };
     function thumbs(){ document.getElementById('thumbs').innerHTML=files.map((f,i)=>`<div class="relative aspect-square rounded-xl overflow-hidden bg-gray-100"><img src="${URL.createObjectURL(f)}" class="w-full h-full object-cover"><button data-i="${i}" class="rm absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white text-xs leading-none">×</button></div>`).join(''); document.querySelectorAll('.rm').forEach(b=>b.onclick=()=>{ files.splice(b.dataset.i,1); thumbs(); check(); }); }
     function note(t,ok){ const m=document.getElementById('msg'); m.textContent=t; m.className='text-sm rounded-xl p-3 mb-3 '+(ok?'bg-green-50 text-green-700':'bg-red-50 text-red-700'); window.scrollTo({top:0,behavior:'smooth'}); }
     sub.onclick=()=>askPin(async (pin)=>{
