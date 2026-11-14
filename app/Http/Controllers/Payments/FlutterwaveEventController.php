@@ -41,8 +41,14 @@ class FlutterwaveEventController extends Controller
         $event   = (string) ($payload['event'] ?? '');
         $data    = is_array($payload['data'] ?? null) ? $payload['data'] : [];
 
-        if (!in_array($event, ['charge.completed', 'transfer.completed'], true) || empty($data['id'])) {
+        if (!in_array($event, ['charge.completed', 'transfer.completed'], true)) {
             return response('Ignored', 200);
+        }
+        if (empty($data['id'])) {
+            Log::error('Flutterwave webhook missing transaction or transfer ID', [
+                'event' => $event, 'data_keys' => array_keys($data),
+            ]);
+            return response('Missing event ID', 500);
         }
 
         // ── Idempotency ───────────────────────────────────────────────────
@@ -67,11 +73,21 @@ class FlutterwaveEventController extends Controller
                 ? $inflow->handleChargeCompleted($data)
                 : $payouts->applyTransferEvent($data);
 
+            $resultStatus = (string) ($result['status'] ?? 'unknown');
+            if (in_array($resultStatus, ['unmatched', 'rejected'], true)) {
+                // Keep the idempotency row unprocessed so a provider retry can
+                // succeed after a transient verification/account-matching issue.
+                Log::error('Flutterwave webhook requires retry or reconciliation', [
+                    'event' => $event, 'id' => $data['id'], 'result' => $resultStatus,
+                ]);
+                return response('Deposit not resolved', 500);
+            }
+
             DB::table('flutterwave_webhook_events')->where('event_key', $key)
                 ->update(['processed_at' => now(), 'updated_at' => now()]);
 
             Log::info('Flutterwave webhook processed', [
-                'event' => $event, 'id' => $data['id'], 'result' => $result['status'] ?? null,
+                'event' => $event, 'id' => $data['id'], 'result' => $resultStatus,
             ]);
 
             return response('OK', 200);
