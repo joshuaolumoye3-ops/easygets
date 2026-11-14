@@ -18,6 +18,15 @@
   .gc-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
   .gc-stat{background:#111e38;border:1px solid rgba(99,152,255,.12);border-radius:14px;padding:14px}
   .gc-stat b{display:block;font-size:20px;margin-top:6px}.gc-stat span{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#3a5578;font-weight:700}
+  .gc-profit-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.gc-profit-head h3{margin:0 0 5px}
+  .gc-profit-filter{display:grid;grid-template-columns:repeat(2,minmax(150px,1fr)) auto auto;align-items:end;gap:10px;margin:16px 0}
+  .gc-profit-filter input{height:40px}.gc-profit-filter .gc-btn{height:40px;white-space:nowrap}
+  .gc-profit-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .gc-profit-metric{min-width:0;padding:14px 15px;background:#0d1629;border:1px solid rgba(99,152,255,.14);border-radius:11px}
+  .gc-profit-metric.featured{border-color:rgba(52,217,139,.32);background:rgba(52,217,139,.07)}
+  .gc-profit-metric span,.gc-profit-metric small{display:block;color:#7a9fd4;font-size:11px}.gc-profit-metric span{font-weight:700;text-transform:uppercase}
+  .gc-profit-metric strong{display:block;margin:7px 0;font-size:clamp(18px,2vw,24px);color:#eef3ff;overflow-wrap:anywhere}.gc-profit-metric.featured strong{color:#6ee7b7}
+  .gc-profit-note{margin:12px 0 0;line-height:1.55}
   .gc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
   .gc label{display:block;font-size:11px;font-weight:600;color:#7a9fd4;margin-bottom:5px}
   .gc input,.gc select,.gc textarea{width:100%;height:38px;padding:0 11px;background:#0d1629;border:1px solid rgba(99,152,255,.2);border-radius:10px;color:#eef3ff;font-size:13px}
@@ -43,7 +52,7 @@
   .gc-adjust-summary span{display:block;color:#7a9fd4;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}.gc-adjust-summary strong{display:block;margin-top:5px;font-size:20px;color:#eef3ff}
   .gc-form-error{display:none;margin:10px 0;padding:10px 12px;border:1px solid rgba(244,86,110,.25);border-radius:9px;background:rgba(244,86,110,.1);color:#fda4af;font-size:12px}.gc-form-error.show{display:block}
   .gc-modal .gc-mb{max-width:480px}.gc-modal .gc-mb h2{font-size:17px;color:#eef3ff}.gc-modal .gc-mb .gc-sub{line-height:1.6}
-  @media(max-width:640px){.gc-in{padding:18px 12px}.gc td{padding:10px 8px}.gc-action-stack{min-width:130px}.gc-modal{align-items:flex-end;padding:0}.gc-modal .gc-mb{border-radius:18px 18px 0 0;max-height:90vh}}
+  @media(max-width:640px){.gc-in{padding:18px 12px}.gc td{padding:10px 8px}.gc-action-stack{min-width:130px}.gc-modal{align-items:flex-end;padding:0}.gc-modal .gc-mb{border-radius:18px 18px 0 0;max-height:90vh}.gc-profit-filter{grid-template-columns:1fr 1fr}.gc-profit-filter .gc-btn{width:100%}.gc-profit-metrics{grid-template-columns:1fr}.gc-profit-head{align-items:center}}
 </style>
 
 <div class="gc"><div class="gc-in">
@@ -71,6 +80,32 @@
   </div>
 
 @if($tab==='overview')
+  <div class="gc-card">
+    <div class="gc-profit-head">
+      <div>
+        <h3>Gift-card order profit</h3>
+        <p class="gc-sub">Realized trading profit from completed, settled buy and sell orders.</p>
+      </div>
+      <span class="pill p-ok">Settled orders</span>
+    </div>
+    <form class="gc-profit-filter" method="GET" action="{{ route('admin.giftcards.index') }}">
+      <input type="hidden" name="tab" value="overview">
+      <div><label for="profitStartDate">Start date</label><input id="profitStartDate" type="date" name="start_date" value="{{ $profitDates['start_date'] ?? '' }}" max="{{ now()->toDateString() }}"></div>
+      <div><label for="profitEndDate">End date</label><input id="profitEndDate" type="date" name="end_date" value="{{ $profitDates['end_date'] ?? '' }}" max="{{ now()->toDateString() }}"></div>
+      <button class="gc-btn" type="submit">Apply dates</button>
+      <a class="gc-btn o" href="{{ route('admin.giftcards.index', ['tab' => 'overview']) }}" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">Reset</a>
+    </form>
+    @if($errors->has('start_date') || $errors->has('end_date'))
+      <div class="gc-flash error" role="alert">Choose valid dates, and make sure the end date is not before the start date.</div>
+    @endif
+    <div class="gc-profit-metrics">
+      <div class="gc-profit-metric featured"><span>All-time order profit</span><strong>₦{{ number_format($stats['profit_total'], 2) }}</strong><small>Across all eligible settled orders</small></div>
+      <div class="gc-profit-metric"><span>Order profit for selected dates</span><strong>₦{{ number_format($stats['profit_range'], 2) }}</strong><small>{{ !empty($profitDates['start_date']) ? \Carbon\Carbon::parse($profitDates['start_date'])->format('d M Y') : 'Earliest' }} – {{ !empty($profitDates['end_date']) ? \Carbon\Carbon::parse($profitDates['end_date'])->format('d M Y') : 'Latest' }}</small></div>
+      <div class="gc-profit-metric"><span>Orders included</span><strong>{{ number_format($stats['profit_range_orders']) }}</strong><small>Completed orders in this date range</small></div>
+    </div>
+    <p class="gc-sub gc-profit-note">Buy profit = customer payment minus Prestmit cost. Sell profit = Prestmit amount minus user payout. Dates use settlement time. Orders missing required amounts are excluded; withdrawal fees and operating costs are not included.</p>
+  </div>
+
   <div class="gc-card">
     <h3>Service switches</h3>
     <div class="gc-grid">

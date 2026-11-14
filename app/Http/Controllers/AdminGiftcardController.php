@@ -29,6 +29,33 @@ class AdminGiftcardController extends Controller
         $services = Service::whereIn('slug', array_keys(self::SERVICES))->get()->keyBy('slug');
 
         $tab = in_array($request->query('tab'), ['overview', 'orders', 'withdrawals'], true) ? $request->query('tab') : 'overview';
+        $profitDateRules = [
+            'start_date' => ['nullable', 'date_format:Y-m-d'],
+            'end_date' => ['nullable', 'date_format:Y-m-d'],
+        ];
+        if ($request->filled('start_date')) {
+            $profitDateRules['end_date'][] = 'after_or_equal:start_date';
+        }
+        $profitDates = $request->validate($profitDateRules);
+
+        $eligibleProfitOrders = GiftcardOrder::query()
+            ->where('status', 'completed')
+            ->whereNotNull('settled_at')
+            ->where(function ($query) {
+                $query->where(function ($buy) {
+                    $buy->where('type', 'buy')->whereNotNull('total_ngn')->whereNotNull('provider_amount_ngn');
+                })->orWhere(function ($sell) {
+                    $sell->where('type', 'sell')->whereNotNull('provider_amount_ngn')->whereNotNull('payout_ngn');
+                });
+            });
+        $profitExpression = "CASE WHEN type = 'buy' THEN total_ngn - provider_amount_ngn ELSE provider_amount_ngn - payout_ngn END";
+        $rangeProfitOrders = clone $eligibleProfitOrders;
+        if (!empty($profitDates['start_date'])) {
+            $rangeProfitOrders->whereDate('settled_at', '>=', $profitDates['start_date']);
+        }
+        if (!empty($profitDates['end_date'])) {
+            $rangeProfitOrders->whereDate('settled_at', '<=', $profitDates['end_date']);
+        }
 
         $orders = GiftcardOrder::with('user:id,username,email')
             ->when($request->filled('type'), fn ($q) => $q->where('type', $request->type))
@@ -51,6 +78,9 @@ class AdminGiftcardController extends Controller
             'needs_review'    => GiftcardOrder::where('needs_review', true)->whereNull('settled_at')->count(),
             'buy_volume'      => (float) GiftcardOrder::where('type', 'buy')->where('status', 'completed')->sum('total_ngn'),
             'sell_payouts'    => (float) GiftcardOrder::where('type', 'sell')->where('status', 'completed')->sum('payout_ngn'),
+            'profit_total'    => (float) (clone $eligibleProfitOrders)->sum(DB::raw($profitExpression)),
+            'profit_range'    => (float) (clone $rangeProfitOrders)->sum(DB::raw($profitExpression)),
+            'profit_range_orders' => (int) $rangeProfitOrders->count(),
             'withdrawable'    => (float) DB::table('users')->sum('withdrawable_balance'),
             'pending_wd'      => GiftcardWithdrawal::where('status', 'pending')->count(),
             'pending_wd_amt'  => (float) GiftcardWithdrawal::where('status', 'pending')->sum('amount'),
@@ -61,6 +91,7 @@ class AdminGiftcardController extends Controller
         return view('admin.giftcards', [
             'tab' => $tab, 'services' => $services, 'orders' => $orders, 'withdrawals' => $withdrawals,
             'stats' => $stats, 'settings' => GiftcardSetting::all_(),
+            'profitDates' => $profitDates,
             'prestmit' => ['configured' => $prestmit->isConfigured(), 'ok' => $avail['ok'], 'data' => $avail['data'], 'error' => $avail['error'], 'base' => config('services.prestmit.base_url')],
         ]);
     }
