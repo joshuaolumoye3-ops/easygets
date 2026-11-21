@@ -34,6 +34,17 @@ use App\Http\Controllers\Payments\KorapayWebhookController;
 use App\Http\Controllers\Payments\DedicatedAccountController;
 use App\Http\Controllers\Payments\FlutterwaveEventController;
 
+use App\Http\Controllers\MarketingController;
+
+Route::get('/', [MarketingController::class, 'home'])->name('marketing.home');
+Route::get('/services', [MarketingController::class, 'services'])->name('marketing.services');
+Route::get('/about', [MarketingController::class, 'about'])->name('marketing.about');
+Route::get('/contact', [MarketingController::class, 'contact'])->name('marketing.contact');
+Route::post('/contact', [MarketingController::class, 'submitContact'])->middleware('throttle:5,10')->name('marketing.contact.submit');
+Route::get('/terms', [MarketingController::class, 'terms'])->name('marketing.terms');
+Route::get('/privacy', [MarketingController::class, 'privacy'])->name('marketing.privacy');
+Route::get('/refund', [MarketingController::class, 'refund'])->name('marketing.refund');
+
 Route::prefix('app')->group(function () {
 
 // OTP (5sim) endpoints for web (monolith)
