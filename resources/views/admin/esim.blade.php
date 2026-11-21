@@ -178,6 +178,14 @@
                         </div>
                     </div>
 
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <label style="font-size:13px; color:#e5e7eb; font-weight:600; text-transform:uppercase;">Image or resource link</label>
+                        <input type="url" name="link" id="uploadLink" placeholder="https://example.com/esim-image-or-setup-link"
+                            style="padding:12px 16px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:#fff; font-size:14px;"
+                            onfocus="this.style.borderColor='rgba(34,197,94,0.5)'; this.style.background='rgba(34,197,94,0.05)'"
+                            onblur="this.style.borderColor='rgba(255,255,255,0.1)'; this.style.background='rgba(255,255,255,0.05)'">
+                    </div>
+
                     <!-- New image preview -->
                     <div id="newImagePreview" style="display:none; flex-direction:column; gap:12px;">
                         <p style="font-size:12px; color:#9ca3af; margin:0; text-transform:uppercase; font-weight:600;">New images to upload</p>
@@ -257,6 +265,7 @@ function openTxnModal(id) {
             // Populate form fields with existing data
             document.getElementById('uploadNumbers').value = esim ? (esim.number  || '') : '';
             document.getElementById('uploadDetails').value = esim ? (esim.details || '') : '';
+            document.getElementById('uploadLink').value = esim ? (esim.link || '') : '';
 
             // Show existing images
             const existingSection = document.getElementById('existingImagesSection');
@@ -291,6 +300,7 @@ function closeTxnModal() {
 function clearForm() {
     document.getElementById('uploadNumbers').value = '';
     document.getElementById('uploadDetails').value = '';
+    document.getElementById('uploadLink').value = '';
     document.getElementById('fileInput').value     = '';
     document.getElementById('newImagePreview').style.display = 'none';
     document.getElementById('newPreviewGrid').innerHTML = '';

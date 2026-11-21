@@ -1086,6 +1086,7 @@ class AdminServiceController extends Controller
                 'number'   => $upload->number,
                 'details'  => $upload->details,
                 'images'   => $imageUrls,   // always full URLs
+                'link'     => $upload->link,
             ];
         }
     
@@ -1113,6 +1114,7 @@ public function upload(Request $request)
         'esim_upload_id' => 'nullable|exists:esim_uploads,id',
         'numbers'        => 'nullable|string',
         'details'        => 'nullable|string',
+        'link'           => 'nullable|url:http,https|max:2048',
         'images.*'       => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
     ]);
  
@@ -1139,6 +1141,9 @@ public function upload(Request $request)
         }
         if ($request->filled('details')) {
             $data['details'] = $request->details;
+        }
+        if ($request->has('link')) {
+            $data['link'] = $request->input('link') ?: null;
         }
  
         // Merge with any existing images already in DB

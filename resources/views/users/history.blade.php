@@ -1282,6 +1282,7 @@ function openEsimModal(id) {
     let detailsHtml = '';
     if (upload) {
         let imagesHtml = '';
+        let linkHtml = '';
         if (Array.isArray(upload.images) && upload.images.length > 0) {
             imagesHtml = `
                 <div class="mt-3">
@@ -1294,6 +1295,27 @@ function openEsimModal(id) {
                         `).join('')}
                     </div>
                 </div>`;
+        }
+
+        if (upload.link) {
+            try {
+                const linkUrl = new URL(upload.link);
+                if (linkUrl.protocol === 'http:' || linkUrl.protocol === 'https:') {
+                    const safeLink = escapeHtml(linkUrl.href);
+                    linkHtml = `
+                        <div class="mt-3">
+                            <p class="text-xs text-green-700 font-medium uppercase mb-2">Shared image or resource</p>
+                            <img src="${safeLink}" alt="eSIM resource" class="max-h-64 max-w-full rounded-lg border border-green-200 object-contain"
+                                 onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden')">
+                            <div class="hidden space-y-2">
+                                <a href="${safeLink}" target="_blank" rel="noopener noreferrer" class="block break-all text-blue-700 underline">${safeLink}</a>
+                                <a href="${safeLink}" target="_blank" rel="noopener noreferrer" class="inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white">Open link</a>
+                            </div>
+                        </div>`;
+                }
+            } catch (error) {
+                linkHtml = '';
+            }
         }
 
         detailsHtml = `
@@ -1313,6 +1335,7 @@ function openEsimModal(id) {
                         <p class="text-sm text-gray-700 whitespace-pre-line leading-relaxed">${escapeHtml(upload.details)}</p>
                     </div>` : ''}
                 ${imagesHtml}
+                ${linkHtml}
             </div>`;
     } else {
         detailsHtml = `

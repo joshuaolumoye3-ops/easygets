@@ -723,6 +723,7 @@ class HistoryController extends Controller
                     'number'  => $t->esimUpload->number,
                     'details' => $t->esimUpload->details,
                     'images'  => $imageUrls,
+                    'link'    => $t->esimUpload->link,
                 ] : null,
             ];
         })->values();

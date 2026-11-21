@@ -81,6 +81,7 @@
                         'number'  => $txn->esimUpload->number,
                         'details' => $txn->esimUpload->details,
                         'images'  => $imageUrls,   // always full URLs, ready to use in <img src>
+                        'link'    => $txn->esimUpload->link,
                     ];
                 }
 
@@ -189,6 +190,14 @@
                     <span class="font-medium block mb-2">Images</span>
                     <div id="esimImages" class="flex flex-wrap gap-2"></div>
                 </div>
+                <div id="esimLinkWrap" class="hidden">
+                    <span class="font-medium block mb-2">Shared image or resource</span>
+                    <img id="esimLinkPreview" alt="eSIM resource" class="hidden max-h-64 max-w-full rounded-lg border border-gray-200 object-contain">
+                    <div id="esimLinkFallback" class="hidden space-y-2">
+                        <a id="esimLinkText" class="block break-all text-blue-700 underline" target="_blank" rel="noopener noreferrer"></a>
+                        <a id="esimOpenLink" class="inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" target="_blank" rel="noopener noreferrer">Open link</a>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -247,6 +256,14 @@ document.querySelectorAll('.txn-row').forEach(row => {
         const esimBlock    = document.getElementById('esimDetails');
         const imagesWrap   = document.getElementById('esimImagesWrap');
         const imagesDiv    = document.getElementById('esimImages');
+        const linkWrap     = document.getElementById('esimLinkWrap');
+        const linkPreview  = document.getElementById('esimLinkPreview');
+        const linkFallback = document.getElementById('esimLinkFallback');
+
+        linkWrap.classList.add('hidden');
+        linkPreview.classList.add('hidden');
+        linkPreview.removeAttribute('src');
+        linkFallback.classList.add('hidden');
 
         if (txn.type && txn.type.toLowerCase() === 'esim' && txn.esim_upload) {
             const eu = txn.esim_upload;
@@ -274,6 +291,31 @@ document.querySelectorAll('.txn-row').forEach(row => {
                 });
             } else {
                 imagesWrap.classList.add('hidden');
+            }
+
+            if (eu.link) {
+                try {
+                    const linkUrl = new URL(eu.link);
+                    if (linkUrl.protocol === 'http:' || linkUrl.protocol === 'https:') {
+                        const linkText = document.getElementById('esimLinkText');
+                        const openLink = document.getElementById('esimOpenLink');
+                        linkWrap.classList.remove('hidden');
+                        linkText.href = linkUrl.href;
+                        linkText.textContent = linkUrl.href;
+                        openLink.href = linkUrl.href;
+                        linkPreview.onload = () => {
+                            linkPreview.classList.remove('hidden');
+                            linkFallback.classList.add('hidden');
+                        };
+                        linkPreview.onerror = () => {
+                            linkPreview.classList.add('hidden');
+                            linkFallback.classList.remove('hidden');
+                        };
+                        linkPreview.src = linkUrl.href;
+                    }
+                } catch (error) {
+                    linkWrap.classList.add('hidden');
+                }
             }
         } else {
             esimBlock.classList.add('hidden');

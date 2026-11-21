@@ -12,6 +12,7 @@ class EsimUpload extends Model
         'number',
         'details',
         'images',
+        'link',
     ];
 
     protected $casts = [
