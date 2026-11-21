@@ -127,10 +127,11 @@
                 ['🛜','eSIM','Get connected without a physical SIM, activate instantly.'],
                 ['🚀','Social Boost','Grow your social presence with real followers &amp; engagement.'],
                 ['🎓','JAMB &amp; WAEC e-PINs','Official exam PINs, delivered instantly and verified.'],
-            ] as $i => [$icon,$title,$desc,$flagship])
-                <div data-reveal style="--i:{{ $i }}" class="rounded-2xl p-6 bg-white border {{ ($flagship ?? false) ? 'border-brand/30 ring-1 ring-brand/10' : 'border-gray-100' }} hover:shadow-lg hover:-translate-y-1 transition-all">
+            ] as $i => $row)
+                @php [$icon, $title, $desc] = $row; $flagship = $row[3] ?? false; @endphp
+                <div data-reveal style="--i:{{ $i }}" class="rounded-2xl p-6 bg-white border {{ $flagship ? 'border-brand/30 ring-1 ring-brand/10' : 'border-gray-100' }} hover:shadow-lg hover:-translate-y-1 transition-all">
                     <div class="w-12 h-12 rounded-xl bg-brand-light flex items-center justify-center text-2xl">{{ $icon }}</div>
-                    <h3 class="font-bold mt-4">{{ $title }} @if($flagship ?? false)<span class="ml-1 text-[10px] font-bold text-brand bg-brand-light px-2 py-0.5 rounded-full align-middle">Popular</span>@endif</h3>
+                    <h3 class="font-bold mt-4">{{ $title }} @if($flagship)<span class="ml-1 text-[10px] font-bold text-brand bg-brand-light px-2 py-0.5 rounded-full align-middle">Popular</span>@endif</h3>
                     <p class="text-sm text-gray-500 mt-1.5 leading-relaxed">{{ $desc }}</p>
                 </div>
             @endforeach
