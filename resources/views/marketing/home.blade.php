@@ -4,56 +4,51 @@
 @section('content')
 
 {{-- ── HERO ── --}}
-<section class="bg-gradient-to-b from-white to-brand-light/40 overflow-hidden">
-    <div class="max-w-7xl mx-auto px-5 sm:px-8 pt-14 pb-16 grid lg:grid-cols-2 gap-12 items-center">
-        <div data-reveal="left">
-            <div class="flex items-center gap-3 mb-5">
+<section class="relative overflow-hidden bg-white">
+    {{-- soft layered background: a subtle brand-tinted glow top-right + a faint grid, no hard edges --}}
+    <div class="pointer-events-none absolute inset-0">
+        <div class="absolute -top-32 -right-32 w-[560px] h-[560px] rounded-full bg-brand/10 blur-3xl"></div>
+        <div class="absolute top-1/2 -left-40 w-[420px] h-[420px] rounded-full bg-emerald-200/30 blur-3xl"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-white via-brand-light/30 to-white"></div>
+    </div>
+
+    <div class="relative max-w-7xl mx-auto px-5 sm:px-8 pt-16 sm:pt-20 pb-16 sm:pb-20 grid lg:grid-cols-2 gap-12 lg:gap-10 items-center">
+        <div data-reveal="left" class="text-center lg:text-left">
+            <div class="inline-flex items-center gap-3 mb-6 bg-white/70 backdrop-blur rounded-full pl-2 pr-4 py-1.5 border border-gray-100 shadow-sm">
                 <div class="flex -space-x-3">
                     @foreach([1,2,3,4] as $n)
-                        <img src="{{ asset('images/stack-'.$n.'.jpg') }}" alt="" class="w-9 h-9 rounded-full border-2 border-white object-cover">
+                        <img src="{{ asset('images/stack-'.$n.'.jpg') }}" alt="" class="w-8 h-8 rounded-full border-2 border-white object-cover">
                     @endforeach
                 </div>
-                <span class="font-extrabold text-brand text-lg">500+<span class="text-gray-800 font-semibold text-base">Users</span></span>
+                <span class="font-extrabold text-brand text-base">500+<span class="text-gray-700 font-semibold text-sm ml-1">Users</span></span>
             </div>
-            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.08] tracking-tight text-gray-900">
+
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.1] tracking-tight text-gray-900">
                 Top up, Pay bills, Stay connected, all in one tap.
             </h1>
-            <p class="mt-6 text-gray-600 text-lg max-w-lg leading-relaxed">
+            <p class="mt-6 text-gray-600 text-base sm:text-lg max-w-lg mx-auto lg:mx-0 leading-relaxed">
                 From airtime and data to electricity, betting, and exam pins, EasyGets makes every transaction fast, secure, and effortless, anytime, anywhere.
             </p>
-            <div class="mt-8 flex flex-wrap gap-4">
-                <a href="/app/signup" class="px-7 py-4 rounded-full font-bold text-white bg-gray-900 hover:bg-brand transition-colors shadow-lg shadow-brand/10">Get Started Now</a>
-                <a href="/app/signin" class="px-7 py-4 rounded-full font-bold text-brand bg-white border-2 border-brand/20 hover:border-brand transition-colors">Login Now</a>
+            <div class="mt-8 flex flex-wrap justify-center lg:justify-start gap-4">
+                <a href="/app/signup" class="px-7 py-4 rounded-full font-bold text-white bg-gray-900 hover:bg-brand transition-colors shadow-lg shadow-brand/10 w-full sm:w-auto text-center">Get Started Now</a>
+                <a href="/app/signin" class="px-7 py-4 rounded-full font-bold text-brand bg-white border-2 border-brand/20 hover:border-brand transition-colors w-full sm:w-auto text-center">Login Now</a>
             </div>
         </div>
 
-        <div class="relative" data-reveal="right">
-            <img src="{{ asset('images/hero-man.jpg') }}" alt="EasyGets user" class="w-full max-w-md mx-auto rounded-3xl object-cover">
-
-            <img src="{{ asset('images/avatar-1.jpg') }}" alt="" class="float absolute top-6 -right-2 w-14 h-14 rounded-full border-4 border-white shadow-lg object-cover hidden sm:block">
-            <img src="{{ asset('images/avatar-2.jpg') }}" alt="" class="float-slow absolute top-1/3 -right-8 w-14 h-14 rounded-full border-4 border-white shadow-lg object-cover hidden sm:block" style="animation-delay:.6s">
-            <img src="{{ asset('images/avatar-3.jpg') }}" alt="" class="float absolute bottom-20 -right-4 w-14 h-14 rounded-full border-4 border-white shadow-lg object-cover hidden sm:block" style="animation-delay:1.2s">
-
-            <div class="float-slow absolute left-0 bottom-6 bg-white rounded-2xl shadow-xl p-4 w-64" style="animation-delay:.3s">
-                <p class="text-xs text-gray-400">Wallet Balance</p>
-                <div class="flex items-center justify-between mt-1">
-                    <p class="text-lg font-extrabold text-brand">₦50,000</p>
-                    <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded-full">Transactions ›</span>
-                </div>
-                <div class="flex gap-2 mt-3">
-                    <span class="flex-1 text-center text-[11px] font-bold text-white bg-[#06110d] rounded-lg py-2">Get OTP</span>
-                    <span class="flex-1 text-center text-[11px] font-bold text-white bg-[#06110d] rounded-lg py-2">Socials</span>
-                </div>
+        <div data-reveal="right" class="relative flex justify-center lg:justify-end">
+            <div class="relative w-full max-w-md lg:max-w-lg">
+                <div class="absolute -inset-6 bg-brand/5 rounded-[2.5rem] blur-2xl hidden sm:block"></div>
+                <img src="{{ asset('images/hero.png') }}" alt="EasyGets app" class="relative w-full h-auto rounded-3xl float">
             </div>
         </div>
     </div>
 
-    <div class="border-t border-gray-100 bg-white/70">
-        <div class="max-w-7xl mx-auto px-5 sm:px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-8 text-center stagger">
+    <div class="relative border-t border-gray-100 bg-white/70">
+        <div class="max-w-7xl mx-auto px-5 sm:px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 text-center stagger">
             @foreach([['500+','Users'],['99.99%','Uptime'],['100%','Secure Payments'],['24/7','Customer Support']] as $i => [$num,$label])
                 <div data-reveal style="--i:{{ $i }}">
-                    <p class="text-3xl font-extrabold text-gray-900">{{ $num }}</p>
-                    <p class="text-sm text-gray-500 mt-1">{{ $label }}</p>
+                    <p class="text-2xl sm:text-3xl font-extrabold text-gray-900">{{ $num }}</p>
+                    <p class="text-xs sm:text-sm text-gray-500 mt-1">{{ $label }}</p>
                 </div>
             @endforeach
         </div>
