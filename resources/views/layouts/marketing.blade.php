@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'EasyGets — Buy & Sell Gift Cards, Pay Bills, Stay Connected')</title>
     <meta name="description" content="@yield('description', 'Buy and sell gift cards at live rates, rent verification numbers, and handle airtime, data, electricity and more — fast, secure, and effortless.')">
-    <link rel="shortcut icon" href="{{ asset('images/logo.png') }}">
+    <link rel="shortcut icon" href="{{ asset('images/easygets-logo.jpg') }}">
+    <script>document.documentElement.classList.add('js');</script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -26,25 +27,25 @@
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-font-smoothing: antialiased; }
         h1, h2, h3 { letter-spacing: -0.02em; }
-        [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
-        [data-reveal].in { opacity: 1; transform: none; }
-        [data-reveal="scale"] { transform: scale(.95); }
-        [data-reveal="left"] { transform: translateX(-28px); }
-        [data-reveal="right"] { transform: translateX(28px); }
+
+        /* Reveal animations only apply when JS is running, so content can never stay hidden */
+        .js [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
+        .js [data-reveal="scale"] { transform: scale(.95); }
+        .js [data-reveal="left"] { transform: translateX(-28px); }
+        .js [data-reveal="right"] { transform: translateX(28px); }
+        .js [data-reveal].in { opacity: 1; transform: none; }
         .stagger > * { transition-delay: calc(var(--i, 0) * 90ms); }
-        @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
-        .float { animation: float 6s ease-in-out infinite; }
+
         @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
         .marquee-track { animation: marquee 32s linear infinite; width: max-content; }
         .marquee:hover .marquee-track { animation-play-state: paused; }
         .nav-link { position: relative; }
         .nav-link::after { content:''; position:absolute; left:0; bottom:-6px; width:0; height:2px; background:#03624C; transition:width .25s ease; }
         .nav-link:hover::after, .nav-link.active::after { width:100%; }
-        .dot-grid { background-image: radial-gradient(rgba(3,98,76,.14) 1px, transparent 1px); background-size: 22px 22px; }
         details > summary::-webkit-details-marker { display: none; }
         @media (prefers-reduced-motion: reduce) {
-            [data-reveal] { opacity: 1; transform: none; transition: none; }
-            .float, .marquee-track { animation: none; }
+            .js [data-reveal] { opacity: 1; transform: none; transition: none; }
+            .marquee-track { animation: none; }
         }
     </style>
 </head>
@@ -53,8 +54,10 @@
     {{-- ── NAV ── --}}
     <header class="fixed top-0 inset-x-0 z-50 bg-white/85 backdrop-blur-xl border-b border-gray-100">
         <nav class="max-w-7xl mx-auto px-5 sm:px-8 h-20 flex items-center justify-between">
-            <a href="{{ route('marketing.home') }}" class="flex items-center gap-2">
-                <img src="{{ asset('images/logo.png') }}" alt="EasyGets" class="h-9 w-auto" onerror="this.outerHTML='<span class=&quot;font-display font-extrabold text-xl text-brand&quot;>EASYGETS<span class=&quot;text-gray-900&quot;>.NG</span></span>'">
+            <a href="{{ route('marketing.home') }}" class="flex items-center">
+                <span class="inline-flex bg-black rounded-lg overflow-hidden">
+                    <img src="{{ asset('images/easygets-logo.jpg') }}" alt="EasyGets" class="h-10 w-auto block">
+                </span>
             </a>
             <div class="hidden md:flex items-center gap-9 text-sm font-semibold text-gray-700">
                 <a href="{{ route('marketing.home') }}" class="nav-link {{ request()->routeIs('marketing.home') ? 'active text-brand' : 'hover:text-brand' }} transition-colors">Home</a>
@@ -89,7 +92,7 @@
     <footer class="bg-ink text-gray-300 pt-16 pb-8">
         <div class="max-w-7xl mx-auto px-5 sm:px-8 grid grid-cols-2 md:grid-cols-5 gap-10">
             <div class="col-span-2">
-                <img src="{{ asset('images/logo.png') }}" alt="EasyGets" class="h-10 w-auto mb-4" onerror="this.outerHTML='<span class=&quot;font-display font-extrabold text-2xl text-white&quot;>EASYGETS<span class=&quot;text-emerald-400&quot;>.NG</span></span>'">
+                <img src="{{ asset('images/easygets-logo.jpg') }}" alt="EasyGets" class="h-14 w-auto mb-4 rounded-lg">
                 <p class="text-sm text-gray-400 leading-relaxed max-w-sm">Buy and sell gift cards at live rates, rent verification numbers, and handle airtime, data, electricity and more — fast, secure, and effortless, anytime, anywhere.</p>
                 <a href="/app/signup" class="inline-flex mt-5 items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold text-ink bg-emerald-400 hover:bg-emerald-300 transition-colors">Get Started Now <x-icon name="arrow-right" class="w-4 h-4" /></a>
             </div>
@@ -154,6 +157,8 @@
             entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
         }, { threshold: 0.12 });
         document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
+        // Safety net: never leave anything hidden if the observer doesn't fire
+        setTimeout(() => document.querySelectorAll('[data-reveal]:not(.in)').forEach(el => el.classList.add('in')), 2000);
         document.getElementById('menuBtn')?.addEventListener('click', () => document.getElementById('mobileMenu').classList.toggle('hidden'));
     </script>
     @stack('scripts')

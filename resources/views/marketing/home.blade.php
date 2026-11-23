@@ -6,13 +6,14 @@
 {{-- ═════════ HERO ═════════ --}}
 <section class="relative overflow-hidden bg-white">
     <div class="pointer-events-none absolute inset-0">
-        <div class="absolute inset-0 dot-grid opacity-60 [mask-image:radial-gradient(ellipse_at_top_right,black,transparent_70%)]"></div>
         <div class="absolute -top-40 -right-40 w-[620px] h-[620px] rounded-full bg-brand/10 blur-3xl"></div>
         <div class="absolute top-1/2 -left-48 w-[460px] h-[460px] rounded-full bg-emerald-200/30 blur-3xl"></div>
     </div>
 
     <div class="relative max-w-7xl mx-auto px-5 sm:px-8 pt-14 sm:pt-20 pb-16 sm:pb-24 grid lg:grid-cols-2 gap-14 items-center">
-        <div data-reveal="left" class="text-center lg:text-left">
+
+        {{-- LEFT: text --}}
+        <div class="text-center lg:text-left">
             <div class="inline-flex items-center gap-2 bg-brand-light text-brand font-bold text-xs sm:text-sm px-4 py-2 rounded-full">
                 <x-icon name="gift" class="w-4 h-4" /> Buy &amp; sell gift cards at live rates
             </div>
@@ -20,18 +21,14 @@
                 Trade gift cards.<br class="hidden sm:block"> Pay bills. <span class="text-brand">Stay connected.</span>
             </h1>
             <p class="mt-6 text-gray-600 text-base sm:text-lg max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                Sell your gift cards for cash or buy top brands instantly. Rent verification numbers, top up airtime and data, and pay electricity — all in one secure, effortless place.
+                Sell your gift cards for cash or buy top brands instantly. Rent verification numbers, top up airtime and data, and pay electricity, all in one secure, effortless place.
             </p>
             <div class="mt-8 flex flex-col sm:flex-row justify-center lg:justify-start gap-3 sm:gap-4">
                 <a href="/app/signup" class="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full font-bold text-white bg-ink hover:bg-brand transition-colors shadow-lg shadow-brand/15">Get Started Now <x-icon name="arrow-right" class="w-4 h-4" /></a>
                 <a href="/app/signin" class="inline-flex items-center justify-center px-7 py-4 rounded-full font-bold text-brand bg-white border-2 border-brand/20 hover:border-brand transition-colors">Login Now</a>
             </div>
             <div class="mt-9 flex items-center justify-center lg:justify-start gap-4">
-                <div class="flex -space-x-3">
-                    @foreach([1,2,3,4] as $n)
-                        <img src="{{ asset('images/stack-'.$n.'.jpg') }}" alt="" class="w-10 h-10 rounded-full border-2 border-white object-cover">
-                    @endforeach
-                </div>
+                <img src="{{ asset('images/users.png') }}" alt="EasyGets users" class="h-10 w-auto">
                 <div class="text-left">
                     <div class="flex text-amber-400 gap-0.5">@for($s=0;$s<5;$s++)<x-icon name="star" :fill="true" class="w-3.5 h-3.5" />@endfor</div>
                     <p class="text-sm text-gray-600"><span class="font-bold text-ink">500+</span> users trade with EasyGets</p>
@@ -39,29 +36,17 @@
             </div>
         </div>
 
-        <div class="relative flex justify-center lg:justify-end">
-            <div class="relative w-full max-w-md lg:max-w-lg">
-                <div class="absolute -inset-8 bg-brand/10 rounded-[3rem] blur-3xl"></div>
-                <div class="float relative">
-                    <img src="{{ asset('images/hero.png') }}" alt="EasyGets app" class="relative w-full h-auto block" loading="eager">
-                </div>
-                <div class="hidden sm:flex absolute -left-6 top-10 items-center gap-3 bg-white/95 backdrop-blur rounded-2xl shadow-xl border border-gray-100 px-4 py-3 float" style="animation-delay:.4s">
-                    <span class="w-10 h-10 rounded-xl bg-brand text-white flex items-center justify-center"><x-icon name="gift" class="w-5 h-5" /></span>
-                    <div><p class="text-xs text-gray-500">Gift card sold</p><p class="text-sm font-extrabold text-ink">+₦148,500 credited</p></div>
-                </div>
-                <div class="hidden sm:flex absolute -right-4 bottom-12 items-center gap-3 bg-white/95 backdrop-blur rounded-2xl shadow-xl border border-gray-100 px-4 py-3 float" style="animation-delay:1.2s">
-                    <span class="w-10 h-10 rounded-xl bg-emerald-100 text-brand flex items-center justify-center"><x-icon name="message" class="w-5 h-5" /></span>
-                    <div><p class="text-xs text-gray-500">Number rented</p><p class="text-sm font-extrabold text-ink">SMS received · 2s</p></div>
-                </div>
-                <p class="hidden sm:block absolute -bottom-6 left-4 text-[10px] text-gray-400">Illustrative example</p>
-            </div>
+        {{-- RIGHT: plain image --}}
+        <div class="flex justify-center lg:justify-end">
+            <img src="{{ asset('images/hero.png') }}" alt="EasyGets app" class="w-full max-w-md lg:max-w-lg h-auto">
         </div>
     </div>
 
-    <div class="relative border-t border-gray-100 bg-white/80 backdrop-blur">
-        <div class="max-w-7xl mx-auto px-5 sm:px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 text-center stagger">
-            @foreach([['500+','Active users'],['99.99%','Uptime'],['100%','Secure payments'],['24/7','Customer support']] as $i => [$num,$label])
-                <div data-reveal style="--i:{{ $i }}">
+    {{-- Stats --}}
+    <div class="relative border-t border-gray-100 bg-white/80">
+        <div class="max-w-7xl mx-auto px-5 sm:px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 text-center">
+            @foreach([['500+','Active users'],['99.99%','Uptime'],['100%','Secure payments'],['24/7','Customer support']] as [$num,$label])
+                <div>
                     <p class="font-display text-2xl sm:text-3xl font-extrabold text-ink">{{ $num }}</p>
                     <p class="text-xs sm:text-sm text-gray-500 mt-1">{{ $label }}</p>
                 </div>
@@ -93,7 +78,7 @@
             <h2 class="font-display text-3xl sm:text-4xl font-extrabold text-ink mt-4 leading-tight">Gift cards, done right.</h2>
             <p class="text-gray-600 mt-4 leading-relaxed">Whether you're cashing out an unused card or grabbing one for yourself, EasyGets gives you transparent live rates, PIN-protected checkout and fast, reliable payouts.</p>
             <ul class="mt-6 space-y-3 text-sm text-gray-700">
-                @foreach(['Live, transparent rates — no hidden cuts','PIN-secured purchases and withdrawals','Earnings go to your withdrawable balance, then your bank'] as $point)
+                @foreach(['Live, transparent rates, no hidden cuts','PIN-secured purchases and withdrawals','Earnings go to your withdrawable balance, then your bank'] as $point)
                     <li class="flex items-start gap-3"><span class="mt-0.5 w-5 h-5 rounded-full bg-brand text-white flex items-center justify-center flex-shrink-0"><x-icon name="check" class="w-3 h-3" /></span>{{ $point }}</li>
                 @endforeach
             </ul>
@@ -143,18 +128,18 @@
         <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-6" data-reveal>
             <div class="max-w-xl">
                 <h2 class="font-display text-3xl sm:text-4xl font-extrabold text-ink">All your digital services in one place</h2>
-                <p class="text-gray-600 mt-4">Gift cards and instant numbers up front — plus every bill you pay regularly, ready in seconds.</p>
+                <p class="text-gray-600 mt-4">Gift cards and instant numbers up front, plus every bill you pay regularly, ready in seconds.</p>
             </div>
             <a href="{{ route('marketing.services') }}" class="inline-flex items-center gap-2 self-start md:self-auto px-6 py-3 rounded-full bg-ink text-white font-bold text-sm hover:bg-brand transition-colors">See all services <x-icon name="arrow-right" class="w-4 h-4" /></a>
         </div>
 
         <div class="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-5 stagger">
-            <div data-reveal style="--i:0" class="sm:col-span-2 rounded-3xl p-8 text-white relative overflow-hidden" style="background:linear-gradient(135deg,#03624C 0%,#021f18 100%)">
+            <div data-reveal style="--i:0; background:linear-gradient(135deg,#03624C 0%,#021f18 100%)" class="sm:col-span-2 rounded-3xl p-8 text-white relative overflow-hidden">
                 <div class="absolute -right-12 -bottom-12 w-56 h-56 rounded-full bg-white/5"></div>
-                <span class="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center"><x-icon name="message" class="w-6 h-6" /></span>
-                <h3 class="font-display text-xl font-bold mt-5">Rent Number</h3>
-                <p class="text-sm text-emerald-50/80 mt-2 max-w-sm leading-relaxed">Rent a one-time or long-term verification number for WhatsApp, Telegram, Google and hundreds more — SMS delivered in real time.</p>
-                <a href="/app/signup" class="inline-flex items-center gap-1.5 mt-5 text-sm font-bold">Rent a number <x-icon name="arrow-up-right" class="w-4 h-4" /></a>
+                <span class="relative w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center"><x-icon name="message" class="w-6 h-6" /></span>
+                <h3 class="relative font-display text-xl font-bold mt-5">Rent Number</h3>
+                <p class="relative text-sm text-emerald-50/80 mt-2 max-w-sm leading-relaxed">Rent a one-time or long-term verification number for WhatsApp, Telegram, Google and hundreds more, with SMS delivered in real time.</p>
+                <a href="/app/signup" class="relative inline-flex items-center gap-1.5 mt-5 text-sm font-bold">Rent a number <x-icon name="arrow-up-right" class="w-4 h-4" /></a>
             </div>
             @foreach([
                 ['phone','Airtime Top-Up','Instantly recharge any network in seconds.'],
@@ -184,7 +169,7 @@
         <div class="mt-14 grid sm:grid-cols-2 lg:grid-cols-4 gap-6 stagger">
             @foreach([
                 ['user-plus','Create an account','Sign up and unlock every service instantly.'],
-                ['grid','Pick a service','Gift cards, numbers, airtime, bills — choose what you need.'],
+                ['grid','Pick a service','Gift cards, numbers, airtime, bills: choose what you need.'],
                 ['lock','Pay securely','Use your wallet, card or bank transfer with PIN protection.'],
                 ['zap','Instant delivery','Codes, numbers and top-ups arrive in seconds.'],
             ] as $i => [$icon,$t,$d])
@@ -222,12 +207,10 @@
         </div>
 
         <div class="mt-6 grid md:grid-cols-3 gap-5 stagger">
-            <div data-reveal class="rounded-3xl p-8 bg-brand text-white flex gap-5 items-start">
-                <div class="flex-1">
-                    <h3 class="font-display font-bold text-lg">Proven reliability</h3>
-                    <p class="text-sm text-emerald-50/80 mt-2 leading-relaxed">We've helped users across Nigeria trade gift cards, rent numbers and stay connected — fast, secure and without hassle.</p>
-                </div>
-                <img src="{{ asset('images/reliability.jpg') }}" alt="" class="w-20 h-20 rounded-2xl object-cover flex-shrink-0 hidden sm:block">
+            <div data-reveal class="rounded-3xl p-8 bg-brand text-white">
+                <span class="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center"><x-icon name="shield" class="w-5 h-5" /></span>
+                <h3 class="font-display font-bold text-lg mt-4">Proven reliability</h3>
+                <p class="text-sm text-emerald-50/80 mt-2 leading-relaxed">We've helped users across Nigeria trade gift cards, rent numbers and stay connected, fast, secure and without hassle.</p>
             </div>
             <div data-reveal style="--i:1" class="rounded-3xl p-8 bg-brand text-white text-center">
                 <p class="font-display text-4xl font-extrabold">4.9+</p>
@@ -256,7 +239,7 @@
             <a href="/app/signup" class="inline-flex items-center gap-2 mt-7 px-7 py-3.5 rounded-full font-bold bg-emerald-400 text-ink hover:bg-emerald-300 transition-colors">Create an account <x-icon name="arrow-right" class="w-4 h-4" /></a>
         </div>
         <div data-reveal="right" class="flex justify-center lg:justify-end">
-            <img src="{{ asset('images/wallet-phone.jpg') }}" alt="EasyGets wallet" class="w-full max-w-sm rounded-3xl shadow-2xl ring-1 ring-white/10">
+            <img src="{{ asset('images/profile-screen.png') }}" alt="EasyGets wallet" class="w-full max-w-xs sm:max-w-sm h-auto drop-shadow-2xl">
         </div>
     </div>
 
@@ -285,9 +268,9 @@
         </div>
         <div class="mt-12 grid md:grid-cols-3 gap-6 stagger">
             @foreach([
-                ['t-samuel.jpg','Samuel Toluwani','Selling my gift cards on EasyGets is smooth — the rate is clear before I submit and I get paid fast.'],
-                ['t-mary.jpg','Mary Anne','I rent numbers here every week for verifications. Instant delivery, every single time.'],
-                ['t-chike.jpg','Chike Nobis','From gift cards to electricity, EasyGets has completely simplified how I handle everything online.'],
+                ['samuel.png','Samuel Toluwani','Selling my gift cards on EasyGets is smooth. The rate is clear before I submit and I get paid fast.'],
+                ['mary.png','Mary Anne','I rent numbers here every week for verifications. Instant delivery, every single time.'],
+                ['chike.png','Chike Nobis','From gift cards to electricity, EasyGets has completely simplified how I handle everything online.'],
             ] as $i => [$img,$name,$quote])
                 <div data-reveal style="--i:{{ $i }}" class="rounded-3xl p-7 bg-gray-50 border border-gray-100">
                     <div class="flex text-amber-400 gap-0.5">@for($s=0;$s<5;$s++)<x-icon name="star" :fill="true" class="w-4 h-4" />@endfor</div>
@@ -316,9 +299,9 @@
                 ['Can I buy gift cards too?','Yes. Pay from your wallet and your code is delivered instantly and saved in your history.'],
                 ['What numbers can I rent?','One-time and longer-term verification numbers for many platforms across multiple countries, with SMS delivered in real time.'],
                 ['Is EasyGets secure?','Every transaction is encrypted and PIN-protected, and we use verified payment gateways. We also have zero tolerance for fraud.'],
-                ['How do I contact support?','Use live chat, WhatsApp or the Contact Us page — our team responds promptly.'],
-            ] as $i => [$q,$a])
-                <details data-reveal class="group rounded-2xl bg-white border border-gray-100 px-6 py-5 open:shadow-md transition-shadow">
+                ['How do I contact support?','Use live chat, WhatsApp or the Contact Us page. Our team responds promptly.'],
+            ] as [$q,$a])
+                <details class="group rounded-2xl bg-white border border-gray-100 px-6 py-5 open:shadow-md transition-shadow">
                     <summary class="flex justify-between items-center cursor-pointer font-semibold text-ink list-none">
                         {{ $q }}
                         <span class="ml-4 w-7 h-7 rounded-full bg-brand-light text-brand flex items-center justify-center flex-shrink-0 group-open:rotate-45 transition-transform text-lg leading-none">+</span>
@@ -331,9 +314,9 @@
 </section>
 
 {{-- ═════════ FINAL CTA ═════════ --}}
-<section class="relative py-28 overflow-hidden">
-    <img src="{{ asset('images/cta-bg.jpg') }}" alt="" class="absolute inset-0 w-full h-full object-cover">
-    <div class="absolute inset-0 bg-gradient-to-br from-ink/90 via-ink/80 to-brand/70"></div>
+<section class="relative py-28 overflow-hidden bg-gradient-to-br from-ink via-[#0a2a20] to-brand">
+    <div class="pointer-events-none absolute -top-24 -right-24 w-96 h-96 rounded-full bg-emerald-400/20 blur-3xl"></div>
+    <div class="pointer-events-none absolute -bottom-32 -left-24 w-96 h-96 rounded-full bg-white/10 blur-3xl"></div>
     <div class="relative max-w-3xl mx-auto px-5 text-center text-white" data-reveal="scale">
         <span class="inline-flex w-14 h-14 rounded-2xl bg-white/10 backdrop-blur items-center justify-center"><x-icon name="gift" class="w-7 h-7 text-emerald-300" /></span>
         <h2 class="font-display text-3xl sm:text-5xl font-extrabold mt-6">Go easy with EasyGets.</h2>
