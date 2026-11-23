@@ -39,11 +39,12 @@
             </div>
         </div>
 
-        <div data-reveal="right" class="relative flex justify-center lg:justify-end">
+        <div class="relative flex justify-center lg:justify-end">
             <div class="relative w-full max-w-md lg:max-w-lg">
                 <div class="absolute -inset-8 bg-brand/10 rounded-[3rem] blur-3xl"></div>
-                <img src="{{ asset('images/hero.png') }}" alt="EasyGets app" class="relative w-full h-auto float">
-
+                <div class="float relative">
+                    <img src="{{ asset('images/hero.png') }}" alt="EasyGets app" class="relative w-full h-auto block" loading="eager">
+                </div>
                 <div class="hidden sm:flex absolute -left-6 top-10 items-center gap-3 bg-white/95 backdrop-blur rounded-2xl shadow-xl border border-gray-100 px-4 py-3 float" style="animation-delay:.4s">
                     <span class="w-10 h-10 rounded-xl bg-brand text-white flex items-center justify-center"><x-icon name="gift" class="w-5 h-5" /></span>
                     <div><p class="text-xs text-gray-500">Gift card sold</p><p class="text-sm font-extrabold text-ink">+₦148,500 credited</p></div>
