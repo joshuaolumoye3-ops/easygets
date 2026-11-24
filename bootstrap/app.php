@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // NEW: Caddy sits in front of this app and speaks https to the visitor. Trust its X-Forwarded-* headers so
+        // Laravel knows the request was https and writes https addresses (form actions, redirects, asset links).
+        $middleware->trustProxies(at: '*');
+
         // Register middleware aliases
         $middleware->alias([
             'auth'   => Authenticate::class,
